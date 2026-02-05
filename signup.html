@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+
+<html class="" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Client Sign Up | SecurePortal</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#1754cf",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#111621",
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: "Public Sans", sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-white min-h-screen flex flex-col">
+<!-- Top Navigation Bar -->
+<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-[#292e38] px-6 md:px-20 py-4 bg-background-light dark:bg-background-dark sticky top-0 z-50">
+<div class="flex items-center gap-4 text-primary dark:text-white">
+<div class="size-8">
+<svg fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path d="M44 11.2727C44 14.0109 39.8386 16.3957 33.69 17.6364C39.8386 18.877 44 21.2618 44 24C44 26.7382 39.8386 29.123 33.69 30.3636C39.8386 31.6043 44 33.9891 44 36.7273C44 40.7439 35.0457 44 24 44C12.9543 44 4 40.7439 4 36.7273C4 33.9891 8.16144 31.6043 14.31 30.3636C8.16144 29.123 4 26.7382 4 24C4 21.2618 8.16144 18.877 14.31 17.6364C8.16144 16.3957 4 14.0109 4 11.2727C4 7.25611 12.9543 4 24 4C35.0457 4 44 7.25611 44 11.2727Z" fill="currentColor"></path>
+</svg>
+</div>
+<h2 class="text-slate-900 dark:text-white text-xl font-bold leading-tight tracking-[-0.015em]">SecurePortal</h2>
+</div>
+<div class="flex items-center gap-4">
+<span class="text-slate-600 dark:text-slate-400 text-sm hidden sm:inline">Already have an account?</span>
+<button class="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 border border-primary text-primary dark:text-white dark:border-slate-700 text-sm font-bold leading-normal tracking-[0.015em] hover:bg-primary/10 transition-colors">
+<span>Sign In</span>
+</button>
+</div>
+</header>
+<main class="flex-1 flex overflow-hidden">
+<!-- Left Panel: Value Proposition -->
+<div class="hidden lg:flex w-1/2 bg-[#1c1f26] p-20 flex-col justify-center relative overflow-hidden">
+<!-- Decorative background element -->
+<div class="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none" data-alt="abstract geometric pattern in dark blue">
+<div class="absolute top-[-10%] right-[-10%] w-96 h-96 rounded-full bg-primary blur-[120px]"></div>
+<div class="absolute bottom-[-10%] left-[-10%] w-64 h-64 rounded-full bg-primary/40 blur-[100px]"></div>
+</div>
+<div class="relative z-10 space-y-12">
+<div class="space-y-4">
+<h1 class="text-white text-5xl font-black leading-tight tracking-tight max-w-md">
+                        The gold standard for client communication.
+                    </h1>
+<p class="text-slate-400 text-lg max-w-sm">
+                        Enterprise-grade security meets white-glove financial services.
+                    </p>
+</div>
+<div class="space-y-8">
+<div class="flex items-start gap-4">
+<div class="p-3 bg-primary/20 rounded-xl">
+<span class="material-symbols-outlined text-primary text-3xl">shield_lock</span>
+</div>
+<div>
+<h3 class="text-white font-bold text-lg">Bank-Grade Encryption</h3>
+<p class="text-slate-400">All your financial documents are encrypted with AES-256 before they even leave your browser.</p>
+</div>
+</div>
+<div class="flex items-start gap-4">
+<div class="p-3 bg-primary/20 rounded-xl">
+<span class="material-symbols-outlined text-primary text-3xl">chat_bubble</span>
+</div>
+<div>
+<h3 class="text-white font-bold text-lg">Direct CPA Access</h3>
+<p class="text-slate-400">Collaborate in real-time with your assigned professional through our secure messaging tunnel.</p>
+</div>
+</div>
+<div class="flex items-start gap-4">
+<div class="p-3 bg-primary/20 rounded-xl">
+<span class="material-symbols-outlined text-primary text-3xl">folder_managed</span>
+</div>
+<div>
+<h3 class="text-white font-bold text-lg">Centralized Document Hub</h3>
+<p class="text-slate-400">Never lose a tax form again. Access your entire history from any device, anywhere.</p>
+</div>
+</div>
+</div>
+<div class="pt-8 border-t border-slate-700 max-w-md">
+<div class="flex items-center gap-1 mb-2">
+<span class="material-symbols-outlined text-yellow-500 text-sm">star</span>
+<span class="material-symbols-outlined text-yellow-500 text-sm">star</span>
+<span class="material-symbols-outlined text-yellow-500 text-sm">star</span>
+<span class="material-symbols-outlined text-yellow-500 text-sm">star</span>
+<span class="material-symbols-outlined text-yellow-500 text-sm">star</span>
+</div>
+<p class="text-slate-300 italic mb-4 text-lg">"Moving our firm's documents to SecurePortal reduced audit times by 40% and gave our clients true peace of mind."</p>
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-slate-700" data-alt="portrait photo of a smiling professional woman"></div>
+<div>
+<p class="text-white font-bold text-sm">Sarah Jenkins, CPA</p>
+<p class="text-slate-500 text-xs uppercase tracking-wider">Jenkins &amp; Associates</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Panel: Registration Form -->
+<div class="w-full lg:w-1/2 flex items-center justify-center p-6 md:p-12 bg-background-light dark:bg-background-dark overflow-y-auto">
+<div class="w-full max-w-[480px] space-y-8 py-10">
+<div class="space-y-2">
+<h2 class="text-slate-900 dark:text-white text-3xl font-bold leading-tight">Create your account</h2>
+<p class="text-slate-500 dark:text-slate-400">Join 5,000+ businesses managing their finances securely.</p>
+</div>
+<form class="space-y-6">
+<!-- Full Name Field -->
+<div class="space-y-2">
+<label class="block">
+<p class="text-slate-700 dark:text-white text-sm font-medium leading-normal pb-1">Full Name</p>
+<input class="form-input flex w-full rounded-lg text-slate-900 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-[#3c4453] bg-white dark:bg-[#1c1f26] h-12 placeholder:text-slate-400 dark:placeholder:text-[#9da6b8] px-4 text-base transition-all" placeholder="Jane Cooper" type="text"/>
+</label>
+</div>
+<!-- Work Email Field -->
+<div class="space-y-2">
+<label class="block">
+<p class="text-slate-700 dark:text-white text-sm font-medium leading-normal pb-1">Work Email</p>
+<input class="form-input flex w-full rounded-lg text-slate-900 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-[#3c4453] bg-white dark:bg-[#1c1f26] h-12 placeholder:text-slate-400 dark:placeholder:text-[#9da6b8] px-4 text-base transition-all" placeholder="jane@company.com" type="email"/>
+</label>
+</div>
+<!-- Business Name Field -->
+<div class="space-y-2">
+<label class="block">
+<p class="text-slate-700 dark:text-white text-sm font-medium leading-normal pb-1">Business Name</p>
+<input class="form-input flex w-full rounded-lg text-slate-900 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-[#3c4453] bg-white dark:bg-[#1c1f26] h-12 placeholder:text-slate-400 dark:placeholder:text-[#9da6b8] px-4 text-base transition-all" placeholder="Acme Corp" type="text"/>
+</label>
+</div>
+<!-- Password Field & Indicator -->
+<div class="space-y-2">
+<label class="block">
+<p class="text-slate-700 dark:text-white text-sm font-medium leading-normal pb-1">Create Password</p>
+<div class="relative">
+<input class="form-input flex w-full rounded-lg text-slate-900 dark:text-white focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-slate-300 dark:border-[#3c4453] bg-white dark:bg-[#1c1f26] h-12 placeholder:text-slate-400 dark:placeholder:text-[#9da6b8] px-4 text-base transition-all" placeholder="••••••••" type="password"/>
+<button class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors" type="button">
+<span class="material-symbols-outlined text-lg">visibility</span>
+</button>
+</div>
+</label>
+<!-- Password Strength UI -->
+<div class="space-y-1 pt-1">
+<div class="flex gap-1 h-1">
+<div class="flex-1 bg-primary rounded-full"></div>
+<div class="flex-1 bg-primary rounded-full"></div>
+<div class="flex-1 bg-slate-700 rounded-full"></div>
+<div class="flex-1 bg-slate-700 rounded-full"></div>
+</div>
+<p class="text-[11px] text-slate-500 flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">info</span>
+                                Strength: Good (Include numbers and symbols)
+                            </p>
+</div>
+</div>
+<!-- Terms & Conditions -->
+<div class="flex items-start gap-3 pt-2">
+<input class="mt-1 size-4 rounded border-slate-300 dark:border-slate-700 bg-white dark:bg-[#1c1f26] text-primary focus:ring-primary" id="terms" type="checkbox"/>
+<label class="text-sm text-slate-600 dark:text-slate-400" for="terms">
+                            I agree to the <a class="text-primary hover:underline" href="#">Terms of Service</a> and <a class="text-primary hover:underline" href="#">Privacy Policy</a>. I understand that my data is protected by bank-level encryption.
+                        </label>
+</div>
+<!-- Create Account Button -->
+<button class="w-full bg-primary hover:bg-primary/90 text-white font-bold h-12 rounded-lg transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2" type="submit">
+                        Create Account
+                        <span class="material-symbols-outlined text-lg">arrow_forward</span>
+</button>
+</form>
+<!-- Footer Security Labels -->
+<div class="pt-8 border-t border-slate-200 dark:border-slate-800 flex flex-wrap justify-center gap-6 opacity-60">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-lg">verified_user</span>
+<span class="text-[10px] font-bold uppercase tracking-widest">SOC2 COMPLIANT</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-lg">lock</span>
+<span class="text-[10px] font-bold uppercase tracking-widest">SSL SECURE</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-lg">gpp_good</span>
+<span class="text-[10px] font-bold uppercase tracking-widest">256-BIT ENCRYPTION</span>
+</div>
+</div>
+<p class="text-center text-slate-500 dark:text-slate-400 text-sm">
+                    Existing business client? <a class="text-primary font-bold hover:underline" href="#">Log in here</a>
+</p>
+</div>
+</div>
+</main>
+</body></html>
