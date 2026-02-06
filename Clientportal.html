@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Client Dashboard | Accounting Firm Portal</title>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<style>
+:root {
+  --primary:#1754cf;
+  --bg:#f6f6f8;
+  --card:#ffffff;
+  --text:#111318;
+  --muted:#64748b;
+  --border:#e2e8f0;
+  --success:#16a34a;
+  --warning:#f59e0b;
+}
+
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  font-family:system-ui,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+}
+
+.layout{
+  display:flex;
+  min-height:100vh;
+}
+
+/* SIDEBAR */
+aside{
+  width:270px;
+  background:#fff;
+  border-right:1px solid var(--border);
+  position:fixed;
+  inset:0 auto 0 0;
+  padding:1.5rem;
+  display:flex;
+  flex-direction:column;
+  gap:2rem;
+}
+
+.brand{
+  display:flex;
+  gap:.75rem;
+  align-items:center;
+}
+
+.brand-icon{
+  width:42px;
+  height:42px;
+  background:var(--primary);
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#fff;
+}
+
+nav{
+  display:flex;
+  flex-direction:column;
+  gap:.5rem;
+}
+
+nav a{
+  padding:.75rem 1rem;
+  border-radius:.75rem;
+  display:flex;
+  gap:.75rem;
+  align-items:center;
+  text-decoration:none;
+  color:var(--muted);
+  font-weight:500;
+}
+
+nav a.active{
+  background:var(--primary);
+  color:#fff;
+}
+
+nav a:hover:not(.active){
+  background:#f1f5f9;
+}
+
+.badge{
+  margin-left:auto;
+  background:var(--primary);
+  color:#fff;
+  font-size:.7rem;
+  padding:.15rem .55rem;
+  border-radius:999px;
+  font-weight:700;
+}
+
+.logout{
+  margin-top:auto;
+  padding:.75rem;
+  border:none;
+  border-radius:.75rem;
+  background:#f1f5f9;
+  color:#dc2626;
+  font-weight:600;
+  cursor:pointer;
+}
+
+/* MAIN */
+main{
+  margin-left:270px;
+  flex:1;
+  display:flex;
+  flex-direction:column;
+}
+
+/* HEADER */
+header{
+  background:#fff;
+  border-bottom:1px solid var(--border);
+  padding:1rem 2rem;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.search{
+  position:relative;
+  width:420px;
+}
+
+.search input{
+  width:100%;
+  padding:.7rem 1rem .7rem 2.6rem;
+  border-radius:.75rem;
+  border:1px solid var(--border);
+}
+
+.search i{
+  position:absolute;
+  left:1rem;
+  top:50%;
+  transform:translateY(-50%);
+  color:#94a3b8;
+}
+
+.user{
+  display:flex;
+  align-items:center;
+  gap:.75rem;
+}
+
+.avatar{
+  width:36px;
+  height:36px;
+  border-radius:999px;
+  background:#c7d2fe;
+}
+
+/* CONTENT */
+.content{
+  padding:2rem;
+}
+
+h1{
+  font-size:2.2rem;
+  margin-bottom:.25rem;
+}
+
+.subtitle{
+  color:var(--muted);
+  margin-bottom:2rem;
+}
+
+/* KPI CARDS */
+.kpis{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:1.5rem;
+  margin-bottom:2.5rem;
+}
+
+.kpi{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:1rem;
+  padding:1.5rem;
+}
+
+.kpi span{
+  color:var(--muted);
+  font-size:.85rem;
+}
+
+.kpi h3{
+  margin:.5rem 0 0;
+  font-size:1.9rem;
+}
+
+.green{color:var(--success)}
+.orange{color:var(--warning)}
+
+/* DASHBOARD GRID */
+.grid{
+  display:grid;
+  grid-template-columns:2fr 1fr;
+  gap:2rem;
+}
+
+.card{
+  background:#fff;
+  border:1px solid var(--border);
+  border-radius:1rem;
+  padding:1.5rem;
+  margin-bottom:2rem;
+}
+
+.card h3{
+  margin-bottom:1rem;
+}
+
+/* ACTIVITY */
+.activity li{
+  list-style:none;
+  padding:.75rem 0;
+  border-bottom:1px solid var(--border);
+  font-size:.9rem;
+}
+
+.activity li:last-child{
+  border:none;
+}
+
+.help{
+  background:var(--primary);
+  color:#fff;
+}
+
+.help button{
+  width:100%;
+  margin-top:1rem;
+  padding:.7rem;
+  border:none;
+  border-radius:.75rem;
+  background:#fff;
+  color:var(--primary);
+  font-weight:700;
+  cursor:pointer;
+}
+</style>
+</head>
+
+<body>
+
+<div class="layout">
+
+<!-- SIDEBAR -->
+<aside>
+  <div class="brand">
+    <div class="brand-icon"><i class="fas fa-landmark"></i></div>
+    <div>
+      <strong>Accounting Portal</strong>
+      <div style="font-size:.75rem;color:var(--muted)">Secure Client Access</div>
+    </div>
+  </div>
+
+  <nav>
+    <a class="active"><i class="fas fa-chart-line"></i> Dashboard</a>
+    <a><i class="fas fa-file-alt"></i> Documents <span class="badge">5</span></a>
+    <a><i class="fas fa-clock"></i> Requests <span class="badge">3</span></a>
+    <a><i class="fas fa-comments"></i> Messages <span class="badge">2</span></a>
+    <a><i class="fas fa-cog"></i> Settings</a>
+  </nav>
+
+  <button class="logout"><i class="fas fa-sign-out-alt"></i> Secure Logout</button>
+</aside>
+
+<!-- MAIN -->
+<main>
+
+<header>
+  <div class="search">
+    <i class="fas fa-search"></i>
+    <input placeholder="Search documents, requests or messages">
+  </div>
+  <div class="user">
+    <div class="avatar"></div>
+    <strong>Alex Richards</strong>
+  </div>
+</header>
+
+<div class="content">
+  <h1>Dashboard Overview</h1>
+  <p class="subtitle">Here’s a summary of your account status as of today</p>
+
+  <!-- KPI SECTION -->
+  <div class="kpis">
+    <div class="kpi">
+      <span>Compliance Status</span>
+      <h3 class="green">92%</h3>
+    </div>
+    <div class="kpi">
+      <span>Documents Completed</span>
+      <h3>18 / 20</h3>
+    </div>
+    <div class="kpi">
+      <span>Pending Requests</span>
+      <h3 class="orange">3</h3>
+    </div>
+    <div class="kpi">
+      <span>Unread Messages</span>
+      <h3>2</h3>
+    </div>
+  </div>
+
+  <div class="grid">
+
+    <div>
+      <div class="card">
+        <h3>Financial Summary (2024)</h3>
+        <p>Revenue Filed: <strong>R 1,245,000</strong></p>
+        <p>Tax Estimated: <strong>R 312,000</strong></p>
+        <p>Last Submission: <strong>14 Jan 2024</strong></p>
+      </div>
+
+      <div class="card">
+        <h3>Outstanding Items</h3>
+        <ul>
+          <li>• Upload 2023 Bank Statement</li>
+          <li>• Confirm VAT Return Q4</li>
+          <li>• Approve Draft Financials</li>
+        </ul>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <h3>Recent Activity</h3>
+        <ul class="activity">
+          <li>✔ PAYE submission approved – 2 hours ago</li>
+          <li>✔ Bank statement verified – Yesterday</li>
+          <li>⏳ VAT return pending review</li>
+        </ul>
+      </div>
+
+      <div class="card help">
+        <h3>Need Assistance?</h3>
+        <p>Contact your accountant securely via the portal.</p>
+        <button><i class="fas fa-comments"></i> Start Secure Chat</button>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+</main>
+</div>
+
+</body>
+</html>
+

@@ -1,101 +1,231 @@
 <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Securely Signed Out | Client Portal</title>
 
-<html class="light" lang="en"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Securely Signed Out | Client Portal</title>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script id="tailwind-config">
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    colors: {
-                        "primary": "#1754cf",
-                        "background-light": "#f6f6f8",
-                        "background-dark": "#111621",
-                    },
-                    fontFamily: {
-                        "display": ["Public Sans", "sans-serif"]
-                    },
-                    borderRadius: {
-                        "DEFAULT": "0.25rem",
-                        "lg": "0.5rem",
-                        "xl": "0.75rem",
-                        "full": "9999px"
-                    },
-                },
-            },
-        }
-    </script>
-<style>
-        body {
-            font-family: 'Public Sans', sans-serif;
-        }
-    </style>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: #f8f9fa;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 1rem 2rem;
+      background: white;
+      border-bottom: 1px solid #dee2e6;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-weight: 600;
+      color: #212529;
+    }
+
+    .logo i {
+      font-size: 20px;
+      color: #0d6efd;
+    }
+
+    .support-btn {
+      padding: 0.45rem 0.9rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+      background: transparent;
+      color: #0d6efd;
+      border: 1px solid #0d6efd;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .support-btn:hover {
+      background: #0d6efd;
+      color: white;
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      padding: 3rem 2.5rem;
+      width: 100%;
+      max-width: 520px;
+      text-align: center;
+    }
+
+    .icon-wrap {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: rgba(13,110,253,0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1.5rem;
+    }
+
+    .icon-wrap i {
+      font-size: 36px;
+      color: #0d6efd;
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 0.75rem;
+      color: #212529;
+    }
+
+    p {
+      color: #6c757d;
+      font-size: 1rem;
+      line-height: 1.6;
+      margin-bottom: 2rem;
+    }
+
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-bottom: 2rem;
+    }
+
+    .btn-primary {
+      padding: 0.85rem;
+      background: #0d6efd;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .btn-primary:hover {
+      background: #0b5ed7;
+    }
+
+    .btn-secondary {
+      padding: 0.85rem;
+      background: #e9ecef;
+      color: #212529;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .btn-secondary:hover {
+      background: #dee2e6;
+    }
+
+    .security-tip {
+      text-align: left;
+      border: 1px solid #dee2e6;
+      border-radius: 8px;
+      padding: 1.25rem;
+      background: #f8f9fa;
+    }
+
+    .security-tip h3 {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: #212529;
+    }
+
+    .security-tip h3 i {
+      color: #0d6efd;
+    }
+
+    .security-tip p {
+      font-size: 0.9rem;
+      margin: 0;
+      color: #6c757d;
+    }
+
+    footer {
+      padding: 1.5rem;
+      text-align: center;
+      font-size: 0.85rem;
+      color: #6c757d;
+      background: white;
+      border-top: 1px solid #dee2e6;
+    }
+
+    footer a {
+      color: #0d6efd;
+      text-decoration: none;
+    }
+  </style>
 </head>
-<body class="bg-background-light dark:bg-background-dark min-h-screen flex flex-col transition-colors duration-200">
-<!-- Top Navigation Bar (Simplified for Logout Screen) -->
-<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-[#dcdfe5] dark:border-gray-800 bg-white dark:bg-background-dark px-10 py-3 w-full">
-<div class="flex items-center gap-4 text-[#111318] dark:text-white">
-<div class="size-6 text-primary flex items-center justify-center">
-<span class="material-symbols-outlined text-3xl">verified_user</span>
-</div>
-<h2 class="text-[#111318] dark:text-white text-lg font-bold leading-tight tracking-[-0.015em] font-display">Secure Client Portal</h2>
-</div>
-<button class="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold leading-normal tracking-[0.015em] hover:bg-primary/90 transition-colors">
-<span class="truncate">Support</span>
-</button>
+
+<body>
+
+<header>
+  <div class="logo">
+    <i class="fas fa-shield-alt"></i>
+    Secure Client Portal
+  </div>
+  <button class="support-btn">Contact Support</button>
 </header>
-<!-- Main Content Area -->
-<main class="flex-1 flex items-center justify-center p-6">
-<div class="max-w-[540px] w-full flex flex-col items-center bg-white dark:bg-gray-900 p-8 md:p-12 rounded-xl shadow-sm border border-[#dcdfe5] dark:border-gray-800">
-<!-- Icon/Visual Reassurance -->
-<div class="mb-6 flex justify-center">
-<div class="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center">
-<span class="material-symbols-outlined text-primary text-5xl">lock</span>
-</div>
-</div>
-<!-- Headline Section -->
-<h1 class="text-[#111318] dark:text-white tracking-tight text-[32px] font-bold leading-tight text-center pb-3 font-display">
-                You have been safely signed out
-            </h1>
-<!-- Body Text Section -->
-<p class="text-[#636f88] dark:text-gray-400 text-base font-normal leading-relaxed text-center pb-8 px-2">
-                Thank you for using our portal. Your session has ended securely, and your financial data remains protected.
-            </p>
-<!-- Action Buttons -->
-<div class="w-full flex flex-col gap-3 pb-8">
-<button class="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-5 bg-primary text-white text-base font-bold leading-normal tracking-[0.015em] w-full hover:bg-primary/90 transition-colors">
-<span class="truncate">Log In Again</span>
-</button>
-<button class="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-5 bg-[#f0f2f4] dark:bg-gray-800 text-[#111318] dark:text-white text-base font-bold leading-normal tracking-[0.015em] w-full hover:bg-[#e2e4e7] dark:hover:bg-gray-700 transition-colors">
-<span class="truncate">Go to Firm Homepage</span>
-</button>
-</div>
-<!-- Security Tip (ActionPanel Modification) -->
-<div class="w-full">
-<div class="flex flex-col items-start gap-4 rounded-lg border border-[#dcdfe5] dark:border-gray-700 bg-background-light dark:bg-gray-800/50 p-5">
-<div class="flex items-center gap-2 mb-1">
-<span class="material-symbols-outlined text-primary text-xl">info</span>
-<p class="text-[#111318] dark:text-white text-base font-bold leading-tight">Security Tip</p>
-</div>
-<p class="text-[#636f88] dark:text-gray-400 text-sm font-normal leading-normal">
-                        Always remember to close your browser window when using a public or shared computer to ensure your session information remains private and inaccessible to others.
-                    </p>
-</div>
-</div>
-</div>
+
+<main>
+  <div class="card">
+    <div class="icon-wrap">
+      <i class="fas fa-lock"></i>
+    </div>
+
+    <h1>You have been safely signed out</h1>
+
+    <p>
+      Thank you for using our portal. Your session has ended securely, and your
+      financial data remains protected.
+    </p>
+
+    <div class="actions">
+      <button class="btn-primary">Log In Again</button>
+      <button class="btn-secondary">Go to Firm Homepage</button>
+    </div>
+
+    <div class="security-tip">
+      <h3><i class="fas fa-info-circle"></i> Security Tip</h3>
+      <p>
+        Always close your browser window when using a public or shared computer
+        to keep your session information private.
+      </p>
+    </div>
+  </div>
 </main>
-<!-- Simple Footer -->
-<footer class="py-10 text-center">
-<p class="text-sm text-[#636f88] dark:text-gray-500 font-display">
-            © 2024 Accounting Firm Services. All rights reserved. 
-            <span class="mx-2">|</span>
-<a class="hover:text-primary underline transition-colors" href="#">Privacy Policy</a>
-</p>
+
+<footer>
+  © 2024 Accounting Firm Services. All rights reserved |
+  <a href="#">Privacy Policy</a>
 </footer>
-</body></html>
+
+</body>
+</html>

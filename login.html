@@ -1,149 +1,317 @@
 <!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Client Secure Log In | Accounting Firm Portal</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
-<html class="" lang="en"><head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Client Secure Log In | Accounting Firm Portal</title>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
-<script id="tailwind-config">
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    colors: {
-                        "primary": "#1754cf",
-                        "background-light": "#f6f6f8",
-                        "background-dark": "#111621",
-                    },
-                    fontFamily: {
-                        "display": ["Public Sans", "sans-serif"]
-                    },
-                    borderRadius: {
-                        "DEFAULT": "0.25rem",
-                        "lg": "0.5rem",
-                        "xl": "0.75rem",
-                        "full": "9999px"
-                    },
-                },
-            },
-        }
-    </script>
-<style>
-        body {
-            font-family: "Public Sans", sans-serif;
-        }
-        .bg-pattern {
-            background-image: radial-gradient(circle at 2px 2px, #1e293b 1px, transparent 0);
-            background-size: 40px 40px;
-        }
-    </style>
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: #f8f9fa;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      padding: 1rem 2rem;
+      background: white;
+      border-bottom: 1px solid #dee2e6;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      font-weight: 600;
+    }
+
+    .logo i {
+      font-size: 20px;
+      color: #0d6efd;
+    }
+
+    .support-btn {
+      padding: 0.45rem 0.9rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+      background: transparent;
+      color: #0d6efd;
+      border: 1px solid #0d6efd;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .support-btn:hover {
+      background: #0d6efd;
+      color: white;
+    }
+
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin: 0 0 0.5rem;
+      color: #212529;
+    }
+
+    .subtitle {
+      color: #6c757d;
+      font-size: 1.1rem;
+      margin-bottom: 2.5rem;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 420px;
+    }
+
+    .card h2 {
+      font-size: 1.5rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .card p {
+      color: #6c757d;
+      font-size: 0.95rem;
+      margin-bottom: 2rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    label {
+      font-weight: 500;
+      color: #495057;
+      display: block;
+      margin-bottom: 0.4rem;
+    }
+
+    input[type="email"],
+    input[type="password"] {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: 1px solid #ced4da;
+      border-radius: 6px;
+      font-size: 1rem;
+    }
+
+    input:focus {
+      border-color: #0d6efd;
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(13,110,253,0.15);
+    }
+
+    .password-group {
+      position: relative;
+    }
+
+    .eye-btn {
+      position: absolute;
+      right: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: #6c757d;
+      cursor: pointer;
+      font-size: 1.1rem;
+    }
+
+    .forgot {
+      float: right;
+      font-size: 0.85rem;
+      color: #0d6efd;
+      text-decoration: none;
+    }
+
+    /* Remember device FIX */
+    .remember {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin: 1.2rem 0;
+      font-size: 0.95rem;
+      color: #495057;
+      cursor: pointer;
+    }
+
+    .remember input {
+      margin: 0;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 0.85rem;
+      background: #0d6efd;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .btn:hover {
+      background: #0b5ed7;
+    }
+
+    .new-client {
+      text-align: center;
+      margin-top: 1.5rem;
+      font-size: 0.95rem;
+      color: #6c757d;
+    }
+
+    .new-client a {
+      color: #0d6efd;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    /* Bottom badges FIX */
+    .badges {
+      display: flex;
+      justify-content: center;
+      gap: 3rem;
+      margin: 3rem 0 2rem;
+    }
+
+    .badge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      color: #6c757d;
+    }
+
+    .badge i {
+      font-size: 1.4rem;
+      margin-bottom: 0.4rem;
+      color: #6c757d;
+    }
+
+    .badge small {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+
+    footer {
+      padding: 1.5rem;
+      text-align: center;
+      font-size: 0.85rem;
+      color: #6c757d;
+      border-top: 1px solid #dee2e6;
+      background: white;
+    }
+
+    footer a {
+      color: #0d6efd;
+      text-decoration: none;
+    }
+  </style>
 </head>
-<body class="bg-background-light dark:bg-background-dark min-h-screen flex flex-col font-display transition-colors duration-300">
-<!-- Top Navigation -->
-<header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-slate-200 dark:border-slate-800 px-6 md:px-10 py-4 bg-white dark:bg-background-dark/80 backdrop-blur-md sticky top-0 z-50">
-<div class="flex items-center gap-3 text-slate-900 dark:text-white">
-<div class="size-8 bg-primary rounded-lg flex items-center justify-center text-white">
-<span class="material-symbols-outlined">account_balance</span>
-</div>
-<h2 class="text-lg font-bold leading-tight tracking-tight">Accounting Firm Portal</h2>
-</div>
-<button class="flex min-w-[84px] cursor-pointer items-center justify-center rounded-lg h-10 px-4 bg-primary hover:bg-primary/90 text-white text-sm font-bold transition-all">
-<span class="truncate">Contact Support</span>
-</button>
+
+<body>
+
+<header>
+  <div class="logo">
+    <i class="fas fa-landmark"></i>
+    Accounting Firm Portal
+  </div>
+  <button class="support-btn">Contact Support</button>
 </header>
-<!-- Main Content Area with Subtle Background Pattern -->
-<main class="flex-1 flex flex-col items-center justify-center px-4 py-12 relative overflow-hidden bg-pattern">
-<!-- Headline -->
-<div class="text-center mb-8 relative z-10">
-<h1 class="text-slate-900 dark:text-white tracking-tight text-3xl md:text-4xl font-bold mb-2">Secure Client Portal</h1>
-<p class="text-slate-500 dark:text-slate-400 text-lg">Manage your finances with enterprise-grade security</p>
-</div>
-<!-- Login Card -->
-<div class="w-full max-w-[480px] bg-white dark:bg-[#1c1f26] rounded-xl shadow-2xl border border-slate-200 dark:border-slate-800 p-8 relative z-10">
-<div class="mb-8">
-<h2 class="text-slate-900 dark:text-white text-xl font-bold">Client Log In</h2>
-<p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Please enter your credentials to access your secure dashboard.</p>
-</div>
-<form class="space-y-5">
-<!-- Email Field -->
-<div class="flex flex-col gap-2">
-<label class="text-slate-700 dark:text-white text-sm font-medium">Email Address</label>
-<div class="relative">
-<input class="flex w-full rounded-lg text-slate-900 dark:text-white border border-slate-300 dark:border-[#3c4453] bg-white dark:bg-[#111621] focus:ring-2 focus:ring-primary focus:border-primary h-12 px-4 text-base placeholder:text-slate-400 dark:placeholder:text-[#9da6b8]" placeholder="e.g. name@company.com" type="email"/>
-</div>
-</div>
-<!-- Password Field -->
-<div class="flex flex-col gap-2">
-<div class="flex justify-between items-center">
-<label class="text-slate-700 dark:text-white text-sm font-medium">Password</label>
-<a class="text-primary text-xs font-semibold hover:underline" href="#">Forgot Password?</a>
-</div>
-<div class="flex w-full items-stretch">
-<input class="flex w-full rounded-l-lg text-slate-900 dark:text-white border border-slate-300 dark:border-[#3c4453] bg-white dark:bg-[#111621] focus:ring-2 focus:ring-primary focus:border-primary h-12 px-4 text-base border-r-0 placeholder:text-slate-400 dark:placeholder:text-[#9da6b8]" placeholder="Enter your password" type="password"/>
-<div class="flex items-center justify-center px-3 border border-slate-300 dark:border-[#3c4453] bg-white dark:bg-[#111621] rounded-r-lg border-l-0 text-slate-400 cursor-pointer">
-<span class="material-symbols-outlined text-xl">visibility</span>
-</div>
-</div>
-</div>
-<!-- Remember Me Toggle -->
-<div class="flex items-center gap-3 py-2">
-<label class="relative inline-flex items-center cursor-pointer">
-<input class="sr-only peer" type="checkbox" value=""/>
-<div class="w-11 h-6 bg-slate-200 peer-focus:outline-none dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-</label>
-<span class="text-sm font-medium text-slate-600 dark:text-slate-300">Remember this device</span>
-</div>
-<!-- Sign In Button -->
-<button class="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3 px-6 rounded-lg shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2 mt-4" type="submit">
-<span>Sign In</span>
-<span class="material-symbols-outlined text-lg">login</span>
-</button>
-</form>
-<div class="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800 text-center">
-<p class="text-slate-500 dark:text-slate-400 text-sm">New client? <a class="text-primary font-semibold hover:underline" href="#">Request access from your advisor</a></p>
-</div>
-</div>
-<!-- Security Trust Badges -->
-<div class="mt-12 w-full max-w-[600px] flex flex-wrap justify-center items-center gap-8 md:gap-12 opacity-80 grayscale hover:grayscale-0 transition-all duration-500">
-<div class="flex flex-col items-center gap-2">
-<div class="text-slate-400 dark:text-slate-500">
-<span class="material-symbols-outlined text-3xl">verified_user</span>
-</div>
-<span class="text-[10px] uppercase tracking-widest font-bold text-slate-500 dark:text-slate-400">ISO 27001 Certified</span>
-</div>
-<div class="flex flex-col items-center gap-2">
-<div class="text-slate-400 dark:text-slate-500">
-<span class="material-symbols-outlined text-3xl">lock_reset</span>
-</div>
-<span class="text-[10px] uppercase tracking-widest font-bold text-slate-500 dark:text-slate-400">256-bit AES Encrypted</span>
-</div>
-<div class="flex flex-col items-center gap-2">
-<div class="text-slate-400 dark:text-slate-500">
-<span class="material-symbols-outlined text-3xl">gpp_maybe</span>
-</div>
-<span class="text-[10px] uppercase tracking-widest font-bold text-slate-500 dark:text-slate-400">SOC2 Compliant</span>
-</div>
-<div class="flex flex-col items-center gap-2">
-<div class="text-slate-400 dark:text-slate-500">
-<span class="material-symbols-outlined text-3xl">security</span>
-</div>
-<span class="text-[10px] uppercase tracking-widest font-bold text-slate-500 dark:text-slate-400">Multi-Factor Auth</span>
-</div>
-</div>
+
+<main>
+  <h1>Secure Client Portal</h1>
+  <div class="subtitle">Manage your finances with enterprise-grade security</div>
+
+  <div class="card">
+    <h2>Client Log In</h2>
+    <p>Please enter your credentials to access your secure dashboard.</p>
+
+    <form>
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" placeholder="e.g. name@company.com">
+      </div>
+
+      <div class="form-group">
+        <label>
+          Password
+          <a href="#" class="forgot">Forgot Password?</a>
+        </label>
+        <div class="password-group">
+          <input id="password" type="password" placeholder="Enter your password">
+          <button type="button" class="eye-btn" id="toggle">
+            <i class="fas fa-eye"></i>
+          </button>
+        </div>
+      </div>
+
+      <label class="remember">
+        <input type="checkbox">
+        Remember this device
+      </label>
+
+      <button class="btn">Sign In</button>
+    </form>
+
+    <div class="new-client">
+      New client? <a href="#">Request access from your advisor</a>
+    </div>
+  </div>
+
+  <div class="badges">
+    <div class="badge"><i class="fas fa-shield-alt"></i><small>ISO 27001</small></div>
+    <div class="badge"><i class="fas fa-lock"></i><small>256-BIT AES</small></div>
+    <div class="badge"><i class="fas fa-certificate"></i><small>SOC2</small></div>
+    <div class="badge"><i class="fas fa-user-shield"></i><small>MFA</small></div>
+  </div>
 </main>
-<!-- Footer Area -->
-<footer class="py-8 px-10 text-center text-slate-500 dark:text-slate-600 text-xs border-t border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-background-dark/50">
-<p>© 2023 Premium Accounting Firm. All rights reserved. | <a class="hover:text-primary transition-colors" href="#">Privacy Policy</a> | <a class="hover:text-primary transition-colors" href="#">Terms of Service</a></p>
-<div class="mt-4 flex justify-center gap-4">
-<div class="w-8 h-8 rounded-full border border-slate-300 dark:border-slate-700 flex items-center justify-center opacity-50">
-<span class="material-symbols-outlined text-sm">public</span>
-</div>
-<div class="w-8 h-8 rounded-full border border-slate-300 dark:border-slate-700 flex items-center justify-center opacity-50">
-<span class="material-symbols-outlined text-sm">help</span>
-</div>
-</div>
+
+<footer>
+  © 2023 Premium Accounting Firm. All rights reserved |
+  <a href="#">Privacy Policy</a> |
+  <a href="#">Terms of Service</a>
 </footer>
-</body></html>
+
+<script>
+  document.getElementById('toggle').addEventListener('click', e => {
+    const input = document.getElementById('password');
+    const icon = e.currentTarget.querySelector('i');
+
+    if (input.type === 'password') {
+      input.type = 'text';
+      icon.className = 'fas fa-eye-slash';
+    } else {
+      input.type = 'password';
+      icon.className = 'fas fa-eye';
+    }
+  });
+</script>
+
+</body>
+</html>
+
