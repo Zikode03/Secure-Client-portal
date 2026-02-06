@@ -216,6 +216,37 @@ input {
   color: #6b7280;
 }
 
+.checkbox {
+  display: flex;
+  gap: 12px;
+  font-size: 14px;
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+.checkbox input {
+  margin-top: 3px;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.checkbox label {
+  cursor: pointer;
+}
+
+.checkbox .link {
+  color: var(--primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.checkbox .link:hover {
+  text-decoration: underline;
+}
+
+
 .submit-btn {
   height: 48px;
   background: var(--primary);
@@ -229,6 +260,24 @@ input {
   align-items: center;
   gap: 8px;
 }
+
+.login-footer {
+  margin-top: 24px;
+  text-align: center;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.login-link {
+  color: var(--primary);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.login-link:hover {
+  text-decoration: underline;
+}
+
 </style>
 </head>
 
@@ -318,16 +367,28 @@ input {
           <div></div>
         </div>
 
-        <div class="checkbox">
-          <input type="checkbox">
-          I agree to the Terms & Privacy Policy
-        </div>
+<div class="checkbox">
+  <input type="checkbox" id="terms">
+  <label for="terms">
+    I agree to the
+    <a href="#" class="link">Terms of Service</a>
+    and
+    <a href="#" class="link">Privacy Policy</a>.
+    I understand that my data is protected by bank-level encryption.
+  </label>
+</div>
+
 
         <button class="submit-btn">
           Create Account
           <span class="material-symbols-outlined">arrow_forward</span>
         </button>
       </form>
+
+        <p class="login-footer">
+  Existing business client?
+  <a href="#" class="login-link">Log in here</a>
+</p>
     </div>
   </section>
 </main>
