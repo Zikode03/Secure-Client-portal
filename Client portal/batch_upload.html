@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Batch Document Upload | Secure Client Portal</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- Google Font -->
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+
+<!-- Material Icons -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
+
+<style>
+/* ================= RESET ================= */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: "Public Sans", sans-serif;
+  background: #f6f6f8;
+  color: #0f172a;
+}
+
+/* ================= COLORS ================= */
+:root {
+  --primary: #1754cf;
+  --border: #e5e7eb;
+  --muted: #64748b;
+  --success: #10b981;
+  --warning: #f59e0b;
+}
+
+/* ================= HEADER ================= */
+header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+  padding: 14px 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 800;
+}
+
+nav a {
+  margin-left: 20px;
+  font-size: 14px;
+  color: #475569;
+  text-decoration: none;
+}
+
+nav a.active {
+  color: var(--primary);
+  font-weight: 700;
+  border-bottom: 2px solid var(--primary);
+  padding-bottom: 6px;
+}
+
+/* ================= MAIN ================= */
+main {
+  max-width: 1150px;
+  margin: auto;
+  padding: 32px 24px 140px;
+}
+
+/* Breadcrumbs */
+.breadcrumbs {
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+
+.breadcrumbs span {
+  margin: 0 6px;
+}
+
+/* Page Title */
+h1 {
+  font-size: 30px;
+  font-weight: 900;
+}
+
+.subtitle {
+  margin-top: 6px;
+  color: #64748b;
+}
+
+/* ================= BULK SETTINGS ================= */
+.bulk-settings {
+  margin-top: 28px;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.bulk-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+select, .tag-btn {
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #f8fafc;
+  font-size: 14px;
+}
+
+/* ================= DROP ZONE ================= */
+.drop-zone {
+  margin-top: 24px;
+  background: #fff;
+  border: 2px dashed #cbd5f5;
+  border-radius: 14px;
+  padding: 60px;
+  text-align: center;
+}
+
+.drop-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(23,84,207,0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: auto;
+  color: var(--primary);
+}
+
+.drop-zone h2 {
+  margin-top: 16px;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.drop-zone p {
+  margin-top: 6px;
+  font-size: 14px;
+  color: #64748b;
+}
+
+.drop-zone button {
+  margin-top: 18px;
+  padding: 12px 28px;
+  border-radius: 10px;
+  border: none;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* ================= TABLE ================= */
+.queue-header {
+  margin-top: 30px;
+  display: flex;
+  justify-content: space-between;
+  font-weight: 800;
+}
+
+table {
+  width: 100%;
+  margin-top: 12px;
+  background: #fff;
+  border-radius: 14px;
+  border-collapse: collapse;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+thead {
+  background: #f8fafc;
+}
+
+th, td {
+  padding: 16px 20px;
+  text-align: left;
+  font-size: 14px;
+}
+
+th {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+tr:not(:last-child) {
+  border-bottom: 1px solid var(--border);
+}
+
+/* Status */
+.status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.ready {
+  color: var(--success);
+}
+.ready .dot {
+  background: var(--success);
+}
+
+.warning {
+  color: var(--warning);
+}
+.warning .dot {
+  background: var(--warning);
+}
+
+/* ================= FOOTER ================= */
+footer {
+  position: fixed;
+  bottom: 0;
+  width: 100%;
+  background: #fff;
+  border-top: 1px solid var(--border);
+  padding: 20px 40px;
+}
+
+.footer-inner {
+  max-width: 1150px;
+  margin: auto;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.progress {
+  flex: 1;
+}
+
+.progress-bar {
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  width: 75%;
+  height: 100%;
+  background: var(--primary);
+}
+
+.footer-actions button {
+  padding: 12px 26px;
+  border-radius: 10px;
+  font-weight: 700;
+  border: none;
+}
+
+.cancel {
+  background: #f1f5f9;
+}
+
+.submit {
+  background: var(--primary);
+  color: #fff;
+}
+
+/* ================= TOAST ================= */
+.toast {
+  position: fixed;
+  top: 90px;
+  right: 30px;
+  background: var(--success);
+  color: #fff;
+  padding: 16px 20px;
+  border-radius: 14px;
+  display: flex;
+  gap: 12px;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <div class="logo">
+    ◈ Secure Client Portal
+    <nav>
+      <a>Dashboard</a>
+      <a class="active">Documents</a>
+      <a>Projects</a>
+      <a>Messages</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+<div class="breadcrumbs">
+  Client Portal <span>›</span> Documents <span>›</span> <b>Batch Upload</b>
+</div>
+
+<h1>Batch Document Upload</h1>
+<p class="subtitle">Securely upload and categorize multiple documents for your accounting team.</p>
+
+<div class="bulk-settings">
+  <div class="bulk-title">
+    <span class="material-symbols-outlined">auto_awesome</span>
+    Bulk Settings
+  </div>
+
+  <select>
+    <option>Select Project</option>
+    <option>Tax Filing 2023</option>
+  </select>
+
+  <select>
+    <option>2024</option>
+    <option selected>2023</option>
+  </select>
+
+  <button class="tag-btn">Add tags to all +</button>
+</div>
+
+<div class="drop-zone">
+  <div class="drop-icon">
+    <span class="material-symbols-outlined">cloud_upload</span>
+  </div>
+  <h2>Drag and drop files here</h2>
+  <p>Supported: PDF, PNG, JPG, XLSX (Up to 50MB per file)</p>
+  <button>Browse Files</button>
+</div>
+
+<div class="queue-header">
+  <div>Upload Queue (4 files)</div>
+  <div style="color:var(--primary); cursor:pointer;">Clear all</div>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th>Document</th>
+      <th>AI Suggestion</th>
+      <th>Project / Year</th>
+      <th>Status</th>
+      <th style="text-align:right;">Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>2023_Q3_BankStmt.pdf</td>
+      <td>Bank Statement</td>
+      <td>Tax Filing 2023 / 2023</td>
+      <td class="status ready"><span class="dot"></span>READY</td>
+      <td style="text-align:right;">✏️ 🗑️</td>
+    </tr>
+    <tr>
+      <td>Office_Supplies_Inv.jpg</td>
+      <td>Expense Receipt</td>
+      <td>General Bookkeeping / 2023</td>
+      <td class="status ready"><span class="dot"></span>READY</td>
+      <td style="text-align:right;">✏️ 🗑️</td>
+    </tr>
+    <tr>
+      <td>Employee_Reimbursements.xlsx</td>
+      <td>Unknown Type</td>
+      <td>Tax Filing 2023 / 2023</td>
+      <td class="status warning"><span class="dot"></span>NEEDS CLASSIFICATION</td>
+      <td style="text-align:right;">✏️ 🗑️</td>
+    </tr>
+  </tbody>
+</table>
+
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <div class="progress">
+      <div style="display:flex; justify-content:space-between; font-weight:700;">
+        <span>Overall Progress</span>
+        <span style="color:var(--primary)">75%</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill"></div>
+      </div>
+    </div>
+
+    <div class="footer-actions">
+      <button class="cancel">Cancel</button>
+      <button class="submit">Confirm & Submit</button>
+    </div>
+  </div>
+</footer>
+
+<div class="toast">
+  <span class="material-symbols-outlined">check_circle</span>
+  <div>
+    <b>AI Detection Complete</b><br>
+    <small>3 documents successfully categorized.</small>
+  </div>
+</div>
+
+</body>
+</html>
