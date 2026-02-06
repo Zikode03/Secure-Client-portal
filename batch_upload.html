@@ -10,7 +10,7 @@
 
 <!-- Material Icons -->
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
-
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
 <style>
 /* ================= RESET ================= */
 * {
@@ -33,58 +33,146 @@ body {
   --success: #10b981;
   --warning: #f59e0b;
 }
-
-/* ================= HEADER ================= */
-header {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  background: #fff;
-  border-bottom: 1px solid var(--border);
-  padding: 14px 40px;
+.app-layout {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  min-height: 100vh;
 }
 
-.logo {
+.content {
+  flex: 1;
   display: flex;
-  align-items: center;
-  gap: 10px;
-  font-weight: 800;
+  flex-direction: column;
 }
 
-nav a {
-  margin-left: 20px;
-  font-size: 14px;
-  color: #475569;
-  text-decoration: none;
-}
-
-nav a.active {
-  color: var(--primary);
-  font-weight: 700;
-  border-bottom: 2px solid var(--primary);
-  padding-bottom: 6px;
-}
-
-/* ================= MAIN ================= */
 main {
   max-width: 1150px;
-  margin: auto;
   padding: 32px 24px 140px;
 }
 
-/* Breadcrumbs */
-.breadcrumbs {
-  font-size: 13px;
-  color: #64748b;
-  margin-bottom: 8px;
+
+
+/* ================= SIDEBAR ================= */
+.sidebar {
+  width: 260px;
+  background: linear-gradient(180deg,#0f172a,#020617);
+  color: white;
+  display: flex;
+  flex-direction: column;
 }
 
-.breadcrumbs span {
-  margin: 0 6px;
+.sidebar-header {
+  padding: 22px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
 }
+
+.sidebar-header i {
+  font-size: 30px;
+  color: #60a5fa;
+}
+
+.sidebar-header h1 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.sidebar-header p {
+  margin: 0;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.nav {
+  padding: 16px;
+  flex: 1;
+}
+
+.nav a {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 10px;
+  color: #cbd5f5;
+  text-decoration: none;
+  margin-bottom: 6px;
+}
+
+.nav a.active {
+  background: var(--blue);
+  color: white;
+}
+
+.nav a:hover {
+  background: #1e293b;
+}
+
+.sidebar-footer {
+  padding: 16px;
+}
+
+.user-box {
+  background: #1e293b;
+  padding: 12px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+
+.user-box p {
+  margin: 2px 0;
+  font-size: 13px;
+}
+
+.role {
+  color: #60a5fa;
+  font-size: 12px;
+}
+
+.logout {
+  width: 100%;
+  background: none;
+  border: none;
+  color: #cbd5f5;
+  padding: 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.logout:hover {
+  background: #1e293b;
+}
+
+/* ================= MAIN ================= */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ================= TOP BAR ================= */
+.topbar {
+  background: white;
+  padding: 18px 28px;
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.topbar p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+
 
 /* Page Title */
 h1 {
@@ -308,97 +396,139 @@ footer {
 
 <body>
 
-<header>
-  <div class="logo">
-    ◈ Secure Client Portal
-    <nav>
-      <a>Dashboard</a>
-      <a class="active">Documents</a>
-      <a>Projects</a>
-      <a>Messages</a>
+<div class="app-layout">
+
+  <!-- ================= SIDEBAR ================= -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <i class="fa-solid fa-shield-halved"></i>
+      <div>
+        <h1>Prospera</h1>
+        <p>Secure Client Portal</p>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <a class="active">
+        <i class="fa fa-chart-line"></i> Dashboard
+      </a>
+      <a>
+        <i class="fa fa-file"></i> Documents
+      </a>
+      <a>
+        <i class="fa fa-message"></i> Messages
+      </a>
+      <a>
+        <i class="fa fa-gear"></i> Settings
+      </a>
     </nav>
-  </div>
-</header>
 
-<main>
+    <div class="sidebar-footer">
+      <div class="user-box">
+        <p><strong>John Doe</strong></p>
+        <p>client@example.com</p>
+        <p class="role">Client</p>
+      </div>
+      <button class="logout">
+        <i class="fa fa-sign-out"></i> Logout
+      </button>
+    </div>
+  </aside>
 
-<div class="breadcrumbs">
-  Client Portal <span>›</span> Documents <span>›</span> <b>Batch Upload</b>
-</div>
+  <!-- ================= CONTENT ================= -->
+  <div class="content">
 
-<h1>Batch Document Upload</h1>
-<p class="subtitle">Securely upload and categorize multiple documents for your accounting team.</p>
+    <!-- TOP BAR -->
+    <div class="topbar">
+      <div>
+        <h2>Welcome back, John Doe</h2>
+        <p>Friday, 6 February 2026</p>
+      </div>
+      <i class="fa fa-bell"></i>
+    </div>
 
-<div class="bulk-settings">
-  <div class="bulk-title">
-    <span class="material-symbols-outlined">auto_awesome</span>
-    Bulk Settings
-  </div>
+    <!-- PAGE CONTENT -->
+    <main>
+      <h1>Batch Document Upload</h1>
+      <p class="subtitle">
+        Securely upload and categorize multiple documents for your accounting team.
+      </p>
 
-  <select>
-    <option>Select Project</option>
-    <option>Tax Filing 2023</option>
-  </select>
+      <!-- BULK SETTINGS -->
+      <div class="bulk-settings">
+        <div class="bulk-title">
+          <span class="material-symbols-outlined">auto_awesome</span>
+          Bulk Settings
+        </div>
 
-  <select>
-    <option>2024</option>
-    <option selected>2023</option>
-  </select>
+        <select>
+          <option>Select Project</option>
+          <option>Tax Filing 2023</option>
+        </select>
 
-  <button class="tag-btn">Add tags to all +</button>
-</div>
+        <select>
+          <option>2024</option>
+          <option selected>2023</option>
+        </select>
 
-<div class="drop-zone">
-  <div class="drop-icon">
-    <span class="material-symbols-outlined">cloud_upload</span>
-  </div>
-  <h2>Drag and drop files here</h2>
-  <p>Supported: PDF, PNG, JPG, XLSX (Up to 50MB per file)</p>
-  <button>Browse Files</button>
-</div>
+        <button class="tag-btn">Add tags to all +</button>
+      </div>
 
-<div class="queue-header">
-  <div>Upload Queue (4 files)</div>
-  <div style="color:var(--primary); cursor:pointer;">Clear all</div>
-</div>
+      <!-- DROP ZONE -->
+      <div class="drop-zone">
+        <div class="drop-icon">
+          <span class="material-symbols-outlined">cloud_upload</span>
+        </div>
+        <h2>Drag and drop files here</h2>
+        <p>Supported: PDF, PNG, JPG, XLSX (Up to 50MB per file)</p>
+        <button>Browse Files</button>
+      </div>
 
-<table>
-  <thead>
-    <tr>
-      <th>Document</th>
-      <th>AI Suggestion</th>
-      <th>Project / Year</th>
-      <th>Status</th>
-      <th style="text-align:right;">Actions</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>2023_Q3_BankStmt.pdf</td>
-      <td>Bank Statement</td>
-      <td>Tax Filing 2023 / 2023</td>
-      <td class="status ready"><span class="dot"></span>READY</td>
-      <td style="text-align:right;">✏️ 🗑️</td>
-    </tr>
-    <tr>
-      <td>Office_Supplies_Inv.jpg</td>
-      <td>Expense Receipt</td>
-      <td>General Bookkeeping / 2023</td>
-      <td class="status ready"><span class="dot"></span>READY</td>
-      <td style="text-align:right;">✏️ 🗑️</td>
-    </tr>
-    <tr>
-      <td>Employee_Reimbursements.xlsx</td>
-      <td>Unknown Type</td>
-      <td>Tax Filing 2023 / 2023</td>
-      <td class="status warning"><span class="dot"></span>NEEDS CLASSIFICATION</td>
-      <td style="text-align:right;">✏️ 🗑️</td>
-    </tr>
-  </tbody>
-</table>
+      <!-- QUEUE -->
+      <div class="queue-header">
+        <div>Upload Queue (4 files)</div>
+        <div style="color:var(--primary); cursor:pointer;">Clear all</div>
+      </div>
 
-</main>
-
+      <table>
+        <thead>
+          <tr>
+            <th>Document</th>
+            <th>AI Suggestion</th>
+            <th>Project / Year</th>
+            <th>Status</th>
+            <th style="text-align:right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>2023_Q3_BankStmt.pdf</td>
+            <td>Bank Statement</td>
+            <td>Tax Filing 2023 / 2023</td>
+            <td class="status ready"><span class="dot"></span>READY</td>
+            <td style="text-align:right;">✏️ 🗑️</td>
+          </tr>
+          <tr>
+            <td>Office_Supplies_Inv.jpg</td>
+            <td>Expense Receipt</td>
+            <td>General Bookkeeping / 2023</td>
+            <td class="status ready"><span class="dot"></span>READY</td>
+            <td style="text-align:right;">✏️ 🗑️</td>
+          </tr>
+          <tr>
+            <td>Employee_Reimbursements.xlsx</td>
+            <td>Unknown Type</td>
+            <td>Tax Filing 2023 / 2023</td>
+            <td class="status warning">
+              <span class="dot"></span>NEEDS CLASSIFICATION
+            </td>
+            <td style="text-align:right;">✏️ 🗑️</td>
+          </tr>
+        </tbody>
+      </table>
+      
+    </main>
+<!-- FOOTER -->
 <footer>
   <div class="footer-inner">
     <div class="progress">
@@ -417,14 +547,11 @@ footer {
     </div>
   </div>
 </footer>
-
-<div class="toast">
-  <span class="material-symbols-outlined">check_circle</span>
-  <div>
-    <b>AI Detection Complete</b><br>
-    <small>3 documents successfully categorized.</small>
   </div>
 </div>
 
+
+
 </body>
+
 </html>

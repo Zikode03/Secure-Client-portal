@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Prospera – Documents</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+
+<style>
+:root {
+  --blue: #2563eb;
+  --bg: #f5f7fb;
+  --dark: #0f172a;
+  --muted: #64748b;
+  --border: #e5e7eb;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: var(--bg);
+}
+
+/* ================= LAYOUT ================= */
+.app-layout {
+  display: flex;
+  height: 100vh;
+}
+
+/* ================= SIDEBAR ================= */
+.sidebar {
+  width: 260px;
+  background: linear-gradient(180deg,#0f172a,#020617);
+  color: white;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-header {
+  padding: 22px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.sidebar-header i {
+  font-size: 30px;
+  color: #60a5fa;
+}
+
+.sidebar-header h1 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.sidebar-header p {
+  margin: 0;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.nav {
+  padding: 16px;
+  flex: 1;
+}
+
+.nav a {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 10px;
+  color: #cbd5f5;
+  text-decoration: none;
+  margin-bottom: 6px;
+}
+
+.nav a.active {
+  background: var(--blue);
+  color: white;
+}
+
+.nav a:hover {
+  background: #1e293b;
+}
+
+.sidebar-footer {
+  padding: 16px;
+}
+
+.user-box {
+  background: #1e293b;
+  padding: 12px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+
+.user-box p {
+  margin: 2px 0;
+  font-size: 13px;
+}
+
+.role {
+  color: #60a5fa;
+  font-size: 12px;
+}
+
+.logout {
+  width: 100%;
+  background: none;
+  border: none;
+  color: #cbd5f5;
+  padding: 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.logout:hover {
+  background: #1e293b;
+}
+
+/* ================= MAIN ================= */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ================= TOP BAR ================= */
+.topbar {
+  background: white;
+  padding: 18px 28px;
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.topbar p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* ================= CONTENT ================= */
+.content {
+  padding: 28px;
+  overflow-y: auto;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.upload-btn {
+  background: var(--blue);
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+/* ================= SEARCH ================= */
+.search-card {
+  background: white;
+  padding: 16px;
+  border-radius: 12px;
+  margin-top: 18px;
+  display: flex;
+  gap: 12px;
+}
+
+.search {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.search input {
+  border: none;
+  outline: none;
+  flex: 1;
+  margin-left: 8px;
+}
+
+select {
+  border: 1px solid var(--border);
+  padding: 10px;
+  border-radius: 8px;
+}
+
+/* ================= DOCUMENTS ================= */
+.docs-card {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  margin-top: 20px;
+}
+
+.doc-item {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 14px;
+}
+
+.doc-left {
+  display: flex;
+  gap: 14px;
+}
+
+.doc-left i {
+  font-size: 30px;
+  color: var(--blue);
+}
+
+.badges span {
+  background: #eef2ff;
+  color: var(--blue);
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  margin-right: 6px;
+}
+
+.doc-actions button {
+  border: 1px solid var(--border);
+  background: white;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+</style>
+</head>
+
+<body>
+
+<div class="app-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <i class="fa-solid fa-shield-halved"></i>
+      <div>
+        <h1>Prospera</h1>
+        <p>Secure Client Portal</p>
+      </div>
+    </div>
+
+<nav class="nav">
+  <a class="active">
+    <i class="fa fa-chart-line"></i> Dashboard
+  </a>
+
+  <a>
+    <i class="fa fa-file"></i> Documents
+  </a>
+
+  <a>
+    <i class="fa fa-message"></i> Messages
+  </a>
+
+  <a>
+    <i class="fa fa-gear"></i> Settings
+  </a>
+</nav>
+
+
+    <div class="sidebar-footer">
+      <div class="user-box">
+        <p><strong>John Doe</strong></p>
+        <p>client@example.com</p>
+        <p class="role">Client</p>
+      </div>
+      <button class="logout"><i class="fa fa-sign-out"></i> Logout</button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="topbar">
+      <div>
+        <h2>Welcome back, John Doe</h2>
+        <p>Friday, 6 February 2026</p>
+      </div>
+      <i class="fa fa-bell"></i>
+    </div>
+
+    <div class="content">
+
+      <div class="section-header">
+        <div>
+          <h2>Documents</h2>
+          <p class="muted">Manage and access your secure documents</p>
+        </div>
+        <button class="upload-btn"><i class="fa fa-upload"></i> Upload Document</button>
+      </div>
+
+      <div class="search-card">
+        <div class="search">
+          <i class="fa fa-search"></i>
+          <input placeholder="Search documents...">
+        </div>
+       <select>
+  <option value="all">All Categories</option>
+  <option value="tax">Tax Returns</option>
+  <option value="bank">Bank Statements</option>
+  <option value="financial">Financial Statements</option>
+  <option value="payroll">Payroll</option>
+</select>
+
+    </div>
+
+<div class="docs-card">
+  <strong>4 Documents</strong>
+
+  <!-- ================= DOCUMENT 1 ================= -->
+  <div class="doc-item">
+    <div class="doc-left">
+      <i class="fa fa-file-lines"></i>
+      <div>
+        <strong>Tax_Return_2025.pdf</strong>
+        <div class="badges">
+          <span>Tax Returns</span>
+          <span>2025</span>
+          <span>2.34 MB</span>
+        </div>
+        <small>Uploaded by Sarah Mitchell on 2026/01/20</small>
+      </div>
+    </div>
+    <div class="doc-actions">
+      <button><i class="fa fa-eye"></i></button>
+      <button><i class="fa fa-download"></i> Download</button>
+    </div>
+  </div>
+
+  <!-- ================= DOCUMENT 2 ================= -->
+  <div class="doc-item">
+    <div class="doc-left">
+      <i class="fa fa-file-lines"></i>
+      <div>
+        <strong>Bank_Statements_Jan2026.pdf</strong>
+        <div class="badges">
+          <span>Bank Statements</span>
+          <span>January 2026</span>
+          <span>1.76 MB</span>
+        </div>
+        <small>Uploaded by John Doe on 2026/01/25</small>
+      </div>
+    </div>
+    <div class="doc-actions">
+      <button><i class="fa fa-eye"></i></button>
+      <button><i class="fa fa-download"></i> Download</button>
+    </div>
+  </div>
+
+  <!-- ================= DOCUMENT 3 ================= -->
+  <div class="doc-item">
+    <div class="doc-left">
+      <i class="fa fa-file-lines"></i>
+      <div>
+        <strong>Annual_Financial_Statements_2025.pdf</strong>
+        <div class="badges">
+          <span>Financial Statements</span>
+          <span>2025</span>
+          <span>5 MB</span>
+        </div>
+        <small>Uploaded by Sarah Mitchell on 2026/01/18</small>
+      </div>
+    </div>
+    <div class="doc-actions">
+      <button><i class="fa fa-eye"></i></button>
+      <button><i class="fa fa-download"></i> Download</button>
+    </div>
+  </div>
+
+  <!-- ================= DOCUMENT 4 ================= -->
+  <div class="doc-item">
+    <div class="doc-left">
+      <i class="fa fa-file-lines"></i>
+      <div>
+        <strong>Payroll_Records_2025.xlsx</strong>
+        <div class="badges">
+          <span>Payroll</span>
+          <span>2025</span>
+          <span>3 MB</span>
+        </div>
+        <small>Uploaded by John Doe on 2026/01/22</small>
+      </div>
+    </div>
+    <div class="doc-actions">
+      <button><i class="fa fa-eye"></i></button>
+      <button><i class="fa fa-download"></i> Download</button>
+    </div>
+  </div>
+
+</div>
+
+</div>
+</main>
+
+
+</div>
+</body>
+</html>
