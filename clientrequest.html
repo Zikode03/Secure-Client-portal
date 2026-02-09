@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Document Requests</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+:root {
+  --primary:#4f63f9;
+  --bg:#f5f7fb;
+  --card:#ffffff;
+  --text:#111827;
+  --muted:#6b7280;
+  --border:#e5e7eb;
+  --high:#fee2e2;
+  --high-text:#b91c1c;
+  --medium:#fef3c7;
+  --medium-text:#92400e;
+  --pending:#e0e7ff;
+  --pending-text:#3730a3;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+
+body{
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background:var(--bg);
+  color:var(--text);
+}
+
+.container{
+  max-width:1200px;
+  margin:0 auto;
+  padding:24px;
+}
+
+/* HEADER */
+.top-bar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:32px;
+}
+
+.top-left h1{
+  font-size:26px;
+  font-weight:700;
+}
+
+.top-left p{
+  color:var(--muted);
+  margin-top:4px;
+}
+
+.bell{
+  position:relative;
+  font-size:22px;
+  cursor:pointer;
+}
+
+.bell span{
+  position:absolute;
+  top:-6px;
+  right:-6px;
+  background:#ef4444;
+  color:#fff;
+  font-size:11px;
+  padding:2px 6px;
+  border-radius:999px;
+}
+
+/* TITLE ROW */
+.title-row{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:24px;
+}
+
+.title-row h2{
+  font-size:28px;
+}
+
+.title-row p{
+  color:var(--muted);
+}
+
+.new-btn{
+  background:var(--primary);
+  color:#fff;
+  border:none;
+  padding:12px 18px;
+  border-radius:10px;
+  font-size:15px;
+  cursor:pointer;
+}
+
+/* TABS */
+.tabs{
+  display:flex;
+  background:#ededf1;
+  border-radius:999px;
+  padding:4px;
+  width:320px;
+  margin-bottom:24px;
+}
+
+.tab{
+  flex:1;
+  text-align:center;
+  padding:10px;
+  border-radius:999px;
+  cursor:pointer;
+  font-weight:600;
+}
+
+.tab.active{
+  background:#fff;
+  box-shadow:0 2px 8px rgba(0,0,0,.08);
+}
+
+/* CARD */
+.card{
+  background:var(--card);
+  border-radius:14px;
+  border:1px solid var(--border);
+  padding:24px;
+}
+
+.card h3{
+  font-size:20px;
+  margin-bottom:16px;
+}
+
+/* REQUEST ITEM */
+.request{
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:20px;
+  margin-bottom:20px;
+}
+
+.request-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+}
+
+.request-title{
+  display:flex;
+  gap:12px;
+}
+
+.doc-icon{
+  font-size:24px;
+  color:var(--primary);
+}
+
+.request-title h4{
+  font-size:18px;
+}
+
+.request-title p{
+  color:var(--muted);
+  margin-top:4px;
+}
+
+.badges{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  align-items:flex-end;
+}
+
+.badge{
+  padding:6px 12px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:700;
+}
+
+.high{background:var(--high);color:var(--high-text)}
+.medium{background:var(--medium);color:var(--medium-text)}
+.pending{background:var(--pending);color:var(--pending-text)}
+
+.meta{
+  display:flex;
+  gap:16px;
+  color:var(--muted);
+  font-size:13px;
+  margin-top:14px;
+}
+
+.action-btn{
+  width:100%;
+  margin-top:18px;
+  padding:14px;
+  background:var(--primary);
+  color:#fff;
+  border:none;
+  border-radius:12px;
+  font-size:16px;
+  cursor:pointer;
+}
+
+/* HIDE */
+.hidden{display:none}
+</style>
+</head>
+
+<body>
+
+    <div class="app-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <i class="fa-solid fa-shield-halved"></i>
+      <div>
+        <h1>Prospera</h1>
+        <p>Secure Client Portal</p>
+      </div>
+    </div>
+
+<nav class="nav">
+  <a class="active">
+    <i class="fa fa-chart-line"></i> Dashboard
+  </a>
+
+  <a>
+    <i class="fa fa-file"></i> Documents
+  </a>
+
+  <a>
+    <i class="fa fa-message"></i> Messages
+  </a>
+
+  <a>
+    <i class="fa fa-gear"></i> Settings
+  </a>
+</nav>
+
+
+    <div class="sidebar-footer">
+      <div class="user-box">
+        <p><strong>John Doe</strong></p>
+        <p>client@example.com</p>
+        <p class="role">Client</p>
+      </div>
+      <button class="logout"><i class="fa fa-sign-out"></i> Logout</button>
+    </div>
+  </aside>
+<div class="container">
+
+  <!-- TOP -->
+  <div class="top-bar">
+    <div class="top-left">
+      <h1>Welcome back, John Doe</h1>
+      <p>Monday, 9 February 2026</p>
+    </div>
+    <div class="bell">
+      🔔
+      <span id="notifCount">1</span>
+    </div>
+  </div>
+
+  <!-- TITLE -->
+  <div class="title-row">
+    <div>
+      <h2>Document Requests</h2>
+      <p>Request and manage document submissions</p>
+    </div>
+    <button class="new-btn">＋ New Request</button>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <div class="tab active" onclick="showTab('received')">
+      Received (<span id="receivedCount">2</span>)
+    </div>
+    <div class="tab" onclick="showTab('sent')">
+      Sent (0)
+    </div>
+  </div>
+
+  <!-- RECEIVED -->
+  <div id="received" class="card">
+    <h3>Requests You Received (2)</h3>
+
+    <!-- REQUEST 1 -->
+    <div class="request">
+      <div class="request-header">
+        <div class="request-title">
+          <div class="doc-icon">📄</div>
+          <div>
+            <h4>Bank Statements ⏰</h4>
+            <p>From: Sarah Mitchell</p>
+            <p>Please upload your bank statements for February 2026</p>
+          </div>
+        </div>
+        <div class="badges">
+          <div class="badge high">HIGH</div>
+          <div class="badge pending">PENDING</div>
+        </div>
+      </div>
+
+      <div class="meta">
+        <span>📅 Due: 15/02/2026</span>
+        <span>• Requested: 08/02/2026</span>
+      </div>
+
+      <button class="action-btn" onclick="fulfill(this)">✔ Mark as Fulfilled</button>
+    </div>
+
+    <!-- REQUEST 2 -->
+    <div class="request">
+      <div class="request-header">
+        <div class="request-title">
+          <div class="doc-icon">📄</div>
+          <div>
+            <h4>Invoices ⏰</h4>
+            <p>From: Sarah Mitchell</p>
+            <p>Please upload all invoices for January 2026</p>
+          </div>
+        </div>
+        <div class="badges">
+          <div class="badge medium">MEDIUM</div>
+          <div class="badge pending">PENDING</div>
+        </div>
+      </div>
+
+      <div class="meta">
+        <span>📅 Due: 20/02/2026</span>
+        <span>• Requested: 08/02/2026</span>
+      </div>
+
+      <button class="action-btn" onclick="fulfill(this)">✔ Mark as Fulfilled</button>
+    </div>
+
+  </div>
+
+  <!-- SENT -->
+  <div id="sent" class="card hidden">
+    <h3>Requests You Sent (0)</h3>
+    <p style="color:var(--muted)">No requests sent.</p>
+  </div>
+
+</div>
+
+<script>
+function showTab(tab){
+  document.getElementById('received').classList.add('hidden');
+  document.getElementById('sent').classList.add('hidden');
+
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+
+  document.getElementById(tab).classList.remove('hidden');
+  event.target.classList.add('active');
+}
+
+function fulfill(btn){
+  btn.innerText = "✔ Fulfilled";
+  btn.style.background = "#10b981";
+  btn.disabled = true;
+}
+</script>
+
+</body>
+</html>
