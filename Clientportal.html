@@ -1,518 +1,623 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Accounting Client Portal</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Prospera – Client Dashboard</title>
 
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
 
-<style>
-:root {
-  --primary:#1754cf;
-  --primary-dark:#1346b0;
-  --bg:#f6f6f8;
-  --card:#ffffff;
-  --text:#111318;
-  --muted:#64748b;
-  --border:#e2e8f0;
-  --success:#10b981;
-  --radius:1rem;
-  --shadow-sm:0 1px 3px rgba(0,0,0,.06);
-  --shadow-md:0 10px 25px rgba(0,0,0,.1);
-}
+  <style>
+    :root {
+      --primary:       #1754cf;
+      --primary-dark:  #1346b0;
+      --bg:            #f6f6f8;
+      --card:          #ffffff;
+      --text:          #111318;
+      --muted:         #64748b;
+      --border:        #e2e8f0;
+      --success:       #10b981;
+      --radius:        1rem;
+      --shadow-sm:     0 1px 3px rgba(0,0,0,0.06);
+      --shadow-md:     0 10px 25px rgba(0,0,0,0.1);
+      --blue:          #2563eb;     /* active nav link */
+    }
 
-*{box-sizing:border-box;margin:0;padding:0}
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
-body{
-  font-family:system-ui,sans-serif;
-  background:var(--bg);
-  color:var(--text);
-  min-height:100vh;
-}
+    body {
+      font-family: system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      overflow: hidden;
+    }
 
-.layout{display:flex;min-height:100vh}
+    .layout {
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
 
-/* SIDEBAR */
-aside{
-  width:280px;
-  position:fixed;
-  height:100%;
-  background:#fff;
-  border-right:1px solid var(--border);
-  padding:1.75rem;
-  display:flex;
-  flex-direction:column;
-  box-shadow:var(--shadow-sm);
-}
+    /* ── FIXED DARK SIDEBAR (copied from other pages) ──────────────── */
+    .sidebar {
+      width: 260px;
+      background: linear-gradient(180deg, #0f172a, #020617);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
 
-.brand{
-  display:flex;
-  gap:1rem;
-  align-items:center;
-  margin-bottom:2.5rem;
-}
+    .sidebar-header {
+      padding: 22px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
 
-.brand-icon{
-  width:48px;
-  height:48px;
-  border-radius:12px;
-  background:linear-gradient(135deg,var(--primary),var(--primary-dark));
-  color:#fff;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:1.6rem;
-}
+    .sidebar-header i {
+      font-size: 30px;
+      color: #60a5fa;
+    }
 
-nav{display:flex;flex-direction:column;gap:.5rem;flex:1}
+    .sidebar-header h1 {
+      margin: 0;
+      font-size: 16px;
+    }
 
-nav a{
-  display:flex;
-  align-items:center;
-  gap:1rem;
-  padding:1rem 1.25rem;
-  border-radius:var(--radius);
-  color:var(--muted);
-  text-decoration:none;
-  font-weight:500;
-  transition:all .2s;
-}
+    .sidebar-header p {
+      margin: 0;
+      font-size: 12px;
+      color: #94a3b8;
+    }
 
-nav a:hover{background:#f1f5f9;color:var(--text)}
-nav a.active{background:var(--primary);color:white;box-shadow:0 6px 16px rgba(23,84,207,0.35)}
+    .nav {
+      padding: 16px;
+      flex: 1;
+    }
 
-.badge{
-  margin-left:auto;
-  background:#eff6ff;
-  color:var(--primary);
-  padding:.25rem .65rem;
-  border-radius:999px;
-  font-size:.8rem;
-  font-weight:600;
-}
+    .nav a {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 14px;
+      border-radius: 10px;
+      color: #cbd5f5;
+      text-decoration: none;
+      margin-bottom: 6px;
+    }
 
-.logout{
-  margin-top:auto;
-  padding:1rem;
-  border:none;
-  border-radius:var(--radius);
-  background:#fee2e2;
-  color:#ef4444;
-  font-weight:600;
-  cursor:pointer;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:.75rem;
-  transition:all .2s;
-}
+    .nav a.active {
+      background: var(--blue);
+      color: white;
+    }
 
-.logout:hover{background:#fecaca}
+    .nav a:hover {
+      background: #1e293b;
+    }
 
-/* MAIN */
-main{margin-left:280px;flex:1}
+    .sidebar-footer {
+      padding: 16px;
+    }
 
-header{
-  background:#fff;
-  border-bottom:1px solid var(--border);
-  padding:1.25rem 2.5rem;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  position:sticky;
-  top:0;
-  z-index:10;
-  box-shadow:var(--shadow-sm);
-}
+    .user-box {
+      background: #1e293b;
+      padding: 12px;
+      border-radius: 10px;
+      margin-bottom: 12px;
+    }
 
-.search{position:relative;max-width:520px;width:100%}
+    .user-box p {
+      margin: 2px 0;
+      font-size: 13px;
+    }
 
-.search input{
-  width:100%;
-  padding:.9rem 1rem .9rem 3.25rem;
-  border-radius:var(--radius);
-  border:1px solid var(--border);
-  font-size:.95rem;
-}
+    .role {
+      color: #60a5fa;
+      font-size: 12px;
+    }
 
-.search input:focus{
-  outline:none;
-  border-color:var(--primary);
-  box-shadow:0 0 0 3px rgba(23,84,207,.15);
-}
+    .logout {
+      width: 100%;
+      background: none;
+      border: none;
+      color: #cbd5f5;
+      padding: 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      text-align: left;
+    }
 
-.search i{
-  position:absolute;
-  left:1.25rem;
-  top:50%;
-  transform:translateY(-50%);
-  color:var(--muted);
-}
+    .logout:hover {
+      background: #1e293b;
+    }
 
-.user{
-  display:flex;
-  align-items:center;
-  gap:1rem;
-  padding:.4rem 1rem;
-  border-radius:999px;
-  border:1px solid var(--border);
-  background:white;
-}
+    /* ── Scrollable Main Content ───────────────────────────────── */
+    .main-content {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
 
-.avatar{
-  width:40px;
-  height:40px;
-  border-radius:50%;
-  background:#e0f2fe url('https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80') center/cover;
-  border:2px solid rgba(23,84,207,.2);
-}
+    header {
+      background: white;
+      border-bottom: 1px solid var(--border);
+      padding: 1.25rem 2.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      box-shadow: var(--shadow-sm);
+      flex-shrink: 0;
+    }
 
-/* CONTENT */
-.content{padding:2.5rem}
+    .search {
+      position: relative;
+      max-width: 520px;
+      width: 100%;
+    }
 
-h2{font-size:2.8rem;margin-bottom:.5rem;font-weight:800}
-.welcome-text{color:var(--muted);margin-bottom:2.5rem;font-size:1.1rem}
+    .search input {
+      width: 100%;
+      padding: 0.9rem 1rem 0.9rem 3.25rem;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      font-size: 0.95rem;
+    }
 
-/* CONTENT */
-.content{padding:2.5rem}
+    .search input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(23,84,207,0.15);
+    }
 
-h2{font-size:2.8rem;margin-bottom:.5rem}
+    .search i {
+      position: absolute;
+      left: 1.25rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+    }
 
-.welcome-text{color:var(--muted);margin-bottom:2.5rem}
+    .user {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.4rem 1rem;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: white;
+    }
 
-/* GRID */
-.grid{
-  display:grid;
-  grid-template-columns:2fr 1fr;
-  gap:2rem;
-}
+    .avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #e0f2fe url('https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80') center/cover;
+      border: 2px solid rgba(23,84,207,0.2);
+    }
 
-.card{
-  background:#fff;
-  border:1px solid var(--border);
-  border-radius:var(--radius);
-  padding:1.75rem;
-  box-shadow:var(--shadow-md);
-  margin-bottom:2rem;
-}
+    .content {
+      padding: 2.5rem;
+      flex: 1;
+    }
 
+    h2 {
+      font-size: 2.8rem;
+      margin-bottom: 0.5rem;
+      font-weight: 800;
+    }
 
-* HEALTH */
-.health{display:flex;gap:2.5rem;align-items:center}
+    .welcome-text {
+      color: var(--muted);
+      margin-bottom: 2.5rem;
+      font-size: 1.1rem;
+    }
 
-/* ✅ FIXED PROGRESS RING */
-.progress-ring{
-  position:relative;
-  width:120px;
-  height:120px;
-}
+    .grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 2rem;
+    }
 
-.progress-ring svg{
-  width:100%;
-  height:100%;
-  transform:rotate(-90deg);
-}
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.75rem;
+      box-shadow: var(--shadow-md);
+      margin-bottom: 2rem;
+    }
 
-.progress-ring circle{
-  fill:none;
-  stroke-width:14;
-  stroke-linecap:round;
-}
+    /* ── Component styles (unchanged from your original) ────────── */
+    .health { display: flex; gap: 2.5rem; align-items: center; }
 
-.bg{stroke:#e5e7eb}
+    .progress-ring {
+      position: relative;
+      width: 120px;
+      height: 120px;
+    }
 
-.fg{
-  stroke:var(--success);
-  stroke-dasharray:270;
-  stroke-dashoffset:40.5; /* 85% */
-}
+    .progress-ring svg {
+      width: 100%;
+      height: 100%;
+      transform: rotate(-90deg);
+    }
 
-.value{
-  position:absolute;
-  inset:0;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:2.4rem;
-  font-weight:700;
-  color:var(--success);
-}
+    .progress-ring circle {
+      fill: none;
+      stroke-width: 14;
+      stroke-linecap: round;
+    }
 
-/* STATS */
-.stats{display:flex;gap:1.25rem;margin-top:1.25rem}
-.stat{
-  padding:.6rem 1.25rem;
-  border-radius:.75rem;
-  font-size:.9rem;
-  font-weight:600;
-}
-.stat.green{background:rgba(16,185,129,.1);color:var(--success)}
-.stat.blue{background:rgba(23,84,207,.1);color:var(--primary)}
+    .bg { stroke: #e5e7eb; }
+    .fg {
+      stroke: var(--success);
+      stroke-dasharray: 270;
+      stroke-dashoffset: 40.5; /* ≈85% */
+    }
 
-/* TASK ITEMS */
-.task-item{
-  background:#fff;
-  border:1px solid var(--border);
-  border-radius:var(--radius);
-  padding:1.5rem;
-  margin-bottom:1.25rem;
-}
-.task-header{
-  display:flex;
-  justify-content:space-between;
-  align-items:flex-start;
-  margin-bottom:1.25rem;
-}
-.task-icon{
-  width:52px;
-  height:52px;
-  background:rgba(23,84,207,.1);
-  border-radius:.875rem;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  color:var(--primary);
-  font-size:1.6rem;
-}
+    .value {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.4rem;
+      font-weight: 700;
+      color: var(--success);
+    }
 
-/* UPLOAD BUTTON */
-.upload-zone{
-  border:2px dashed #cbd5e1;
-  border-radius:.875rem;
-  padding:2rem;
-  text-align:center;
-  cursor:pointer;
-  transition:border-color .2s;
-}
-.upload-zone:hover{border-color:var(--primary)}
-.upload-zone i{font-size:3rem;color:#94a3b8;margin-bottom:1rem}
+    .stats { display: flex; gap: 1.25rem; margin-top: 1.25rem; }
+    .stat {
+      padding: 0.6rem 1.25rem;
+      border-radius: 0.75rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+    }
+    .stat.green { background: rgba(16,185,129,0.1); color: var(--success); }
+    .stat.blue   { background: rgba(23,84,207,0.1);  color: var(--primary); }
 
-/* SIGN BUTTON */
-.sign-btn{
-  padding:.75rem 1.75rem;
-  background:var(--primary);
-  color:white;
-  border:none;
-  border-radius:.875rem;
-  font-weight:600;
-  cursor:pointer;
-}
+    .task-item {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+      margin-bottom: 1.25rem;
+    }
 
-/* TIMELINE */
-.timeline{
-  position:relative;
-  padding-left:3rem;
-}
+    .task-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1.25rem;
+    }
 
-.timeline::before{
-  content:'';
-  position:absolute;
-  left:24px;
-  top:12px;
-  bottom:12px;
-  width:2px;
-  background:#e2e8f0;
-}
+    .task-icon {
+      width: 52px;
+      height: 52px;
+      background: rgba(23,84,207,0.1);
+      border-radius: 0.875rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+      font-size: 1.6rem;
+    }
 
-.event{
-  display:flex;
-  gap:1.25rem;
-  margin-bottom:1.5rem;
-}
+    .upload-zone {
+      border: 2px dashed #cbd5e1;
+      border-radius: 0.875rem;
+      padding: 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s;
+    }
+    .upload-zone:hover { border-color: var(--primary); }
+    .upload-zone i { font-size: 3rem; color: #94a3b8; margin-bottom: 1rem; }
 
-.event-dot{
-  width:32px;
-  height:32px;
-  border-radius:50%;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  color:white;
-  font-size:1rem;
-  flex-shrink:0;
-  border:4px solid white;
-}
+    .sign-btn {
+      padding: 0.75rem 1.75rem;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
 
-/* HELP CARD */
-.help-card{
-  background:linear-gradient(135deg,var(--primary),var(--primary-dark));
-  color:white;
-  border-radius:var(--radius);
-  padding:2rem;
-  box-shadow:0 12px 30px rgba(23,84,207,.3);
-}
-.help-btn{
-  width:100%;
-  margin-top:1.5rem;
-  padding:1rem;
-  background:white;
-  color:var(--primary);
-  border:none;
-  border-radius:var(--radius);
-  font-weight:700;
-  cursor:pointer;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:.75rem;
-  font-size:1.05rem;
-}
-</style>
+    .timeline {
+      position: relative;
+      padding-left: 3rem;
+    }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 24px;
+      top: 12px;
+      bottom: 12px;
+      width: 2px;
+      background: #e2e8f0;
+    }
+
+    .event {
+      display: flex;
+      gap: 1.25rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .event-dot {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 1rem;
+      flex-shrink: 0;
+      border: 4px solid white;
+    }
+
+    .help-card {
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: white;
+      border-radius: var(--radius);
+      padding: 2rem;
+      box-shadow: 0 12px 30px rgba(23,84,207,0.3);
+    }
+
+    .help-btn {
+      width: 100%;
+      margin-top: 1.5rem;
+      padding: 1rem;
+      background: white;
+      color: var(--primary);
+      border: none;
+      border-radius: var(--radius);
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      font-size: 1.05rem;
+    }
+  </style>
 </head>
-
 <body>
 
 <div class="layout">
 
-<aside>
-  <div class="brand">
-    <div class="brand-icon"><i class="fas fa-landmark"></i></div>
-    <div>
-      <strong style="font-size:1.3rem;">Acme Ledger</strong>
-      <div style="font-size:.85rem;color:var(--muted)">Secure Client Portal</div>
+  <!-- Consistent dark sidebar (same as Documents, Requests, Upload pages) -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <i class="fa-solid fa-shield-halved"></i>
+      <div>
+        <h1>Prospera</h1>
+        <p>Secure Client Portal</p>
+      </div>
     </div>
-  </div>
 
-  <nav>
-    <a class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
-    <a><i class="fas fa-file-alt"></i> My Documents</a>
-    <a><i class="fas fa-clock"></i> Requests <span class="badge">3</span></a>
-    <a><i class="fas fa-comment-dots"></i> Messaging</a>
-  </nav>
+    <nav class="nav">
+      <a href="Clientportal.html" class="active">
+        <i class="fa fa-chart-line"></i> Dashboard
+      </a>
+      <a href="documents.html">
+        <i class="fa fa-file"></i> Documents
+      </a>
+      <a href="messages.html">
+        <i class="fa fa-message"></i> Messages
+      </a>
+      <a href="settings.html">
+        <i class="fa fa-gear"></i> Settings
+      </a>
+      <a href="clientrequest.html">
+        <i class="fa fa-file-alt"></i> Requests
+      </a>
+    </nav>
 
-  <button class="logout"><i class="fas fa-sign-out-alt"></i> Secure Logout</button>
-</aside>
-
-<main>
-<header>
-  <div class="search">
-    <i class="fas fa-search"></i>
-    <input placeholder="Search for documents or requests...">
-  </div>
-  <div style="display:flex;align-items:center;gap:1.25rem;">
-    <button style="width:44px;height:44px;border-radius:.875rem;border:1px solid var(--border);background:white;cursor:pointer;"><i class="fas fa-bell"></i></button>
-    <button style="width:44px;height:44px;border-radius:.875rem;border:1px solid var(--border);background:white;cursor:pointer;"><i class="fas fa-cog"></i></button>
-    <div class="user">
-      <div class="avatar"></div>
-      <strong>Alex Richards</strong>
+    <div class="sidebar-footer">
+      <div class="user-box">
+        <p><strong>John Doe</strong></p>
+        <p>client@example.com</p>
+        <p class="role">Client</p>
+      </div>
+      <button class="logout">
+        <i class="fa fa-sign-out"></i> Logout
+      </button>
     </div>
-  </div>
-</header>
+  </aside>
 
-<div class="content">
-<h2>Welcome back, Alex</h2>
-<p class="welcome-text">Your 2024 Tax Season filing is currently in progress. 3 tasks need your attention.</p>
+  <!-- Scrollable main content area -->
+  <div class="main-content">
 
-<div class="grid">
+    <header>
+      <div class="search">
+        <i class="fas fa-search"></i>
+        <input placeholder="Search for documents or requests..."/>
+      </div>
 
-<div>
-<!-- Health Card -->
-<div class="card health">
-  <div class="progress-ring">
-    <svg viewBox="0 0 100 100">
-      <circle class="bg" cx="50" cy="50" r="43"/>
-      <circle class="fg" cx="50" cy="50" r="43"/>
-    </svg>
-    <div class="value">85%</div>
-  </div>
-  <div>
-    <h3 style="margin:0 0 .5rem;display:flex;align-items:center;gap:.5rem;">Compliance Health <i class="fas fa-shield-check" style="color:var(--success)"></i></h3>
-    <p style="color:var(--muted);margin:0 0 1.25rem;">You're on track for your Q1 filing deadline. Complete pending requests to reach 100%.</p>
-    <div class="stats">
-      <div class="stat green"><i class="fas fa-check-circle"></i> 12 Completed</div>
-      <div class="stat blue"><i class="fas fa-clock"></i> 3 Pending</div>
-    </div>
-  </div>
-</div>
-
-<!-- Pending Documents -->
-<div class="card">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;">
-    <h3 style="margin:0;">Pending Document Requests</h3>
-    <a href="#" style="color:var(--primary);font-weight:600;">View all</a>
-  </div>
-
-  <div class="task-item">
-    <div class="task-header">
-      <div style="display:flex;gap:1.25rem;">
-        <div class="task-icon"><i class="fas fa-file-upload"></i></div>
-        <div>
-          <h4 style="margin:0 0 .25rem;">2023 Form W-2</h4>
-          <p style="margin:0;color:var(--muted);font-size:.95rem;">Required for federal income tax return filing.</p>
+      <div style="display:flex; align-items:center; gap:1.25rem;">
+        <button style="width:44px; height:44px; border-radius:0.875rem; border:1px solid var(--border); background:white; cursor:pointer;">
+          <i class="fas fa-bell"></i>
+        </button>
+        <button style="width:44px; height:44px; border-radius:0.875rem; border:1px solid var(--border); background:white; cursor:pointer;">
+          <i class="fas fa-cog"></i>
+        </button>
+        <div class="user">
+          <div class="avatar"></div>
+          <strong>Alex Richards</strong>
         </div>
       </div>
-      <div style="text-align:right;">
-        <span style="padding:.35rem 1rem;background:#fef3c7;color:#92400e;border-radius:999px;font-size:.8rem;font-weight:600;">Priority: High</span>
-        <p style="margin:.5rem 0 0;font-size:.8rem;color:var(--muted);">Due in 2 days</p>
+    </header>
+
+    <div class="content">
+      <h2>Welcome back, Alex</h2>
+      <p class="welcome-text">
+        Your 2024 Tax Season filing is currently in progress. 3 tasks need your attention.
+      </p>
+
+      <div class="grid">
+
+        <!-- Left column -->
+        <div>
+          <!-- Compliance Health Card -->
+          <div class="card health">
+            <div class="progress-ring">
+              <svg viewBox="0 0 100 100">
+                <circle class="bg" cx="50" cy="50" r="43"/>
+                <circle class="fg" cx="50" cy="50" r="43"/>
+              </svg>
+              <div class="value">85%</div>
+            </div>
+            <div>
+              <h3 style="margin:0 0 0.5rem; display:flex; align-items:center; gap:0.5rem;">
+                Compliance Health
+                <i class="fas fa-shield-check" style="color:var(--success)"></i>
+              </h3>
+              <p style="color:var(--muted); margin:0 0 1.25rem;">
+                You're on track for your Q1 filing deadline. Complete pending requests to reach 100%.
+              </p>
+              <div class="stats">
+                <div class="stat green"><i class="fas fa-check-circle"></i> 12 Completed</div>
+                <div class="stat blue"><i class="fas fa-clock"></i> 3 Pending</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pending Document Requests Card -->
+          <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
+              <h3 style="margin:0;">Pending Document Requests</h3>
+              <a href="#" style="color:var(--primary); font-weight:600;">View all</a>
+            </div>
+
+            <!-- Task 1 -->
+            <div class="task-item">
+              <div class="task-header">
+                <div style="display:flex; gap:1.25rem;">
+                  <div class="task-icon"><i class="fas fa-file-upload"></i></div>
+                  <div>
+                    <h4 style="margin:0 0 0.25rem;">2023 Form W-2</h4>
+                    <p style="margin:0; color:var(--muted); font-size:0.95rem;">
+                      Required for federal income tax return filing.
+                    </p>
+                  </div>
+                </div>
+                <div style="text-align:right;">
+                  <span style="padding:0.35rem 1rem; background:#fef3c7; color:#92400e; border-radius:999px; font-size:0.8rem; font-weight:600;">
+                    Priority: High
+                  </span>
+                  <p style="margin:0.5rem 0 0; font-size:0.8rem; color:var(--muted);">
+                    Due in 2 days
+                  </p>
+                </div>
+              </div>
+              <div class="upload-zone">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <p><strong>Click to upload</strong> or drag and drop</p>
+                <p style="font-size:0.85rem; color:var(--muted); margin-top:0.5rem;">
+                  PDF, JPG or PNG (max. 10MB)
+                </p>
+              </div>
+            </div>
+
+            <!-- Task 2 -->
+            <div class="task-item" style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="display:flex; gap:1.25rem;">
+                <div class="task-icon"><i class="fas fa-signature"></i></div>
+                <div>
+                  <h4 style="margin:0 0 0.25rem;">Engagement Letter 2024</h4>
+                  <p style="margin:0; color:var(--muted); font-size:0.95rem;">
+                    Please review and sign to authorize services.
+                  </p>
+                </div>
+              </div>
+              <button class="sign-btn">Sign Document</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right column -->
+        <div>
+          <!-- Recent Activity -->
+          <div class="card">
+            <h3>Recent Activity</h3>
+            <div class="timeline">
+              <div class="event">
+                <div class="event-dot" style="background:var(--success)">
+                  <i class="fas fa-check"></i>
+                </div>
+                <div>
+                  <p style="font-weight:600; margin:0;">Bank Statement Approved</p>
+                  <p style="font-size:0.9rem; color:var(--muted); margin:0.25rem 0 0;">
+                    March 2024 records verified by Sarah K.
+                  </p>
+                  <p style="font-size:0.8rem; color:#94a3b8; margin-top:0.25rem;">
+                    2 hours ago
+                  </p>
+                </div>
+              </div>
+
+              <div class="event">
+                <div class="event-dot" style="background:var(--primary)">
+                  <i class="fas fa-envelope"></i>
+                </div>
+                <div>
+                  <p style="font-weight:600; margin:0;">New Message from Sarah</p>
+                  <p style="font-size:0.9rem; color:var(--muted); margin:0.25rem 0 0;">
+                    "Got the W-2, looks good. Just one more..."
+                  </p>
+                  <p style="font-size:0.8rem; color:#94a3b8; margin-top:0.25rem;">
+                    5 hours ago
+                  </p>
+                </div>
+              </div>
+
+              <div class="event">
+                <div class="event-dot" style="background:#94a3b8">
+                  <i class="fas fa-cloud-upload-alt"></i>
+                </div>
+                <div>
+                  <p style="font-weight:600; margin:0;">You uploaded 1099-INT</p>
+                  <p style="font-size:0.9rem; color:var(--muted); margin:0.25rem 0 0;">
+                    Uploaded for Chase Bank account.
+                  </p>
+                  <p style="font-size:0.8rem; color:#94a3b8; margin-top:0.25rem;">
+                    Yesterday
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Help Card -->
+          <div class="help-card">
+            <h3 style="margin:0 0 0.75rem;">Need Help?</h3>
+            <p style="margin:0 0 1.25rem; opacity:0.9;">
+              Message your accountant directly through our encrypted channel.
+            </p>
+            <button class="help-btn">
+              <i class="fas fa-comment-dots"></i> Start Secure Chat
+            </button>
+          </div>
+        </div>
+
       </div>
     </div>
-    <div class="upload-zone">
-      <i class="fas fa-cloud-upload-alt"></i>
-      <p><strong>Click to upload</strong> or drag and drop</p>
-      <p style="font-size:.85rem;color:var(--muted);margin-top:.5rem;">PDF, JPG or PNG (max. 10MB)</p>
-    </div>
-  </div>
 
-  <div class="task-item" style="display:flex;justify-content:space-between;align-items:center;">
-    <div style="display:flex;gap:1.25rem;">
-      <div class="task-icon"><i class="fas fa-signature"></i></div>
-      <div>
-        <h4 style="margin:0 0 .25rem;">Engagement Letter 2024</h4>
-        <p style="margin:0;color:var(--muted);font-size:.95rem;">Please review and sign to authorize services.</p>
-      </div>
-    </div>
-    <button class="sign-btn">Sign Document</button>
   </div>
 
 </div>
-</div>
 
-<!-- Right Column -->
-<div>
-<div class="card">
-<h3>Recent Activity</h3>
-<div class="timeline">
-  <div class="event">
-    <div class="event-dot" style="background:var(--success)"><i class="fas fa-check"></i></div>
-    <div>
-      <p style="font-weight:600;margin:0;">Bank Statement Approved</p>
-      <p style="font-size:.9rem;color:var(--muted);margin:.25rem 0 0;">March 2024 records verified by Sarah K.</p>
-      <p style="font-size:.8rem;color:#94a3b8;margin-top:.25rem;">2 hours ago</p>
-    </div>
-  </div>
-  <div class="event">
-    <div class="event-dot" style="background:var(--primary)"><i class="fas fa-envelope"></i></div>
-    <div>
-      <p style="font-weight:600;margin:0;">New Message from Sarah</p>
-      <p style="font-size:.9rem;color:var(--muted);margin:.25rem 0 0;">"Got the W-2, looks good. Just one more..."</p>
-      <p style="font-size:.8rem;color:#94a3b8;margin-top:.25rem;">5 hours ago</p>
-    </div>
-  </div>
-  <div class="event">
-    <div class="event-dot" style="background:#94a3b8"><i class="fas fa-cloud-upload-alt"></i></div>
-    <div>
-      <p style="font-weight:600;margin:0;">You uploaded 1099-INT</p>
-      <p style="font-size:.9rem;color:var(--muted);margin:.25rem 0 0;">Uploaded for Chase Bank account.</p>
-      <p style="font-size:.8rem;color:#94a3b8;margin-top:.25rem;">Yesterday</p>
-    </div>
-  </div>
-</div>
-</div>
-
-<div class="help-card">
-<h3 style="margin:0 0 .75rem;">Need Help?</h3>
-<p style="margin:0 0 1.25rem;opacity:.9;">Message your accountant directly through our encrypted channel.</p>
-<button class="help-btn"><i class="fas fa-comment-dots"></i> Start Secure Chat</button>
-</div>
-
-</div>
-
-</div>
-</div>
-
-</main>
-</div>
 </body>
 </html>
-

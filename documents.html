@@ -14,29 +14,34 @@
   --dark: #0f172a;
   --muted: #64748b;
   --border: #e5e7eb;
+  --primary: #2563eb;     /* added for .tag.active consistency if needed */
 }
 
-* { box-sizing: border-box; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
   margin: 0;
   font-family: "Segoe UI", Arial, sans-serif;
   background: var(--bg);
+  height: 100vh;
+  overflow: hidden;
 }
 
-/* ================= LAYOUT ================= */
+/* LAYOUT */
 .app-layout {
   display: flex;
   height: 100vh;
+  overflow: hidden;
 }
 
-/* ================= SIDEBAR ================= */
+/* SIDEBAR – fixed, non-scrolling */
 .sidebar {
   width: 260px;
-  background: linear-gradient(180deg,#0f172a,#020617);
+  background: linear-gradient(180deg, #0f172a, #020617);
   color: white;
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
 }
 
 .sidebar-header {
@@ -123,29 +128,19 @@ body {
   background: #1e293b;
 }
 
-/* ================= MAIN ================= */
-.main {
+/* MAIN SCROLLABLE AREA */
+.main-content {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-
-
-/* ================= CONTENT ================= */
-.content {
-  padding: 28px;
   overflow-y: auto;
-   flex: 1;
-      padding: 2rem;
-     
+  padding: 2rem;
 }
 
+/* CONTENT STYLES */
 .section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 1.5rem;
 }
 
 .upload-btn {
@@ -155,65 +150,70 @@ body {
   padding: 10px 16px;
   border-radius: 8px;
   cursor: pointer;
-}
-
-.upload-btn {
   text-decoration: none;
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  font-size: 0.95rem;
 }
 
+/* SEARCH & FILTERS */
+.filters {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
 
-/* ================= SEARCH ================= */
- .filters {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-    }
-    .search {
-      position: relative;
-    }
-    .search input {
-      width: 100%;
-      padding: 0.75rem 1rem 0.75rem 3rem;
-      border: 1px solid var(--border);
-      border-radius: 0.75rem;
-      font-size: 0.95rem;
-    }
-    .search i {
-      position: absolute;
-      left: 1rem;
-      top: 50%;
-      transform: translateY(-50%);
-      color: var(--muted);
-    }
-    .tags {
-      display: flex;
-      gap: 0.5rem;
-      overflow-x: auto;
-    }
-    .tag {
-      padding: 0.4rem 1rem;
-      background: white;
-      border: 1px solid var(--border);
-      border-radius: 0.5rem;
-      font-size: 0.875rem;
-      white-space: nowrap;
-      cursor: pointer;
-    }
-    .tag.active {
-      background: var(--primary);
-      color: #60a5fa;
-      border-color: var(--primary);
-    }
-/* ================= DOCUMENTS ================= */
+.search {
+  position: relative;
+}
+
+.search input {
+  width: 100%;
+  padding: 0.75rem 1rem 0.75rem 3rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  font-size: 0.95rem;
+}
+
+.search i {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+}
+
+.tags {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+
+.tag {
+  padding: 0.4rem 1rem;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tag.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+/* DOCUMENTS LIST */
 .docs-card {
   background: white;
   padding: 20px;
   border-radius: 12px;
-  margin-top: 20px;
+  border: 1px solid var(--border);
 }
 
 .doc-item {
@@ -251,6 +251,7 @@ body {
   padding: 8px 12px;
   border-radius: 8px;
   cursor: pointer;
+  margin-left: 8px;
 }
 </style>
 </head>
@@ -259,7 +260,7 @@ body {
 
 <div class="app-layout">
 
-  <!-- SIDEBAR -->
+  <!-- SIDEBAR – fixed on left -->
   <aside class="sidebar">
     <div class="sidebar-header">
       <i class="fa-solid fa-shield-halved"></i>
@@ -269,24 +270,24 @@ body {
       </div>
     </div>
 
-<nav class="nav">
-  <a class="active">
+    <nav class="nav">
+  <a href="Clientportal.html">
     <i class="fa fa-chart-line"></i> Dashboard
   </a>
-
-  <a>
+  <a href="documents.html" class="active">
     <i class="fa fa-file"></i> Documents
   </a>
-
-  <a>
+  <a href="messages.html">
     <i class="fa fa-message"></i> Messages
   </a>
-
-  <a>
+  <a href="settings.html">
     <i class="fa fa-gear"></i> Settings
   </a>
+  
+  <a href="clientrequest.html" >
+    <i class="fa fa-file-alt"></i> Requests   
+  </a>
 </nav>
-
 
     <div class="sidebar-footer">
       <div class="user-box">
@@ -294,144 +295,136 @@ body {
         <p>client@example.com</p>
         <p class="role">Client</p>
       </div>
-      <button class="logout"><i class="fa fa-sign-out"></i> Logout</button>
+      <button class="logout">
+        <i class="fa fa-sign-out"></i> Logout
+      </button>
     </div>
   </aside>
 
-  <!-- MAIN -->
-  <main class="main">
-  
+  <!-- SCROLLABLE MAIN CONTENT -->
+  <main class="main-content">
 
-    <div class="content">
-
-      <div class="section-header">
-        <div>
-          <h2>Documents</h2>
-          <p class="muted">Manage and access your secure documents</p>
-        </div>
-        <a href="upload.html" class="upload-btn">
-  <i class="fa fa-upload"></i> Upload Document
-</a>
-    </div>
-
-     <div class="filters">
-        <div class="search">
-          <i class="fas fa-search"></i>
-          <input placeholder="Search documents...">
-        </div>
-        <div class="tags">
-  <button class="tag active" data-filter="all">All</button>
-  <button class="tag" data-filter="tax returns">Tax Returns</button>
-  <button class="tag" data-filter="bank statements">Bank Statements</button>
-  <button class="tag" data-filter="financial statements">Financial Statements</button>
-  <button class="tag" data-filter="payroll">Payroll</button>
-</div>
-
-      </div>
-
-      <div class="docs-card">
-  <strong>4 Documents</strong>
-
-  <!-- ================= DOCUMENT 1 ================= -->
-  <div class="doc-item" data-category="tax returns">
-    <div class="doc-left">
-      <i class="fa fa-file-lines"></i>
+    <div class="section-header">
       <div>
-        <strong>Tax_Return_2025.pdf</strong>
-        <div class="badges">
-          <span>Tax Returns</span>
-          <span>2025</span>
-          <span>2.34 MB</span>
-        </div>
-        <small>Uploaded by Sarah Mitchell on 2026/01/20</small>
+        <h2>Documents</h2>
+        <p class="muted">Manage and access your secure documents</p>
+      </div>
+      <a href="upload.html" class="upload-btn">
+        <i class="fa fa-upload"></i> Upload Document
+      </a>
+    </div>
+
+    <div class="filters">
+      <div class="search">
+        <i class="fas fa-search"></i>
+        <input placeholder="Search documents...">
+      </div>
+      <div class="tags">
+        <button class="tag active" data-filter="all">All</button>
+        <button class="tag" data-filter="tax returns">Tax Returns</button>
+        <button class="tag" data-filter="bank statements">Bank Statements</button>
+        <button class="tag" data-filter="financial statements">Financial Statements</button>
+        <button class="tag" data-filter="payroll">Payroll</button>
       </div>
     </div>
-    <div class="doc-actions">
-      <button><i class="fa fa-eye"></i></button>
-      <button><i class="fa fa-download"></i> Download</button>
-    </div>
-  </div>
 
-  <!-- ================= DOCUMENT 2 ================= -->
-  <div class="doc-item" data-category="bank statements">
-    <div class="doc-left">
-      <i class="fa fa-file-lines"></i>
-      <div>
-        <strong>Bank_Statements_Jan2026.pdf</strong>
-        <div class="badges">
-          <span>Bank Statements</span>
-          <span>January 2026</span>
-          <span>1.76 MB</span>
+    <div class="docs-card">
+      <strong>4 Documents</strong>
+
+      <!-- Document items remain unchanged -->
+      <div class="doc-item" data-category="tax returns">
+        <div class="doc-left">
+          <i class="fa fa-file-lines"></i>
+          <div>
+            <strong>Tax_Return_2025.pdf</strong>
+            <div class="badges">
+              <span>Tax Returns</span>
+              <span>2025</span>
+              <span>2.34 MB</span>
+            </div>
+            <small>Uploaded by Sarah Mitchell on 2026/01/20</small>
+          </div>
         </div>
-        <small>Uploaded by John Doe on 2026/01/25</small>
+        <div class="doc-actions">
+          <button><i class="fa fa-eye"></i></button>
+          <button><i class="fa fa-download"></i> Download</button>
+        </div>
+      </div>
+
+      <div class="doc-item" data-category="bank statements">
+        <div class="doc-left">
+          <i class="fa fa-file-lines"></i>
+          <div>
+            <strong>Bank_Statements_Jan2026.pdf</strong>
+            <div class="badges">
+              <span>Bank Statements</span>
+              <span>January 2026</span>
+              <span>1.76 MB</span>
+            </div>
+            <small>Uploaded by John Doe on 2026/01/25</small>
+          </div>
+        </div>
+        <div class="doc-actions">
+          <button><i class="fa fa-eye"></i></button>
+          <button><i class="fa fa-download"></i> Download</button>
+        </div>
+      </div>
+
+      <div class="doc-item" data-category="financial statements">
+        <div class="doc-left">
+          <i class="fa fa-file-lines"></i>
+          <div>
+            <strong>Annual_Financial_Statements_2025.pdf</strong>
+            <div class="badges">
+              <span>Financial Statements</span>
+              <span>2025</span>
+              <span>5 MB</span>
+            </div>
+            <small>Uploaded by Sarah Mitchell on 2026/01/18</small>
+          </div>
+        </div>
+        <div class="doc-actions">
+          <button><i class="fa fa-eye"></i></button>
+          <button><i class="fa fa-download"></i> Download</button>
+        </div>
+      </div>
+
+      <div class="doc-item" data-category="payroll">
+        <div class="doc-left">
+          <i class="fa fa-file-lines"></i>
+          <div>
+            <strong>Payroll_Records_2025.xlsx</strong>
+            <div class="badges">
+              <span>Payroll</span>
+              <span>2025</span>
+              <span>3 MB</span>
+            </div>
+            <small>Uploaded by John Doe on 2026/01/22</small>
+          </div>
+        </div>
+        <div class="doc-actions">
+          <button><i class="fa fa-eye"></i></button>
+          <button><i class="fa fa-download"></i> Download</button>
+        </div>
       </div>
     </div>
-    <div class="doc-actions">
-      <button><i class="fa fa-eye"></i></button>
-      <button><i class="fa fa-download"></i> Download</button>
-    </div>
-  </div>
 
-  <!-- ================= DOCUMENT 3 ================= -->
-  <div class="doc-item" data-category="financial statements">
-    <div class="doc-left">
-      <i class="fa fa-file-lines"></i>
-      <div>
-        <strong>Annual_Financial_Statements_2025.pdf</strong>
-        <div class="badges">
-          <span>Financial Statements</span>
-          <span>2025</span>
-          <span>5 MB</span>
-        </div>
-        <small>Uploaded by Sarah Mitchell on 2026/01/18</small>
-      </div>
-    </div>
-    <div class="doc-actions">
-      <button><i class="fa fa-eye"></i></button>
-      <button><i class="fa fa-download"></i> Download</button>
-    </div>
-  </div>
+  </main>
 
-  <!-- ================= DOCUMENT 4 ================= -->
-  <div class="doc-item" data-category="payroll">
-    <div class="doc-left">
-      <i class="fa fa-file-lines"></i>
-      <div>
-        <strong>Payroll_Records_2025.xlsx</strong>
-        <div class="badges">
-          <span>Payroll</span>
-          <span>2025</span>
-          <span>3 MB</span>
-        </div>
-        <small>Uploaded by John Doe on 2026/01/22</small>
-      </div>
-    </div>
-    <div class="doc-actions">
-      <button><i class="fa fa-eye"></i></button>
-      <button><i class="fa fa-download"></i> Download</button>
-    </div>
-  </div>
-
-</div>
-    </div>
-
-</div>
-</main>
 </div>
 
 <script>
+// Your existing filter script remains unchanged
 const searchInput = document.querySelector('.search input');
 const tags = document.querySelectorAll('.tag');
 const docs = document.querySelectorAll('.doc-item');
 
 let activeFilter = 'all';
 
-// 🔍 SEARCH FILTER
 searchInput.addEventListener('input', () => {
   filterDocs();
 });
 
-// 🏷️ TAG FILTER
 tags.forEach(tag => {
   tag.addEventListener('click', () => {
     tags.forEach(t => t.classList.remove('active'));
@@ -441,7 +434,6 @@ tags.forEach(tag => {
   });
 });
 
-// 🔄 FILTER FUNCTION
 function filterDocs() {
   const searchValue = searchInput.value.toLowerCase();
 
@@ -450,17 +442,12 @@ function filterDocs() {
     const category = doc.dataset.category;
 
     const matchesSearch = text.includes(searchValue);
-    const matchesCategory =
-      activeFilter === 'all' || category === activeFilter;
+    const matchesCategory = activeFilter === 'all' || category === activeFilter;
 
-    if (matchesSearch && matchesCategory) {
-      doc.style.display = 'flex';
-    } else {
-      doc.style.display = 'none';
-    }
+    doc.style.display = (matchesSearch && matchesCategory) ? 'flex' : 'none';
   });
 }
 </script>
 
-</body> 
+</body>
 </html>
