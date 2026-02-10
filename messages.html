@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Messages | Secure Client Portal</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+<!-- Icons -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+<style>
+/* ===============================
+   BASE
+================================ */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+/* ===============================
+   APP LAYOUT
+================================ */
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+}
+
+/* ===============================
+   SIDEBAR
+================================ */
+.sidebar {
+  width: 260px;
+  background: linear-gradient(180deg, #0f172a, #020617);
+  color: white;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+}
+
+.sidebar-header {
+  padding: 22px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.sidebar-header i {
+  font-size: 30px;
+  color: #60a5fa;
+}
+
+.sidebar-header h1 {
+  font-size: 16px;
+}
+
+.sidebar-header p {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.nav {
+  padding: 16px;
+  flex: 1;
+}
+
+.nav a {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 10px;
+  color: #cbd5f5;
+  text-decoration: none;
+  margin-bottom: 6px;
+}
+
+.nav a:hover {
+  background: #1e293b;
+}
+
+.nav a.active {
+  background: #2563eb;
+  color: white;
+}
+
+.sidebar-footer {
+  padding: 16px;
+}
+
+.user-box {
+  background: #1e293b;
+  padding: 12px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+
+.user-box p {
+  font-size: 13px;
+}
+
+.role {
+  color: #60a5fa;
+  font-size: 12px;
+}
+
+.logout {
+  width: 100%;
+  background: none;
+  border: none;
+  color: #cbd5f5;
+  padding: 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.logout:hover {
+  background: #1e293b;
+}
+
+/* ===============================
+   MAIN CONTENT
+================================ */
+.page {
+  flex: 1;
+  margin-left: 260px;
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.page h1 {
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.page p {
+  color: #64748b;
+  margin-top: 4px;
+}
+
+/* ===============================
+   GRID
+================================ */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 24px;
+  margin-top: 24px;
+  height: calc(100vh - 140px);
+}
+
+@media (max-width: 1000px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ===============================
+   CARD
+================================ */
+.card {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+}
+
+.card-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.card-header h2 {
+  font-size: 16px;
+}
+
+.card-content {
+  padding: 16px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* ===============================
+   SEARCH
+================================ */
+.search {
+  position: relative;
+  margin-top: 12px;
+}
+
+.search input {
+  width: 100%;
+  padding: 10px 12px 10px 36px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+}
+
+.search i {
+  position: absolute;
+  left: 12px;
+  top: 11px;
+  color: #9ca3af;
+}
+
+/* ===============================
+   THREADS
+================================ */
+.thread {
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  cursor: pointer;
+  margin-bottom: 10px;
+}
+
+.thread:hover {
+  background: #f9fafb;
+}
+
+.thread.active {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+}
+
+.thread-top {
+  display: flex;
+  justify-content: space-between;
+}
+
+.thread-name {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.badge {
+  background: #2563eb;
+  color: white;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 999px;
+}
+
+.thread-subject {
+  font-size: 13px;
+  color: #475569;
+  margin-top: 4px;
+}
+
+/* ===============================
+   MESSAGES
+================================ */
+.messages {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.message-row {
+  display: flex;
+}
+
+.message-row.own {
+  justify-content: flex-end;
+}
+
+.message {
+  max-width: 70%;
+  padding: 12px 16px;
+  border-radius: 16px;
+  font-size: 14px;
+}
+
+.message.own {
+  background: #2563eb;
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+.message.other {
+  background: #f1f5f9;
+  border-bottom-left-radius: 4px;
+}
+
+.meta {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+/* ===============================
+   INPUT
+================================ */
+.input-area {
+  border-top: 1px solid #e5e7eb;
+  padding: 14px;
+  display: flex;
+  gap: 8px;
+}
+
+.input-area textarea {
+  flex: 1;
+  resize: none;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+}
+
+.send-btn {
+  background: #2563eb;
+  color: white;
+  padding: 0 16px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+}
+
+.send-btn:disabled {
+  background: #94a3b8;
+}
+
+/* ===============================
+   EMPTY STATE
+================================ */
+.empty {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: #6b7280;
+}
+</style>
+</head>
+
+<body>
+
+<div class="app-layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <i class="fa-solid fa-shield-halved"></i>
+      <div>
+        <h1>Prospera</h1>
+        <p>Secure Client Portal</p>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <a href="Clientportal.html"><i class="fa fa-chart-line"></i> Dashboard</a>
+      <a href="documents.html"><i class="fa fa-file"></i> Documents</a>
+      <a href="messages.html" class="active"><i class="fa fa-message"></i> Messages</a>
+      <a href="settings.html"><i class="fa fa-gear"></i> Settings</a>
+      <a href="clientrequest.html"><i class="fa fa-file-alt"></i> Requests</a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-box">
+        <p><strong>John Doe</strong></p>
+        <p>client@example.com</p>
+        <p class="role">Client</p>
+      </div>
+      <button class="logout"><i class="fa fa-sign-out"></i> Logout</button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="page">
+    <h1>Messages</h1>
+    <p>Secure communication with your accountant</p>
+
+    <div class="grid">
+
+      <!-- THREADS -->
+      <div class="card">
+        <div class="card-header">
+          <h2>Conversations</h2>
+          <div class="search">
+            <i class="fa fa-search"></i>
+            <input type="text" placeholder="Search messages...">
+          </div>
+        </div>
+        <div class="card-content" id="threadList"></div>
+      </div>
+
+      <!-- MESSAGES -->
+      <div class="card">
+        <div class="card-header" id="messageHeader">
+          <h2>Select a conversation</h2>
+        </div>
+        <div class="card-content" id="messageArea">
+          <div class="empty">
+            <i class="fa fa-message fa-2x"></i>
+            <p>Select a conversation to view messages</p>
+          </div>
+        </div>
+        <div class="input-area">
+          <textarea id="messageInput" placeholder="Type your message..."></textarea>
+          <button class="send-btn" id="sendBtn">Send</button>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+</div>
+
+<script>
+const threads = [
+  { id: "t1", name: "Sarah Mitchell", subject: "Tax Documents", unread: 2 },
+  { id: "t2", name: "John Accountant", subject: "Payroll Review", unread: 0 }
+];
+
+const messages = {
+  t1: [
+    { from: "other", text: "Please upload your 2025 tax return." },
+    { from: "own", text: "Sure, I will upload it today." }
+  ],
+  t2: [
+    { from: "other", text: "Payroll documents received." }
+  ]
+};
+
+let activeThread = null;
+
+const threadList = document.getElementById("threadList");
+const messageArea = document.getElementById("messageArea");
+const header = document.getElementById("messageHeader");
+
+function renderThreads() {
+  threadList.innerHTML = "";
+  threads.forEach(t => {
+    const div = document.createElement("div");
+    div.className = "thread";
+    div.onclick = () => openThread(t.id, div);
+    div.innerHTML = `
+      <div class="thread-top">
+        <span class="thread-name">${t.name}</span>
+        ${t.unread ? `<span class="badge">${t.unread}</span>` : ""}
+      </div>
+      <div class="thread-subject">${t.subject}</div>
+    `;
+    threadList.appendChild(div);
+  });
+}
+
+function openThread(id, el) {
+  document.querySelectorAll(".thread").forEach(t => t.classList.remove("active"));
+  el.classList.add("active");
+
+  activeThread = id;
+  header.innerHTML = `<h2>${threads.find(t => t.id === id).subject}</h2>`;
+  messageArea.innerHTML = "";
+
+  const container = document.createElement("div");
+  container.className = "messages";
+
+  messages[id].forEach(m => {
+    const row = document.createElement("div");
+    row.className = `message-row ${m.from === "own" ? "own" : ""}`;
+    row.innerHTML = `
+      <div class="message ${m.from}">
+        ${m.text}
+        <div class="meta">${m.from === "own" ? "You" : "Accountant"}</div>
+      </div>
+    `;
+    container.appendChild(row);
+  });
+
+  messageArea.appendChild(container);
+}
+
+document.getElementById("sendBtn").onclick = () => {
+  const input = document.getElementById("messageInput");
+  if (!input.value || !activeThread) return;
+  messages[activeThread].push({ from: "own", text: input.value });
+  input.value = "";
+  openThread(activeThread, document.querySelector(".thread.active"));
+};
+
+renderThreads();
+</script>
+
+</body>
+</html>
