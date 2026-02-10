@@ -1,479 +1,468 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Document Requests</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
-
-<style>
-:root {
-  --primary: #4f63f9;
-  --bg: #f5f7fb;
-  --card: #ffffff;
-  --text: #111827;
-  --muted: #6b7280;
-  --border: #e5e7eb;
-  --high: #fee2e2;
-  --high-text: #b91c1c;
-  --medium: #fef3c7;
-  --medium-text: #92400e;
-  --pending: #e0e7ff;
-  --pending-text: #3730a3;
-  --blue: #2563eb;           /* for active nav consistency */
-}
-
-* { box-sizing: border-box; margin: 0; padding: 0; }
-
-body {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  height: 100vh;
-  overflow: hidden;
-}
-
-/* ── LAYOUT ──────────────────────────────────────────────── */
-.app-layout {
-  display: flex;
-  height: 100vh;
-  overflow: hidden;
-}
-
-/* ================= SIDEBAR (unchanged) ================= */
-.sidebar {
-  width: 260px;
-  background: linear-gradient(180deg, #0f172a, #020617);
-  color: white;
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-}
-
-.sidebar-header {
-  padding: 22px;
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
-
-.sidebar-header i {
-  font-size: 30px;
-  color: #60a5fa;
-}
-
-.sidebar-header h1 {
-  margin: 0;
-  font-size: 16px;
-}
-
-.sidebar-header p {
-  margin: 0;
-  font-size: 12px;
-  color: #94a3b8;
-}
-
-.nav {
-  padding: 16px;
-  flex: 1;
-}
-
-.nav a {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  padding: 12px 14px;
-  border-radius: 10px;
-  color: #cbd5f5;
-  text-decoration: none;
-  margin-bottom: 6px;
-}
-
-.nav a.active {
-  background: var(--blue);
-  color: white;
-}
-
-.nav a:hover {
-  background: #1e293b;
-}
-
-.sidebar-footer {
-  padding: 16px;
-}
-
-.user-box {
-  background: #1e293b;
-  padding: 12px;
-  border-radius: 10px;
-  margin-bottom: 12px;
-}
-
-.user-box p {
-  margin: 2px 0;
-  font-size: 13px;
-}
-
-.role {
-  color: #60a5fa;
-  font-size: 12px;
-}
-
-.logout {
-  width: 100%;
-  background: none;
-  border: none;
-  color: #cbd5f5;
-  padding: 12px;
-  border-radius: 10px;
-  cursor: pointer;
-  text-align: left;
-}
-
-.logout:hover {
-  background: #1e293b;
-}
-
-/* ── MAIN CONTENT AREA ───────────────────────────────────── */
-.main-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: 24px;
-}
-
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-/* HEADER */
-.top-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 32px;
-}
-
-.top-left h1 {
-  font-size: 26px;
-  font-weight: 700;
-}
-
-.top-left p {
-  color: var(--muted);
-  margin-top: 4px;
-}
-
-.bell {
-  position: relative;
-  font-size: 22px;
-  cursor: pointer;
-}
-
-.bell span {
-  position: absolute;
-  top: -6px;
-  right: -6px;
-  background: #ef4444;
-  color: #fff;
-  font-size: 11px;
-  padding: 2px 6px;
-  border-radius: 999px;
-}
-
-/* TITLE ROW */
-.title-row-container {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 24px;
-}
-
-.title-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.title-row h2 {
-  font-size: 28px;
-}
-
-.title-row p {
-  color: var(--muted);
-}
-
-.new-btn {
-  background: var(--primary);
-  color: #fff;
-  border: none;
-  padding: 12px 18px;
-  border-radius: 10px;
-  font-size: 15px;
-  cursor: pointer;
-}
-
-.new-btn:hover {
-  background: #3b52e0;
-}
-
-
-
-/* Modal styles */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  backdrop-filter: blur(4px);
-}
-
-.modal-content {
-  background: var(--card);
-  border-radius: 16px;
-  width: 100%;
-  max-width: 520px;
-  margin: 20px;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.25);
-  overflow: hidden;
-  border: 1px solid var(--border);
-}
-
-.modal-header {
-  padding: 20px 24px;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.modal-header h2 {
-  margin: 0;
-  font-size: 22px;
-}
-
-.close-modal {
-  background: none;
-  border: none;
-  font-size: 28px;
-  color: var(--muted);
-  cursor: pointer;
-  line-height: 1;
-}
-
-.close-modal:hover {
-  color: var(--text);
-}
-
-.modal-body {
-  padding: 24px;
-}
-
-.form-group {
-  margin-bottom: 20px;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 8px;
-  font-weight: 600;
-  color: var(--text);
-}
-
-.form-group input,
-.form-group textarea,
-.form-group select {
-  width: 100%;
-  padding: 12px 14px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  font-size: 15px;
-  background: #fafafa;
-  transition: border-color 0.2s;
-}
-
-.form-group input:focus,
-.form-group textarea:focus,
-.form-group select:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(79, 99, 249, 0.15);
-}
-
-.form-group textarea {
-  resize: vertical;
-  min-height: 100px;
-}
-
-.form-row {
-  display: flex;
-  gap: 20px;
-}
-
-.form-row .half {
-  flex: 1;
-}
-
-.modal-footer {
-  padding: 20px 24px;
-  border-top: 1px solid var(--border);
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-}
-
-.btn-primary {
-  background: var(--primary);
-  color: white;
-  border: none;
-  padding: 14px 28px;
-  border-radius: 10px;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.btn-primary:hover {
-  background: #3b52e0;
-}
-
-.btn-secondary {
-  background: #f1f5f9;
-  color: #334155;
-  border: none;
-  padding: 14px 28px;
-  border-radius: 10px;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.btn-secondary:hover {
-  background: #e2e8f0;
-}
-/* TABS */
-.tabs {
-  display: flex;
-  background: #ededf1;
-  border-radius: 999px;
-  padding: 4px;
-  width: 320px;
-  margin-bottom: 24px;
-}
-
-.tab {
-  flex: 1;
-  text-align: center;
-  padding: 10px;
-  border-radius: 999px;
-  cursor: pointer;
-  font-weight: 600;
-}
-
-.tab.active {
-  background: #fff;
-  box-shadow: 0 2px 8px rgba(0,0,0,.08);
-}
-
-/* CARD & REQUEST */
-.card {
-  background: var(--card);
-  border-radius: 14px;
-  border: 1px solid var(--border);
-  padding: 24px;
-}
-
-.card h3 {
-  font-size: 20px;
-  margin-bottom: 16px;
-}
-
-.request {
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 20px;
-  margin-bottom: 20px;
-}
-
-.request-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
-
-.request-title {
-  display: flex;
-  gap: 12px;
-}
-
-.doc-icon {
-  font-size: 24px;
-  color: var(--primary);
-}
-
-.request-title h4 {
-  font-size: 18px;
-}
-
-.request-title p {
-  color: var(--muted);
-  margin-top: 4px;
-}
-
-.badges {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  align-items: flex-end;
-}
-
-.badge {
-  padding: 6px 12px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.high { background: var(--high); color: var(--high-text); }
-.medium { background: var(--medium); color: var(--medium-text); }
-.pending { background: var(--pending); color: var(--pending-text); }
-
-.meta {
-  display: flex;
-  gap: 16px;
-  color: var(--muted);
-  font-size: 13px;
-  margin-top: 14px;
-}
-
-.action-btn {
-  width: 100%;
-  margin-top: 18px;
-  padding: 14px;
-  background: var(--primary);
-  color: #fff;
-  border: none;
-  border-radius: 12px;
-  font-size: 16px;
-  cursor: pointer;
-}
-
-.hidden { display: none; }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document Requests</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    :root {
+      --primary: #4f63f9;
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --text: #111827;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --high: #fee2e2;
+      --high-text: #b91c1c;
+      --medium: #fef3c7;
+      --medium-text: #92400e;
+      --pending: #e0e7ff;
+      --pending-text: #3730a3;
+      --blue: #2563eb;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .app-layout {
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 260px;
+      background: linear-gradient(180deg, #0f172a, #020617);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+
+    .sidebar-header {
+      padding: 22px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .sidebar-header i {
+      font-size: 30px;
+      color: #60a5fa;
+    }
+
+    .sidebar-header h1 {
+      margin: 0;
+      font-size: 16px;
+    }
+
+    .sidebar-header p {
+      margin: 0;
+      font-size: 12px;
+      color: #94a3b8;
+    }
+
+    .nav {
+      padding: 16px;
+      flex: 1;
+    }
+
+    .nav a {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 14px;
+      border-radius: 10px;
+      color: #cbd5f5;
+      text-decoration: none;
+      margin-bottom: 6px;
+    }
+
+    .nav a.active {
+      background: var(--blue);
+      color: white;
+    }
+
+    .nav a:hover {
+      background: #1e293b;
+    }
+
+    .sidebar-footer {
+      padding: 16px;
+    }
+
+    .user-box {
+      background: #1e293b;
+      padding: 12px;
+      border-radius: 10px;
+      margin-bottom: 12px;
+    }
+
+    .user-box p {
+      margin: 2px 0;
+      font-size: 13px;
+    }
+
+    .role {
+      color: #60a5fa;
+      font-size: 12px;
+    }
+
+    .logout {
+      width: 100%;
+      background: none;
+      border: none;
+      color: #cbd5f5;
+      padding: 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .logout:hover {
+      background: #1e293b;
+    }
+
+    /* Main */
+    .main-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+    }
+
+    .top-left h1 {
+      font-size: 26px;
+      font-weight: 700;
+    }
+
+    .top-left p {
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .bell {
+      position: relative;
+      font-size: 22px;
+      cursor: pointer;
+    }
+
+    .bell span {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      background: #ef4444;
+      color: #fff;
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 999px;
+    }
+
+    .title-row-container {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+
+    .title-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .title-row h2 {
+      font-size: 28px;
+    }
+
+    .title-row p {
+      color: var(--muted);
+    }
+
+    .new-btn {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      padding: 12px 18px;
+      border-radius: 10px;
+      font-size: 15px;
+      cursor: pointer;
+    }
+
+    .new-btn:hover {
+      background: #3b52e0;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      backdrop-filter: blur(4px);
+    }
+
+    .modal-content {
+      background: var(--card);
+      border-radius: 16px;
+      width: 100%;
+      max-width: 520px;
+      margin: 20px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.25);
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .modal-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-header h2 {
+      margin: 0;
+      font-size: 22px;
+    }
+
+    .close-modal {
+      background: none;
+      border: none;
+      font-size: 28px;
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .close-modal:hover {
+      color: var(--text);
+    }
+
+    .modal-body {
+      padding: 24px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 15px;
+      background: #fafafa;
+    }
+
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(79,99,249,0.15);
+    }
+
+    .form-group textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    .form-row {
+      display: flex;
+      gap: 20px;
+    }
+
+    .form-row .half {
+      flex: 1;
+    }
+
+    .modal-footer {
+      padding: 20px 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+    }
+
+    .btn-primary,
+    .btn-secondary {
+      padding: 14px 28px;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #3b52e0;
+    }
+
+    .btn-secondary {
+      background: #f1f5f9;
+      color: #334155;
+    }
+
+    .btn-secondary:hover {
+      background: #e2e8f0;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      background: #ededf1;
+      border-radius: 999px;
+      padding: 4px;
+      width: 320px;
+      margin-bottom: 24px;
+    }
+
+    .tab {
+      flex: 1;
+      text-align: center;
+      padding: 10px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .tab.active {
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,.08);
+    }
+
+    /* Card & Request */
+    .card {
+      background: var(--card);
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      padding: 24px;
+    }
+
+    .card h3 {
+      font-size: 20px;
+      margin-bottom: 16px;
+    }
+
+    .request {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .request-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .request-title {
+      display: flex;
+      gap: 12px;
+    }
+
+    .doc-icon {
+      font-size: 24px;
+      color: var(--primary);
+    }
+
+    .request-title h4 {
+      font-size: 18px;
+    }
+
+    .request-title p {
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .badges {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      align-items: flex-end;
+    }
+
+    .badge {
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .high { background: var(--high); color: var(--high-text); }
+    .medium { background: var(--medium); color: var(--medium-text); }
+    .pending { background: var(--pending); color: var(--pending-text); }
+
+    .meta {
+      display: flex;
+      gap: 16px;
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 14px;
+    }
+
+    .action-btn {
+      width: 100%;
+      margin-top: 18px;
+      padding: 14px;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    .hidden { display: none; }
+  </style>
 </head>
-
 <body>
 
 <div class="app-layout">
 
-  <!-- SIDEBAR – fixed left -->
+  <!-- Sidebar -->
   <aside class="sidebar">
     <div class="sidebar-header">
-      <i class="fa-solid fa-shield-halved"></i>
+      <i class="fas fa-shield-halved"></i>
       <div>
         <h1>Prospera</h1>
         <p>Secure Client Portal</p>
@@ -481,22 +470,11 @@ body {
     </div>
 
     <nav class="nav">
-  <a href="Clientportal.html">
-    <i class="fa fa-chart-line"></i> Dashboard
-  </a>
-  <a href="documents.html">
-    <i class="fa fa-file"></i> Documents
-  </a>
-  <a href="messages.html">
-    <i class="fa fa-message"></i> Messages
-  </a>
-  <a href="settings.html">
-    <i class="fa fa-gear"></i> Settings
-  </a>
-  <!-- If you have a requests page -->
-  <a href="clientrequest.html" class="active">
-    <i class="fa fa-file-alt"></i> Requests   <!-- better icon than fa-gear for requests -->
-  </a>
+  <a href="dashboard.html"><i class="fas fa-chart-line"></i> Dashboard</a>
+  <a href="documents.html"><i class="fas fa-file-alt"></i> Documents</a>
+  <a href="requests.html" class="active"><i class="fas fa-file-signature"></i> Requests</a>
+  <a href="messages.html"><i class="fas fa-message"></i> Messages</a>
+  <a href="settings.html"><i class="fas fa-gear"></i> Settings</a>
 </nav>
 
     <div class="sidebar-footer">
@@ -506,109 +484,95 @@ body {
         <p class="role">Client</p>
       </div>
       <button class="logout">
-        <i class="fa fa-sign-out"></i> Logout
+        <i class="fas fa-sign-out-alt"></i> Logout
       </button>
     </div>
   </aside>
 
-  <!-- MAIN CONTENT – scrolls on the right -->
+  <!-- Main -->
   <main class="main-content">
     <div class="container">
 
-      <!-- TOP BAR -->
       <div class="top-bar">
         <div class="top-left">
           <h1>Welcome back, John Doe</h1>
           <p>Monday, 9 February 2026</p>
         </div>
         <div class="bell">
-          🔔
+          <i class="fas fa-bell"></i>
           <span id="notifCount">1</span>
         </div>
       </div>
 
-      <!-- TITLE -->
       <div class="title-row-container">
         <div class="title-row">
           <div>
             <h2>Document Requests</h2>
             <p>Request and manage document submissions</p>
           </div>
-          <button class="new-btn">＋ New Request</button>
+          <button class="new-btn" onclick="document.getElementById('newRequestModal').style.display='flex'">＋ New Request</button>
         </div>
       </div>
 
-      <!-- New Request Modal -->
-<div id="newRequestModal" class="modal-overlay" style="display: none;">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h2>Create Document Request</h2>
-      <button class="close-modal" onclick="closeModal()">×</button>
-    </div>
+      <!-- Modal -->
+      <div id="newRequestModal" class="modal-overlay" style="display:none;">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h2>Create Document Request</h2>
+            <button class="close-modal" onclick="document.getElementById('newRequestModal').style.display='none'">×</button>
+          </div>
 
-    <div class="modal-body">
-      <div class="form-group">
-        <label for="docType">Document Type</label>
-        <input 
-          type="text" 
-          id="docType" 
-          placeholder="e.g., Bank Statements, Invoices, Tax Documents"
-        >
-      </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label for="docType">Document Type</label>
+              <input type="text" id="docType" placeholder="e.g., Bank Statements, Invoices, Tax Documents">
+            </div>
 
-      <div class="form-group">
-        <label for="description">Description</label>
-        <textarea 
-          id="description" 
-          rows="4" 
-          placeholder="Provide details about what documents are needed..."
-        ></textarea>
-      </div>
+            <div class="form-group">
+              <label for="description">Description</label>
+              <textarea id="description" rows="4" placeholder="Provide details about what documents are needed..."></textarea>
+            </div>
 
-      <div class="form-row">
-        <div class="form-group half">
-          <label for="priority">Priority</label>
-          <select id="priority">
-            <option value="Low">Low</option>
-            <option value="Medium" selected>Medium</option>
-            <option value="High">High</option>
-          </select>
+            <div class="form-row">
+              <div class="form-group half">
+                <label for="priority">Priority</label>
+                <select id="priority">
+                  <option value="Low">Low</option>
+                  <option value="Medium" selected>Medium</option>
+                  <option value="High">High</option>
+                </select>
+              </div>
+
+              <div class="form-group half">
+                <label for="dueDate">Due Date</label>
+                <input type="date" id="dueDate">
+              </div>
+            </div>
+          </div>
+
+          <div class="modal-footer">
+            <button class="btn-secondary" onclick="document.getElementById('newRequestModal').style.display='none'">Cancel</button>
+            <button class="btn-primary" onclick="alert('Request created!'); document.getElementById('newRequestModal').style.display='none'">Create Request</button>
+          </div>
         </div>
-
-        <div class="form-group half">
-          <label for="dueDate">Due Date</label>
-          <input type="date" id="dueDate">
-        </div>
       </div>
-    </div>
 
-    <div class="modal-footer">
-      <button class="btn-secondary" onclick="closeModal()">Cancel</button>
-      <button class="btn-primary" onclick="submitRequest()">Create Request</button>
-    </div>
-  </div>
-</div>  
-      <!-- TABS -->
+      <!-- Tabs -->
       <div class="tabs">
-        <div class="tab active" onclick="showTab('received')">
-          Received (<span id="receivedCount">2</span>)
-        </div>
-        <div class="tab" onclick="showTab('sent')">
-          Sent (0)
-        </div>
+        <div class="tab active" onclick="document.getElementById('received').classList.remove('hidden'); document.getElementById('sent').classList.add('hidden');">Received (2)</div>
+        <div class="tab" onclick="document.getElementById('sent').classList.remove('hidden'); document.getElementById('received').classList.add('hidden');">Sent (0)</div>
       </div>
 
-      <!-- RECEIVED -->
+      <!-- Received -->
       <div id="received" class="card">
         <h3>Requests You Received (2)</h3>
 
-        <!-- REQUEST 1 -->
         <div class="request">
           <div class="request-header">
             <div class="request-title">
-              <div class="doc-icon">📄</div>
+              <i class="fas fa-file-alt doc-icon"></i>
               <div>
-                <h4>Bank Statements ⏰</h4>
+                <h4>Bank Statements</h4>
                 <p>From: Sarah Mitchell</p>
                 <p>Please upload your bank statements for February 2026</p>
               </div>
@@ -619,19 +583,18 @@ body {
             </div>
           </div>
           <div class="meta">
-            <span>📅 Due: 15/02/2026</span>
-            <span>• Requested: 08/02/2026</span>
+            <span><i class="fas fa-calendar"></i> Due: 15/02/2026</span>
+            <span><i class="fas fa-clock"></i> Requested: 08/02/2026</span>
           </div>
-          <button class="action-btn" onclick="fulfill(this)">✔ Mark as Fulfilled</button>
+          <button class="action-btn" onclick="this.innerHTML='✔ Fulfilled'; this.style.background='#10b981'; this.disabled=true">Mark as Fulfilled</button>
         </div>
 
-        <!-- REQUEST 2 -->
         <div class="request">
           <div class="request-header">
             <div class="request-title">
-              <div class="doc-icon">📄</div>
+              <i class="fas fa-file-invoice doc-icon"></i>
               <div>
-                <h4>Invoices ⏰</h4>
+                <h4>Invoices</h4>
                 <p>From: Sarah Mitchell</p>
                 <p>Please upload all invoices for January 2026</p>
               </div>
@@ -642,72 +605,23 @@ body {
             </div>
           </div>
           <div class="meta">
-            <span>📅 Due: 20/02/2026</span>
-            <span>• Requested: 08/02/2026</span>
+            <span><i class="fas fa-calendar"></i> Due: 20/02/2026</span>
+            <span><i class="fas fa-clock"></i> Requested: 08/02/2026</span>
           </div>
-          <button class="action-btn" onclick="fulfill(this)">✔ Mark as Fulfilled</button>
+          <button class="action-btn" onclick="this.innerHTML='✔ Fulfilled'; this.style.background='#10b981'; this.disabled=true">Mark as Fulfilled</button>
         </div>
       </div>
 
-      <!-- SENT -->
+      <!-- Sent -->
       <div id="sent" class="card hidden">
         <h3>Requests You Sent (0)</h3>
-        <p style="color:var(--muted)">No requests sent.</p>
+        <p style="color:var(--muted)">No requests sent yet.</p>
       </div>
 
     </div>
   </main>
-
 </div>
-
-<script>
-function showTab(tab) {
-  document.getElementById('received').classList.add('hidden');
-  document.getElementById('sent').classList.add('hidden');
-
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-
-  document.getElementById(tab).classList.remove('hidden');
-  event.target.classList.add('active');
-}
-
-function fulfill(btn) {
-  btn.innerText = "✔ Fulfilled";
-  btn.style.background = "#10b981";
-  btn.disabled = true;
-}
-
-// Open modal
-document.querySelectorAll('.new-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.getElementById('newRequestModal').style.display = 'flex';
-  });
-});
-
-// Close modal
-function closeModal() {
-  document.getElementById('newRequestModal').style.display = 'none';
-}
-
-// Optional: submit handler (you can expand this later)
-function submitRequest() {
-  const type = document.getElementById('docType').value.trim();
-  const desc = document.getElementById('description').value.trim();
-  
-  if (!type || !desc) {
-    alert("Please fill in Document Type and Description.");
-    return;
-  }
-
-  // For now just show success and close
-  alert(`Request created!\nType: ${type}\nDescription: ${desc}`);
-  closeModal();
-
-  // Future: send to server via fetch/axios, then refresh sent requests list
-}
-</script>
 
 </body>
 </html>
-
 
