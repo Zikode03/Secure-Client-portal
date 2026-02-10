@@ -43,7 +43,7 @@
       overflow: hidden;
     }
 
-    /* ── FIXED DARK SIDEBAR (copied from other pages) ──────────────── */
+    /* ── FIXED DARK SIDEBAR ─────────────────────────────────────────────── */
     .sidebar {
       width: 260px;
       background: linear-gradient(180deg, #0f172a, #020617);
@@ -137,7 +137,7 @@
       background: #1e293b;
     }
 
-    /* ── Scrollable Main Content ───────────────────────────────── */
+    /* ── Scrollable Main Content ──────────────────────────────────────── */
     .main-content {
       flex: 1;
       overflow-y: auto;
@@ -237,7 +237,7 @@
       margin-bottom: 2rem;
     }
 
-    /* ── Component styles (unchanged from your original) ────────── */
+    /* Health Progress Ring */
     .health { display: flex; gap: 2.5rem; align-items: center; }
 
     .progress-ring {
@@ -286,6 +286,7 @@
     .stat.green { background: rgba(16,185,129,0.1); color: var(--success); }
     .stat.blue   { background: rgba(23,84,207,0.1);  color: var(--primary); }
 
+    /* Task Items */
     .task-item {
       background: white;
       border: 1px solid var(--border);
@@ -334,6 +335,7 @@
       cursor: pointer;
     }
 
+    /* Timeline */
     .timeline {
       position: relative;
       padding-left: 3rem;
@@ -367,6 +369,7 @@
       border: 4px solid white;
     }
 
+    /* Help Card */
     .help-card {
       background: linear-gradient(135deg, var(--primary), var(--primary-dark));
       color: white;
@@ -391,13 +394,237 @@
       gap: 0.75rem;
       font-size: 1.05rem;
     }
+
+    /* ── Notification Drawer ─────────────────────────────────────────────── */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      backdrop-filter: blur(6px);
+      display: none;
+      justify-content: flex-end;
+      z-index: 1000;
+      transition: opacity 0.3s ease;
+    }
+
+    .overlay.active {
+      display: flex;
+      opacity: 1;
+    }
+
+    .drawer {
+      width: 440px;
+      height: 100%;
+      background: white;
+      box-shadow: -20px 0 50px rgba(0,0,0,0.2);
+      display: flex;
+      flex-direction: column;
+      transform: translateX(100%);
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      border-radius: 0 0 0 var(--radius);
+    }
+
+    .overlay.active .drawer {
+      transform: translateX(0);
+    }
+
+    .drawer-header {
+      padding: 1.5rem 2rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .drawer-header h2 {
+      margin: 0;
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .drawer-header p {
+      margin: 0.25rem 0 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .close-btn {
+      font-size: 1.6rem;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 0.25rem;
+    }
+
+    .close-btn:hover {
+      color: var(--text);
+    }
+
+    .filters {
+      display: flex;
+      gap: 0.75rem;
+      padding: 1rem 2rem;
+      border-bottom: 1px solid var(--border);
+      background: #f8faff;
+    }
+
+    .filter {
+      padding: 0.5rem 1.25rem;
+      border-radius: 999px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .filter.active {
+      background: var(--primary);
+      color: white;
+    }
+
+    .filter:not(.active) {
+      background: #f1f5f9;
+      color: var(--muted);
+    }
+
+    .notification-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1rem 0;
+    }
+
+    .notification-item {
+      padding: 1.25rem 2rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 1rem;
+    }
+
+    .notification-item.unread {
+      background: rgba(23, 84, 207, 0.04);
+    }
+
+    .notification-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      flex-shrink: 0;
+    }
+
+    .notification-icon.document { background: rgba(23,84,207,0.1); color: var(--primary); }
+    .notification-icon.message   { background: #e0f2fe; color: #1d4ed8; }
+    .notification-icon.status    { background: rgba(16,185,129,0.1); color: var(--success); }
+    .notification-icon.payroll   { background: rgba(245,158,11,0.1); color: #d97706; }
+
+    .notification-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+
+    .notification-content h4 {
+      margin: 0 0 0.25rem;
+      font-size: 1.05rem;
+      font-weight: 700;
+    }
+
+    .notification-time {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-bottom: 0.4rem;
+    }
+
+    .notification-content p {
+      margin: 0.3rem 0 0.8rem;
+      color: var(--muted);
+      line-height: 1.4;
+      font-size: 0.95rem;
+    }
+
+    .notification-actions {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .action-btn {
+      padding: 0.55rem 1.2rem;
+      border-radius: 0.75rem;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .action-btn.primary {
+      background: var(--primary);
+      color: white;
+      border: none;
+    }
+
+    .action-btn.outline {
+      background: white;
+      border: 1px solid var(--primary);
+      color: var(--primary);
+    }
+
+    .action-link {
+      color: var(--muted);
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+
+    .action-link:hover {
+      color: var(--primary);
+      text-decoration: underline;
+    }
+
+    .drawer-footer {
+      padding: 1.5rem 2rem;
+      border-top: 1px solid var(--border);
+      text-align: center;
+    }
+
+    .view-all-btn {
+      width: 100%;
+      padding: 1rem;
+      background: var(--primary);
+      color: white;
+      border: none;
+      border-radius: 0.875rem;
+      font-weight: 700;
+      font-size: 1.05rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    .mark-all {
+      margin-top: 1rem;
+      color: var(--muted);
+      font-size: 0.95rem;
+      cursor: pointer;
+    }
+
+    .mark-all:hover {
+      color: var(--primary);
+    }
   </style>
 </head>
 <body>
 
 <div class="layout">
 
-  <!-- Consistent dark sidebar (same as Documents, Requests, Upload pages) -->
+  <!-- Sidebar -->
   <aside class="sidebar">
     <div class="sidebar-header">
       <i class="fa-solid fa-shield-halved"></i>
@@ -407,7 +634,7 @@
       </div>
     </div>
 
-                <nav class="nav">
+    <nav class="nav">
       <a href="Clientportal.html" class="active">
         <i class="fa fa-chart-line"></i> Dashboard
       </a>
@@ -437,7 +664,7 @@
     </div>
   </aside>
 
-  <!-- Scrollable main content area -->
+  <!-- Main Content -->
   <div class="main-content">
 
     <header>
@@ -447,8 +674,9 @@
       </div>
 
       <div style="display:flex; align-items:center; gap:1.25rem;">
-        <button style="width:44px; height:44px; border-radius:0.875rem; border:1px solid var(--border); background:white; cursor:pointer;">
+        <button id="notifications-toggle" style="width:44px; height:44px; border-radius:0.875rem; border:1px solid var(--border); background:white; cursor:pointer; position:relative;">
           <i class="fas fa-bell"></i>
+          <span class="notification-dot" style="position:absolute; top:8px; right:8px; width:8px; height:8px; background:#ef4444; border-radius:50%; border:2px solid white;"></span>
         </button>
         <button style="width:44px; height:44px; border-radius:0.875rem; border:1px solid var(--border); background:white; cursor:pointer;">
           <i class="fas fa-cog"></i>
@@ -470,7 +698,7 @@
 
         <!-- Left column -->
         <div>
-          <!-- Compliance Health Card -->
+          <!-- Compliance Health -->
           <div class="card health">
             <div class="progress-ring">
               <svg viewBox="0 0 100 100">
@@ -494,14 +722,13 @@
             </div>
           </div>
 
-          <!-- Pending Document Requests Card -->
+          <!-- Pending Requests -->
           <div class="card">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem;">
               <h3 style="margin:0;">Pending Document Requests</h3>
               <a href="#" style="color:var(--primary); font-weight:600;">View all</a>
             </div>
 
-            <!-- Task 1 -->
             <div class="task-item">
               <div class="task-header">
                 <div style="display:flex; gap:1.25rem;">
@@ -531,7 +758,6 @@
               </div>
             </div>
 
-            <!-- Task 2 -->
             <div class="task-item" style="display:flex; justify-content:space-between; align-items:center;">
               <div style="display:flex; gap:1.25rem;">
                 <div class="task-icon"><i class="fas fa-signature"></i></div>
@@ -549,7 +775,6 @@
 
         <!-- Right column -->
         <div>
-          <!-- Recent Activity -->
           <div class="card">
             <h3>Recent Activity</h3>
             <div class="timeline">
@@ -600,7 +825,6 @@
             </div>
           </div>
 
-          <!-- Help Card -->
           <div class="help-card">
             <h3 style="margin:0 0 0.75rem;">Need Help?</h3>
             <p style="margin:0 0 1.25rem; opacity:0.9;">
@@ -615,9 +839,133 @@
       </div>
     </div>
 
+    <!-- Notification Drawer -->
+    <div class="overlay" id="notification-overlay">
+      <div class="drawer">
+
+        <div class="drawer-header">
+          <div>
+            <h2>Notifications</h2>
+            <p>You have 3 unread updates</p>
+          </div>
+          <i class="fas fa-times close-btn" id="close-notifications"></i>
+        </div>
+
+        <div class="filters">
+          <div class="filter active">All</div>
+          <div class="filter">Unread</div>
+          <div class="filter">Action Required</div>
+        </div>
+
+        <div class="notification-list">
+
+          <!-- Document Request -->
+          <div class="notification-item unread">
+            <div class="notification-icon document">
+              <i class="fas fa-file-upload"></i>
+            </div>
+            <div class="notification-content">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                <h4>Document Request</h4>
+                <span class="notification-time">2 hours ago</span>
+              </div>
+              <p>Please upload your <strong>2023 W-2</strong> form and <strong>Schedule K-1</strong> for tax filing prep.</p>
+              <div class="notification-actions">
+                <button class="action-btn primary"><i class="fas fa-upload"></i> Upload</button>
+                <span class="action-link">Mark as read</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- New Message -->
+          <div class="notification-item unread">
+            <img class="notification-avatar" src="https://i.pravatar.cc/100?img=32" alt="Sarah">
+            <div class="notification-content">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                <h4>New Message</h4>
+                <span class="notification-time">5 hours ago</span>
+              </div>
+              <p>"I've updated your tax projection for Q4. Can we jump on a quick call tomorrow to review?"</p>
+              <div class="notification-actions">
+                <button class="action-btn outline"><i class="fas fa-reply"></i> Reply</button>
+                <span class="action-link">Mark as read</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Status Update -->
+          <div class="notification-item">
+            <div class="notification-icon status">
+              <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="notification-content">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                <h4>Status Update</h4>
+                <span class="notification-time">Yesterday</span>
+              </div>
+              <p>Your document <strong>Lease_Agreement_Final.pdf</strong> has been approved and verified.</p>
+              <span class="action-link">Archived</span>
+            </div>
+          </div>
+
+          <!-- Payroll Processed -->
+          <div class="notification-item">
+            <div class="notification-icon payroll">
+              <i class="fas fa-money-check-alt"></i>
+            </div>
+            <div class="notification-content">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                <h4>Payroll Processed</h4>
+                <span class="notification-time">Oct 24</span>
+              </div>
+              <p>Payroll for the period Oct 1 - Oct 15 has been successfully processed for 12 employees.</p>
+              <span class="action-link">View Payroll Report</span>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="drawer-footer">
+          <button class="view-all-btn">View All Notifications <i class="fas fa-arrow-right"></i></button>
+          <div class="mark-all">Mark all as read</div>
+        </div>
+
+      </div>
+    </div>
+
   </div>
 
 </div>
+
+<!-- JavaScript for Drawer -->
+<script>
+  const overlay = document.getElementById('notification-overlay');
+  const toggleBtn = document.getElementById('notifications-toggle');
+  const closeBtn = document.getElementById('close-notifications');
+
+  function openDrawer() {
+    overlay.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeDrawer() {
+    overlay.classList.remove('active');
+    document.body.style.overflow = '';
+  }
+
+  toggleBtn.addEventListener('click', openDrawer);
+  closeBtn.addEventListener('click', closeDrawer);
+
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeDrawer();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && overlay.classList.contains('active')) {
+      closeDrawer();
+    }
+  });
+</script>
 
 </body>
 </html>
