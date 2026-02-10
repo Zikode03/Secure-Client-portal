@@ -213,6 +213,38 @@ body {
   top: 11px;
   color: #9ca3af;
 }
+/* ================= THREAD FILTER TABS ================= */
+.thread-filters {
+  display: flex;
+  gap: 20px;
+  margin-top: 12px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.thread-filter {
+  background: none;
+  border: none;
+  padding: 10px 0;
+  font-size: 13px;
+  cursor: pointer;
+  color: #64748b;
+  position: relative;
+}
+
+.thread-filter.active {
+  color: #2563eb;
+  font-weight: 600;
+}
+
+.thread-filter.active::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: #2563eb;
+}
 
 /* ===============================
    THREADS
@@ -258,61 +290,68 @@ body {
   margin-top: 4px;
 }
 
-/* ===============================
-   MESSAGES
-================================ */
+/* ===== MESSAGE AREA ===== */
+.message-header {
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.message-header h3 {
+  font-size: 16px;
+}
+
+.message-header p {
+  font-size: 13px;
+  color: #64748b;
+  margin-top: 4px;
+}
+
 .messages {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 18px;
 }
 
 .message-row {
   display: flex;
 }
 
-.message-row.own {
-  justify-content: flex-end;
-}
+.message-row.own { justify-content: flex-end; }
 
-.message {
+.message-bubble {
   max-width: 70%;
-  padding: 12px 16px;
-  border-radius: 16px;
+  padding: 14px 16px;
+  border-radius: 14px;
   font-size: 14px;
 }
 
-.message.own {
+.message-bubble.own {
   background: #2563eb;
   color: white;
   border-bottom-right-radius: 4px;
 }
 
-.message.other {
+.message-bubble.other {
   background: #f1f5f9;
   border-bottom-left-radius: 4px;
 }
 
 .meta {
   font-size: 11px;
-  color: #64748b;
-  margin-top: 4px;
+  color: #2b2e33;
+  margin-top: 6px;
 }
 
-/* ===============================
-   INPUT
-================================ */
+/* ===== INPUT ===== */
 .input-area {
   border-top: 1px solid #e5e7eb;
   padding: 14px;
   display: flex;
-  gap: 8px;
+  gap: 10px;
 }
 
-.input-area textarea {
+.input-area input {
   flex: 1;
-  resize: none;
-  padding: 10px 12px;
+  padding: 12px;
   border-radius: 8px;
   border: 1px solid #d1d5db;
 }
@@ -320,14 +359,10 @@ body {
 .send-btn {
   background: #2563eb;
   color: white;
-  padding: 0 16px;
-  border-radius: 8px;
   border: none;
+  padding: 0 18px;
+  border-radius: 8px;
   cursor: pointer;
-}
-
-.send-btn:disabled {
-  background: #94a3b8;
 }
 
 /* ===============================
@@ -358,13 +393,24 @@ body {
       </div>
     </div>
 
-    <nav class="nav">
-      <a href="Clientportal.html"><i class="fa fa-chart-line"></i> Dashboard</a>
-      <a href="documents.html"><i class="fa fa-file"></i> Documents</a>
-      <a href="messages.html" class="active"><i class="fa fa-message"></i> Messages</a>
-      <a href="settings.html"><i class="fa fa-gear"></i> Settings</a>
-      <a href="clientrequest.html"><i class="fa fa-file-alt"></i> Requests</a>
-    </nav>
+        <nav class="nav">
+  <a href="Clientportal.html">
+    <i class="fa fa-chart-line"></i> Dashboard
+  </a>
+  <a href="documents.html" >
+    <i class="fa fa-file"></i> Documents
+  </a>
+  <a href="clientrequest.html">
+        <i class="fa fa-file-alt"></i> Requests
+      </a>
+  <a href="messages.html" class="active">
+    <i class="fa fa-message"></i> Messages
+  </a>
+  <a href="settings.html">
+    <i class="fa fa-gear"></i> Settings
+  </a>
+  
+</nav>
 
     <div class="sidebar-footer">
       <div class="user-box">
@@ -391,26 +437,34 @@ body {
             <i class="fa fa-search"></i>
             <input type="text" placeholder="Search messages...">
           </div>
+          <div class="thread-filters">
+    <button class="thread-filter active" data-filter="all">All</button>
+    <button class="thread-filter" data-filter="unread">Unread</button>
+    <button class="thread-filter" data-filter="archived">Archived</button>
+  </div>
         </div>
         <div class="card-content" id="threadList"></div>
       </div>
 
-      <!-- MESSAGES -->
-      <div class="card">
-        <div class="card-header" id="messageHeader">
-          <h2>Select a conversation</h2>
-        </div>
-        <div class="card-content" id="messageArea">
-          <div class="empty">
-            <i class="fa fa-message fa-2x"></i>
-            <p>Select a conversation to view messages</p>
-          </div>
-        </div>
-        <div class="input-area">
-          <textarea id="messageInput" placeholder="Type your message..."></textarea>
-          <button class="send-btn" id="sendBtn">Send</button>
-        </div>
+      
+
+     <!-- MESSAGE VIEW -->
+    <div class="card">
+      <div class="card-header message-header" id="messageHeader">
+        <h3>Select a conversation</h3>
+        <p></p>
       </div>
+
+      <div class="card-content" id="messageArea"></div>
+
+      <div class="input-area">
+        <input id="messageInput" placeholder="Type your message..." />
+        <button class="send-btn" id="sendBtn">
+          <i class="fa fa-paper-plane"></i>
+        </button>
+      </div>
+    </div>
+
 
     </div>
   </main>
@@ -418,62 +472,88 @@ body {
 </div>
 
 <script>
+    const threadFilters = document.querySelectorAll(".thread-filter");
+
+function applyThreadFilter(filter) {
+  document.querySelectorAll(".thread").forEach(thread => {
+    const isUnread = thread.dataset.unread === "true";
+    const isArchived = thread.dataset.archived === "true";
+
+    if (filter === "all") {
+      thread.style.display = "block";
+    } 
+    else if (filter === "unread") {
+      thread.style.display = isUnread ? "block" : "none";
+    } 
+    else if (filter === "archived") {
+      thread.style.display = isArchived ? "block" : "none";
+    }
+  });
+}
+
+threadFilters.forEach(btn => {
+  btn.addEventListener("click", () => {
+    threadFilters.forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    applyThreadFilter(btn.dataset.filter);
+  });
+});
+
 const threads = [
-  { id: "t1", name: "Sarah Mitchell", subject: "Tax Documents", unread: 2 },
-  { id: "t2", name: "John Accountant", subject: "Payroll Review", unread: 0 }
+  {
+    id: "t1",
+    person: "Sarah Mitchell",
+    title: "Q: Tax Return Clarification",
+    preview: "Thank you for the clarification!",
+    date: "2026/01/25",
+    messages: [
+      { from: "own", text: "Hi Sarah, I have a question about line 34 on my tax return.", time: "12:00" },
+      { from: "other", text: "Line 34 refers to investment income for 2025.", time: "16:30" },
+      { from: "own", text: "Thank you for the clarification!", time: "17:30" }
+    ]
+  }
 ];
-
-const messages = {
-  t1: [
-    { from: "other", text: "Please upload your 2025 tax return." },
-    { from: "own", text: "Sure, I will upload it today." }
-  ],
-  t2: [
-    { from: "other", text: "Payroll documents received." }
-  ]
-};
-
-let activeThread = null;
 
 const threadList = document.getElementById("threadList");
 const messageArea = document.getElementById("messageArea");
-const header = document.getElementById("messageHeader");
+const messageHeader = document.getElementById("messageHeader");
 
 function renderThreads() {
   threadList.innerHTML = "";
   threads.forEach(t => {
     const div = document.createElement("div");
     div.className = "thread";
-    div.onclick = () => openThread(t.id, div);
+    div.onclick = () => openThread(t, div);
     div.innerHTML = `
-      <div class="thread-top">
-        <span class="thread-name">${t.name}</span>
-        ${t.unread ? `<span class="badge">${t.unread}</span>` : ""}
-      </div>
-      <div class="thread-subject">${t.subject}</div>
+      <h4>${t.person}</h4>
+      <div class="title">${t.title}</div>
+      <div class="preview">${t.preview}</div>
+      <div class="date">${t.date}</div>
     `;
     threadList.appendChild(div);
   });
 }
 
-function openThread(id, el) {
+function openThread(thread, el) {
   document.querySelectorAll(".thread").forEach(t => t.classList.remove("active"));
   el.classList.add("active");
 
-  activeThread = id;
-  header.innerHTML = `<h2>${threads.find(t => t.id === id).subject}</h2>`;
-  messageArea.innerHTML = "";
+  messageHeader.innerHTML = `
+    <h3>${thread.title}</h3>
+    <p>Conversation with ${thread.person}</p>
+  `;
 
+  messageArea.innerHTML = "";
   const container = document.createElement("div");
   container.className = "messages";
 
-  messages[id].forEach(m => {
+  thread.messages.forEach(m => {
     const row = document.createElement("div");
     row.className = `message-row ${m.from === "own" ? "own" : ""}`;
     row.innerHTML = `
-      <div class="message ${m.from}">
+      <div class="message-bubble ${m.from}">
         ${m.text}
-        <div class="meta">${m.from === "own" ? "You" : "Accountant"}</div>
+        <div class="meta">${m.from === "own" ? "John Doe" : thread.person} • ${m.time}</div>
       </div>
     `;
     container.appendChild(row);
@@ -481,14 +561,6 @@ function openThread(id, el) {
 
   messageArea.appendChild(container);
 }
-
-document.getElementById("sendBtn").onclick = () => {
-  const input = document.getElementById("messageInput");
-  if (!input.value || !activeThread) return;
-  messages[activeThread].push({ from: "own", text: input.value });
-  input.value = "";
-  openThread(activeThread, document.querySelector(".thread.active"));
-};
 
 renderThreads();
 </script>
