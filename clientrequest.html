@@ -182,11 +182,18 @@ body {
 }
 
 /* TITLE ROW */
+.title-row-container {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+}
+
 .title-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 24px;
 }
 
 .title-row h2 {
@@ -206,6 +213,12 @@ body {
   font-size: 15px;
   cursor: pointer;
 }
+
+.new-btn:hover {
+  background: #3b52e0;
+}
+
+
 
 /* Modal styles */
 .modal-overlay {
@@ -515,12 +528,14 @@ body {
       </div>
 
       <!-- TITLE -->
-      <div class="title-row">
-        <div>
-          <h2>Document Requests</h2>
-          <p>Request and manage document submissions</p>
+      <div class="title-row-container">
+        <div class="title-row">
+          <div>
+            <h2>Document Requests</h2>
+            <p>Request and manage document submissions</p>
+          </div>
+          <button class="new-btn">＋ New Request</button>
         </div>
-        <button class="new-btn">＋ New Request</button>
       </div>
 
       <!-- New Request Modal -->
@@ -694,3 +709,5 @@ function submitRequest() {
 
 </body>
 </html>
+
+
