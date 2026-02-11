@@ -5,15 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>User Profile & Security | Prospera Secure Client Portal</title>
 
-  <!-- Font Awesome Icons -->
+
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
-  <!-- Google Fonts (kept your original choice, but sidebar matches previous) -->
-  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;700;900&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
-
   <style>
-    /* ================= GLOBAL ================= */
+   /* ================= GLOBAL ================= */
     * { box-sizing: border-box; margin:0; padding:0; }
 
     body {
@@ -148,7 +144,7 @@
       color: #64748b;
     }
 
-    /* ── rest of your original styles (profile, tabs, cards, forms, etc.) ── */
+ 
     :root {
       --primary: #1754cf;
       --bg-light: #f6f6f8;
@@ -581,7 +577,7 @@
               </div>
               <div class="card-body flex-column">
                 <div class="method-item">
-                  <div class="method-icon"><span class="material-symbols-outlined">vibration</span></div>
+                  <div class="method-icon"><i class="fa-solid fa-mobile-screen-button"></i></div>
                   <div>
                     <h4>Authenticator App <span class="method-label">Primary</span></h4>
                     <p class="link-muted">Google Authenticator, Authy, or Microsoft Authenticator.</p>
@@ -593,7 +589,7 @@
                 </div>
 
                 <div class="method-item">
-                  <div class="method-icon"><span class="material-symbols-outlined">sms</span></div>
+                  <div class="method-icon"><i class="fa-solid fa-comment-sms"></i></div>
                   <div>
                     <h4>SMS Authentication</h4>
                     <p class="link-muted">Receive a code via text message to +1 (555) •••-••00.</p>
@@ -611,7 +607,7 @@
               <div class="card-header">Connected Devices</div>
               <div class="device-item">
                 <div class="flex-align">
-                  <div class="device-icon"><span class="material-symbols-outlined">desktop_windows</span></div>
+                  <div class="device-icon"><i class="fa-solid fa-desktop"></i></div>
                   <div>
                     <h4>Chrome on Windows <span class="current-badge">Current</span></h4>
                     <p class="link-muted">New York, NY • 192.168.1.45</p>
@@ -619,10 +615,10 @@
                 </div>
                 <button class="btn-unlink" disabled>Unlink</button>
               </div>
-              <!-- more device items... (unchanged) -->
+
               <div class="device-item">
                 <div class="flex-align">
-                  <div class="device-icon"><span class="material-symbols-outlined">smartphone</span></div>
+                  <div class="device-icon"><i class="fa-solid fa-mobile-screen"></i></div>
                   <div>
                     <h4>iPhone 13 - Safari</h4>
                     <p class="link-muted">New York, NY • Last active 2 hours ago</p>
@@ -630,9 +626,10 @@
                 </div>
                 <button class="btn-unlink">Unlink</button>
               </div>
+
               <div class="device-item">
                 <div class="flex-align">
-                  <div class="device-icon"><span class="material-symbols-outlined">desktop_windows</span></div>
+                  <div class="device-icon"><i class="fa-solid fa-desktop"></i></div>
                   <div>
                     <h4>Edge on macOS</h4>
                     <p class="link-muted">London, UK • Last active Oct 21</p>
@@ -647,7 +644,7 @@
           <div class="flex-column">
             <div class="sidebar-card">
               <div class="flex-align">
-                <span class="material-symbols-outlined">security</span>
+                <i class="fa-solid fa-shield-halved"></i>
                 <h4>Security Score</h4>
               </div>
               <div class="progress-bar"><div class="progress-fill"></div></div>
@@ -683,4 +680,3 @@
 
 </body>
 </html>
-

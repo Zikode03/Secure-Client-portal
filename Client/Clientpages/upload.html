@@ -5,20 +5,19 @@
 <title>Batch Document Upload | Secure Client Portal</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;600;700;900&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
 
 <style>
-/* Your existing CSS remains mostly unchanged – only adding drag states */
-* { box-sizing: border-box; margin: 0; padding: 0; }
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
 body {
-  font-family: "Public Sans", sans-serif;
+  font-family: Arial, Helvetica, sans-serif;
   background: #f6f6f8;
   color: #0f172a;
-  height: 100vh;
-  overflow: hidden;
 }
 
 :root {
@@ -30,51 +29,134 @@ body {
   --warning: #f59e0b;
 }
 
-.app-layout { display: flex; height: 100vh; overflow: hidden; }
+/* ================= LAYOUT ================= */
 
+.app-layout {
+  min-height: 100vh;
+}
+
+/* ================= SIDEBAR ================= */
 .sidebar {
   width: 260px;
   background: linear-gradient(180deg, #0f172a, #020617);
   color: white;
   display: flex;
   flex-direction: column;
-  flex-shrink: 0;
+
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
 }
 
-/* Your sidebar styles here – unchanged */
-.sidebar-header { padding: 22px; display: flex; gap: 12px; align-items: center; }
-.sidebar-header i { font-size: 30px; color: #60a5fa; }
-.sidebar-header h1 { margin: 0; font-size: 16px; }
-.sidebar-header p { margin: 0; font-size: 12px; color: #94a3b8; }
-.nav { padding: 16px; flex: 1; }
-.nav a { display: flex; gap: 12px; align-items: center; padding: 12px 14px; border-radius: 10px; color: #cbd5f5; text-decoration: none; margin-bottom: 6px; }
-.nav a.active { background: var(--blue); color: white; }
-.nav a:hover { background: #1e293b; }
-.sidebar-footer { padding: 16px; }
-.user-box { background: #1e293b; padding: 12px; border-radius: 10px; margin-bottom: 12px; }
-.user-box p { margin: 2px 0; font-size: 13px; }
-.role { color: #60a5fa; font-size: 12px; }
-.logout { width: 100%; background: none; border: none; color: #cbd5f5; padding: 12px; border-radius: 10px; cursor: pointer; text-align: left; }
-.logout:hover { background: #1e293b; }
+
+.sidebar-header {
+  padding: 22px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.sidebar-header i {
+  font-size: 28px;
+  color: #60a5fa;
+}
+
+.sidebar-header h1 {
+  font-size: 16px;
+}
+
+.sidebar-header p {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.nav {
+  padding: 16px;
+  flex: 1;
+}
+
+.nav a {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 10px;
+  color: #cbd5f5;
+  text-decoration: none;
+  margin-bottom: 6px;
+}
+
+.nav a.active {
+  background: var(--blue);
+  color: white;
+}
+
+.nav a:hover {
+  background: #1e293b;
+}
+
+.sidebar-footer {
+  padding: 16px;
+}
+
+.user-box {
+  background: #1e293b;
+  padding: 12px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+
+.user-box p {
+  font-size: 13px;
+  margin: 2px 0;
+}
+
+.role {
+  color: #60a5fa;
+  font-size: 12px;
+}
+
+.logout {
+  width: 100%;
+  background: none;
+  border: none;
+  color: #cbd5f5;
+  padding: 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.logout:hover {
+  background: #1e293b;
+}
+
+/* ================= CONTENT ================= */
 
 .content {
-  flex: 1;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
+  margin-left: 260px;
+  padding: 32px 24px;
 }
+
 
 main {
   max-width: 1150px;
   margin: 0 auto;
-  padding: 32px 24px;
-  flex: 1;
 }
 
-h1 { font-size: 30px; font-weight: 900; }
-.subtitle { margin-top: 6px; color: #64748b; }
+h1 {
+  font-size: 28px;
+  font-weight: 800;
+}
 
-/* Bulk settings – unchanged */
+.subtitle {
+  margin-top: 6px;
+  color: var(--muted);
+}
+
+/* ================= BULK SETTINGS ================= */
+
 .bulk-settings {
   margin-top: 28px;
   background: #fff;
@@ -87,7 +169,24 @@ h1 { font-size: 30px; font-weight: 900; }
   flex-wrap: wrap;
 }
 
-/* Drop zone – added drag states */
+.bulk-title {
+  font-weight: 700;
+}
+
+.bulk-settings select,
+.tag-btn {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #f8fafc;
+}
+
+.tag-btn {
+  cursor: pointer;
+}
+
+/* ================= DROP ZONE ================= */
+
 .drop-zone {
   margin-top: 24px;
   background: #fff;
@@ -100,38 +199,172 @@ h1 { font-size: 30px; font-weight: 900; }
 
 .drop-zone.dragover {
   border-color: var(--primary);
-  background: rgba(23,84,207,0.05);
-  box-shadow: 0 0 0 4px rgba(23,84,207,0.1);
+  background: rgba(23, 84, 207, 0.05);
 }
 
-.drop-icon { width: 64px; height: 64px; border-radius: 50%; background: rgba(23,84,207,0.1); display: flex; align-items: center; justify-content: center; margin: auto; color: var(--primary); font-size: 32px; }
-.drop-zone h2 { margin-top: 16px; font-size: 20px; font-weight: 800; }
-.drop-zone p { margin-top: 6px; font-size: 14px; color: #64748b; }
-.drop-zone button { margin-top: 18px; padding: 12px 28px; border-radius: 10px; border: none; background: var(--primary); color: #fff; font-weight: 700; cursor: pointer; }
+.drop-icon {
+  font-size: 42px;
+  color: var(--primary);
+}
 
-/* Queue & Table – unchanged + minor tweaks */
-.queue-header { margin-top: 30px; display: flex; justify-content: space-between; font-weight: 800; }
-table { width: 100%; margin-top: 12px; background: #fff; border-radius: 14px; border-collapse: collapse; overflow: hidden; border: 1px solid var(--border); }
-thead { background: #f8fafc; }
-th, td { padding: 16px 20px; text-align: left; font-size: 14px; }
-th { font-size: 11px; text-transform: uppercase; color: #64748b; }
-tr:not(:last-child) { border-bottom: 1px solid var(--border); }
-.status { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 12px; }
-.dot { width: 8px; height: 8px; border-radius: 50%; }
-.ready { color: var(--success); }
-.ready .dot { background: var(--success); }
-.warning { color: var(--warning); }
-.warning .dot { background: var(--warning); }
+.drop-zone h2 {
+  margin-top: 16px;
+  font-size: 20px;
+}
 
-/* Footer – unchanged */
-footer { background: #fff; border-top: 1px solid var(--border); padding: 20px 24px; margin-top: 40px; }
-.footer-inner { max-width: 1150px; margin: 0 auto; display: flex; align-items: center; gap: 20px; }
-.progress { flex: 1; }
-.progress-bar { height: 8px; background: #e5e7eb; border-radius: 999px; overflow: hidden; }
-.progress-fill { width: 0%; height: 100%; background: var(--primary); transition: width 0.4s ease; }
-.footer-actions button { padding: 12px 26px; border-radius: 10px; font-weight: 700; border: none; }
-.cancel { background: #f1f5f9; }
-.submit { background: var(--primary); color: #fff; }
+.drop-zone p {
+  margin-top: 6px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.drop-zone button {
+  margin-top: 18px;
+  padding: 12px 28px;
+  border-radius: 10px;
+  border: none;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* ================= QUEUE ================= */
+
+.queue-header {
+  margin-top: 30px;
+  display: flex;
+  justify-content: space-between;
+  font-weight: 700;
+}
+
+.clear-all {
+  color: var(--primary);
+  cursor: pointer;
+  display: none;
+}
+
+table {
+  width: 100%;
+  margin-top: 12px;
+  background: #fff;
+  border-radius: 14px;
+  border-collapse: collapse;
+  border: 1px solid var(--border);
+}
+
+thead {
+  background: #f8fafc;
+}
+
+th, td {
+  padding: 14px 16px;
+  text-align: left;
+  font-size: 14px;
+}
+
+th {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+tr:not(:last-child) {
+  border-bottom: 1px solid var(--border);
+}
+
+.status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success);
+}
+
+.ready {
+  color: var(--success);
+}
+
+.action-cell {
+  text-align: right;
+}
+
+.delete-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+/* ================= FOOTER ================= */
+
+footer {
+  margin-top: 40px;
+  background: #fff;
+  border-top: 1px solid var(--border);
+  padding: 20px;
+}
+
+.footer-inner {
+  max-width: 1150px;
+  margin: 0 auto;
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 700;
+}
+
+.progress-percent {
+  color: var(--primary);
+}
+
+.progress-bar {
+  margin-top: 8px;
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  width: 0%;
+  height: 100%;
+  background: var(--primary);
+  transition: width 0.4s ease;
+}
+
+.footer-actions {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.footer-actions button {
+  padding: 10px 22px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.cancel {
+  background: #f1f5f9;
+}
+
+.submit {
+  background: var(--primary);
+  color: white;
+}
 </style>
 </head>
 
@@ -139,7 +372,7 @@ footer { background: #fff; border-top: 1px solid var(--border); padding: 20px 24
 
 <div class="app-layout">
 
-  <!-- Sidebar (unchanged) -->
+  <!-- Sidebar -->
   <aside class="sidebar">
     <div class="sidebar-header">
       <i class="fa-solid fa-shield-halved"></i>
@@ -148,23 +381,15 @@ footer { background: #fff; border-top: 1px solid var(--border); padding: 20px 24
         <p>Secure Client Portal</p>
       </div>
     </div>
-                  <nav class="nav">
-      <a href="Clientportal.html">
-        <i class="fa fa-chart-line"></i> Dashboard
-      </a>
-      <a href="documents.html" class="active">
-        <i class="fa fa-file"></i> Documents
-      </a>
-      <a href="clientrequest.html">
-        <i class="fa fa-file-alt"></i> Requests
-      </a>
-      <a href="messages.html">
-        <i class="fa fa-message"></i> Messages
-      </a>
-      <a href="settings.html">
-        <i class="fa fa-gear"></i> Settings
-      </a>
+
+    <nav class="nav">
+      <a href="Clientportal.html"><i class="fa fa-chart-line"></i> Dashboard</a>
+      <a href="documents.html" class="active"><i class="fa fa-file"></i> Documents</a>
+      <a href="clientrequest.html"><i class="fa fa-file-alt"></i> Requests</a>
+      <a href="messages.html" ><i class="fa fa-message"></i> Messages</a>
+      <a href="settings.html"><i class="fa fa-gear"></i> Settings</a>
     </nav>
+
     <div class="sidebar-footer">
       <div class="user-box">
         <p><strong>John Doe</strong></p>
@@ -175,42 +400,47 @@ footer { background: #fff; border-top: 1px solid var(--border); padding: 20px 24
     </div>
   </aside>
 
+  <!-- Content -->
   <div class="content">
-
     <main>
       <h1>Document Upload</h1>
-      <p class="subtitle">Securely upload and categorize multiple documents for your accounting team.</p>
+      <p class="subtitle">Securely upload and categorize multiple documents.</p>
 
       <div class="bulk-settings">
-        <div class="bulk-title"><span class="material-symbols-outlined">auto_awesome</span> Bulk Settings</div>
-        <select><option>Select Project</option><option>Tax Filing 2023</option></select>
-        <select><option>2024</option><option selected>2023</option></select>
+        <div class="bulk-title">Bulk Settings</div>
+        <select>
+          <option>Select Project</option>
+          <option>Tax Filing 2023</option>
+        </select>
+        <select>
+          <option>2024</option>
+          <option selected>2023</option>
+        </select>
         <button class="tag-btn">Add tags to all +</button>
       </div>
 
-      <!-- Drop Zone -->
       <div class="drop-zone" id="dropZone">
-        <div class="drop-icon"><span class="material-symbols-outlined">cloud_upload</span></div>
+        <div class="drop-icon">
+          <i class="fa-solid fa-cloud-arrow-up"></i>
+        </div>
         <h2>Drag and drop files here</h2>
-        <p>Supported: PDF, PNG, JPG, XLSX (Up to 50MB per file)</p>
+        <p>Supported: PDF, PNG, JPG, XLSX (Max 50MB)</p>
         <button id="browseBtn">Browse Files</button>
-        <input type="file" id="fileInput" multiple hidden accept=".pdf,.png,.jpg,.jpeg,.xlsx">
+        <input type="file" id="fileInput" multiple hidden>
       </div>
 
-      <!-- Queue -->
       <div class="queue-header">
         <div>Upload Queue (<span id="fileCount">0</span> files)</div>
-        <div id="clearAll" style="color:var(--primary); cursor:pointer; display:none;">Clear all</div>
+        <div id="clearAll" class="clear-all">Clear all</div>
       </div>
 
-      <table id="queueTable">
+      <table>
         <thead>
           <tr>
             <th>Document</th>
             <th>AI Suggestion</th>
-            <th>Project / Year</th>
             <th>Status</th>
-            <th style="text-align:right;">Actions</th>
+            <th></th>
           </tr>
         </thead>
         <tbody id="queueBody"></tbody>
@@ -219,126 +449,113 @@ footer { background: #fff; border-top: 1px solid var(--border); padding: 20px 24
 
     <footer>
       <div class="footer-inner">
-        <div class="progress">
-          <div style="display:flex; justify-content:space-between; font-weight:700;">
-            <span>Overall Progress</span>
-            <span id="progressPercent" style="color:var(--primary)">0%</span>
-          </div>
-          <div class="progress-bar">
-            <div id="progressFill" class="progress-fill" style="width:0%;"></div>
-          </div>
+        <div class="progress-header">
+          <span>Overall Progress</span>
+          <span id="progressPercent" class="progress-percent">0%</span>
         </div>
+        <div class="progress-bar">
+          <div id="progressFill" class="progress-fill"></div>
+        </div>
+
         <div class="footer-actions">
           <button class="cancel">Cancel</button>
           <button class="submit">Confirm & Submit</button>
         </div>
       </div>
     </footer>
-
   </div>
+
 </div>
 
 <script>
-// ── File Upload Logic ──────────────────────────────────────────────
-const dropZone   = document.getElementById('dropZone');
-const fileInput  = document.getElementById('fileInput');
-const browseBtn  = document.getElementById('browseBtn');
-const queueBody  = document.getElementById('queueBody');
-const fileCount  = document.getElementById('fileCount');
-const clearAll   = document.getElementById('clearAll');
-const progressFill = document.getElementById('progressFill');
-const progressPercent = document.getElementById('progressPercent');
+const dropZone = document.getElementById("dropZone");
+const fileInput = document.getElementById("fileInput");
+const browseBtn = document.getElementById("browseBtn");
+const queueBody = document.getElementById("queueBody");
+const fileCount = document.getElementById("fileCount");
+const clearAll = document.getElementById("clearAll");
+const progressFill = document.getElementById("progressFill");
+const progressPercent = document.getElementById("progressPercent");
 
 let filesList = [];
 
-// Prevent default browser behavior for drag events
-['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-  dropZone.addEventListener(eventName, e => e.preventDefault());
+browseBtn.addEventListener("click", () => fileInput.click());
+
+fileInput.addEventListener("change", () => {
+  handleFiles(fileInput.files);
 });
 
-// Highlight on drag over
-dropZone.addEventListener('dragenter', () => dropZone.classList.add('dragover'));
-dropZone.addEventListener('dragover',  () => dropZone.classList.add('dragover'));
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-dropZone.addEventListener('drop',      () => dropZone.classList.remove('dragover'));
-
-// Handle dropped files
-dropZone.addEventListener('drop', e => {
-  const files = e.dataTransfer.files;
-  if (files.length > 0) handleFiles(files);
+dropZone.addEventListener("dragover", e => {
+  e.preventDefault();
+  dropZone.classList.add("dragover");
 });
 
-// Browse button opens file picker
-browseBtn.addEventListener('click', () => fileInput.click());
-fileInput.addEventListener('change', () => {
-  if (fileInput.files.length > 0) handleFiles(fileInput.files);
+dropZone.addEventListener("dragleave", () => {
+  dropZone.classList.remove("dragover");
 });
 
-// Process selected/dropped files
+dropZone.addEventListener("drop", e => {
+  e.preventDefault();
+  dropZone.classList.remove("dragover");
+  handleFiles(e.dataTransfer.files);
+});
+
 function handleFiles(fileList) {
   Array.from(fileList).forEach(file => {
-    if (filesList.some(f => f.name === file.name && f.size === file.size)) return; // avoid duplicates
+    if (filesList.some(f => f.name === file.name)) return;
     filesList.push(file);
     addToQueue(file);
   });
   updateStats();
 }
 
-// Add row to table
 function addToQueue(file) {
-  const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
-  const row = document.createElement('tr');
+  const row = document.createElement("tr");
+
   row.innerHTML = `
     <td>${file.name}</td>
-    <td>${guessDocumentType(file.name)}</td>
-    <td>Tax Filing 2023 / 2023</td>
+    <td>${guessType(file.name)}</td>
     <td class="status ready"><span class="dot"></span>READY</td>
-    <td style="text-align:right;">
-      <button onclick="this.parentElement.parentElement.remove(); removeFile('${file.name}')">🗑️</button>
+    <td class="action-cell">
+      <button class="delete-btn">🗑️</button>
     </td>
   `;
+
+  row.querySelector(".delete-btn").addEventListener("click", () => {
+    row.remove();
+    filesList = filesList.filter(f => f.name !== file.name);
+    updateStats();
+  });
+
   queueBody.appendChild(row);
 }
 
-// Simple fake AI suggestion
-function guessDocumentType(filename) {
-  const lower = filename.toLowerCase();
-  if (lower.includes('bank') || lower.includes('stmt')) return 'Bank Statement';
-  if (lower.includes('inv') || lower.includes('receipt')) return 'Expense Receipt';
-  if (lower.includes('invoice')) return 'Invoice';
-  if (lower.includes('tax')) return 'Tax Document';
-  return 'Unknown Type';
+function guessType(name) {
+  const lower = name.toLowerCase();
+  if (lower.includes("bank")) return "Bank Statement";
+  if (lower.includes("invoice")) return "Invoice";
+  if (lower.includes("receipt")) return "Expense Receipt";
+  if (lower.includes("tax")) return "Tax Document";
+  return "Unknown Type";
 }
 
-// Remove file from list
-function removeFile(name) {
-  filesList = filesList.filter(f => f.name !== name);
-  updateStats();
-}
-
-// Update count, progress, clear button visibility
 function updateStats() {
   const count = filesList.length;
   fileCount.textContent = count;
-  clearAll.style.display = count > 0 ? 'block' : 'none';
 
-  // Fake progress (in real app you'd update based on actual upload)
+  clearAll.style.display = count > 0 ? "block" : "none";
+
   const progress = count > 0 ? Math.min(100, count * 25) : 0;
-  progressFill.style.width = progress + '%';
-  progressPercent.textContent = progress + '%';
+  progressFill.style.width = progress + "%";
+  progressPercent.textContent = progress + "%";
 }
 
-// Clear all
-clearAll.addEventListener('click', () => {
-  if (confirm('Clear all files from queue?')) {
-    queueBody.innerHTML = '';
-    filesList = [];
-    updateStats();
-  }
+clearAll.addEventListener("click", () => {
+  queueBody.innerHTML = "";
+  filesList = [];
+  updateStats();
 });
 </script>
 
 </body>
 </html>
-
-
