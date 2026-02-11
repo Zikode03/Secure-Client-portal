@@ -11,68 +11,53 @@
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
 
 <style>
-/* =====================================================
-   GLOBAL
-===================================================== */
-* {
-  box-sizing: border-box;
-}
+
+/* ================= GLOBAL ================= */
+
+* { box-sizing: border-box; }
 
 :root {
-      --primary: #1754cf;
-      --bg-light: #f6f6f8;
-      --bg-dark: #111621;
-      --text: #0f172a;
-      --text-muted: #64748b;
-      --border: #e2e8f0;
-      --border-dark: #334155;
-      --card: white;
-      --card-dark: #1e293b;
-      --green: #10b981;
-      --red: #ef4444;
-      --gray-100: #f1f5f9;
-      --gray-200: #e2e8f0;
-      --gray-300: #cbd5e1;
-      --gray-500: #64748b;
-      --gray-700: #334155;
-    }
+  --primary: #1754cf;
+  --bg-light: #f6f6f8;
+  --text: #0f172a;
+  --text-muted: #64748b;
+  --border: #e2e8f0;
+  --card: #ffffff;
+  --green: #10b981;
+  --red: #ef4444;
+}
 
 body {
   margin: 0;
-  font-family: "Public Sans", sans-serif;
-  background: #f6f6f8;
-  color: #0f172a;
-  height: 100vh;
-  overflow: hidden;
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: var(--bg-light);
+  color: var(--text);
+  
 }
 
-a {
-  text-decoration: none;
-  color: inherit;
-}
 
-button {
-  font-family: inherit;
-  cursor: pointer;
-  border: none;
-}
+a { text-decoration: none; color: inherit; }
+button { font-family: inherit; cursor: pointer; border: none; }
 
-/* =====================================================
-   SIDEBAR LAYOUT
-===================================================== */
+/* ================= LAYOUT ================= */
+
 .app-layout {
-  display: flex;
-  height: 100vh;
-  overflow: hidden;
-}
+      display: flex;
+      min-height: 100vh;
+      width: 100%;
+    }
 
+/* SIDEBAR */
 .sidebar {
   width: 260px;
   background: linear-gradient(180deg, #0f172a, #020617);
-  color: #fff;
+  color: white;
   display: flex;
   flex-direction: column;
-  flex-shrink: 0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
 }
 
 .sidebar-header {
@@ -88,12 +73,10 @@ button {
 }
 
 .sidebar-header h1 {
-  margin: 0;
   font-size: 16px;
 }
 
 .sidebar-header p {
-  margin: 0;
   font-size: 12px;
   color: #94a3b8;
 }
@@ -114,13 +97,13 @@ button {
   margin-bottom: 6px;
 }
 
-.nav a.active {
-  background: #2563eb;
-  color: #fff;
-}
-
 .nav a:hover {
   background: #1e293b;
+}
+
+.nav a.active {
+  background: #2563eb;
+  color: white;
 }
 
 .sidebar-footer {
@@ -135,7 +118,6 @@ button {
 }
 
 .user-box p {
-  margin: 2px 0;
   font-size: 13px;
 }
 
@@ -159,49 +141,32 @@ button {
   background: #1e293b;
 }
 
+
 .main-content {
+  margin-left: 260px;   /* same as sidebar width */
   flex: 1;
-  overflow-y: auto;
   padding: 2rem;
-}
-/* =====================================================
-   TAB PANELS
-===================================================== */
-.tab-panel {
-  display: none;
-  margin-top: 30px;
-}
-
-.tab-panel.active {
-  display: block;
+  min-height: 100vh;
 }
 
 
-/* =====================================================
-   MAIN LAYOUT
-===================================================== */
-.container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0;
-}
+.container { 
+  max-width: 1200px; 
+  margin: 0 auto; }
 
-.page-title h1 {
-  font-size: 36px;
-  font-weight: 900;
-  margin-bottom: 4px;
-}
+.page-title h1 { 
+  font-size: 36px; 
+  font-weight: 900; 
+  margin-bottom: 4px; }
 
-.page-title p {
-  color: #64748b;
-}
+.page-title p { 
+  color: var(--text-muted); }
 
-/* =====================================================
-   PROFILE CARD
-===================================================== */
+/* ================= PROFILE ================= */
+
 .profile-card {
   background: #fff;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   border-radius: 16px;
   padding: 24px;
   display: flex;
@@ -219,122 +184,87 @@ button {
   border: 4px solid #f1f5f9;
 }
 
-.profile-info {
-  flex: 1;
+.avatar-profile {
+  background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAsNL3y9TY4lsEXHLOREQ9JWyw7vHBnH7xz17MRc8Zt8nPNXOWCj6NXF0LHmhgUaIuN9L5wE6LKkxWtYkMVi8Lzt8rilvHGz5q8-NNTsuZgx6Lzc2Ps1ny-cmj9gxtBiPI6Rai_k1SP91ZUqlzKaYXgLsXxuYS4Uy7Wzc9M4eZB_J557lFrpozqwJk-hZxFqi5KjAfRD3aFOKKItZhoE-3J1Y7y8vLwErY5BK5ioegTkzbatnahl-_g9XjluJu8DlbTov1aBiBR7fk');
 }
 
-.profile-info h2 {
-  margin: 0;
-}
+.profile-info .tier { color: var(--primary); font-weight: 600; }
 
-.profile-info .tier {
-  color: #1754cf;
-  font-weight: 600;
-}
+/* ================= TABS ================= */
 
-.profile-actions {
-  display: flex;
-  gap: 10px;
-}
-
-.btn-primary {
-  background: #1754cf;
-  color: #fff;
-  padding: 10px 18px;
-  border-radius: 8px;
-  font-weight: 700;
-}
-
-.btn-outline {
-  border: 1px solid #e5e7eb;
-  background: #fff;
-  padding: 10px 18px;
-  border-radius: 8px;
-  font-weight: 700;
-}
-
-/* =====================================================
-   TABS
-===================================================== */
 .tabs {
   display: flex;
   gap: 32px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border);
   margin-top: 30px;
 }
 
 .tabs button {
   background: none;
   font-weight: 700;
-  color: #64748b;
+  color: var(--text-muted);
   padding-bottom: 14px;
 }
 
 .tabs button.active {
-  color: #1754cf;
-  border-bottom: 3px solid #1754cf;
+  color: var(--primary);
+  border-bottom: 3px solid var(--primary);
 }
 
-/* =====================================================
-   GRID
-===================================================== */
+.tab-panel { display: none; margin-top: 30px; }
+.tab-panel.active { display: block; }
+
+/* ================= GRID ================= */
+
 .grid {
   display: grid;
   grid-template-columns: 2fr 1fr;
   gap: 30px;
-  margin-top: 30px;
 }
 
+.security-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 32px;
+}
 
-/* =====================================================
-  Security
-===================================================== */
+/* ================= CARD ================= */
 
-/* =====================================================
-   CARD
-===================================================== */
 .card {
   background: #fff;
+  border: 1px solid var(--border);
   border-radius: 16px;
-  border: 1px solid #e5e7eb;
+  overflow: hidden;
 }
 
 .card-header {
   padding: 20px;
   font-weight: 700;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border);
 }
 
-.card-body {
-  padding: 20px;
-}
+.card-body { padding: 20px; }
 
-/* =====================================================
-   FORM
-===================================================== */
+/* ================= FORMS ================= */
+
 .form-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 20px;
 }
 
-.form-group label {
-  font-size: 13px;
-  font-weight: 700;
-}
+.form-group label { font-size: 13px; font-weight: 700; }
 
 .form-group input {
   width: 100%;
   margin-top: 6px;
   padding: 10px;
   border-radius: 8px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--border);
   background: #f8fafc;
 }
 
-.full {
-  grid-column: 1 / -1;
-}
+.full { grid-column: 1 / -1; }
 
 .form-footer {
   padding: 20px;
@@ -342,503 +272,494 @@ button {
   text-align: right;
 }
 
-/* =====================================================
-   SECURITY SCORE
-===================================================== */
-.security-box {
-  background: #eaf1ff;
-  border: 1px solid #c7dbff;
-  border-radius: 16px;
-  padding: 20px;
+.btn-primary {
+  background: var(--primary);
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-weight: 700;
 }
 
-.progress {
-  height: 8px;
-  background: #e5e7eb;
+.btn-primary:hover { background: #1347b8; }
+
+/* ================= UTILITIES ================= */
+
+.flex-between { display: flex; justify-content: space-between; align-items: center; }
+.flex-align { display: flex; align-items: center; gap: 8px; }
+.flex-column { display: flex; flex-direction: column; gap: 24px; }
+
+.link-primary { color: var(--primary); font-weight: 700; font-size: 0.875rem; }
+.link-danger { color: var(--red); font-weight: 700; font-size: 0.875rem; }
+.link-muted { color: var(--text-muted); font-weight: 700; font-size: 0.875rem; pointer-events: none; }
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  background: var(--green);
+  border-radius: 50%;
+}
+
+.status-text {
+  color: var(--green);
+  font-weight: 700;
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+}
+
+/* ================= SECURITY ================= */
+
+.method-item {
+  display: flex;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.method-icon {
+  width: 40px;
+  height: 40px;
+  background: rgba(23,84,207,0.1);
+  color: var(--primary);
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+}
+
+.method-label {
+  background: var(--primary);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 8px;
   border-radius: 999px;
-  margin: 12px 0;
-  overflow: hidden;
 }
 
-.progress span {
-  display: block;
+.device-item {
+  padding: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
+}
+
+.device-icon {
+  width: 48px;
+  height: 48px;
+  background: #f1f5f9;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+}
+
+.current-badge {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(16,185,129,0.15);
+  color: var(--green);
+  font-weight: 600;
+}
+
+.btn-unlink {
+  padding: 4px 12px;
+  border: 1px solid #fecaca;
+  color: var(--red);
+  background: transparent;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.sidebar-card {
+  background: rgba(23,84,207,0.05);
+  border: 1px solid rgba(23,84,207,0.15);
+  border-radius: 12px;
+  padding: 24px;
+}
+
+.progress-bar {
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 12px 0;
+}
+
+.progress-fill {
   height: 100%;
   width: 85%;
-  background: #1754cf;
+  background: var(--primary);
 }
 
-/* =====================================================
-   TABLE
-===================================================== */
-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
-}
+/* ================= RESPONSIVE ================= */
 
-thead {
-  background: #f8fafc;
-  color: #64748b;
-  font-size: 12px;
-}
-
-th, td {
-  padding: 14px;
-  text-align: left;
-}
-
-tbody tr {
-  border-top: 1px solid #e5e7eb;
-}
-
-.card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      overflow: hidden;
-    }
-
-    .card-header {
-      padding: 24px;
-      border-bottom: 1px solid var(--border);
-      font-size: 1.125rem;
-      font-weight: 700;
-    }
-
-    .card-body {
-      padding: 24px;
-    }
-
-    .password-row {
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      align-items: center;
-      gap: 16px;
-    }
-
-    .btn {
-      padding: 0 24px;
-      height: 40px;
-      border-radius: 8px;
-      font-size: 0.875rem;
-      font-weight: 700;
-      cursor: pointer;
-      border: none;
-      transition: all 0.2s;
-      white-space: nowrap;
-    }
-
-    .btn-primary {
-      background: var(--primary);
-      color: white;
-    }
-
-    .btn-primary:hover {
-      background: #1347b8;
-    }
-
-    .method-item {
-      display: flex;
-      gap: 16px;
-      padding: 16px;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      background: rgba(23,84,207,0.03);
-    }
-
-    .method-icon {
-      width: 40px;
-      height: 40px;
-      background: rgba(23,84,207,0.1);
-      color: var(--primary);
-      border-radius: 8px;
-      display: grid;
-      place-items: center;
-      font-size: 1.5rem;
-    }
-
-    .method-label {
-      background: var(--primary);
-      color: white;
-      font-size: 0.75rem;
-      font-weight: 700;
-      padding: 2px 8px;
-      border-radius: 999px;
-    }
-
-    .device-item {
-      padding: 24px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .device-item:last-child {
-      border-bottom: none;
-    }
-
-    .device-icon {
-      width: 48px;
-      height: 48px;
-      background: #f1f5f9;
-      border-radius: 8px;
-      display: grid;
-      place-items: center;
-      font-size: 1.75rem;
-      color: #64748b;
-    }
-
-    .current-badge {
-      font-size: 10px;
-      padding: 2px 8px;
-      border-radius: 999px;
-      background: rgba(16,185,129,0.15);
-      color: var(--green);
-      font-weight: 600;
-    }
-
-    .btn-unlink {
-      padding: 4px 12px;
-      border: 1px solid #fecaca;
-      color: var(--red);
-      background: transparent;
-      border-radius: 6px;
-      font-size: 0.875rem;
-      font-weight: 700;
-    }
-
-    .btn-unlink:hover {
-      background: #fef2f2;
-    }
-
-    .sidebar-card {
-      background: rgba(23,84,207,0.05);
-      border: 1px solid rgba(23,84,207,0.15);
-      border-radius: 12px;
-      padding: 24px;
-    }
-
-    .progress-bar {
-      height: 8px;
-      background: #e2e8f0;
-      border-radius: 999px;
-      overflow: hidden;
-      margin: 12px 0;
-    }
-
-    .progress-fill {
-      height: 100%;
-      width: 85%;
-      background: var(--primary);
-      border-radius: 999px;
-    }
-
-    .check-item {
-      display: flex;
-      gap: 12px;
-      font-size: 0.8125rem;
-      color: var(--text-muted);
-      align-items: flex-start;
-    }
-
-/* =====================================================
-   RESPONSIVE
-===================================================== */
 @media (max-width: 900px) {
-  .grid {
-    grid-template-columns: 1fr;
+  .grid, .security-grid { grid-template-columns: 1fr; }
+  .profile-card { flex-direction: column; text-align: center; }
+}
+
+@media (max-width: 900px) {
+  .main-content {
+    margin-left: 0;
   }
-  .profile-card {
-    flex-direction: column;
-    text-align: center;
+
+  .sidebar {
+    position: relative;
+    width: 100%;
+    height: auto;
   }
 }
+
 </style>
 </head>
 
 <body>
 
 <div class="app-layout">
-  <aside class="sidebar">
-    <div class="sidebar-header">
-      <i class="fa-solid fa-shield-halved"></i>
-      <div>
-        <h1>Prospera</h1>
-        <p>Secure Client Portal</p>
-      </div>
+
+  <!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <i class="fa-solid fa-shield-halved"></i>
+    <div>
+      <h1>Prospera</h1>
+      <p>Secure Client Portal</p>
     </div>
+  </div>
 
-    <nav class="nav">
-      <a href="Clientportal.html">
-        <i class="fa fa-chart-line"></i> Dashboard
-      </a>
-      <a href="documents.html">
-        <i class="fa fa-file"></i> Documents
-      </a>
-      <a href="clientrequest.html">
-        <i class="fa fa-file-alt"></i> Requests
-      </a>
-      <a href="messages.html">
-        <i class="fa fa-message"></i> Messages
-      </a>
-      <a href="settings.html" class="active">
-        <i class="fa fa-gear"></i> Settings
-      </a>
-    </nav>
+  <nav class="nav">
+    <a href="Clientportal.html"><i class="fa fa-chart-line"></i> Dashboard</a>
+    <a href="documents.html"><i class="fa fa-file"></i> Documents</a>
+    <a href="clientrequest.html"><i class="fa fa-file-alt"></i> Requests</a>
+    <a href="messages.html"><i class="fa fa-message"></i> Messages</a>
+    <a href="settings.html" class="active"><i class="fa fa-gear"></i> Settings</a>
+  </nav>
 
-    <div class="sidebar-footer">
-      <div class="user-box">
-        <p><strong>John Doe</strong></p>
-        <p>client@example.com</p>
-        <p class="role">Client</p>
-      </div>
-      <button class="logout"><i class="fa fa-sign-out"></i> Logout</button>
+  <div class="sidebar-footer">
+    <div class="user-box">
+      <p><strong>John Doe</strong></p>
+      <p>client@example.com</p>
+      <p class="role">Client</p>
     </div>
-  </aside>
+    <button class="logout">
+      <i class="fa fa-sign-out"></i> Logout
+    </button>
+  </div>
+</aside>
 
+
+  <!-- ================= MAIN CONTENT ================= -->
   <main class="main-content">
     <div class="container">
 
-  <div class="page-title">
-    <h1>User Profile & Security</h1>
-    <p>Manage your identity, security protocols, and login history.</p>
-  </div>
+      <div class="page-title">
+        <h1>User Profile & Security</h1>
+        <p>Manage your identity, security protocols, and login history.</p>
+      </div>
 
-  <div class="profile-card">
-    <div class="avatar-lg" style="background-image:url('https://lh3.googleusercontent.com/aida-public/AB6AXuAsNL3y9TY4lsEXHLOREQ9JWyw7vHBnH7xz17MRc8Zt8nPNXOWCj6NXF0LHmhgUaIuN9L5wE6LKkxWtYkMVi8Lzt8rilvHGz5q8-NNTsuZgx6Lzc2Ps1ny-cmj9gxtBiPI6Rai_k1SP91ZUqlzKaYXgLsXxuYS4Uy7Wzc9M4eZB_J557lFrpozqwJk-hZxFqi5KjAfRD3aFOKKItZhoE-3J1Y7y8vLwErY5BK5ioegTkzbatnahl-_g9XjluJu8DlbTov1aBiBR7fk')"></div>
+      <!-- ================= PROFILE CARD ================= -->
+      <div class="profile-card">
+        <div class="avatar-lg avatar-profile"></div>
 
-    <div class="profile-info">
-      <h2>Alex Thompson</h2>
-      <p class="tier">Client Account • Premium Tier</p>
-      <p>Member since January 2023</p>
-    </div>
+        <div class="profile-info">
+          <h2>Alex Thompson</h2>
+          <p class="tier">Client Account • Premium Tier</p>
+          <p>Member since January 2023</p>
+        </div>
+      </div>
 
-    <div class="profile-actions">
-     
-    </div>
-  </div>
+      <!-- ================= TABS ================= -->
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="profile">
+          Personal Information
+        </button>
+        <button class="tab-btn" data-tab="security">
+          Security Settings
+        </button>
+      </div>
 
-<div class="tabs">
-  <button class="tab-btn active" data-tab="profile">Personal Information</button>
-  <button class="tab-btn" data-tab="security">Security Settings</button>
+      <!-- ================= PROFILE TAB ================= -->
+      <div class="tab-panel active" id="profile">
 
-</div>
+        <div class="grid">
 
-<div class="tab-panel active" id="profile">
-  <div class="grid">
+          <!-- LEFT COLUMN -->
+          <div>
 
-    <!-- LEFT -->
-    <div>
+            <!-- Account Details -->
+            <div class="card">
+              <div class="card-header">Account Details</div>
+              <div class="card-body">
 
-      <div class="card">
-        <div class="card-header">Account Details</div>
-        <div class="card-body">
-          <div class="form-grid">
-            <div class="form-group">
-              <label>First Name</label>
-              <input value="Alex">
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label>First Name</label>
+                    <input value="Alex">
+                  </div>
+
+                  <div class="form-group">
+                    <label>Last Name</label>
+                    <input value="Thompson">
+                  </div>
+
+                  <div class="form-group full">
+                    <label>Email Address</label>
+                    <input value="alex.thompson@example.com">
+                  </div>
+
+                  <div class="form-group full">
+                    <label>Phone Number</label>
+                    <input value="+1 (555) 000-0000">
+                  </div>
+                </div>
+
+              </div>
+
+              <div class="form-footer">
+                <button class="btn-primary" onclick="saveChanges()">
+                  Save Changes
+                </button>
+              </div>
             </div>
-            <div class="form-group">
-              <label>Last Name</label>
-              <input value="Thompson">
+
+            <br>
+
+            <!-- Login Activity -->
+            <div class="card">
+              <div class="card-header">Recent Login Activity</div>
+              <div class="card-body">
+
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Device</th>
+                      <th>Location</th>
+                      <th>IP</th>
+                      <th>Time</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td>Chrome on Windows</td>
+                      <td>New York</td>
+                      <td>192.168.1.45</td>
+                      <td>Just now</td>
+                    </tr>
+                    <tr>
+                      <td>iPhone 13</td>
+                      <td>New York</td>
+                      <td>192.168.1.22</td>
+                      <td>Oct 24</td>
+                    </tr>
+                    <tr>
+                      <td>Edge on macOS</td>
+                      <td>London</td>
+                      <td>84.22.10.155</td>
+                      <td>Oct 21</td>
+                    </tr>
+                  </tbody>
+                </table>
+
+              </div>
             </div>
-            <div class="form-group full">
-              <label>Email Address</label>
-              <input value="alex.thompson@example.com">
-            </div>
-            <div class="form-group full">
-              <label>Phone Number</label>
-              <input value="+1 (555) 000-0000">
-            </div>
+
           </div>
-        </div>
-        <div class="form-footer">
-          <button class="btn-primary" onclick="saveChanges()">Save Changes</button>
-        </div>
-      </div>
 
-      <br>
+          <!-- RIGHT COLUMN -->
+          <div>
 
-      <div class="card">
-        <div class="card-header">Recent Login Activity</div>
-        <div class="card-body">
-          <table>
-            <thead>
-              <tr>
-                <th>Device</th>
-                <th>Location</th>
-                <th>IP</th>
-                <th>Time</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr><td>Chrome on Windows</td><td>New York</td><td>192.168.1.45</td><td>Just now</td></tr>
-              <tr><td>iPhone 13</td><td>New York</td><td>192.168.1.22</td><td>Oct 24</td></tr>
-              <tr><td>Edge on macOS</td><td>London</td><td>84.22.10.155</td><td>Oct 21</td></tr>
-            </tbody>
-          </table>
+            <div class="sidebar-card">
+              <h4>Security Score</h4>
+              <div class="progress-bar">
+                <div class="progress-fill"></div>
+              </div>
+              <p><strong>85% secure</strong></p>
+            </div>
+
+          </div>
+
         </div>
       </div>
 
-    </div>
+      <!-- ================= SECURITY TAB ================= -->
+      <div class="tab-panel" id="security">
 
-    <!-- RIGHT -->
-    <div>
+        <div class="security-grid">
 
-      <div class="security-box">
-        <h4>Security Score</h4>
-        <div class="progress"><span></span></div>
-        <p><strong>85% secure</strong></p>
-      </div>
+          <!-- LEFT COLUMN -->
+          <div class="flex-column">
 
-    </div>
+            <!-- Password -->
+            <div class="card">
+              <div class="card-header">Password Management</div>
+              <div class="card-body flex-between">
 
-  </div>
-
-</div>
-
-
-<div class="tab-panel" id="security">
-  
- <!-- Left column – main settings -->
-        <div style="display:flex; flex-direction:column; gap:32px;">
-
-          <!-- Password -->
-          <div class="card">
-            <div class="card-header">Password Management</div>
-            <div class="card-body">
-              <div class="password-row">
                 <div>
-                  <div style="font-weight:500;">Update Password</div>
-                  <div style="font-size:0.875rem; color:var(--text-muted); margin-top:4px;">
-                    Last changed on <strong>October 12, 2023</strong> (6 months ago)
+                  <div>Update Password</div>
+                  <div class="link-muted">
+                    Last changed on <strong>October 12, 2023</strong>
                   </div>
                 </div>
-                <button class="btn btn-primary">Change Password</button>
+
+                <button class="btn-primary">Change Password</button>
+
               </div>
             </div>
-          </div>
 
-          <!-- 2FA -->
-          <div class="card">
-            <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
-              <div>
-                <div>Two-Factor Authentication (2FA)</div>
-                <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
-                  <span style="width:10px; height:10px; background:#10b981; border-radius:50%;"></span>
-                  <span style="color:#10b981; font-weight:700; font-size:0.8125rem; text-transform:uppercase;">ACTIVE</span>
-                </div>
-              </div>
-              <a href="#" style="color:var(--primary); font-weight:700; font-size:0.875rem; text-decoration:none;">Generate Backup Codes</a>
-            </div>
+            <!-- 2FA -->
+            <div class="card">
 
-            <div class="card-body" style="display:flex; flex-direction:column; gap:16px;">
-              <div class="method-item">
-                <div class="method-icon"><span class="material-symbols-outlined">vibration</span></div>
-                <div style="flex:1;">
-                  <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                    <div>
-                      <h4 style="margin:0;">Authenticator App</h4>
-                      <p style="font-size:0.875rem; color:var(--text-muted); margin-top:2px;">Google Authenticator, Authy, or Microsoft Authenticator.</p>
-                    </div>
-                    <span class="method-label">Primary</span>
-                  </div>
-                  <div style="margin-top:16px; display:flex; gap:16px;">
-                    <a href="#" style="color:var(--primary); font-weight:700; font-size:0.875rem; text-decoration:none;">Edit Method</a>
-                    <a href="#" style="color:var(--text-muted); font-weight:700; font-size:0.875rem; pointer-events:none;">Remove</a>
+              <div class="card-header flex-between">
+                <div>
+                  <div>Two-Factor Authentication (2FA)</div>
+                  <div class="flex-align">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Active</span>
                   </div>
                 </div>
+                <a href="#" class="link-primary">
+                  Generate Backup Codes
+                </a>
               </div>
 
-              <div class="method-item" style="border-color:var(--border); background:transparent;">
-                <div class="method-icon" style="background:#f1f5f9; color:var(--text-muted);"><span class="material-symbols-outlined">sms</span></div>
-                <div style="flex:1;">
-                  <h4 style="margin:0;">SMS Authentication</h4>
-                  <p style="font-size:0.875rem; color:var(--text-muted); margin-top:2px;">Receive a code via text message to +1 (555) •••-••00.</p>
-                  <div style="margin-top:16px; display:flex; gap:16px;">
-                    <a href="#" style="color:var(--primary); font-weight:700; font-size:0.875rem; text-decoration:none;">Edit Phone</a>
-                    <a href="#" style="color:var(--red); font-weight:700; font-size:0.875rem; text-decoration:none;">Deactivate</a>
+              <div class="card-body flex-column">
+
+                <div class="method-item">
+                  <div class="method-icon">
+                    <span class="material-symbols-outlined">
+                      vibration
+                    </span>
                   </div>
-                </div>
-              </div>
-            </div>
-          </div>
 
-          <!-- Connected Devices -->
-          <div class="card">
-            <div class="card-header">
-              <div>Connected Devices</div>
-              <div style="font-size:0.875rem; color:var(--text-muted); margin-top:4px;">Manage and unlink devices that are currently logged into your account.</div>
-            </div>
-
-            <div>
-              <div class="device-item">
-                <div style="display:flex; align-items:center; gap:16px;">
-                  <div class="device-icon"><span class="material-symbols-outlined">desktop_windows</span></div>
                   <div>
-                    <h4>Chrome on Windows <span class="current-badge">CURRENT</span></h4>
-                    <div style="font-size:0.875rem; color:var(--text-muted);">New York, NY • 192.168.1.45</div>
+                    <h4>Authenticator App 
+                      <span class="method-label">Primary</span>
+                    </h4>
+                    <p class="link-muted">
+                      Google Authenticator, Authy, or Microsoft Authenticator.
+                    </p>
+                    <div class="flex-align">
+                      <a href="#" class="link-primary">Edit Method</a>
+                      <a href="#" class="link-muted">Remove</a>
+                    </div>
                   </div>
                 </div>
-                <button class="btn-unlink" disabled> Unlink </button>
+
+                <div class="method-item">
+                  <div class="method-icon">
+                    <span class="material-symbols-outlined">sms</span>
+                  </div>
+
+                  <div>
+                    <h4>SMS Authentication</h4>
+                    <p class="link-muted">
+                      Receive a code via text message to +1 (555) •••-••00.
+                    </p>
+                    <div class="flex-align">
+                      <a href="#" class="link-primary">Edit Phone</a>
+                      <a href="#" class="link-danger">Deactivate</a>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            <!-- Connected Devices -->
+            <div class="card">
+
+              <div class="card-header">
+                Connected Devices
               </div>
 
               <div class="device-item">
-                <div style="display:flex; align-items:center; gap:16px;">
-                  <div class="device-icon"><span class="material-symbols-outlined">smartphone</span></div>
+                <div class="flex-align">
+                  <div class="device-icon">
+                    <span class="material-symbols-outlined">
+                      desktop_windows
+                    </span>
+                  </div>
+                  <div>
+                    <h4>
+                      Chrome on Windows 
+                      <span class="current-badge">Current</span>
+                    </h4>
+                    <p class="link-muted">
+                      New York, NY • 192.168.1.45
+                    </p>
+                  </div>
+                </div>
+                <button class="btn-unlink" disabled>Unlink</button>
+              </div>
+
+              <div class="device-item">
+                <div class="flex-align">
+                  <div class="device-icon">
+                    <span class="material-symbols-outlined">
+                      smartphone
+                    </span>
+                  </div>
                   <div>
                     <h4>iPhone 13 - Safari</h4>
-                    <div style="font-size:0.875rem; color:var(--text-muted);">New York, NY • Last active 2 hours ago</div>
+                    <p class="link-muted">
+                      New York, NY • Last active 2 hours ago
+                    </p>
                   </div>
                 </div>
                 <button class="btn-unlink">Unlink</button>
               </div>
 
               <div class="device-item">
-                <div style="display:flex; align-items:center; gap:16px;">
-                  <div class="device-icon"><span class="material-symbols-outlined">desktop_windows</span></div>
+                <div class="flex-align">
+                  <div class="device-icon">
+                    <span class="material-symbols-outlined">
+                      desktop_windows
+                    </span>
+                  </div>
                   <div>
                     <h4>Edge on macOS</h4>
-                    <div style="font-size:0.875rem; color:var(--text-muted);">London, UK • Last active Oct 21</div>
+                    <p class="link-muted">
+                      London, UK • Last active Oct 21
+                    </p>
                   </div>
                 </div>
                 <button class="btn-unlink">Unlink</button>
               </div>
+
             </div>
 
-            <div style="padding:16px; background:#f8fafc; text-align:center;">
-              <a href="#" style="color:var(--primary); font-weight:700; font-size:0.875rem; text-decoration:none;">Sign out of all other sessions</a>
+          </div>
+
+          <!-- RIGHT COLUMN -->
+          <div class="flex-column">
+
+            <div class="sidebar-card">
+              <div class="flex-align">
+                <span class="material-symbols-outlined">security</span>
+                <h4>Security Score</h4>
+              </div>
+
+              <div class="progress-bar">
+                <div class="progress-fill"></div>
+              </div>
+
+              <p><strong>Your profile is 85% secure</strong></p>
+              <p class="link-muted">
+                To reach 100%, update your password.
+              </p>
+
+              <button class="link-primary">
+                Improve Security →
+              </button>
             </div>
+
           </div>
 
         </div>
-
-        <!-- Right column – sidebar info -->
-        <div style="display:flex; flex-direction:column; gap:24px;">
-
-          <div class="sidebar-card">
-            <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
-              <span class="material-symbols-outlined" style="font-size:1.5rem;">security</span>
-              <h4 style="color:var(--primary); margin:0;">Security Score</h4>
-            </div>
-            <div class="progress-bar">
-              <div class="progress-fill"></div>
-            </div>
-            <div style="font-weight:500;">Your profile is 85% secure</div>
-            <div style="font-size:0.75rem; color:var(--text-muted); margin-top:4px;">
-              To reach 100%, update your password which was last changed 6 months ago.
-            </div>
-            <button style="margin-top:16px; color:var(--primary); font-weight:700; background:none; border:none; padding:0; cursor:pointer; display:flex; align-items:center; gap:6px;">
-              Improve Security <span class="material-symbols-outlined" style="font-size:1rem;">arrow_forward</span>
-            </button>
-          </div>
-
-        </div>
-
       </div>
-</div>
+
     </div>
   </main>
 </div>
@@ -848,7 +769,6 @@ function saveChanges() {
   alert("Your changes have been saved successfully.");
 }
 
-/* TAB LOGIC */
 const tabButtons = document.querySelectorAll(".tab-btn");
 const tabPanels = document.querySelectorAll(".tab-panel");
 
@@ -856,14 +776,12 @@ tabButtons.forEach(btn => {
   btn.addEventListener("click", () => {
     tabButtons.forEach(b => b.classList.remove("active"));
     tabPanels.forEach(p => p.classList.remove("active"));
-
     btn.classList.add("active");
     document.getElementById(btn.dataset.tab).classList.add("active");
   });
 });
 </script>
 
-</script>
-
 </body>
 </html>
+
