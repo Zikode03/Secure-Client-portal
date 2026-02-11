@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Client Messages | Prospera Accountant Portal</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{
+  font-family:"Segoe UI",Arial,sans-serif;
+  background:#f8fafc;
+  color:#0f172a;
+}
+
+.app-layout{display:flex;min-height:100vh;width:100%;}
+
+/* SIDEBAR */
+.sidebar{
+  width:260px;
+  background:linear-gradient(180deg,#0f172a,#020617);
+  color:white;
+  display:flex;
+  flex-direction:column;
+  position:fixed;
+  height:100vh;
+}
+.sidebar-header{
+  padding:22px;
+  display:flex;
+  gap:12px;
+  align-items:center;
+}
+.sidebar-header i{font-size:30px;color:#60a5fa;}
+.sidebar-header h1{font-size:16px;}
+.sidebar-header p{font-size:12px;color:#94a3b8;}
+
+.nav{padding:16px;flex:1;}
+.nav a{
+  display:flex;
+  gap:12px;
+  align-items:center;
+  padding:12px 14px;
+  border-radius:10px;
+  color:#cbd5f5;
+  text-decoration:none;
+  margin-bottom:6px;
+}
+.nav a:hover{background:#1e293b;}
+.nav a.active{background:#2563eb;color:white;}
+
+.sidebar-footer{padding:16px;}
+.user-box{
+  background:#1e293b;
+  padding:12px;
+  border-radius:10px;
+  margin-bottom:12px;
+}
+.role{color:#60a5fa;font-size:12px;}
+
+.logout{
+  width:100%;
+  background:none;
+  border:none;
+  color:#cbd5f5;
+  padding:12px;
+  border-radius:10px;
+  cursor:pointer;
+  text-align:left;
+}
+.logout:hover{background:#1e293b;}
+
+/* MAIN */
+.page{
+  flex:1;
+  margin-left:260px;
+  padding:24px;
+}
+.page h1{font-size:24px;font-weight:600;}
+.page p{color:#64748b;margin-top:4px;}
+
+.grid{
+  display:grid;
+  grid-template-columns:1fr 2fr;
+  gap:24px;
+  margin-top:24px;
+  height:calc(100vh - 140px);
+}
+
+.card{
+  background:white;
+  border-radius:12px;
+  border:1px solid #e5e7eb;
+  display:flex;
+  flex-direction:column;
+}
+.card-header{
+  padding:16px 20px;
+  border-bottom:1px solid #e5e7eb;
+}
+.card-content{
+  padding:16px;
+  flex:1;
+  overflow-y:auto;
+}
+
+/* TABS */
+.thread-filters{
+  display:flex;
+  gap:24px;
+  margin-top:16px;
+  border-bottom:1px solid #e5e7eb;
+  padding-bottom:4px;
+}
+.thread-filter{
+  background:none;
+  border:none;
+  padding:10px 0;
+  font-size:14px;
+  font-weight:500;
+  cursor:pointer;
+  color:#64748b;
+  position:relative;
+}
+.thread-filter.active{
+  color:#2563eb;
+  font-weight:600;
+}
+.thread-filter.active::after{
+  content:"";
+  position:absolute;
+  bottom:-6px;
+  left:0;
+  width:100%;
+  height:3px;
+  background:#2563eb;
+  border-radius:3px 3px 0 0;
+}
+
+/* CLIENT LIST */
+.client{
+  padding:12px;
+  border-radius:10px;
+  cursor:pointer;
+  margin-bottom:8px;
+  transition:0.2s;
+}
+.client:hover{background:#f9fafb;}
+.client.active{
+  background:#eff6ff;
+  border-left:4px solid #2563eb;
+}
+
+.client-name{font-weight:500;font-size:14px;}
+.client-meta{font-size:13px;color:#64748b;margin-top:2px;}
+.badge{
+  background:#ef4444;
+  color:white;
+  font-size:11px;
+  padding:2px 6px;
+  border-radius:12px;
+  margin-left:6px;
+}
+
+.hidden{display:none !important;}
+
+/* MESSAGE AREA */
+.messages{
+  display:flex;
+  flex-direction:column;
+  gap:18px;
+}
+.message-row{display:flex;}
+.message-row.own{justify-content:flex-end;}
+
+.message-bubble{
+  max-width:70%;
+  padding:14px 16px;
+  border-radius:14px;
+  font-size:14px;
+}
+.message-bubble.own{
+  background:#2563eb;
+  color:white;
+  border-bottom-right-radius:4px;
+}
+.message-bubble.other{
+  background:#f1f5f9;
+  border-bottom-left-radius:4px;
+}
+.meta{
+  font-size:11px;
+  margin-top:6px;
+  opacity:0.8;
+}
+
+.input-area{
+  border-top:1px solid #e5e7eb;
+  padding:14px;
+  display:flex;
+  gap:10px;
+}
+.input-area input{
+  flex:1;
+  padding:12px 16px;
+  border-radius:8px;
+  border:1px solid #d1d5db;
+}
+.send-btn{
+  background:#2563eb;
+  color:white;
+  border:none;
+  padding:0 20px;
+  border-radius:8px;
+  cursor:pointer;
+}
+.empty{
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  height:100%;
+  color:#6b7280;
+}
+</style>
+</head>
+
+<body>
+
+<div class="app-layout">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <i class="fa-solid fa-shield-halved"></i>
+    <div>
+      <h1>Prospera</h1>
+      <p>Accountant Portal</p>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <a href="#"><i class="fa fa-chart-line"></i> Dashboard</a>
+    <a href="#"><i class="fa fa-users"></i> Clients</a>
+    <a href="#"><i class="fa fa-file"></i> Documents</a>
+    <a href="#" class="active"><i class="fa fa-message"></i> Messages</a>
+    <a href="#"><i class="fa fa-gear"></i> Settings</a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="user-box">
+      <p><strong>Sarah Johnson</strong></p>
+      <p>sarah@prospera.com</p>
+      <p class="role">Primary Accountant</p>
+    </div>
+    <button class="logout"><i class="fa fa-sign-out"></i> Logout</button>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="page">
+<h1>Client Messages</h1>
+<p>Communicate securely with your assigned clients</p>
+
+<div class="grid">
+
+<!-- CLIENT LIST -->
+<div class="card">
+  <div class="card-header">
+    <h2>Your Clients</h2>
+    <div class="thread-filters">
+      <button class="thread-filter active" data-tab="assigned">Assigned Clients</button>
+      <button class="thread-filter" data-tab="support">Internal Support</button>
+      <button class="thread-filter" data-tab="archived">Archived</button>
+    </div>
+  </div>
+
+  <div class="card-content" id="clientList"></div>
+</div>
+
+<!-- MESSAGE VIEW -->
+<div class="card">
+  <div class="card-header" id="chatHeader">
+    <h3>Select a client</h3>
+    <p>Choose a client to view conversation</p>
+  </div>
+
+  <div class="card-content" id="chatArea">
+    <div class="empty">
+      <i class="fa fa-comments"></i>
+      <h3>No conversation selected</h3>
+    </div>
+  </div>
+
+  <div class="input-area" id="inputArea" style="display:none;">
+    <input id="messageInput" placeholder="Type your reply..." />
+    <button class="send-btn" id="sendBtn">
+      <i class="fa fa-paper-plane"></i>
+    </button>
+  </div>
+</div>
+
+</div>
+</main>
+</div>
+
+<script>
+
+/* Simulated backend response:
+   Only clients assigned to THIS accountant appear
+*/
+const clients = [
+{
+  id:1,
+  name:"John Doe",
+  company:"Doe Investments Ltd",
+  section:"assigned",
+  unread:2,
+  messages:[
+    {from:"other",text:"Hi Sarah, I've uploaded Q4 statements.",time:"09:10"},
+    {from:"own",text:"Received, reviewing now.",time:"09:45"}
+  ]
+},
+{
+  id:2,
+  name:"Emily Brown",
+  company:"Brown Consulting",
+  section:"assigned",
+  unread:0,
+  messages:[]
+},
+{
+  id:3,
+  name:"Prospera Legal",
+  company:"Internal Team",
+  section:"support",
+  unread:1,
+  messages:[
+    {from:"other",text:"Please review compliance update.",time:"11:20"}
+  ]
+},
+{
+  id:4,
+  name:"Archived Client",
+  company:"Old Account",
+  section:"archived",
+  unread:0,
+  messages:[]
+}
+];
+
+const clientList=document.getElementById("clientList");
+const chatArea=document.getElementById("chatArea");
+const chatHeader=document.getElementById("chatHeader");
+const inputArea=document.getElementById("inputArea");
+
+function renderClients(){
+  clientList.innerHTML="";
+  clients.forEach(client=>{
+    const div=document.createElement("div");
+    div.className=`client ${client.section}`;
+    div.dataset.id=client.id;
+    div.innerHTML=`
+      <div class="client-name">
+        ${client.name}
+        ${client.unread>0?`<span class="badge">${client.unread}</span>`:""}
+      </div>
+      <div class="client-meta">${client.company}</div>
+    `;
+    div.addEventListener("click",()=>openChat(client,div));
+    clientList.appendChild(div);
+  });
+}
+
+function filterClients(tab){
+  document.querySelectorAll(".client").forEach(el=>{
+    if(el.classList.contains(tab)){
+      el.classList.remove("hidden");
+    }else{
+      el.classList.add("hidden");
+    }
+  });
+}
+
+function openChat(client,clickedEl){
+  document.querySelectorAll(".client").forEach(el=>el.classList.remove("active"));
+  clickedEl.classList.add("active");
+
+  chatHeader.innerHTML=`
+    <h3>${client.name}</h3>
+    <p>${client.company}</p>
+  `;
+
+  chatArea.innerHTML="";
+  inputArea.style.display="flex";
+
+  if(!client.messages || client.messages.length===0){
+    chatArea.innerHTML=`
+      <div class="empty">
+        <h3>No messages yet</h3>
+        <p>Start the conversation with this client.</p>
+      </div>
+    `;
+    return;
+  }
+
+  const container=document.createElement("div");
+  container.className="messages";
+
+  client.messages.forEach(msg=>{
+    const row=document.createElement("div");
+    row.className=`message-row ${msg.from}`;
+    row.innerHTML=`
+      <div class="message-bubble ${msg.from}">
+        ${msg.text}
+        <div class="meta">${msg.from==="own"?"You":client.name} • ${msg.time}</div>
+      </div>
+    `;
+    container.appendChild(row);
+  });
+
+  chatArea.appendChild(container);
+}
+
+document.querySelectorAll(".thread-filter").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    document.querySelectorAll(".thread-filter").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    filterClients(btn.dataset.tab);
+  });
+});
+
+renderClients();
+filterClients("assigned");
+
+</script>
+
+</body>
+</html>
