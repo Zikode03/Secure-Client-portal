@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Accountant Secure Login | Secure Portal</title>
+
+<!-- Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+<style>
+:root {
+  --primary: #1754cf;
+  --background-light: #f6f6f8;
+  --background-dark: #111621;
+  --text-dark: #0e121b;
+  --gray: #6b7280;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  background: var(--background-light);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ================= NAVBAR ================= */
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 40px;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--primary);
+}
+
+.logo-icon {
+  background: var(--primary);
+  color: white;
+  width: 35px;
+  height: 35px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+}
+
+.logo h2 {
+  font-size: 18px;
+  font-weight: bold;
+  color: var(--text-dark);
+}
+
+.logo span {
+  color: var(--primary);
+}
+
+.nav-buttons button {
+  padding: 10px 18px;
+  border-radius: 8px;
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+  margin-left: 10px;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: white;
+}
+
+.btn-secondary {
+  background: #f3f4f6;
+}
+
+/* ================= MAIN ================= */
+
+main {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px 20px;
+  position: relative;
+}
+
+/* Background pattern */
+main::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(var(--primary) 1px, transparent 1px);
+  background-size: 40px 40px;
+  opacity: 0.05;
+}
+
+.login-container {
+  position: relative;
+  width: 100%;
+  max-width: 500px;
+}
+
+.login-card {
+  background: white;
+  border-radius: 12px;
+  padding: 40px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+  border: 1px solid #f0f0f0;
+}
+
+.lock-icon {
+  width: 55px;
+  height: 55px;
+  background: rgba(23,84,207,0.1);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  margin: 0 auto 20px;
+  font-size: 22px;
+}
+
+.login-card h1 {
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.login-card p {
+  text-align: center;
+  color: var(--gray);
+  margin-bottom: 30px;
+}
+
+/* ================= FORM ================= */
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  font-weight: bold;
+  font-size: 14px;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.input-wrapper {
+  position: relative;
+}
+
+.input-wrapper i {
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9ca3af;
+}
+
+.input-wrapper input {
+  width: 100%;
+  padding: 14px 14px 14px 45px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-size: 15px;
+}
+
+.input-wrapper input:focus {
+  border-color: var(--primary);
+  outline: none;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  color: #9ca3af;
+}
+
+.form-options {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.form-options a {
+  color: var(--primary);
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.signin-btn {
+  width: 100%;
+  padding: 14px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+
+.signin-btn:hover {
+  opacity: 0.9;
+}
+
+/* ================= REQUEST SECTION ================= */
+
+.request-section {
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+  text-align: center;
+}
+
+.request-section button {
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  border: 2px solid rgba(23,84,207,0.2);
+  background: transparent;
+  color: var(--primary);
+  font-weight: bold;
+  cursor: pointer;
+}
+
+/* ================= TRUST BADGES ================= */
+
+.trust-badges {
+  margin-top: 30px;
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+  flex-wrap: wrap;
+  color: var(--gray);
+  font-size: 12px;
+  text-transform: uppercase;
+  font-weight: bold;
+}
+
+.trust-badges div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ================= FOOTER ================= */
+
+footer {
+  background: white;
+  border-top: 1px solid #e5e7eb;
+  padding: 20px 40px;
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--gray);
+}
+
+footer a {
+  margin-left: 15px;
+  text-decoration: none;
+  color: var(--gray);
+}
+
+footer a:hover {
+  color: var(--primary);
+}
+
+/* ================= RESPONSIVE ================= */
+
+@media(max-width:768px){
+  header {
+    padding: 15px 20px;
+  }
+  footer {
+    flex-direction: column;
+    gap: 10px;
+    text-align: center;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">
+      <i class="fas fa-university"></i>
+    </div>
+    <h2>Ledge & Ledger <span>Firms</span></h2>
+  </div>
+
+  <div class="nav-buttons">
+    <button class="btn-primary">Support</button>
+    <button class="btn-secondary">Contact Us</button>
+  </div>
+</header>
+
+<main>
+  <div class="login-container">
+    <div class="login-card">
+
+      <div class="lock-icon">
+        <i class="fas fa-lock"></i>
+      </div>
+
+      <h1>Accountant Secure Login</h1>
+      <p>Access your professional dashboard and client records securely.</p>
+
+      <form>
+        <div class="form-group">
+          <label>Email Address</label>
+          <div class="input-wrapper">
+            <i class="fas fa-envelope"></i>
+            <input type="email" placeholder="e.g. name@firm.com">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Password</label>
+          <div class="input-wrapper">
+            <i class="fas fa-lock-open"></i>
+            <input type="password" id="password" placeholder="Enter your password">
+            <i class="fas fa-eye password-toggle" onclick="togglePassword()"></i>
+          </div>
+        </div>
+
+        <div class="form-options">
+          <label><input type="checkbox"> Keep me signed in</label>
+          <a href="#">Forgot Password?</a>
+        </div>
+
+        <button class="signin-btn">
+          <i class="fas fa-sign-in-alt"></i> Sign In
+        </button>
+      </form>
+
+      <div class="request-section">
+        <p>Are you a new staff member?</p><br>
+        <button>Request Access</button>
+      </div>
+
+    </div>
+
+    <div class="trust-badges">
+      <div><i class="fas fa-shield-alt"></i> 256-Bit SSL</div>
+      <div><i class="fas fa-user-shield"></i> SOC2 Compliant</div>
+      <div><i class="fas fa-lock"></i> ISO 27001</div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div>© 2024 Ledge & Ledger Accounting Firms. All rights reserved.</div>
+  <div>
+    <a href="#">Privacy Policy</a>
+    <a href="#">Terms of Service</a>
+    <a href="#">Security Disclosure</a>
+  </div>
+</footer>
+
+<script>
+function togglePassword() {
+  const password = document.getElementById("password");
+  const icon = document.querySelector(".password-toggle");
+
+  if (password.type === "password") {
+    password.type = "text";
+    icon.classList.remove("fa-eye");
+    icon.classList.add("fa-eye-slash");
+  } else {
+    password.type = "password";
+    icon.classList.remove("fa-eye-slash");
+    icon.classList.add("fa-eye");
+  }
+}
+</script>
+
+</body>
+</html>

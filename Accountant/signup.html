@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Accountant Sign Up - LedgerPro Secure</title>
+
+<!-- FontAwesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+body {
+    background: #f6f6f8;
+    min-height: 100vh;
+}
+
+.container {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* LEFT SIDE */
+.left {
+    width: 40%;
+    background: #1754cf;
+    color: white;
+    padding: 50px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.left h1 {
+    font-size: 22px;
+    margin-bottom: 40px;
+}
+
+.left h2 {
+    font-size: 32px;
+    margin-bottom: 20px;
+}
+
+.feature {
+    display: flex;
+    margin-bottom: 20px;
+}
+
+.feature i {
+    background: rgba(255,255,255,0.2);
+    padding: 10px;
+    border-radius: 8px;
+    margin-right: 15px;
+}
+
+.footer-text {
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+/* RIGHT SIDE */
+.right {
+    width: 60%;
+    background: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px;
+}
+
+.form-box {
+    width: 100%;
+    max-width: 450px;
+}
+
+.form-box h2 {
+    font-size: 28px;
+    margin-bottom: 5px;
+}
+
+.form-box p {
+    color: gray;
+    margin-bottom: 25px;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+}
+
+.row {
+    display: flex;
+    gap: 10px;
+}
+
+.password-container {
+    position: relative;
+}
+
+.password-container i {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: gray;
+}
+
+.strength {
+    display: flex;
+    margin-top: 5px;
+    align-items: center;
+}
+
+.bar {
+    height: 5px;
+    flex: 1;
+    margin-right: 3px;
+    background: #ddd;
+    border-radius: 5px;
+}
+
+.bar.active {
+    background: #1754cf;
+}
+
+.strength-text {
+    font-size: 11px;
+    margin-left: 5px;
+    font-weight: bold;
+}
+
+button {
+    width: 100%;
+    padding: 14px;
+    background: #1754cf;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    margin-top: 15px;
+}
+
+button:hover {
+    background: #1346a8;
+}
+
+.login-link {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 14px;
+}
+
+.login-link a {
+    color: #1754cf;
+    font-weight: bold;
+    text-decoration: none;
+}
+
+.terms {
+    font-size: 11px;
+    margin-top: 25px;
+    color: gray;
+    text-align: center;
+}
+
+/* Responsive */
+@media(max-width: 900px) {
+    .left {
+        display: none;
+    }
+    .right {
+        width: 100%;
+    }
+    .row {
+        flex-direction: column;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <!-- LEFT SIDE -->
+    <div class="left">
+        <div>
+            <h1><i class="fa-solid fa-chart-column"></i> LedgerPro Secure</h1>
+
+            <h2>Empowering your firm with secure digital collaboration</h2>
+
+            <div class="feature">
+                <i class="fa-solid fa-shield-halved"></i>
+                <div>
+                    <strong>Bank-Grade Security</strong>
+                    <p>Your clients' data is protected with encryption and multi-factor authentication.</p>
+                </div>
+            </div>
+
+            <div class="feature">
+                <i class="fa-solid fa-network-wired"></i>
+                <div>
+                    <strong>Unified Workspace</strong>
+                    <p>Collaborate with colleagues and clients in one secure platform.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer-text">
+            © 2024 LedgerPro Secure. All rights reserved.
+        </div>
+    </div>
+
+    <!-- RIGHT SIDE -->
+    <div class="right">
+        <div class="form-box">
+
+            <h2>Join Your Firm’s Portal</h2>
+            <p>Enter your professional details to set up your account.</p>
+
+            <form id="signupForm">
+
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Professional Email</label>
+                    <input type="email" required>
+                </div>
+
+                <div class="row">
+                    <div class="form-group" style="flex:1;">
+                        <label>Certification #</label>
+                        <input type="text">
+                    </div>
+
+                    <div class="form-group" style="flex:1;">
+                        <label>Firm Invite Code</label>
+                        <input type="text">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Create Password</label>
+                    <div class="password-container">
+                        <input type="password" id="password" required>
+                        <i class="fa-solid fa-eye" onclick="togglePassword()"></i>
+                    </div>
+
+                    <div class="strength">
+                        <div class="bar" id="b1"></div>
+                        <div class="bar" id="b2"></div>
+                        <div class="bar" id="b3"></div>
+                        <div class="bar" id="b4"></div>
+                        <span class="strength-text" id="strengthText"></span>
+                    </div>
+                </div>
+
+                <button type="submit">
+                    Join Workspace <i class="fa-solid fa-arrow-right"></i>
+                </button>
+
+                <div class="login-link">
+                    Already have an account?
+                    <a href="#">Log in</a>
+                </div>
+
+                <div class="terms">
+                    By clicking "Join Workspace", you agree to our Terms of Service and Privacy Policy.
+                    Your data is encrypted using 256-bit AES standards.
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+
+</div>
+
+<script>
+// Show / Hide Password
+function togglePassword() {
+    const password = document.getElementById("password");
+    password.type = password.type === "password" ? "text" : "password";
+}
+
+// Password Strength Checker
+document.getElementById("password").addEventListener("input", function () {
+    let value = this.value;
+    let strength = 0;
+
+    if (value.length >= 6) strength++;
+    if (value.match(/[A-Z]/)) strength++;
+    if (value.match(/[0-9]/)) strength++;
+    if (value.match(/[^A-Za-z0-9]/)) strength++;
+
+    for (let i = 1; i <= 4; i++) {
+        document.getElementById("b" + i).classList.remove("active");
+    }
+
+    for (let i = 1; i <= strength; i++) {
+        document.getElementById("b" + i).classList.add("active");
+    }
+
+    const text = ["Weak", "Fair", "Good", "Strong"];
+    document.getElementById("strengthText").innerText = strength ? text[strength - 1] : "";
+});
+
+// Form Submit
+document.getElementById("signupForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    alert("Account Created Successfully!");
+});
+</script>
+
+</body>
+</html>

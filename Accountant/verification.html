@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FinSecure Portal - MFA Verification</title>
+
+<!-- FontAwesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+body {
+    background: #f4f6f9;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+/* HEADER */
+header {
+    background: white;
+    padding: 15px 30px;
+    border-bottom: 1px solid #ddd;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.logo-box {
+    background: #1754cf;
+    color: white;
+    padding: 8px;
+    border-radius: 6px;
+}
+
+.logo h2 {
+    font-size: 18px;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    font-size: 12px;
+    text-transform: uppercase;
+    color: #666;
+}
+
+.icon-btn {
+    position: relative;
+    cursor: pointer;
+}
+
+.notification-count {
+    position: absolute;
+    top: -6px;
+    right: -8px;
+    background: red;
+    color: white;
+    font-size: 10px;
+    padding: 2px 5px;
+    border-radius: 50%;
+}
+
+/* MAIN */
+main {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px 20px;
+}
+
+.card {
+    background: white;
+    width: 100%;
+    max-width: 420px;
+    padding: 40px 30px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.shield {
+    width: 70px;
+    height: 70px;
+    background: rgba(23,84,207,0.1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    color: #1754cf;
+    font-size: 30px;
+}
+
+.card h1 {
+    font-size: 22px;
+    margin-bottom: 10px;
+}
+
+.card p {
+    font-size: 14px;
+    color: #666;
+    margin-bottom: 25px;
+}
+
+/* OTP INPUTS */
+.otp-container {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.otp {
+    width: 45px;
+    height: 55px;
+    font-size: 20px;
+    text-align: center;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    outline: none;
+}
+
+.otp:focus {
+    border-color: #1754cf;
+}
+
+/* BUTTON */
+button {
+    width: 100%;
+    padding: 14px;
+    background: #1754cf;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-bottom: 15px;
+}
+
+button:hover {
+    background: #1343a5;
+}
+
+.link-btn {
+    background: none;
+    color: #1754cf;
+    font-size: 13px;
+    cursor: pointer;
+    border: none;
+    margin-bottom: 10px;
+}
+
+.link-btn:hover {
+    text-decoration: underline;
+}
+
+.error {
+    color: red;
+    font-size: 13px;
+    margin-bottom: 15px;
+    display: none;
+}
+
+/* FOOTER */
+footer {
+    text-align: center;
+    font-size: 12px;
+    color: #888;
+    padding: 20px;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <div class="logo">
+        <div class="logo-box">
+            <i class="fa-solid fa-building-columns"></i>
+        </div>
+        <h2>FinSecure Portal</h2>
+    </div>
+
+    <div class="header-right">
+        Internal Access Only
+
+        <div class="icon-btn" id="notificationBtn">
+            <i class="fa-solid fa-bell"></i>
+            <span class="notification-count">3</span>
+        </div>
+
+        <div class="icon-btn" onclick="alert('Contact IT Support: support@finsecure.co.za')">
+            <i class="fa-solid fa-circle-question"></i>
+        </div>
+    </div>
+</header>
+
+<main>
+    <div class="card">
+        <div class="shield">
+            <i class="fa-solid fa-shield-halved"></i>
+        </div>
+
+        <h1>Two-Step Verification</h1>
+        <p>Enter the 6-digit code from your authenticator app.</p>
+
+        <div class="otp-container">
+            <input type="text" maxlength="1" class="otp">
+            <input type="text" maxlength="1" class="otp">
+            <input type="text" maxlength="1" class="otp">
+            <input type="text" maxlength="1" class="otp">
+            <input type="text" maxlength="1" class="otp">
+            <input type="text" maxlength="1" class="otp">
+        </div>
+
+        <div class="error" id="errorMsg">Invalid code. Please try again.</div>
+
+        <button id="verifyBtn">
+            Verify & Sign In <i class="fa-solid fa-arrow-right"></i>
+        </button>
+
+        <button class="link-btn" id="backupBtn">
+            Lost access? Use backup recovery code
+        </button>
+
+        <button class="link-btn" id="resendBtn">
+            Resend verification code
+        </button>
+
+        <div style="margin-top:25px; font-size:11px; color:#999;">
+            <i class="fa-solid fa-lock"></i> End-to-End Encrypted Session
+        </div>
+    </div>
+</main>
+
+<footer>
+© 2024 Accounting Firm Enterprise Portal. All Rights Reserved.
+</footer>
+
+<script>
+// OTP Auto Move
+const inputs = document.querySelectorAll(".otp");
+
+inputs.forEach((input, index) => {
+    input.addEventListener("input", () => {
+        input.value = input.value.replace(/[^0-9]/g, '');
+        if (input.value && index < inputs.length - 1) {
+            inputs[index + 1].focus();
+        }
+    });
+
+    input.addEventListener("keydown", (e) => {
+        if (e.key === "Backspace" && !input.value && index > 0) {
+            inputs[index - 1].focus();
+        }
+    });
+});
+
+// Verify Button
+document.getElementById("verifyBtn").addEventListener("click", function() {
+    let code = "";
+    inputs.forEach(i => code += i.value);
+
+    if(code.length !== 6) {
+        document.getElementById("errorMsg").style.display = "block";
+        return;
+    }
+
+    if(code === "123456") {
+        alert("Verification successful! Redirecting...");
+        window.location.href = "dashboard.html";
+    } else {
+        document.getElementById("errorMsg").style.display = "block";
+    }
+});
+
+// Backup Code
+document.getElementById("backupBtn").addEventListener("click", function() {
+    let backup = prompt("Enter backup recovery code:");
+    if(backup === "RECOVERY2024") {
+        alert("Backup verified. Redirecting...");
+        window.location.href = "dashboard.html";
+    } else if(backup !== null) {
+        alert("Invalid recovery code.");
+    }
+});
+
+// Resend
+document.getElementById("resendBtn").addEventListener("click", function() {
+    alert("New verification code sent.");
+});
+
+// Notifications
+document.getElementById("notificationBtn").addEventListener("click", function() {
+    alert("You have 3 new security alerts.");
+});
+</script>
+
+</body>
+</html>
