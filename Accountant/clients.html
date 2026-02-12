@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clients | Prospera Accountant Portal</title>
+
+<!-- Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+<style>
+
+/* ===== GLOBAL ===== */
+body {
+    margin: 0;
+    font-family: "Segoe UI", Arial, sans-serif;
+    background: #f8fafc;
+    color: #0f172a;
+}
+
+.app-layout{display:flex;min-height:100vh;width:100%;}
+
+/* SIDEBAR */
+.sidebar{
+  width:260px;
+  background:linear-gradient(180deg,#0f172a,#020617);
+  color:white;
+  display:flex;
+  flex-direction:column;
+  position:fixed;
+  height:100vh;
+}
+.sidebar-header{
+  padding:22px;
+  display:flex;
+  gap:12px;
+  align-items:center;
+}
+.sidebar-header i{font-size:30px;color:#60a5fa;}
+.sidebar-header h1{font-size:16px;}
+.sidebar-header p{font-size:12px;color:#94a3b8;}
+
+.nav{padding:16px;flex:1;}
+.nav a{
+  display:flex;
+  gap:12px;
+  align-items:center;
+  padding:12px 14px;
+  border-radius:10px;
+  color:#cbd5f5;
+  text-decoration:none;
+  margin-bottom:6px;
+}
+.nav a:hover{background:#1e293b;}
+.nav a.active{background:#2563eb;color:white;}
+
+.sidebar-footer{padding:16px;}
+.user-box{
+  background:#1e293b;
+  padding:12px;
+  border-radius:10px;
+  margin-bottom:12px;
+}
+.role{color:#60a5fa;font-size:12px;}
+
+.logout{
+  width:100%;
+  background:none;
+  border:none;
+  color:#cbd5f5;
+  padding:12px;
+  border-radius:10px;
+  cursor:pointer;
+  text-align:left;
+}
+.logout:hover{background:#1e293b;}
+
+
+.page{
+  flex:1;
+  margin-left:260px;
+  padding:24px;
+}
+
+h2 {
+    font-size: 28px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.subtitle {
+    margin-top: 8px;
+    color: #64748b;
+}
+
+/* ===== HEADER ===== */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    background: #2563eb;
+    color: white;
+    transition: 0.2s;
+}
+
+.button:hover {
+    background: #1d4ed8;
+}
+
+.button-ghost {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    color: #2563eb;
+}
+
+/* ===== CARD ===== */
+.card {
+    background: white;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+}
+
+.card-header {
+    padding: 20px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+}
+
+.card-title {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.card-content {
+    padding: 0;
+}
+
+/* ===== SEARCH ===== */
+.search-wrapper {
+    position: relative;
+    width: 260px;
+    display: flex;
+    align-items: center;
+}
+
+.search-wrapper input {
+    width: 100%;
+    height: 40px;
+    padding: 0 14px 0 38px;
+    border-radius: 8px;
+    border: 1px solid #d1d5db;
+    font-size: 14px;
+    outline: none;
+}
+
+.search-wrapper input:focus {
+    border-color: #2563eb;
+}
+
+.search-icon {
+    position: absolute;
+    left: 12px;
+    font-size: 14px;
+    color: #9ca3af;
+}
+
+/* ===== TABLE ===== */
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+thead {
+    background: #f9fafb;
+}
+
+th, td {
+    padding: 14px 16px;
+    text-align: left;
+    font-size: 14px;
+}
+
+th {
+    color: #64748b;
+    font-weight: 500;
+}
+
+tbody tr {
+    border-top: 1px solid #e5e7eb;
+}
+
+tbody tr:hover {
+    background: #f9fafb;
+}
+
+.text-right {
+    text-align: right;
+}
+
+/* ===== STATUS BADGES ===== */
+.badge {
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: capitalize;
+}
+
+.active {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.inactive {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+    .card-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+
+    .search-wrapper {
+        width: 100%;
+    }
+}
+
+</style>
+</head>
+
+<body>
+    <div class="app-layout">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <i class="fa-solid fa-shield-halved"></i>
+    <div>
+      <h1>Prospera</h1>
+      <p>Accountant Portal</p>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <a href="dashboards.html"><i class="fa fa-chart-line"></i> Dashboard</a>
+    <a href="clients.html" class="active"><i class="fa fa-users"></i> Clients</a>
+    <a href="documents.html" ><i class="fa fa-file"></i> Documents</a>
+    <a href="messages.html" ><i class="fa fa-message"></i> Messages</a>
+    <a href="settings.html"><i class="fa fa-gear"></i> Settings</a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="user-box">
+      <p><strong>Sarah Johnson</strong></p>
+      <p>sarah@prospera.com</p>
+      <p class="role">Primary Accountant</p>
+    </div>
+    <button class="logout"><i class="fa fa-sign-out"></i> Logout</button>
+  </div>
+</aside>
+
+<div class="page">
+
+    <div class="header">
+        <div>
+            <h2><i class="fa-solid fa-users"></i> Clients</h2>
+            <p class="subtitle">Manage your client accounts and information.</p>
+        </div>
+       
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">All Clients</div>
+            <div class="search-wrapper">
+                <i class="fa-solid fa-search search-icon"></i>
+                <input type="text" id="searchInput" placeholder="Search clients...">
+            </div>
+        </div>
+
+        <div class="card-content">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Company</th>
+                        <th>Email</th>
+                        <th>Status</th>
+                        <th>Documents</th>
+                        <th class="text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="clientsTable"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+</div>
+
+<script>
+
+const clients = [
+    { id: 1, name: 'John Doe', company: 'Doe Enterprises', email: 'john@doe.com', status: 'active', documents: 24 },
+    { id: 2, name: 'Jane Smith', company: 'Smith & Co', email: 'jane@smith.com', status: 'active', documents: 18 },
+    { id: 3, name: 'Mike Johnson', company: 'Johnson Inc', email: 'mike@johnson.com', status: 'active', documents: 32 },
+    { id: 4, name: 'Sarah Williams', company: 'Williams LLC', email: 'sarah@williams.com', status: 'inactive', documents: 12 },
+    { id: 5, name: 'Robert Brown', company: 'Brown Associates', email: 'robert@brown.com', status: 'active', documents: 28 },
+];
+
+const tableBody = document.getElementById("clientsTable");
+const searchInput = document.getElementById("searchInput");
+
+function renderClients(data) {
+    tableBody.innerHTML = "";
+
+    data.forEach(client => {
+        const row = document.createElement("tr");
+
+        row.innerHTML = `
+            <td><strong>${client.name}</strong></td>
+            <td>${client.company}</td>
+            <td>${client.email}</td>
+            <td><span class="badge ${client.status}">${client.status}</span></td>
+            <td>${client.documents}</td>
+            <td class="text-right">
+                <button class="button-ghost">View Details</button>
+            </td>
+        `;
+
+        tableBody.appendChild(row);
+    });
+}
+
+searchInput.addEventListener("input", function() {
+    const value = this.value.toLowerCase();
+
+    const filtered = clients.filter(client =>
+        client.name.toLowerCase().includes(value) ||
+        client.company.toLowerCase().includes(value) ||
+        client.email.toLowerCase().includes(value)
+    );
+
+    renderClients(filtered);
+});
+
+renderClients(clients);
+
+</script>
+
+</body>
+</html>

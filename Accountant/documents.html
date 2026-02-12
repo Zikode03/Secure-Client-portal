@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Documents | Prospera Accountant Portal</title>
+
+<!-- Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+<style>
+/* ===== GLOBAL ===== */
+body {
+  margin: 0;
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.app-layout{display:flex;min-height:100vh;width:100%;}
+
+/* SIDEBAR */
+.sidebar{
+  width:260px;
+  background:linear-gradient(180deg,#0f172a,#020617);
+  color:white;
+  display:flex;
+  flex-direction:column;
+  position:fixed;
+  height:100vh;
+}
+.sidebar-header{
+  padding:22px;
+  display:flex;
+  gap:12px;
+  align-items:center;
+}
+.sidebar-header i{font-size:30px;color:#60a5fa;}
+.sidebar-header h1{font-size:16px;}
+.sidebar-header p{font-size:12px;color:#94a3b8;}
+
+.nav{padding:16px;flex:1;}
+.nav a{
+  display:flex;
+  gap:12px;
+  align-items:center;
+  padding:12px 14px;
+  border-radius:10px;
+  color:#cbd5f5;
+  text-decoration:none;
+  margin-bottom:6px;
+}
+.nav a:hover{background:#1e293b;}
+.nav a.active{background:#2563eb;color:white;}
+
+.sidebar-footer{padding:16px;}
+.user-box{
+  background:#1e293b;
+  padding:12px;
+  border-radius:10px;
+  margin-bottom:12px;
+}
+.role{color:#60a5fa;font-size:12px;}
+
+.logout{
+  width:100%;
+  background:none;
+  border:none;
+  color:#cbd5f5;
+  padding:12px;
+  border-radius:10px;
+  cursor:pointer;
+  text-align:left;
+}
+.logout:hover{background:#1e293b;}
+
+
+.page{
+  flex:1;
+  margin-left:260px;
+  padding:24px;
+}
+h2 {
+  font-size: 28px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.subtitle {
+  margin-top: 8px;
+  color: #64748b;
+}
+
+/* ===== HEADER ===== */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  background: #2563eb;
+  color: white;
+}
+
+.button-outline {
+  background: white;
+  border: 1px solid #d1d5db;
+  color: #374151;
+}
+
+.button-ghost {
+  background: transparent;
+  border: none;
+  color: #374151;
+  cursor: pointer;
+}
+
+.button-icon {
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: white;
+  cursor: pointer;
+}
+
+/* ===== CARD ===== */
+.card {
+  background: white;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+}
+.card-header {
+  padding: 20px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+
+.card-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.card-content {
+  padding: 0;
+}
+
+/* ===== SEARCH ===== */
+.search-wrapper {
+  position: relative;
+  width: 260px;
+}
+
+.search-wrapper input {
+  width: 100%;
+  padding: 8px 12px 8px 36px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-size: 14px;
+}
+
+.search-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9ca3af;
+}
+.card-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.search-wrapper {
+  position: relative;
+  width: 260px;
+  display: flex;
+  align-items: center;
+}
+
+.search-wrapper input {
+  height: 38px;
+  width: 100%;
+  padding: 0 12px 0 36px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-size: 14px;
+}
+
+.button-icon {
+  height: 38px;
+  width: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.filter-select {
+  height: 38px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+
+/* ===== TABLE ===== */
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+thead {
+  background: #f9fafb;
+}
+
+th, td {
+  padding: 14px 16px;
+  text-align: left;
+  font-size: 14px;
+}
+
+th {
+  color: #64748b;
+  font-weight: 500;
+}
+
+tbody tr {
+  border-top: 1px solid #e5e7eb;
+}
+
+tbody tr:hover {
+  background: #f9fafb;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ===== STATUS BADGES ===== */
+.badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.completed {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.pending {
+  background: #fef9c3;
+  color: #854d0e;
+}
+
+.in-review {
+  background: #e0f2fe;
+  color: #075985;
+}
+
+.approved {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
+.file-icon {
+  margin-right: 8px;
+  color: #6b7280;
+}
+</style>
+</head>
+
+<body>
+
+    
+<div class="app-layout">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <i class="fa-solid fa-shield-halved"></i>
+    <div>
+      <h1>Prospera</h1>
+      <p>Accountant Portal</p>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <a href="dashboards.html"><i class="fa fa-chart-line"></i> Dashboard</a>
+    <a href="clients.html"><i class="fa fa-users"></i> Clients</a>
+    <a href="documents.html" class="active"><i class="fa fa-file"></i> Documents</a>
+    <a href="messages.html" ><i class="fa fa-message"></i> Messages</a>
+    <a href="settings.html"><i class="fa fa-gear"></i> Settings</a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="user-box">
+      <p><strong>Sarah Johnson</strong></p>
+      <p>sarah@prospera.com</p>
+      <p class="role">Primary Accountant</p>
+    </div>
+    <button class="logout"><i class="fa fa-sign-out"></i> Logout</button>
+  </div>
+</aside>
+
+
+<div class="page">
+
+  <div class="header">
+    <div>
+      <h2>Documents</h2>
+      <p class="subtitle">Manage and organize all your documents.</p>
+    </div>
+    <button class="button">
+      <i class="fa-solid fa-upload"></i>
+      Upload Document
+    </button>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">All Documents</div>
+      <div class="card-controls">
+        <div class="search-wrapper">
+          <i class="fa-solid fa-search search-icon"></i>
+          <input type="text" id="searchInput" placeholder="Search documents...">
+        </div>
+        <select id="statusFilter" class="filter-select">
+  <option value="all">All</option>
+  <option value="completed">Completed</option>
+  <option value="pending">Pending</option>
+  <option value="in-review">In Review</option>
+  <option value="approved">Approved</option>
+</select>
+
+      </div>
+    </div>
+
+    <div class="card-content">
+      <table>
+        <thead>
+          <tr>
+            <th>Document Name</th>
+            <th>Client</th>
+            <th>Category</th>
+            <th>Size</th>
+            <th>Status</th>
+            <th>Date</th>
+            <th style="text-align:right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="documentsTable"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+const documents = [
+  { id: 1, name: 'Tax Return 2025.pdf', client: 'John Doe', category: 'Tax Documents', size: '2.4 MB', status: 'completed', date: '2026-01-25' },
+  { id: 2, name: 'Bank Statement - Dec 2025.pdf', client: 'Jane Smith', category: 'Financial Statements', size: '1.8 MB', status: 'completed', date: '2026-01-24' },
+  { id: 3, name: 'Invoice #1234.pdf', client: 'Mike Johnson', category: 'Invoices', size: '856 KB', status: 'in-review', date: '2026-01-23' },
+  { id: 4, name: 'Expense Report Q4.xlsx', client: 'Sarah Williams', category: 'Reports', size: '3.1 MB', status: 'pending', date: '2026-01-22' },
+  { id: 5, name: 'Payroll Summary Jan 2026.pdf', client: 'Robert Brown', category: 'Payroll', size: '1.2 MB', status: 'completed', date: '2026-01-21' },
+  { id: 6, name: 'Contract Agreement.pdf', client: 'John Doe', category: 'Legal', size: '4.5 MB', status: 'approved', date: '2026-01-20' },
+];
+
+const tableBody = document.getElementById("documentsTable");
+const searchInput = document.getElementById("searchInput");
+
+function renderDocuments(data) {
+  tableBody.innerHTML = "";
+  data.forEach(doc => {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td><i class="fa-regular fa-file-lines file-icon"></i>${doc.name}</td>
+      <td>${doc.client}</td>
+      <td>${doc.category}</td>
+      <td>${doc.size}</td>
+      <td><span class="badge ${doc.status}">${doc.status}</span></td>
+      <td>${doc.date}</td>
+      <td>
+        <div class="actions">
+          <button class="button-ghost">View</button>
+          <button class="button-ghost">
+            <i class="fa-solid fa-download"></i>
+          </button>
+        </div>
+      </td>
+    `;
+    tableBody.appendChild(row);
+  });
+}
+
+const statusFilter = document.getElementById("statusFilter");
+
+function applyFilters() {
+  const searchValue = searchInput.value.toLowerCase();
+  const selectedStatus = statusFilter.value;
+
+  const filtered = documents.filter(doc => {
+    const matchesSearch =
+      doc.name.toLowerCase().includes(searchValue) ||
+      doc.client.toLowerCase().includes(searchValue) ||
+      doc.category.toLowerCase().includes(searchValue);
+
+    const matchesStatus =
+      selectedStatus === "all" || doc.status === selectedStatus;
+
+    return matchesSearch && matchesStatus;
+  });
+
+  renderDocuments(filtered);
+}
+
+searchInput.addEventListener("input", applyFilters);
+statusFilter.addEventListener("change", applyFilters);
+
+
+renderDocuments(documents);
+</script>
+
+</body>
+</html>

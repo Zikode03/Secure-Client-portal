@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Accountant Dashboard | Pro Accountant Portal</title>
 
-<!-- Font Awesome Only -->
+
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 
 <style>
@@ -22,80 +22,68 @@ body {
   color: #111318;
 }
 
-/* Layout */
-.app {
-  display: flex;
-  min-height: 100vh;
-}
-
-.sidebar {
-  width: 260px;
-  background: #ffffff;
-  border-right: 1px solid #e1e4ea;
-  padding: 24px 18px;
-  display: flex;
-  flex-direction: column;
-  position: fixed;
-  height: 100%;
-}
 
 .main {
   margin-left: 260px;
   flex: 1;
 }
 
-/* Sidebar Branding */
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 32px;
-}
+.app-layout{display:flex;min-height:100vh;width:100%;}
 
-.brand-icon {
-  width: 40px;
-  height: 40px;
-  background: #1754cf;
-  color: #ffffff;
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
+/* SIDEBAR */
+.sidebar{
+  width:260px;
+  background:linear-gradient(180deg,#0f172a,#020617);
+  color:white;
+  display:flex;
+  flex-direction:column;
+  position:fixed;
+  height:100vh;
 }
+.sidebar-header{
+  padding:22px;
+  display:flex;
+  gap:12px;
+  align-items:center;
+}
+.sidebar-header i{font-size:30px;color:#60a5fa;}
+.sidebar-header h1{font-size:16px;}
+.sidebar-header p{font-size:12px;color:#94a3b8;}
 
-.brand h1 {
-  font-size: 16px;
-  font-weight: 700;
+.nav{padding:16px;flex:1;}
+.nav a{
+  display:flex;
+  gap:12px;
+  align-items:center;
+  padding:12px 14px;
+  border-radius:10px;
+  color:#cbd5f5;
+  text-decoration:none;
+  margin-bottom:6px;
 }
+.nav a:hover{background:#1e293b;}
+.nav a.active{background:#2563eb;color:white;}
 
-.brand p {
-  font-size: 12px;
-  color: #6b7280;
+.sidebar-footer{padding:16px;}
+.user-box{
+  background:#1e293b;
+  padding:12px;
+  border-radius:10px;
+  margin-bottom:12px;
 }
+.role{color:#60a5fa;font-size:12px;}
 
-/* Navigation */
-.nav a {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  color: #5f6c85;
-  text-decoration: none;
-  font-size: 14px;
-  margin-bottom: 4px;
+.logout{
+  width:100%;
+  background:none;
+  border:none;
+  color:#cbd5f5;
+  padding:12px;
+  border-radius:10px;
+  cursor:pointer;
+  text-align:left;
 }
-
-.nav a.active {
-  background: #e8efff;
-  color: #1754cf;
-  font-weight: 600;
-}
-
-.nav a:hover {
-  background: #f3f4f6;
-}
+.logout:hover{background:#1e293b;}
 
 .badge {
   margin-left: auto;
@@ -493,32 +481,33 @@ tbody tr {
 </head>
 
 <body>
-<div class="app">
+<div class="app-layout">
 
-<!-- Sidebar -->
+<!-- SIDEBAR -->
 <aside class="sidebar">
-  <div class="brand">
-    <div class="brand-icon"><i class="fa-solid fa-building-columns"></i></div>
+  <div class="sidebar-header">
+    <i class="fa-solid fa-shield-halved"></i>
     <div>
-      <h1>Pro Accountant</h1>
-      <p>Firm Management</p>
+      <h1>Prospera</h1>
+      <p>Accountant Portal</p>
     </div>
   </div>
 
   <nav class="nav">
-    <a class="active"><i class="fa-solid fa-chart-line"></i>Dashboard</a>
-    <a><i class="fa-solid fa-users"></i>Clients</a>
-    <a><i class="fa-solid fa-file-lines"></i>Document Review</a>
-    <a><i class="fa-solid fa-circle-question"></i>Requests <span class="badge">12</span></a>
-    <a><i class="fa-solid fa-list-check"></i>Tasks</a>
+    <a href="dashboards.html" class="active"><i class="fa fa-chart-line"></i> Dashboard</a>
+    <a href="clients.html"><i class="fa fa-users"></i> Clients</a>
+    <a href="documents.html"><i class="fa fa-file"></i> Documents</a>
+    <a href="messages.html" ><i class="fa fa-message"></i> Messages</a>
+    <a href="settings.html"><i class="fa fa-gear"></i> Settings</a>
   </nav>
 
-  <div class="profile">
-    <img src="https://i.pravatar.cc/100" alt="">
-    <div>
-      <div class="profile-name">Alex Miller, CPA</div>
-      <div class="profile-role">Senior Partner</div>
+  <div class="sidebar-footer">
+    <div class="user-box">
+      <p><strong>Sarah Johnson</strong></p>
+      <p>sarah@prospera.com</p>
+      <p class="role">Primary Accountant</p>
     </div>
+    <button class="logout"><i class="fa fa-sign-out"></i> Logout</button>
   </div>
 </aside>
 
