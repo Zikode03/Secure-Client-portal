@@ -5,12 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Client Profile</title>
 
-<!-- FONT AWESOME -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
 <style>
 
-/* ===== RESET ===== */
+/* RESET */
 *{
   margin:0;
   padding:0;
@@ -23,42 +22,60 @@ body{
   color:#1f2937;
 }
 
-/* ===== PAGE WRAPPER ===== */
 .wrapper{
-  padding:30px 40px;
+  padding: 24px 32px;
+  max-width: 1440px;
+  margin: 0 auto;
 }
 
-/* ===== BREADCRUMB ===== */
+.back-arrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #2563eb;
+  font-weight: 600;
+  font-size: 15px;
+  margin-bottom: 16px;
+  cursor: pointer;
+  transition: color 0.15s ease;
+  user-select: none;
+}
+
+.back-arrow:hover {
+  color: #1d4ed8;
+}
+
+.back-arrow i {
+  font-size: 18px;
+}
+
 .breadcrumb{
   font-size:14px;
   color:#6b7280;
-  margin-bottom:20px;
+  margin-bottom:16px;
 }
 
 .breadcrumb strong{
   color:#111827;
 }
 
-/* ===== MAIN GRID ===== */
 .main-grid{
   display:grid;
   grid-template-columns: 2.5fr 1fr;
-  gap:25px;
+  gap:24px;
 }
 
-/* ===== CARD ===== */
 .card{
   background:white;
-  border-radius:14px;
-  padding:20px;
-  box-shadow:0 2px 8px rgba(0,0,0,0.05);
+  border-radius:12px;
+  box-shadow:0 1px 4px rgba(0,0,0,0.08);
 }
 
-/* ===== PROFILE HEADER ===== */
 .profile-header{
+  padding: 24px 24px 16px;
   display:flex;
   justify-content:space-between;
-  align-items:center;
+  align-items:flex-start;
 }
 
 .profile-left{
@@ -70,14 +87,14 @@ body{
 .logo-box{
   width:80px;
   height:80px;
-  border-radius:12px;
-  background:#4b5563;
+  border-radius:10px;
+  background:#10b981;
   display:flex;
   align-items:center;
   justify-content:center;
   color:white;
   font-weight:700;
-  font-size:20px;
+  font-size:28px;
 }
 
 .status{
@@ -86,7 +103,7 @@ body{
   color:#15803d;
   padding:4px 10px;
   font-size:12px;
-  border-radius:20px;
+  border-radius:999px;
   font-weight:600;
   margin-left:10px;
 }
@@ -100,76 +117,92 @@ body{
 .edit-btn{
   background:#f3f4f6;
   border:1px solid #e5e7eb;
-  padding:10px 18px;
+  padding:8px 16px;
   border-radius:8px;
   cursor:pointer;
   font-weight:600;
+  font-size:14px;
 }
 
-.edit-btn:hover{
-  background:#e5e7eb;
-}
-
-/* ===== TABS ===== */
 .tabs{
   display:flex;
-  gap:30px;
-  margin-top:20px;
+  margin:0 24px;
   border-bottom:1px solid #e5e7eb;
 }
 
-.tabs div{
-  padding-bottom:12px;
+.tab-btn{
+  padding:12px 20px;
   font-size:14px;
   font-weight:600;
   color:#6b7280;
   cursor:pointer;
+  background:none;
+  border:none;
+  position:relative;
 }
 
-.tabs .active{
+.tab-btn.active{
   color:#2563eb;
-  border-bottom:3px solid #2563eb;
 }
 
-/* ===== STATS ===== */
+.tab-btn.active::after{
+  content:"";
+  position:absolute;
+  bottom:-1px;
+  left:0;
+  right:0;
+  height:3px;
+  background:#2563eb;
+}
+
+.tab-content{
+  display:none;
+  padding:0 24px 24px;
+}
+
+.tab-content.active{
+  display:block;
+}
+
+/* STATS */
 .stats{
   display:grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap:20px;
-  margin-top:20px;
+  grid-template-columns:repeat(3,1fr);
+  gap:16px;
+  margin:24px 0;
 }
 
 .stat-box{
   background:#f9fafb;
-  padding:20px;
-  border-radius:12px;
+  padding:16px 20px;
+  border-radius:10px;
   border:1px solid #e5e7eb;
 }
 
 .stat-box h4{
   font-size:13px;
   color:#6b7280;
-  margin-bottom:10px;
+  margin-bottom:8px;
 }
 
 .stat-box strong{
   font-size:22px;
 }
 
-.green{ color:#16a34a; font-size:13px; margin-top:8px;}
-.red{ color:#dc2626; font-size:13px; margin-top:8px;}
-.gray{ color:#6b7280; font-size:13px; margin-top:8px;}
+.green{color:#16a34a;font-size:13px;margin-top:6px;}
+.red{color:#dc2626;font-size:13px;margin-top:6px;}
+.gray{color:#6b7280;font-size:13px;margin-top:6px;}
 
-/* ===== ACTIVITY ===== */
+/* ACTIVITY */
 .activity-section{
-  margin-top:25px;
+  margin-top:20px;
 }
 
 .activity-item{
   display:flex;
   justify-content:space-between;
   align-items:center;
-  padding:15px;
+  padding:14px 18px;
   border:1px solid #e5e7eb;
   border-radius:10px;
   margin-bottom:10px;
@@ -177,7 +210,7 @@ body{
 
 .activity-left{
   display:flex;
-  gap:15px;
+  gap:14px;
   align-items:center;
 }
 
@@ -190,11 +223,12 @@ body{
   align-items:center;
   justify-content:center;
   border-radius:8px;
+  font-size:18px;
 }
 
-.activity-item small{
-  color:#6b7280;
-  font-size:13px;
+.icon-success{
+  background:#dcfce7;
+  color:#15803d;
 }
 
 .link-btn{
@@ -205,56 +239,256 @@ body{
   cursor:pointer;
 }
 
-/* ===== RIGHT SIDE ===== */
+/* ────────────────────────────────────────────── */
+/*     RESTORED STYLES FOR CONTACTS TAB           */
+/* ────────────────────────────────────────────── */
+
+.table-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-top:20px;
+  margin-bottom:15px;
+}
+
+.primary-btn{
+  background:#2563eb;
+  color:white;
+  border:none;
+  padding:10px 16px;
+  border-radius:8px;
+  cursor:pointer;
+  font-weight:600;
+}
+
+.contact-table{
+  width:100%;
+  border-collapse:collapse;
+}
+
+.contact-table th{
+  text-align:left;
+  font-size:12px;
+  color:#6b7280;
+  padding:12px;
+  border-bottom:1px solid #e5e7eb;
+}
+
+.contact-table td{
+  padding:14px 12px;
+  border-bottom:1px solid #f1f5f9;
+  font-size:14px;
+}
+
+.contact-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.avatar{
+  width:35px;
+  height:35px;
+  border-radius:50%;
+  background:#e5e7eb;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:600;
+}
+
+.badge{
+  font-size:10px;
+  background:#dbeafe;
+  color:#1d4ed8;
+  padding:2px 6px;
+  border-radius:6px;
+  margin-left:5px;
+}
+
+/* ────────────────────────────────────────────── */
+/*     RESTORED STYLES FOR COMPLIANCE HISTORY     */
+/* ────────────────────────────────────────────── */
+
+.timeline-header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin:20px 0;
+}
+
+.timeline-filters{
+  display:flex;
+  gap:10px;
+}
+
+.timeline-filters select,
+.date-btn{
+  padding:8px 12px;
+  border:1px solid #e5e7eb;
+  border-radius:8px;
+  background:white;
+  font-size:13px;
+  cursor:pointer;
+}
+
+.timeline{
+  margin-top:10px;
+}
+
+.timeline-item{
+  display:flex;
+  gap:15px;
+  padding:18px;
+  border:1px solid #e5e7eb;
+  border-radius:12px;
+  margin-bottom:12px;
+  background:white;
+}
+
+.timeline-icon{
+  width:40px;
+  height:40px;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:14px;
+}
+
+.success .timeline-icon{background:#dcfce7;color:#15803d;}
+.rejected .timeline-icon{background:#fee2e2;color:#dc2626;}
+.pending .timeline-icon{background:#dbeafe;color:#2563eb;}
+.warning .timeline-icon{background:#fef3c7;color:#d97706;}
+
+.timeline-content{flex:1;}
+
+.timeline-top{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+}
+
+.time{
+  margin-left:auto;
+  font-size:12px;
+  color:#6b7280;
+}
+
+.timeline-content p{
+  margin:8px 0 12px 0;
+  font-size:14px;
+  color:#4b5563;
+}
+
+.timeline-bottom{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:10px;
+}
+
+.avatar-sm{
+  width:28px;
+  height:28px;
+  border-radius:50%;
+  background:#e0e7ff;
+  color:#2563eb;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  font-size:12px;
+  font-weight:600;
+  margin-right:6px;
+}
+
+.gray-bg{
+  background:#e5e7eb;
+  color:#374151;
+}
+
+.badge-approved,
+.badge-rejected,
+.badge-pending,
+.badge-warning{
+  padding:3px 8px;
+  border-radius:12px;
+  font-size:11px;
+  font-weight:600;
+}
+
+.badge-approved{background:#dcfce7;color:#15803d;}
+.badge-rejected{background:#fee2e2;color:#dc2626;}
+.badge-pending{background:#dbeafe;color:#1d4ed8;}
+.badge-warning{background:#fef3c7;color:#b45309;}
+
+.load-more{
+  text-align:center;
+  margin-top:20px;
+}
+
+/* RIGHT SIDE */
+.card.quick-actions {
+  margin-bottom: 24px;   /* or 20px, 16px – adjust as you like */
+}
+.quick-actions{
+  padding:20px;
+}
+
+.quick-actions h3{
+  margin-bottom:16px;
+}
+
 .quick-actions button{
   width:100%;
-  padding:12px;
+  padding:11px 16px;
   margin-bottom:10px;
   border-radius:8px;
   border:none;
   font-weight:600;
   cursor:pointer;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  justify-content:center;
+  font-size:14px;
 }
 
-.primary{
-  background:#3b82f6;
-  color:white;
-}
+.primary{background:#2563eb;color:white;}
+.outline{background:white;border:1px solid #2563eb;color:#2563eb;}
+.danger{background:none;color:#dc2626;text-align:left;justify-content:flex-start;}
 
-.outline{
-  background:white;
-  border:1px solid #3b82f6;
-  color:#3b82f6;
-}
-
-.danger{
-  background:none;
-  color:#dc2626;
-  text-align:left;
+.assigned-partner{
+  padding:20px;
 }
 
 .partner{
   display:flex;
   gap:15px;
   align-items:center;
+  margin-top:12px;
 }
 
 .partner-avatar{
   width:50px;
   height:50px;
   border-radius:50%;
-  background:#e5e7eb;
+  background:#e0f2fe;
+  color:#2563eb;
   display:flex;
   align-items:center;
   justify-content:center;
+  font-size:20px;
 }
 
-/* ===== FOOTER ===== */
 .footer{
   text-align:center;
   font-size:12px;
   color:#9ca3af;
-  margin-top:40px;
+  margin-top:48px;
+  padding-bottom:24px;
 }
 
 @media(max-width:1000px){
@@ -262,7 +496,7 @@ body{
     grid-template-columns:1fr;
   }
   .stats{
-    grid-template-columns:1fr;
+    grid-template-columns:repeat(2,1fr);
   }
 }
 
@@ -272,163 +506,386 @@ body{
 
 <div class="wrapper">
 
-  <!-- BREADCRUMB -->
-  <div class="breadcrumb">
-    Clients / <strong>Acme Corp</strong>
-  </div>
+ <a href="clients.html" class="back-arrow">
+  <i class="fa fa-arrow-left"></i>
+  <span>Back to Clients</span>
+</a>
 
-  <div class="main-grid">
+<div class="breadcrumb">
+Clients / <strong>Acme Corp</strong>
+</div>
 
-    <!-- LEFT SIDE -->
-    <div>
+<div class="main-grid">
 
-      <!-- PROFILE HEADER -->
-      <div class="card">
-        <div class="profile-header">
-          <div class="profile-left">
-            <div class="logo-box">AC</div>
-            <div>
-              <h2>Acme Corp <span class="status">ACTIVE</span></h2>
-              <div class="sub-info">
-                <i class="fa fa-user"></i> Primary Contact: Jane Doe
-              </div>
-              <div class="sub-info">
-                Technology & Software Services • Member since 2021
-              </div>
-            </div>
-          </div>
-          <button class="edit-btn">
-            <i class="fa fa-pen"></i> Edit Profile
-          </button>
-        </div>
+<div>
 
-        <!-- TABS -->
-        <div class="tabs">
-          <div class="active"><i class="fa fa-chart-pie"></i> Overview</div>
-          <div><i class="fa fa-users"></i> Contacts</div>
-          <div><i class="fa fa-user-tie"></i> Assigned Accountant</div>
-          <div><i class="fa fa-clock-rotate-left"></i> Compliance History</div>
-        </div>
+<div class="card">
 
-        <!-- STATS -->
-        <div class="stats">
-          <div class="stat-box">
-            <h4>Last Login</h4>
-            <strong>2 hours ago</strong>
-            <div class="green">+5% Activity</div>
-          </div>
+<div class="profile-header">
 
-          <div class="stat-box">
-            <h4>Total Documents</h4>
-            <strong>142</strong>
-            <div class="red">-2% MoM</div>
-          </div>
+<div class="profile-left">
 
-          <div class="stat-box">
-            <h4>Upcoming Deadlines</h4>
-            <strong>3</strong>
-            <div class="gray">No change</div>
-          </div>
-        </div>
+<div class="logo-box">AC</div>
 
-        <!-- ACTIVITY -->
-        <div class="activity-section">
-          <h3 style="margin-bottom:15px;">Recent Activity</h3>
+<div>
 
-          <div class="activity-item">
-            <div class="activity-left">
-              <div class="icon-box">
-                <i class="fa fa-file-arrow-up"></i>
-              </div>
-              <div>
-                <strong>Quarterly Tax Document Uploaded</strong>
-                <br>
-                <small>by Jane Doe • 45 minutes ago</small>
-              </div>
-            </div>
-            <button class="link-btn">View</button>
-          </div>
+<h2>
+Acme Corp
+<span class="status">ACTIVE</span>
+</h2>
 
-          <div class="activity-item">
-            <div class="activity-left">
-              <div class="icon-box" style="background:#dcfce7;color:#15803d;">
-                <i class="fa fa-check"></i>
-              </div>
-              <div>
-                <strong>Annual Report Approved</strong>
-                <br>
-                <small>by Admin System • Yesterday, 4:30 PM</small>
-              </div>
-            </div>
-            <button class="link-btn">Download</button>
-          </div>
+<div class="sub-info">
+<i class="fa fa-user"></i>
+Primary Contact: Jane Doe
+</div>
 
-        </div>
-
-      </div>
-    </div>
-
-    <!-- RIGHT SIDE -->
-    <div>
-
-      <!-- QUICK ACTIONS -->
-      <div class="card quick-actions">
-        <h3 style="margin-bottom:15px;">Quick Actions</h3>
-
-        <button class="primary">
-          <i class="fa fa-comment"></i> Message Client
-        </button>
-
-        <button class="outline">
-          <i class="fa fa-file-circle-plus"></i> Request Document
-        </button>
-
-        <button class="outline">
-          <i class="fa fa-download"></i> Export Client Data
-        </button>
-
-        <hr style="margin:15px 0;">
-
-        <button class="danger">
-          <i class="fa fa-ban"></i> Suspend Account
-        </button>
-      </div>
-
-      <!-- ASSIGNED PARTNER -->
-      <div class="card" style="margin-top:20px;">
-        <h4 style="color:#6b7280;font-size:12px;margin-bottom:15px;">ASSIGNED PARTNER</h4>
-        <div class="partner">
-          <div class="partner-avatar">
-            <i class="fa fa-user"></i>
-          </div>
-          <div>
-            <strong>Sarah Thompson, CPA</strong>
-            <div style="font-size:13px;color:#6b7280;">Senior Tax Partner</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- CURRENT TIER -->
-      <div class="card" style="margin-top:20px;">
-        <h4 style="color:#6b7280;font-size:12px;margin-bottom:15px;">CURRENT TIER</h4>
-        <strong>Enterprise Pro Plan</strong>
-        <div style="font-size:13px;color:#6b7280;margin-top:5px;">
-          Renews on Oct 12, 2024
-        </div>
-        <div style="margin-top:15px;color:#2563eb;font-weight:600;cursor:pointer;">
-          View Billing Details →
-        </div>
-      </div>
-
-    </div>
-
-  </div>
-
-  <div class="footer">
-    © 2024 FirmPortal Management System. All documents are encrypted with AES-256.
-  </div>
+<div class="sub-info">
+Technology & Software Services • Member since 2021
+</div>
 
 </div>
+</div>
+
+<button class="edit-btn">
+<i class="fa fa-pen"></i>
+Edit Profile
+</button>
+
+</div>
+
+<div class="tabs">
+
+<div class="tab-btn active" data-tab="overview">
+<i class="fa fa-chart-pie"></i>
+Overview
+</div>
+
+<div class="tab-btn" data-tab="contacts">
+<i class="fa fa-users"></i>
+Contacts
+</div>
+
+<div class="tab-btn" data-tab="compliance">
+<i class="fa fa-clock-rotate-left"></i>
+Compliance History
+</div>
+
+</div>
+
+<!-- OVERVIEW TAB -->
+<div id="overview" class="tab-content active">
+
+<div class="stats">
+
+<div class="stat-box">
+<h4>Last Login</h4>
+<strong>2 hours ago</strong>
+<div class="green">+5% Activity</div>
+</div>
+
+<div class="stat-box">
+<h4>Total Documents</h4>
+<strong>142</strong>
+<div class="red">-2% MoM</div>
+</div>
+
+<div class="stat-box">
+<h4>Upcoming Deadlines</h4>
+<strong>3</strong>
+<div class="gray">No change</div>
+</div>
+
+</div>
+
+<div class="activity-section">
+
+<h3>Recent Activity</h3>
+
+<div class="activity-item">
+
+<div class="activity-left">
+
+<div class="icon-box">
+<i class="fa fa-file-arrow-up"></i>
+</div>
+
+<div>
+<strong>Quarterly Tax Document Uploaded</strong>
+<br>
+<small>by Jane Doe • 45 minutes ago</small>
+</div>
+
+</div>
+
+<button class="link-btn">View</button>
+
+</div>
+
+<div class="activity-item">
+
+<div class="activity-left">
+
+<div class="icon-box icon-success">
+<i class="fa fa-check"></i>
+</div>
+
+<div>
+<strong>Annual Report Approved</strong>
+<br>
+<small>by Admin System • Yesterday</small>
+</div>
+
+</div>
+
+<button class="link-btn">Download</button>
+
+</div>
+
+</div>
+
+</div>
+
+<!-- CONTACTS TAB -->
+<div id="contacts" class="tab-content">
+
+<div class="table-header">
+
+<h3>Contact Directory</h3>
+
+<button class="primary-btn">
+<i class="fa fa-user-plus"></i>
+Add New Contact
+</button>
+
+</div>
+
+<table class="contact-table">
+
+<thead>
+<tr>
+<th>Full Name</th>
+<th>Role</th>
+<th>Email</th>
+<th>Phone</th>
+<th></th>
+</tr>
+</thead>
+
+<tbody>
+
+<tr>
+<td>
+<div class="contact-row">
+<div class="avatar">JD</div>
+<div>
+Jane Doe
+<span class="badge">PRIMARY</span>
+</div>
+</div>
+</td>
+<td>Chief Executive Officer</td>
+<td>jane.doe@acmecorp.com</td>
+<td>+1 555 123 4567</td>
+<td><i class="fa fa-ellipsis"></i></td>
+</tr>
+
+<tr>
+<td>
+<div class="contact-row">
+<div class="avatar">MS</div>
+<div>Mark Smith</div>
+</div>
+</td>
+<td>Finance Manager</td>
+<td>mark.s@acmecorp.com</td>
+<td>+1 555 987 6543</td>
+<td><i class="fa fa-ellipsis"></i></td>
+</tr>
+
+<tr>
+<td>
+<div class="contact-row">
+<div class="avatar">AL</div>
+<div>Alice Lee</div>
+</div>
+</td>
+<td>Accounts Payable</td>
+<td>alice.lee@acmecorp.com</td>
+<td>+1 555 234 5678</td>
+<td><i class="fa fa-ellipsis"></i></td>
+</tr>
+
+</tbody>
+
+</table>
+
+</div>
+
+<!-- COMPLIANCE TAB -->
+<div id="compliance" class="tab-content">
+
+<div class="timeline-header">
+<h3>Timeline</h3>
+<div class="timeline-filters">
+<select><option>All Document Types</option></select>
+<select><option>All Statuses</option></select>
+<button class="date-btn"><i class="fa fa-calendar"></i> Date Range</button>
+</div>
+</div>
+
+<div class="timeline">
+
+<div class="timeline-item success">
+<div class="timeline-icon"><i class="fa fa-check"></i></div>
+<div class="timeline-content">
+<div class="timeline-top">
+<strong>Quarterly Filing Approved</strong>
+<span class="badge-approved">APPROVED</span>
+<span class="time">Oct 12, 2024 • 2:45 PM</span>
+</div>
+<p>The Q3 Sales Tax filing has been reviewed and approved for submission.</p>
+<div class="timeline-bottom">
+<span><span class="avatar-sm">ST</span>Performed by: <strong>Sarah Thompson (CPA)</strong></span>
+<button class="link-btn">View Document</button>
+</div>
+</div>
+</div>
+
+<div class="timeline-item rejected">
+<div class="timeline-icon"><i class="fa fa-xmark"></i></div>
+<div class="timeline-content">
+<div class="timeline-top">
+<strong>Tax Document Rejected</strong>
+<span class="badge-rejected">REJECTED</span>
+<span class="time">Oct 10, 2024 • 11:20 AM</span>
+</div>
+<p>Income Statement 2023_ Revised.pdf was rejected due to missing expense breakdown on page 4.</p>
+<div class="timeline-bottom">
+<span><span class="avatar-sm">ST</span>Performed by: <strong>Sarah Thompson (CPA)</strong></span>
+<button class="link-btn">View Details</button>
+</div>
+</div>
+</div>
+
+<div class="timeline-item pending">
+<div class="timeline-icon"><i class="fa fa-file"></i></div>
+<div class="timeline-content">
+<div class="timeline-top">
+<strong>New Document Uploaded</strong>
+<span class="badge-pending">PENDING REVIEW</span>
+<span class="time">Oct 09, 2024 • 04:15 PM</span>
+</div>
+<p>Quarterly Payroll Summary_Q3 2024 has been uploaded by the client.</p>
+<div class="timeline-bottom">
+<span><span class="avatar-sm gray-bg">JD</span>Performed by: <strong>Jane Doe (Client)</strong></span>
+<button class="link-btn">Download File</button>
+</div>
+</div>
+</div>
+
+<div class="timeline-item warning">
+<div class="timeline-icon"><i class="fa fa-exclamation"></i></div>
+<div class="timeline-content">
+<div class="timeline-top">
+<strong>KYC Verification Requested</strong>
+<span class="badge-warning">NEEDS ACTION</span>
+<span class="time">Oct 05, 2024 • 09:00 AM</span>
+</div>
+<p>Annual AML/KYC review is due. Please provide updated proof of address for all stakeholders.</p>
+<div class="timeline-bottom">
+<span><span class="avatar-sm gray-bg">SY</span>Performed by: <strong>System Bot</strong></span>
+<button class="link-btn">Resend Request</button>
+</div>
+</div>
+</div>
+
+</div>
+
+<div class="load-more">
+<button class="edit-btn">Load More History</button>
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+<div>
+
+<div class="card quick-actions">
+
+<h3>Quick Actions</h3>
+
+<button class="primary">
+<i class="fa fa-comment"></i>
+Message Client
+</button>
+
+<button class="outline">
+<i class="fa fa-file-circle-plus"></i>
+Request Document
+</button>
+
+<button class="outline">
+<i class="fa fa-download"></i>
+Export Client Data
+</button>
+
+<hr>
+
+<button class="danger">
+<i class="fa fa-ban"></i>
+Suspend Account
+</button>
+
+</div>
+
+<div class="card assigned-partner">
+
+<h4>ASSIGNED PARTNER</h4>
+
+<div class="partner">
+
+<div class="partner-avatar">
+<i class="fa fa-user"></i>
+</div>
+
+<div>
+<strong>Sarah Thompson, CPA</strong>
+<div class="gray">Senior Tax Partner</div>
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+<div class="footer">
+© 2024 FirmPortal Management System
+</div>
+
+</div>
+
+<script>
+const tabs = document.querySelectorAll(".tab-btn");
+const contents = document.querySelectorAll(".tab-content");
+
+tabs.forEach(tab=>{
+  tab.addEventListener("click",()=>{
+    tabs.forEach(t=>t.classList.remove("active"));
+    contents.forEach(c=>c.classList.remove("active"));
+    tab.classList.add("active");
+    const target = tab.getAttribute("data-tab");
+    if(target){
+      document.getElementById(target).classList.add("active");
+    }
+  });
+});
+</script>
 
 </body>
 </html>
