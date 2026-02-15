@@ -42,6 +42,17 @@ body{
   gap:12px;
 }
 
+.back-btn{
+  border:none;
+  background:none;
+  cursor:pointer;
+  font-size:16px;
+  padding:6px;
+}
+.back-btn:hover{
+  opacity:.7;
+}
+
 .upload-btn{
   background:#1754cf;
   color:white;
@@ -224,7 +235,10 @@ textarea{
 <!-- HEADER -->
 <header class="header">
   <div class="header-left">
-    <i class="fa-solid fa-arrow-left"></i>
+   <button id="backBtn" class="back-btn">
+  <i class="fa-solid fa-arrow-left"></i>
+</button>
+
     <span>Documents / <strong>Invoice #INV-2023-084</strong></span>
   </div>
 
@@ -364,6 +378,18 @@ if(doc){
   document.querySelector(".invoice-id").textContent = doc.title;
   document.querySelector(".meta-grid strong").textContent = doc.client;
 }
+
+document.getElementById("backBtn").addEventListener("click", function(){
+
+  // Go back to previous page
+  if (window.history.length > 1) {
+    window.history.back();
+  } else {
+    // fallback if user opened directly
+    window.location.href = "documents.html";
+  }
+
+});
 
 </script>
 
