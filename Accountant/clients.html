@@ -3,22 +3,44 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Clients | Prospera Accountant Portal</title>
+<title>Pro Accountant Dashboard</title>
 
-<!-- Font Awesome -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<!-- FONT AWESOME -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
 <style>
 
-/* ===== GLOBAL ===== */
+/* =========================
+   RESET
+========================= */
+/* Reset */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
 body {
-    margin: 0;
-    font-family: "Segoe UI", Arial, sans-serif;
-    background: #f8fafc;
-    color: #0f172a;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  background: #f6f6f8;
+  color: #111318;
+}
+
+
+.main {
+  margin-left: 260px;
+  flex: 1;
 }
 
 .app-layout{display:flex;min-height:100vh;width:100%;}
+
+/* =========================
+   LAYOUT
+========================= */
+.app{
+  display:flex;
+  min-height:100vh;
+}
 
 /* SIDEBAR */
 .sidebar{
@@ -30,33 +52,17 @@ body {
   position:fixed;
   height:100vh;
 }
-
 .sidebar-header{
   padding:22px;
   display:flex;
   gap:12px;
   align-items:center;
 }
+.sidebar-header i{font-size:30px;color:#60a5fa;}
+.sidebar-header h1{font-size:16px;}
+.sidebar-header p{font-size:12px;color:#94a3b8;}
 
-.sidebar-header i{
-  font-size:30px;
-  color:#60a5fa;
-}
-
-.sidebar-header h1{
-  font-size:16px;
-}
-
-.sidebar-header p{
-  font-size:12px;
-  color:#94a3b8;
-}
-
-.nav{
-  padding:16px;
-  flex:1;
-}
-
+.nav{padding:16px;flex:1;}
 .nav a{
   display:flex;
   gap:12px;
@@ -67,31 +73,17 @@ body {
   text-decoration:none;
   margin-bottom:6px;
 }
+.nav a:hover{background:#1e293b;}
+.nav a.active{background:#2563eb;color:white;}
 
-.nav a:hover{
-  background:#1e293b;
-}
-
-.nav a.active{
-  background:#2563eb;
-  color:white;
-}
-
-.sidebar-footer{
-  padding:16px;
-}
-
+.sidebar-footer{padding:16px;}
 .user-box{
   background:#1e293b;
   padding:12px;
   border-radius:10px;
   margin-bottom:12px;
 }
-
-.role{
-  color:#60a5fa;
-  font-size:12px;
-}
+.role{color:#60a5fa;font-size:12px;}
 
 .logout{
   width:100%;
@@ -103,189 +95,215 @@ body {
   cursor:pointer;
   text-align:left;
 }
+.logout:hover{background:#1e293b;}
 
-.logout:hover{
-  background:#1e293b;
-}
-
-
-.page{
-  flex:1;
-  margin-left:260px;
-  padding:24px;
-}
-
-h2 {
-    font-size: 28px;
-    font-weight: 600;
-    margin: 0;
-}
-
-.subtitle {
-    margin-top: 8px;
-    color: #64748b;
-}
-
-/* ===== HEADER ===== */
-.header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 24px;
-}
-
-.button {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 16px;
-    border-radius: 8px;
-    border: none;
-    cursor: pointer;
-    font-size: 14px;
-    background: #2563eb;
-    color: white;
-    transition: 0.2s;
-}
-
-.button:hover {
-    background: #1d4ed8;
-}
-
-.button-ghost {
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    font-size: 14px;
-    color: #2563eb;
-}
-
-/* ===== CARD ===== */
-.card {
-    background: white;
-    border-radius: 12px;
-    border: 1px solid #e5e7eb;
-}
-
-.card-header {
-    padding: 20px;
-    border-bottom: 1px solid #e5e7eb;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 20px;
-}
-
-.card-title {
-    font-size: 16px;
-    font-weight: 600;
-}
-
-.card-content {
-    padding: 0;
-}
-
-/* ===== SEARCH ===== */
-.search-wrapper {
-    position: relative;
-    width: 260px;
-    display: flex;
-    align-items: center;
-}
-
-.search-wrapper input {
-    width: 100%;
-    height: 40px;
-    padding: 0 14px 0 38px;
-    border-radius: 8px;
-    border: 1px solid #d1d5db;
-    font-size: 14px;
-    outline: none;
-}
-
-.search-wrapper input:focus {
-    border-color: #2563eb;
-}
-
-.search-icon {
-    position: absolute;
-    left: 12px;
-    font-size: 14px;
-    color: #9ca3af;
-}
-
-/* ===== TABLE ===== */
-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-thead {
-    background: #f9fafb;
-}
-
-th, td {
-    padding: 14px 16px;
-    text-align: left;
-    font-size: 14px;
-}
-
-th {
-    color: #64748b;
-    font-weight: 500;
-}
-
-tbody tr {
-    border-top: 1px solid #e5e7eb;
-}
-
-tbody tr:hover {
-    background: #f9fafb;
-}
-
-.text-right {
-    text-align: right;
-}
-
-/* ===== STATUS BADGES ===== */
 .badge {
-    padding: 4px 10px;
-    border-radius: 999px;
-    font-size: 12px;
-    font-weight: 500;
-    text-transform: capitalize;
+  margin-left: auto;
+  background: #1754cf;
+  color: #ffffff;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-weight: 700;
 }
 
-.active {
-    background: #dcfce7;
-    color: #166534;
+
+/* =========================
+   MAIN
+========================= */
+.main{
+  flex:1;
+  padding:25px 35px;
 }
 
-.inactive {
-    background: #fee2e2;
-    color: #991b1b;
+/* TOP BAR */
+.topbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:25px;
+}
+.search{
+  background:#e5e7eb;
+  padding:10px 14px;
+  border-radius:8px;
+  display:flex;
+  gap:10px;
+  width:380px;
+}
+.search input{
+  border:none;
+  background:transparent;
+  outline:none;
+  width:100%;
+}
+.top-actions{
+  display:flex;
+  gap:15px;
+  align-items:center;
+}
+.new-btn{
+  background:#2563eb;
+  color:white;
+  border:none;
+  padding:10px 16px;
+  border-radius:8px;
+  cursor:pointer;
+}
+.new-btn:hover{opacity:0.9}
+
+/* =========================
+   GRID
+========================= */
+.grid{
+  display:grid;
+  grid-template-columns:2fr 1fr;
+  gap:25px;
 }
 
-/* ===== RESPONSIVE ===== */
-@media (max-width: 768px) {
-    .card-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 15px;
-    }
+/* CARD */
+.card{
+  background:white;
+  padding:20px;
+  border-radius:14px;
+  box-shadow:0 5px 20px rgba(0,0,0,0.05);
+  margin-bottom:20px;
+}
+.card-header{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:15px;
+}
+.card-header h3{
+  font-size:16px;
+}
+.small-link{
+  color:#2563eb;
+  font-size:13px;
+  cursor:pointer;
+}
 
-    .search-wrapper {
-        width: 100%;
-    }
+/* =========================
+   TABLE
+========================= */
+table{
+  width:100%;
+  border-collapse:collapse;
+}
+th{
+  text-align:left;
+  font-size:12px;
+  color:#6b7280;
+  padding-bottom:10px;
+}
+td{
+  padding:12px 0;
+  border-top:1px solid #eee;
+  font-size:14px;
+}
+
+.badge{
+  padding:4px 8px;
+  font-size:11px;
+  border-radius:20px;
+  font-weight:600;
+}
+.attention{background:#fef3c7;color:#b45309}
+.compliant{background:#dcfce7;color:#15803d}
+.review{background:#e0e7ff;color:#4338ca}
+
+.progress{
+  height:6px;
+  background:#e5e7eb;
+  border-radius:20px;
+  margin-top:5px;
+  overflow:hidden;
+}
+.fill{
+  height:100%;
+  background:#2563eb;
+}
+
+/* =========================
+   REQUEST CARDS
+========================= */
+.request{
+  border:1px solid #eee;
+  border-radius:12px;
+  padding:15px;
+  margin-bottom:15px;
+}
+.request-title{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:10px;
+}
+.request small{
+  color:#6b7280;
+}
+.request button{
+  background:none;
+  border:none;
+  color:#2563eb;
+  cursor:pointer;
+  font-weight:600;
+}
+
+/* =========================
+   TASKS
+========================= */
+.task{
+  display:flex;
+  gap:10px;
+  margin-bottom:12px;
+}
+.task.completed{
+  text-decoration:line-through;
+  opacity:0.6;
+}
+.task small{
+  display:block;
+  color:#6b7280;
+}
+
+/* =========================
+   INSIGHTS
+========================= */
+.insight{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-bottom:10px;
+}
+.insight i{
+  color:#2563eb;
+}
+
+/* =========================
+   TOAST
+========================= */
+.toast{
+  position:fixed;
+  bottom:30px;
+  right:30px;
+  background:#111827;
+  color:white;
+  padding:15px 20px;
+  border-radius:10px;
+  display:none;
+  gap:10px;
+  align-items:center;
+}
+
+@media(max-width:1000px){
+  .grid{grid-template-columns:1fr}
 }
 
 </style>
 </head>
 
 <body>
-    <div class="app-layout">
 
-<!-- SIDEBAR -->
 <aside class="sidebar">
   <div class="sidebar-header">
     <i class="fa-solid fa-shield-halved"></i>
@@ -295,16 +313,18 @@ tbody tr:hover {
     </div>
   </div>
 
+
+  <!-- SIDEBAR -->
   <nav class="nav">
     <a href="dashboards.html"><i class="fa fa-chart-line"></i> Dashboard</a>
-    <a href="clients.html" class="active"><i class="fa fa-users"></i> Clients</a>
+    <a href="clients.html"class="active"><i class="fa fa-users"></i> Clients</a>
     <a href="documents.html"><i class="fa fa-file"></i> Documents</a>
-     <a href="tasks.html" ><i class="fa fa-tasks"></i> Tasks</a>
-    <a href="messages.html"><i class="fa fa-message"></i> Messages</a>
+    <a href="tasks.html" ><i class="fa fa-tasks"></i> Tasks</a>
+    <a href="messages.html" ><i class="fa fa-message"></i> Messages</a>
     <a href="settings.html"><i class="fa fa-gear"></i> Settings</a>
   </nav>
 
-  <div class="sidebar-footer">
+   <div class="sidebar-footer">
     <div class="user-box">
       <p><strong>Sarah Johnson</strong></p>
       <p>sarah@prospera.com</p>
@@ -314,93 +334,185 @@ tbody tr:hover {
   </div>
 </aside>
 
-<div class="page">
 
-    <div class="header">
-        <div>
-            <h2><i class="fa-solid fa-users"></i> Clients</h2>
-            <p class="subtitle">Manage your client accounts and information.</p>
-        </div>
-       
+  <!-- MAIN -->
+  <div class="main">
+
+    <div class="topbar">
+      <h2>Dashboard</h2>
+
+      <div class="search">
+        <i class="fa fa-search"></i>
+        <input type="text" placeholder="Search clients, requests, or tasks...">
+      </div>
+
+      <div class="top-actions">
+        <i class="fa fa-bell"></i>
+        <button class="new-btn" onclick="showToast('New Request Created')">
+          <i class="fa fa-plus"></i> New Request
+        </button>
+      </div>
     </div>
 
-    <div class="card">
-        <div class="card-header">
-            <div class="card-title">All Clients</div>
-            <div class="search-wrapper">
-                <i class="fa-solid fa-search search-icon"></i>
-                <input type="text" id="searchInput" placeholder="Search clients...">
+    <div class="grid">
+
+      <!-- LEFT -->
+      <div>
+
+        <!-- CLIENT OVERVIEW -->
+        <div class="card">
+          <div class="card-header">
+            <h3>Client Overview</h3>
+            <span class="small-link">View All Clients</span>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th>CLIENT NAME</th>
+                <th>COMPLIANCE HEALTH</th>
+                <th>LAST ACTIVE</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Acme Corporation</td>
+                <td>
+                  <span class="badge attention">ATTENTION</span>
+                  <div class="progress"><div class="fill" style="width:40%"></div></div>
+                </td>
+                <td>2 hours ago</td>
+              </tr>
+              <tr>
+                <td>Global Ltd</td>
+                <td>
+                  <span class="badge compliant">COMPLIANT</span>
+                  <div class="progress"><div class="fill" style="width:100%;background:#16a34a"></div></div>
+                </td>
+                <td>5 hours ago</td>
+              </tr>
+              <tr>
+                <td>TechStart Inc.</td>
+                <td>
+                  <span class="badge review">IN REVIEW</span>
+                  <div class="progress"><div class="fill" style="width:70%"></div></div>
+                </td>
+                <td>Yesterday</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- ACTIVE REQUESTS -->
+        <div class="card">
+          <div class="card-header">
+            <h3>Active Requests</h3>
+            <span class="badge review">12 Pending</span>
+          </div>
+
+          <div class="request">
+            <div class="request-title">
+              <strong>Year-End Ledger Docs</strong>
+              <span class="badge attention">Awaiting Client</span>
             </div>
+            <small>Sent to Acme Corporation</small>
+            <div class="progress"><div class="fill" style="width:60%"></div></div>
+            <button onclick="showToast('Reminder Sent')">Remind Client</button>
+          </div>
+
+          <div class="request">
+            <div class="request-title">
+              <strong>Payroll Summary - Sept</strong>
+              <span class="badge review">In Review</span>
+            </div>
+            <small>Sent to Global Ltd</small>
+            <div class="progress"><div class="fill" style="width:100%;background:#16a34a"></div></div>
+            <button onclick="showToast('Opening Review')">Review Now</button>
+          </div>
+
         </div>
 
-        <div class="card-content">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Company</th>
-                        <th>Email</th>
-                        <th>Status</th>
-                        <th>Documents</th>
-                        <th class="text-right">Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="clientsTable"></tbody>
-            </table>
+      </div>
+
+      <!-- RIGHT -->
+      <div>
+
+        <!-- TASKS -->
+        <div class="card">
+          <div class="card-header">
+            <h3>Internal Tasks</h3>
+            <i class="fa fa-plus-circle"></i>
+          </div>
+
+          <div class="task">
+            <input type="checkbox" onchange="toggleTask(this)">
+            <div>
+              Review Alpha Corp Audit
+              <small>High Priority - Due in 2h</small>
+            </div>
+          </div>
+
+          <div class="task">
+            <input type="checkbox" onchange="toggleTask(this)">
+            <div>
+              Follow up with John Doe
+              <small>Regarding missing invoices</small>
+            </div>
+          </div>
+
+          <div class="task completed">
+            <input type="checkbox" checked onchange="toggleTask(this)">
+            <div>
+              Check subscription status
+              <small>Completed today</small>
+            </div>
+          </div>
         </div>
+
+        <!-- INSIGHTS -->
+        <div class="card">
+          <h3 style="margin-bottom:15px">Insights</h3>
+
+          <div class="insight">
+            <i class="fa fa-arrow-trend-up"></i>
+            Efficiency up 12%
+          </div>
+
+          <div class="insight">
+            <i class="fa fa-exclamation-circle"></i>
+            4 Overdue Items
+          </div>
+        </div>
+
+      </div>
+
     </div>
+
+  </div>
 </div>
 
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <i class="fa fa-check-circle"></i>
+  <span id="toastMsg"></span>
+</div>
 
 <script>
 
-const clients = [
-    { id: 1, name: 'John Doe', company: 'Doe Enterprises', email: 'john@doe.com', status: 'active', documents: 24 },
-    { id: 2, name: 'Jane Smith', company: 'Smith & Co', email: 'jane@smith.com', status: 'active', documents: 18 },
-    { id: 3, name: 'Mike Johnson', company: 'Johnson Inc', email: 'mike@johnson.com', status: 'active', documents: 32 },
-    { id: 4, name: 'Sarah Williams', company: 'Williams LLC', email: 'sarah@williams.com', status: 'inactive', documents: 12 },
-    { id: 5, name: 'Robert Brown', company: 'Brown Associates', email: 'robert@brown.com', status: 'active', documents: 28 },
-];
-
-const tableBody = document.getElementById("clientsTable");
-const searchInput = document.getElementById("searchInput");
-
-function renderClients(data) {
-    tableBody.innerHTML = "";
-
-    data.forEach(client => {
-        const row = document.createElement("tr");
-
-        row.innerHTML = `
-            <td><strong>${client.name}</strong></td>
-            <td>${client.company}</td>
-            <td>${client.email}</td>
-            <td><span class="badge ${client.status}">${client.status}</span></td>
-            <td>${client.documents}</td>
-            <td class="text-right">
-                <button class="button-ghost">View Details</button>
-            </td>
-        `;
-
-        tableBody.appendChild(row);
-    });
+function toggleTask(el){
+  el.closest(".task").classList.toggle("completed");
 }
 
-searchInput.addEventListener("input", function() {
-    const value = this.value.toLowerCase();
-
-    const filtered = clients.filter(client =>
-        client.name.toLowerCase().includes(value) ||
-        client.company.toLowerCase().includes(value) ||
-        client.email.toLowerCase().includes(value)
-    );
-
-    renderClients(filtered);
-});
-
-renderClients(clients);
+function showToast(msg){
+  const t=document.getElementById("toast");
+  document.getElementById("toastMsg").innerText=msg;
+  t.style.display="flex";
+  setTimeout(()=>{t.style.display="none"},3000);
+}
 
 </script>
 
 </body>
 </html>
+
+
