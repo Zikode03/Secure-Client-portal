@@ -338,6 +338,114 @@ tbody tr:hover {
   display: block;
 }
 
+/* ===== MODAL ===== */
+.modal{
+  position:fixed;
+  inset:0;
+  background:rgba(15,23,42,0.45);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:1000;
+}
+
+.modal.show{
+  display:flex;
+}
+
+.modal-content{
+  width:500px;
+  background:#fff;
+  border-radius:12px;
+  box-shadow:0 20px 45px rgba(0,0,0,0.15);
+  overflow:hidden;
+  animation:fadeIn .2s ease;
+}
+
+@keyframes fadeIn{
+  from{opacity:0;transform:translateY(10px);}
+  to{opacity:1;transform:translateY(0);}
+}
+
+.modal-header{
+  padding:16px 20px;
+  border-bottom:1px solid #e5e7eb;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.close-btn{
+  border:none;
+  background:none;
+  cursor:pointer;
+  font-size:18px;
+}
+
+.modal-body{
+  padding:20px;
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+}
+
+.upload-drop{
+  border:2px dashed #cbd5e1;
+  border-radius:10px;
+  padding:30px;
+  text-align:center;
+  cursor:pointer;
+  color:#64748b;
+  transition:.2s;
+}
+.upload-drop:hover{
+  border-color:#2563eb;
+  background:#f8fafc;
+}
+.upload-drop i{
+  font-size:26px;
+  margin-bottom:8px;
+  color:#2563eb;
+}
+
+.form-group{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+.form-group input,
+.form-group select{
+  padding:10px;
+  border:1px solid #d1d5db;
+  border-radius:8px;
+}
+
+.modal-footer{
+  padding:16px 20px;
+  border-top:1px solid #e5e7eb;
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+}
+
+.btn-primary{
+  background:#2563eb;
+  color:white;
+  border:none;
+  padding:10px 16px;
+  border-radius:8px;
+  cursor:pointer;
+}
+
+.btn-secondary{
+  background:#fff;
+  border:1px solid #d1d5db;
+  padding:10px 16px;
+  border-radius:8px;
+  cursor:pointer;
+}
+
+
 </style>
 </head>
 
@@ -383,10 +491,11 @@ tbody tr:hover {
       <h2>Documents</h2>
       <p class="subtitle">Manage and organize all your documents.</p>
     </div>
-    <button class="button">
-      <i class="fa-solid fa-upload"></i>
-      Upload Document
-    </button>
+<button class="button" id="openUploadModal">
+  <i class="fa-solid fa-upload"></i>
+  Upload Document
+</button>
+
   </div>
 
   <div class="card">
@@ -425,6 +534,55 @@ tbody tr:hover {
     </div>
   </div>
 </div>
+</div>
+
+<!-- ===== UPLOAD DOCUMENT MODAL ===== -->
+<div id="uploadModal" class="modal">
+  <div class="modal-content">
+
+    <div class="modal-header">
+      <h3>Upload Document</h3>
+      <button class="close-btn" id="closeUpload">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+
+    <div class="modal-body">
+
+      <!-- Drag & Drop -->
+      <label class="upload-drop" for="fileInput">
+        <i class="fa-solid fa-cloud-arrow-up"></i>
+        <p>Drag & drop files here</p>
+        <small>or click to browse</small>
+        <input type="file" id="fileInput" hidden>
+      </label>
+
+      <div class="form-group">
+        <label>Document Name</label>
+        <input type="text" placeholder="Enter document name">
+      </div>
+
+      <div class="form-group">
+        <label>Category</label>
+        <select>
+          <option>Tax Documents</option>
+          <option>Invoices</option>
+          <option>Reports</option>
+          <option>Payroll</option>
+          <option>Legal</option>
+        </select>
+      </div>
+
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-secondary" id="cancelUpload">Cancel</button>
+      <button class="btn-primary">
+        <i class="fa-solid fa-upload"></i> Upload
+      </button>
+    </div>
+
+  </div>
 </div>
 
 <script>
@@ -525,6 +683,33 @@ document.addEventListener("click", function(e){
 
   if(viewBtn){
     window.location.href = "documentview.html";
+  }
+});
+
+const uploadBtn = document.getElementById("openUploadModal");
+const uploadModal = document.getElementById("uploadModal");
+const closeUpload = document.getElementById("closeUpload");
+const cancelUpload = document.getElementById("cancelUpload");
+
+// OPEN modal
+uploadBtn.addEventListener("click", () => {
+  uploadModal.classList.add("show");
+});
+
+// CLOSE modal (X)
+closeUpload.addEventListener("click", () => {
+  uploadModal.classList.remove("show");
+});
+
+// CLOSE modal (Cancel button)
+cancelUpload.addEventListener("click", () => {
+  uploadModal.classList.remove("show");
+});
+
+// CLOSE when clicking outside
+uploadModal.addEventListener("click", (e) => {
+  if (e.target === uploadModal) {
+    uploadModal.classList.remove("show");
   }
 });
 
