@@ -286,6 +286,58 @@ tbody tr:hover {
   margin-right: 8px;
   color: #6b7280;
 }
+
+/* ===== ACTION DROPDOWN ===== */
+.dropdown {
+  position: relative;
+}
+
+.menu-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 6px;
+}
+
+.menu-btn:hover {
+  background: #f1f5f9;
+}
+
+.dropdown-menu {
+  position: absolute;
+  right: 0;
+  top: 38px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+  min-width: 150px;
+  display: none;
+  z-index: 20;
+}
+
+.dropdown-menu button {
+  width: 100%;
+  border: none;
+  background: none;
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dropdown-menu button:hover {
+  background: #f8fafc;
+}
+
+.dropdown.active .dropdown-menu {
+  display: block;
+}
+
 </style>
 </head>
 
@@ -363,7 +415,6 @@ tbody tr:hover {
             <th>Document Name</th>
             <th>Client</th>
             <th>Category</th>
-            <th>Size</th>
             <th>Status</th>
             <th>Date</th>
             <th style="text-align:right;">Actions</th>
@@ -393,22 +444,38 @@ function renderDocuments(data) {
   tableBody.innerHTML = "";
   data.forEach(doc => {
     const row = document.createElement("tr");
-    row.innerHTML = `
-      <td><i class="fa-regular fa-file-lines file-icon"></i>${doc.name}</td>
-      <td>${doc.client}</td>
-      <td>${doc.category}</td>
-      <td>${doc.size}</td>
-      <td><span class="badge ${doc.status}">${doc.status}</span></td>
-      <td>${doc.date}</td>
-      <td>
-        <div class="actions">
-          <button class="button-ghost">View</button>
-          <button class="button-ghost">
-            <i class="fa-solid fa-download"></i>
+row.innerHTML = `
+  <td><i class="fa-regular fa-file-lines file-icon"></i>${doc.name}</td>
+  <td>${doc.client}</td>
+  <td>${doc.category}</td>
+  <td><span class="badge ${doc.status}">${doc.status}</span></td>
+  <td>${doc.date}</td>
+
+  <td>
+    <div class="actions">
+      <div class="dropdown">
+        <button class="button-icon menu-btn">
+          <i class="fa-solid fa-ellipsis-vertical"></i>
+        </button>
+
+        <div class="dropdown-menu">
+          <button class="view-btn">
+            <i class="fa-regular fa-eye"></i> View
+          </button>
+
+          <button>
+            <i class="fa-solid fa-download"></i> Download
+          </button>
+
+          <button>
+            <i class="fa-solid fa-share-nodes"></i> Share
           </button>
         </div>
-      </td>
-    `;
+      </div>
+    </div>
+  </td>
+`;
+
     tableBody.appendChild(row);
   });
 }
@@ -439,6 +506,28 @@ statusFilter.addEventListener("change", applyFilters);
 
 
 renderDocuments(documents);
+
+document.addEventListener("click", function(e) {
+  const dropdowns = document.querySelectorAll(".dropdown");
+
+  dropdowns.forEach(drop => {
+    if (drop.contains(e.target)) {
+      drop.classList.toggle("active");
+    } else {
+      drop.classList.remove("active");
+    }
+  });
+});
+
+document.addEventListener("click", function(e){
+
+  const viewBtn = e.target.closest(".view-btn");
+
+  if(viewBtn){
+    window.location.href = "documentview.html";
+  }
+});
+
 </script>
 
 </body>

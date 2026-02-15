@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Document Review Detail</title>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+
+body{
+  font-family: Arial, sans-serif;
+  background:#f6f6f8;
+  color:#111318;
+  height:100vh;
+  display:flex;
+  flex-direction:column;
+}
+
+/* ===== HEADER ===== */
+.header{
+  background:#fff;
+  border-bottom:1px solid #dcdfe5;
+  padding:14px 20px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+
+.header-left{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  font-size:14px;
+}
+
+.header-right{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+
+.upload-btn{
+  background:#1754cf;
+  color:white;
+  border:none;
+  padding:8px 14px;
+  border-radius:8px;
+  font-weight:bold;
+  cursor:pointer;
+}
+.upload-btn:hover{opacity:.9;}
+
+.status{
+  background:#fff6e5;
+  color:#f59e0b;
+  padding:4px 8px;
+  border-radius:4px;
+  font-size:11px;
+  font-weight:bold;
+  text-transform:uppercase;
+}
+
+/* ===== SPLIT SCREEN ===== */
+.split{
+  flex:1;
+  display:flex;
+  overflow:hidden;
+}
+
+/* LEFT PANEL */
+.preview{
+  width:65%;
+  background:#eef0f3;
+  padding:20px;
+  overflow:auto;
+  border-right:1px solid #dcdfe5;
+}
+
+.toolbar{
+  background:#fff;
+  border:1px solid #dcdfe5;
+  border-radius:8px;
+  padding:8px 12px;
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:16px;
+}
+.toolbar button{
+  border:none;
+  background:none;
+  cursor:pointer;
+  padding:6px;
+}
+
+.paper{
+  background:#fff;
+  max-width:780px;
+  margin:auto;
+  min-height:900px;
+  border-radius:8px;
+  padding:48px;
+  box-shadow:0 6px 20px rgba(0,0,0,.08);
+}
+
+.invoice-header{
+  display:flex;
+  justify-content:space-between;
+  border-bottom:2px solid #f1f5f9;
+  padding-bottom:20px;
+}
+
+.invoice-title{font-size:30px;font-weight:bold;}
+.invoice-id{color:#64748b;margin-top:6px;}
+
+.section{margin-top:30px;}
+
+.table{
+  width:100%;
+  border-collapse:collapse;
+  margin-top:20px;
+}
+.table th{
+  font-size:12px;
+  text-transform:uppercase;
+  color:#64748b;
+  border-bottom:2px solid #f1f5f9;
+  padding:10px 0;
+}
+.table td{
+  padding:14px 0;
+  border-bottom:1px solid #f1f5f9;
+}
+
+.total{
+  margin-top:50px;
+  display:flex;
+  justify-content:flex-end;
+  gap:30px;
+  font-size:22px;
+  font-weight:bold;
+  color:#1754cf;
+}
+
+/* RIGHT PANEL */
+.details{
+  width:35%;
+  background:#fff;
+  overflow:auto;
+}
+
+.tabs{
+  display:flex;
+  gap:30px;
+  border-bottom:1px solid #dcdfe5;
+  padding:0 20px;
+}
+.tab{
+  padding:14px 0;
+  font-weight:bold;
+  border-bottom:3px solid transparent;
+  color:#636f88;
+}
+.tab.active{
+  color:#1754cf;
+  border-color:#1754cf;
+}
+
+.details-content{
+  padding:20px;
+}
+
+.meta-title{
+  font-size:12px;
+  text-transform:uppercase;
+  font-weight:bold;
+  color:#636f88;
+  margin-bottom:14px;
+}
+
+.meta-grid{
+  display:grid;
+  grid-template-columns:40% 1fr;
+  gap:12px;
+  font-size:14px;
+}
+
+textarea{
+  width:100%;
+  margin-top:10px;
+  border:1px solid #dcdfe5;
+  border-radius:8px;
+  padding:10px;
+  resize:none;
+}
+
+/* ACTIONS */
+.action-btn{
+  width:100%;
+  border:none;
+  border-radius:8px;
+  padding:12px;
+  color:white;
+  font-weight:bold;
+  cursor:pointer;
+}
+.green{background:#10b981;}
+.yellow{background:#f59e0b;}
+.red{background:#ef4444;}
+
+.action-row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-top:10px;
+}
+</style>
+</head>
+
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-left">
+    <i class="fa-solid fa-arrow-left"></i>
+    <span>Documents / <strong>Invoice #INV-2023-084</strong></span>
+  </div>
+
+  <div class="header-right">
+    <button class="upload-btn">
+      <i class="fa-solid fa-upload"></i> Upload Document
+    </button>
+    <span class="status">Pending Review</span>
+    <i class="fa-solid fa-ellipsis-vertical"></i>
+  </div>
+</header>
+
+<!-- SPLIT VIEW -->
+<div class="split">
+
+  <!-- LEFT: DOCUMENT -->
+  <section class="preview">
+
+    <div class="toolbar">
+      <div>
+        <button><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+        100%
+        <button><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+      </div>
+      <div>Page 1 of 1</div>
+      <div>
+        <button><i class="fa-solid fa-rotate-right"></i></button>
+        <button><i class="fa-solid fa-download"></i></button>
+      </div>
+    </div>
+
+    <div class="paper">
+      <div class="invoice-header">
+        <div>
+          <div class="invoice-title">INVOICE</div>
+          <div class="invoice-id">#INV-2023-084</div>
+        </div>
+        <div>
+          <strong>TechSolutions Inc.</strong><br>
+          <small>123 Tech Way, Silicon Valley</small>
+        </div>
+      </div>
+
+      <div class="section">
+        <strong>Bill To:</strong><br>
+        Acme Corp
+      </div>
+
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Description</th>
+            <th align="right">Qty</th>
+            <th align="right">Price</th>
+            <th align="right">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Cloud Computing Subscription - Annual</td>
+            <td align="right">1</td>
+            <td align="right">$1,200.00</td>
+            <td align="right">$1,200.00</td>
+          </tr>
+          <tr>
+            <td>Support & Maintenance</td>
+            <td align="right">1</td>
+            <td align="right">$50.00</td>
+            <td align="right">$50.00</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="total">
+        <span>Grand Total</span>
+        <span>$1,250.00</span>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- RIGHT: DETAILS -->
+  <section class="details">
+    <div class="tabs">
+      <div class="tab active">Details</div>
+      <div class="tab">History</div>
+    </div>
+
+    <div class="details-content">
+
+      <div class="meta-title">Document Metadata</div>
+      <div class="meta-grid">
+        <div>Client Name</div><div><strong>Acme Corp</strong></div>
+        <div>Document Type</div><div>Invoice</div>
+        <div>Upload Date</div><div>Oct 24, 2023</div>
+        <div>Amount</div><div><strong>$1,250.00</strong></div>
+      </div>
+
+      <div class="section">
+        <div class="meta-title">Comments & Feedback</div>
+        <textarea rows="4" placeholder="Add a note..."></textarea>
+      </div>
+
+      <div class="section">
+        <div class="meta-title">Actions</div>
+        <button class="action-btn green"><i class="fa-solid fa-circle-check"></i> Approve Document</button>
+
+        <div class="action-row">
+          <button class="action-btn yellow"><i class="fa-solid fa-pen"></i> Request Fix</button>
+          <button class="action-btn red"><i class="fa-solid fa-xmark"></i> Reject</button>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+</div>
+
+<script>
+console.log("Document Review Page Ready");
+
+// Example document database (later from backend)
+const documents = [
+  { id:1, title:"Tax Return 2025.pdf", client:"John Doe", amount:"$2,300" },
+  { id:2, title:"Invoice #1234.pdf", client:"Mike Johnson", amount:"$1,250" },
+  { id:3, title:"Payroll Summary.pdf", client:"Acme Corp", amount:"$4,800" }
+];
+
+// Get ID from URL
+const params = new URLSearchParams(window.location.search);
+const docId = Number(params.get("id"));
+
+// Find selected document
+const doc = documents.find(d => d.id === docId);
+
+if(doc){
+  document.querySelector(".invoice-id").textContent = doc.title;
+  document.querySelector(".meta-grid strong").textContent = doc.client;
+}
+
+</script>
+
+</body>
+</html>
+
