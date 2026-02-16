@@ -1,10 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>LedgerPro - Tasks</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
   <style>
     :root {
       --primary: #1754cf;
@@ -20,10 +21,71 @@
     * { margin:0; padding:0; box-sizing:border-box; font-family:system-ui, sans-serif; }
     body { background:#f6f6f8; color:#111318; min-height:100vh; }
 
+    .app-layout { display:flex; min-height:100vh; width:100%; }
+
+    /* SIDEBAR */
+    .sidebar {
+      width:260px;
+      background:linear-gradient(180deg,#0f172a,#020617);
+      color:white;
+      display:flex;
+      flex-direction:column;
+      position:fixed;
+      height:100vh;
+      z-index: 100;
+    }
+    .sidebar-header {
+      padding:22px;
+      display:flex;
+      gap:12px;
+      align-items:center;
+    }
+    .sidebar-header i { font-size:30px; color:#60a5fa; }
+    .sidebar-header h1 { font-size:16px; margin:0; }
+    .sidebar-header p { font-size:12px; color:#94a3b8; margin:0; }
+
+    .nav { padding:16px; flex:1; }
+    .nav a {
+      display:flex;
+      gap:12px;
+      align-items:center;
+      padding:12px 14px;
+      border-radius:10px;
+      color:#cbd5f5;
+      text-decoration:none;
+      margin-bottom:6px;
+      transition:0.15s;
+    }
+    .nav a:hover { background:#1e293b; }
+    .nav a.active { background:#2563eb; color:white; }
+
+    .sidebar-footer { padding:16px; }
+    .user-box {
+      background:#1e293b;
+      padding:12px;
+      border-radius:10px;
+      margin-bottom:12px;
+    }
+    .user-box p { margin:4px 0; }
+    .role { color:#60a5fa; font-size:12px; }
+    .logout {
+      width:100%;
+      background:none;
+      border:none;
+      color:#cbd5f5;
+      padding:12px;
+      border-radius:10px;
+      cursor:pointer;
+      text-align:left;
+      font-size:0.95rem;
+    }
+    .logout:hover { background:#1e293b; }
+
+    /* MAIN CONTENT */
     .main-container {
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 24px;
+      flex:1;
+      margin-left:260px;
+      padding:24px;
     }
 
     .title-row {
@@ -48,28 +110,52 @@
       gap: 8px;
     }
 
+/* ────────────── IMPROVED HORIZONTAL FILTERS ────────────── */
     .filters {
-      background: white;
+      background: var(--bg-filter);
       border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 12px 16px;
-      margin-bottom: 24px;
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 28px;
       display: flex;
-      gap: 12px;
-      align-items: center;
       flex-wrap: wrap;
+      gap: 16px;
+      align-items: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     }
+
+    .filter-label {
+      font-weight: 600;
+      color: #374151;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+    }
+
     .filter-select {
-      padding: 8px 12px;
+      padding: 10px 14px;
       border: 1px solid #d1d5db;
       border-radius: 8px;
       background: white;
-      font-weight: 500;
-    }
-    .clear {
-      color: var(--primary);
-      font-weight: 500;
+      font-size: 0.95rem;
+      min-width: 180px;
+      max-width: 240px;
       cursor: pointer;
+    }
+
+    .clear-filters {
+      color: var(--primary);
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.95rem;
+      padding: 8px 12px;
+      border-radius: 8px;
+      transition: 0.15s;
+    }
+    .clear-filters:hover {
+      background: var(--primary-light);
     }
 
     .table-card {
@@ -85,21 +171,9 @@
       font-size: 16px;
     }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    th, td {
-      padding: 14px 18px;
-      text-align: left;
-      cursor: pointer;
-    }
-    th {
-      background: #fafafa;
-      color: var(--gray);
-      font-size: 13px;
-      font-weight: 600;
-    }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 14px 18px; text-align: left; cursor: pointer; }
+    th { background: #fafafa; color: var(--gray); font-size: 13px; font-weight: 600; }
     tr:hover { background: #f8fafc; }
     tr.selected { background: #e8f1ff; }
 
@@ -128,8 +202,7 @@
 
     .drawer {
       position: fixed;
-      top: 0;
-      right: 0;
+      top: 0; right: 0;
       width: 440px;
       height: 100%;
       background: white;
@@ -146,22 +219,6 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-    }
-    .client-path {
-      color: var(--gray);
-      font-size: 14px;
-      margin-bottom: 4px;
-    }
-
-    .section {
-      padding: 20px;
-      border-bottom: 1px solid var(--light);
-    }
-    .section-title {
-      font-size: 15px;
-      font-weight: 600;
-      margin-bottom: 12px;
-      color: #374151;
     }
 
     .pagination {
@@ -218,7 +275,7 @@
     .modal-body { padding: 24px; }
     .form-group { margin-bottom: 20px; }
     .label { font-size: 13px; font-weight: 600; color: var(--gray); margin-bottom: 6px; display: block; }
-    input, textarea, select {
+    input, select {
       width: 100%;
       padding: 10px 14px;
       border: 1px solid #d1d5db;
@@ -256,132 +313,239 @@
 </head>
 <body>
 
-<div class="main-container">
+<div class="app-layout">
 
-  <div class="title-row">
-    <div>
-      <h2>Task Management</h2>
-      <small>Efficiently tracking active accounting workflows</small>
-    </div>
-    <button class="btn-primary" id="createTaskBtn">
-      <i class="fa fa-plus"></i> Create Task
-    </button>
-  </div>
-
-  <div class="filters">
-    <strong><i class="fa fa-filter"></i> Filters</strong>
-    <select class="filter-select"><option>All Clients</option></select>
-    <select class="filter-select"><option>Due: Next 7 Days</option></select>
-    <select class="filter-select"><option>Priority: High</option></select>
-    <span class="clear">Clear all</span>
-  </div>
-
-  <div class="table-card">
-    <div class="table-head">Tasks</div>
-    <table>
-      <thead>
-        <tr>
-          <th style="width:40px"></th>
-          <th>Task Name</th>
-          <th>Client</th>
-          <th>Status</th>
-          <th>Due</th>
-        </tr>
-      </thead>
-      <tbody id="taskBody"></tbody>
-    </table>
-
-    <div class="pagination">
-      <div id="pageInfo">Showing 1–4 of 8 tasks</div>
-      <div class="page-buttons" id="pageButtons"></div>
-    </div>
-  </div>
-
-</div>
-
-<aside class="drawer" id="taskDrawer"></aside>
-
-<!-- Create Task Modal -->
-<div class="modal-overlay" id="createModal">
-  <div class="modal">
-    <div class="modal-header">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <i class="fa-solid fa-shield-halved"></i>
       <div>
-        <h3>Create New Task</h3>
-        <small style="color:var(--gray);">Add a new workflow item for your team or client.</small>
+        <h1>Prospera</h1>
+        <p>Accountant Portal</p>
       </div>
-      <button id="closeModal" style="background:none;border:none;font-size:28px;color:var(--gray);cursor:pointer;">×</button>
     </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label class="label">TASK NAME</label>
-        <input id="newTaskName" placeholder="e.g., Quarterly VAT Return Q4">
+
+    <nav class="nav">
+      <a href="#"><i class="fa fa-chart-line"></i> Dashboard</a>
+      <a href="#"><i class="fa fa-users"></i> Clients</a>
+      <a href="#"><i class="fa fa-file"></i> Documents</a>
+      <a href="#" class="active"><i class="fa fa-tasks"></i> Tasks</a>
+      <a href="#"><i class="fa fa-message"></i> Messages</a>
+      <a href="#"><i class="fa fa-gear"></i> Settings</a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-box">
+        <p><strong>Sarah Johnson</strong></p>
+        <p>sarah@prospera.com</p>
+        <p class="role">Primary Accountant</p>
       </div>
-      <div class="form-group">
-        <label class="label">CLIENT</label>
-        <input id="newTaskClient" placeholder="Search or enter client name...">
+      <button class="logout"><i class="fa fa-sign-out"></i> Logout</button>
+    </div>
+  </aside>
+
+  <div class="main-container">
+
+    <div class="title-row">
+      <div>
+        <h2>Task Management</h2>
+        <small>Efficiently tracking active accounting workflows</small>
       </div>
-      <div class="form-group">
-        <label class="label">DUE DATE</label>
-        <input id="newTaskDue" type="date">
+      <button class="btn-primary" id="createTaskBtn">
+        <i class="fa fa-plus"></i> Create Task
+      </button>
+    </div>
+
+    <div class="filters">
+      <strong><i class="fa fa-filter"></i> Filters</strong>
+      <select id="clientFilter" class="filter-select">
+        <option value="all">All Clients</option>
+        <option value="Apex Tech Solutions">Apex Tech Solutions</option>
+        <option value="Blue Horizon Inc.">Blue Horizon Inc.</option>
+        <option value="Green Leaf Logistics">Green Leaf Logistics</option>
+        <option value="Cloud Nine Retail">Cloud Nine Retail</option>
+        <option value="Peak Performance Ltd">Peak Performance Ltd</option>
+        <option value="Bright Future Co">Bright Future Co</option>
+        <option value="Summit Traders">Summit Traders</option>
+        <option value="Horizon Ventures">Horizon Ventures</option>
+      </select>
+      <select id="dueFilter" class="filter-select">
+        <option value="all">All Due Dates</option>
+        <option value="next7">Due: Next 7 Days</option>
+      </select>
+      <select id="priorityFilter" class="filter-select">
+        <option value="all">All Priorities</option>
+        <option value="high">Priority: High</option>
+        <option value="medium">Priority: Medium</option>
+        <option value="low">Priority: Low</option>
+      </select>
+      <span id="clearFilters" class="clear">Clear all</span>
+    </div>
+
+    <div class="table-card">
+      <div class="table-head">Tasks</div>
+      <table>
+        <thead>
+          <tr>
+            <th style="width:40px"></th>
+            <th>Task Name</th>
+            <th>Client</th>
+            <th>Status</th>
+            <th>Due</th>
+          </tr>
+        </thead>
+        <tbody id="taskBody"></tbody>
+      </table>
+
+      <div class="pagination">
+        <div id="pageInfo">Showing 1–4 of 8 tasks</div>
+        <div class="page-buttons" id="pageButtons"></div>
       </div>
-      <div class="form-group">
-        <label class="label">PRIORITY</label>
-        <div class="priority-btns" id="priorityGroup">
-          <button data-prio="low">Low</button>
-          <button data-prio="medium" class="active">Medium</button>
-          <button data-prio="high">High</button>
+    </div>
+
+  </div>
+
+  <aside class="drawer" id="taskDrawer"></aside>
+
+  <!-- Create Task Modal -->
+  <div class="modal-overlay" id="createModal">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <h3>Create New Task</h3>
+          <small style="color:var(--gray);">Add a new workflow item for your team or client.</small>
+        </div>
+        <button id="closeModal" style="background:none;border:none;font-size:28px;color:var(--gray);cursor:pointer;">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="label">TASK NAME</label>
+          <input id="newTaskName" placeholder="e.g., Quarterly VAT Return Q4">
+        </div>
+        <div class="form-group">
+          <label class="label">CLIENT</label>
+          <input id="newTaskClient" placeholder="Search or enter client name...">
+        </div>
+        <div class="form-group">
+          <label class="label">DUE DATE</label>
+          <input id="newTaskDue" type="date">
+        </div>
+        <div class="form-group">
+          <label class="label">PRIORITY</label>
+          <div class="priority-btns" id="priorityGroup">
+            <button data-prio="low">Low</button>
+            <button data-prio="medium" class="active">Medium</button>
+            <button data-prio="high">High</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="label">STATUS</label>
+          <select id="newTaskStatus">
+            <option value="not-started">Not Started</option>
+            <option value="pending">Pending Info</option>
+            <option value="in-progress" selected>In Progress</option>
+            <option value="review">Review</option>
+          </select>
         </div>
       </div>
-      <div class="form-group">
-        <label class="label">STATUS</label>
-        <select id="newTaskStatus">
-          <option value="not-started">Not Started</option>
-          <option value="pending">Pending Info</option>
-          <option value="in-progress" selected>In Progress</option>
-          <option value="review">Review</option>
-        </select>
+      <div class="modal-footer">
+        <button class="btn-secondary" id="cancelModal">Cancel</button>
+        <button class="btn-primary" id="saveNewTask">Create Task</button>
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn-secondary" id="cancelModal">Cancel</button>
-      <button class="btn-primary" id="saveNewTask">Create Task</button>
-    </div>
   </div>
+
 </div>
 
 <script>
+// ──────────────────────────────────────────────────────────────
+// DATA
+// ──────────────────────────────────────────────────────────────
 const tasks = [
-  { id:1, name:"Quarterly VAT Return - Q3", client:"Apex Tech Solutions", status:"pending", due:"Oct 15, 2023", priority:"high" },
-  { id:2, name:"Payroll Processing - Oct", client:"Blue Horizon Inc.", status:"in-progress", due:"Oct 28, 2023", priority:"medium" },
-  { id:3, name:"Monthly Bookkeeping", client:"Green Leaf Logistics", status:"review", due:"Oct 31, 2023", priority:"low" },
-  { id:4, name:"Capital Gains Advisory", client:"Cloud Nine Retail", status:"not-started", due:"Nov 10, 2023", priority:"high" },
-  { id:5, name:"Annual Financial Statements", client:"Peak Performance Ltd", status:"in-progress", due:"Dec 15, 2023", priority:"high" },
-  { id:6, name:"Tax Planning Meeting Prep", client:"Bright Future Co", status:"pending", due:"Nov 05, 2023", priority:"medium" },
-  { id:7, name:"Expense Reconciliation Q3", client:"Summit Traders", status:"not-started", due:"Nov 20, 2023", priority:"low" },
-  { id:8, name:"PAYE Submission - Nov", client:"Horizon Ventures", status:"in-progress", due:"Nov 30, 2023", priority:"medium" }
+  { id:1, name:"Quarterly VAT Return - Q3", client:"Apex Tech Solutions", status:"pending", due:"2023-10-15", priority:"high" },
+  { id:2, name:"Payroll Processing - Oct", client:"Blue Horizon Inc.", status:"in-progress", due:"2023-10-28", priority:"medium" },
+  { id:3, name:"Monthly Bookkeeping", client:"Green Leaf Logistics", status:"review", due:"2023-10-31", priority:"low" },
+  { id:4, name:"Capital Gains Advisory", client:"Cloud Nine Retail", status:"not-started", due:"2023-11-10", priority:"high" },
+  { id:5, name:"Annual Financial Statements", client:"Peak Performance Ltd", status:"in-progress", due:"2023-12-15", priority:"high" },
+  { id:6, name:"Tax Planning Meeting Prep", client:"Bright Future Co", status:"pending", due:"2023-11-05", priority:"medium" },
+  { id:7, name:"Expense Reconciliation Q3", client:"Summit Traders", status:"not-started", due:"2023-11-20", priority:"low" },
+  { id:8, name:"PAYE Submission - Nov", client:"Horizon Ventures", status:"in-progress", due:"2023-11-30", priority:"medium" }
 ];
 
+// ──────────────────────────────────────────────────────────────
+// STATE & CONFIG
+// ──────────────────────────────────────────────────────────────
+const ROWS_PER_PAGE = 4;
 let currentPage = 1;
-const rowsPerPage = 4;
+let filteredTasks = [...tasks];
 
-const tbody = document.getElementById("taskBody");
-const drawer = document.getElementById("taskDrawer");
-const modal = document.getElementById("createModal");
+// DOM elements
+const clientFilter   = document.getElementById("clientFilter");
+const dueFilter      = document.getElementById("dueFilter");
+const priorityFilter = document.getElementById("priorityFilter");
+const clearBtn       = document.getElementById("clearFilters");
 
+const tbody       = document.getElementById("taskBody");
+const pageInfo    = document.getElementById("pageInfo");
+const pageButtons = document.getElementById("pageButtons");
+const drawer      = document.getElementById("taskDrawer");
+const modal       = document.getElementById("createModal");
+
+// ──────────────────────────────────────────────────────────────
+// FILTER LOGIC
+// ──────────────────────────────────────────────────────────────
+function isDueInNext7Days(dueStr) {
+  if (!dueStr) return false;
+  const due = new Date(dueStr);
+  const today = new Date();
+  const diff = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
+  return diff >= 0 && diff <= 7;
+}
+
+function applyFilters() {
+  let result = [...tasks];
+
+  // Client
+  const clientVal = clientFilter.value;
+  if (clientVal !== "all") {
+    result = result.filter(t => t.client === clientVal);
+  }
+
+  // Due
+  const dueVal = dueFilter.value;
+  if (dueVal === "next7") {
+    result = result.filter(t => isDueInNext7Days(t.due));
+  }
+
+  // Priority
+  const prioVal = priorityFilter.value;
+  if (prioVal !== "all") {
+    result = result.filter(t => t.priority === prioVal);
+  }
+
+  filteredTasks = result;
+  currentPage = 1;
+  renderTasks();
+}
+
+// ──────────────────────────────────────────────────────────────
+// RENDER TASKS + PAGINATION
+// ──────────────────────────────────────────────────────────────
 function getStatusClass(status) { return status; }
 
 function getStatusText(status) {
   if (status === "in-progress") return "In Progress";
-  if (status === "pending") return "Pending Info";
-  if (status === "review") return "Review";
+  if (status === "pending")     return "Pending Info";
+  if (status === "review")      return "Review";
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
 function renderTasks() {
   tbody.innerHTML = "";
-  const start = (currentPage - 1) * rowsPerPage;
-  const end = start + rowsPerPage;
-  const pageTasks = tasks.slice(start, end);
+
+  const start = (currentPage - 1) * ROWS_PER_PAGE;
+  const end = Math.min(start + ROWS_PER_PAGE, filteredTasks.length);
+  const pageTasks = filteredTasks.slice(start, end);
 
   pageTasks.forEach(task => {
     const tr = document.createElement("tr");
@@ -401,12 +565,14 @@ function renderTasks() {
     tbody.appendChild(tr);
   });
 
-  const totalPages = Math.ceil(tasks.length / rowsPerPage);
-  document.getElementById("pageInfo").textContent =
-    `Showing ${start+1}–${Math.min(end, tasks.length)} of ${tasks.length} tasks`;
+  // Showing info
+  const showingStart = start + 1;
+  const showingEnd = end;
+  pageInfo.textContent = `Showing ${showingStart}–${showingEnd} of ${filteredTasks.length} tasks`;
 
-  const pageButtons = document.getElementById("pageButtons");
+  // Pagination buttons
   pageButtons.innerHTML = "";
+  const totalPages = Math.ceil(filteredTasks.length / ROWS_PER_PAGE) || 1;
 
   const prev = document.createElement("button");
   prev.textContent = "Previous";
@@ -424,11 +590,14 @@ function renderTasks() {
 
   const next = document.createElement("button");
   next.textContent = "Next";
-  next.disabled = currentPage === totalPages;
+  next.disabled = currentPage >= totalPages;
   next.onclick = () => { if (currentPage < totalPages) { currentPage++; renderTasks(); } };
   pageButtons.appendChild(next);
 }
 
+// ──────────────────────────────────────────────────────────────
+// DRAWER LOGIC
+// ──────────────────────────────────────────────────────────────
 function updateDrawer() {
   const checked = document.querySelectorAll(".task-check:checked");
   if (checked.length === 0) {
@@ -468,7 +637,9 @@ function updateDrawer() {
   };
 }
 
-// Events
+// ──────────────────────────────────────────────────────────────
+// EVENTS
+// ──────────────────────────────────────────────────────────────
 tbody.addEventListener("change", e => {
   if (e.target.classList.contains("task-check")) updateDrawer();
 });
@@ -481,6 +652,18 @@ tbody.addEventListener("click", e => {
     cb.checked = !cb.checked;
     updateDrawer();
   }
+});
+
+// Filters
+clientFilter.addEventListener("change", applyFilters);
+dueFilter.addEventListener("change", applyFilters);
+priorityFilter.addEventListener("change", applyFilters);
+
+clearBtn.addEventListener("click", () => {
+  clientFilter.value = "all";
+  dueFilter.value = "all";
+  priorityFilter.value = "all";
+  applyFilters();
 });
 
 // Create Task Modal
@@ -507,12 +690,12 @@ document.getElementById("saveNewTask").onclick = () => {
   tasks.push({ id: newId, name, client, status, due, priority });
 
   modal.style.display = "none";
-  renderTasks();
-  updateDrawer();
+  applyFilters(); // refresh filtered list
 };
 
 // Initial render
-renderTasks();
+applyFilters();
 </script>
+
 </body>
 </html>
