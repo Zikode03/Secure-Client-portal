@@ -1,604 +1,518 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Kanban - LedgerPro</title>
-
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
-
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LedgerPro - Tasks</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
     :root {
       --primary: #1754cf;
-      --bg: #f8fafc;
-      --card-bg: white;
-      --border: #e2e8f0;
-      --text: #1e293b;
-      --text-muted: #64748b;
-      --todo-bg: #f8fafc;
-      --doing-bg: #dbeafe;
-      --done-bg: #f0fdf4;
-      --modal-overlay: rgba(0,0,0,0.5);
+      --primary-light: #e8f1ff;
+      --warning: #f59e0b;
+      --success: #0f9d58;
+      --purple: #9333ea;
+      --gray: #6b7280;
+      --light: #f1f5f9;
+      --border: #e5e7eb;
     }
 
-    * { box-sizing: border-box; }
+    * { margin:0; padding:0; box-sizing:border-box; font-family:system-ui, sans-serif; }
+    body { background:#f6f6f8; color:#111318; min-height:100vh; }
 
-   body {
-  margin: 0;
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-  background: #f6f6f8;
-  color: #111318;
-}
-
-    
-
-
-.main {
-  margin-left: 260px;
-  flex: 1;
-}
-
-.app-layout {
-  display: flex;
-  min-height: 100vh;
-  width: 100%;
-}
-
-
-/* SIDEBAR */
-.sidebar{
-  width:260px;
-  background:linear-gradient(180deg,#0f172a,#020617);
-  color:white;
-  display:flex;
-  flex-direction:column;
-  position:fixed;
-  height:100vh;
-}
-.sidebar-header{
-  padding:22px;
-  display:flex;
-  gap:12px;
-  align-items:center;
-}
-.sidebar-header i{font-size:30px;color:#60a5fa;}
-.sidebar-header h1{font-size:16px;}
-.sidebar-header p{font-size:12px;color:#94a3b8;}
-
-.nav{padding:16px;flex:1;}
-.nav a{
-  display:flex;
-  gap:12px;
-  align-items:center;
-  padding:12px 14px;
-  border-radius:10px;
-  color:#cbd5f5;
-  text-decoration:none;
-  margin-bottom:6px;
-}
-.nav a:hover{background:#1e293b;}
-.nav a.active{background:#2563eb;color:white;}
-
-.sidebar-footer{padding:16px;}
-.user-box{
-  background:#1e293b;
-  padding:12px;
-  border-radius:10px;
-  margin-bottom:12px;
-}
-.role{color:#60a5fa;font-size:12px;}
-
-.logout{
-  width:100%;
-  background:none;
-  border:none;
-  color:#cbd5f5;
-  padding:12px;
-  border-radius:10px;
-  cursor:pointer;
-  text-align:left;
-}
-.logout:hover{background:#1e293b;}
-
-.main {
-  margin-left: 260px;
-  flex: 1;
-  padding: 28px;
-}
-
-    .header-section {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-end;
-      flex-wrap: wrap;
-      gap: 24px;
-      margin-bottom: 32px;
+    .main-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px;
     }
 
-    h1 { font-size: 2rem; font-weight: 800; margin: 0; letter-spacing: -0.02em; }
-
-    .tagline { color: var(--text-muted); font-size: 1.1rem; margin: 8px 0 0 0; }
-
-    .btn-primary {
-      background: var(--primary);
-      color: white;
-      border: none;
-      padding: 12px 20px;
-      border-radius: 10px;
-      font-weight: 600;
-      font-size: 0.95rem;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      cursor: pointer;
-    }
-
-    .btn-primary:hover { background: #1346b3; }
-
-    .filters-bar {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 12px;
-      background: white;
-      padding: 12px 16px;
-      border-radius: 12px;
-      border: 1px solid var(--border);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-      margin-bottom: 32px;
-    }
-
-    .filter-label {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-weight: 600;
-      color: #334155;
-      font-size: 0.95rem;
-    }
-
-    .filter-btn {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: #f1f5f9;
-      padding: 10px 16px;
-      border-radius: 8px;
-      font-size: 0.92rem;
-      color: #334155;
-      border: none;
-      cursor: pointer;
-    }
-
-    .filter-btn.active {
-      background: var(--primary);
-      color: white;
-    }
-
-    .clear-all {
-      color: var(--primary);
-      font-weight: 600;
-      background: none;
-      border: none;
-      cursor: pointer;
-      font-size: 0.92rem;
-    }
-
-    .kanban-board { display: flex; gap: 28px; }
-
-    .kanban-column {
-      flex: 1;
-      min-width: 320px;
-      background: var(--card-bg);
-      border-radius: 16px;
-      border: 1px solid var(--border);
-      overflow: hidden;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.04);
-    }
-
-    .column-header {
-      padding: 20px 24px;
-      font-weight: 700;
-      font-size: 1.3rem;
-      border-bottom: 1px solid var(--border);
-      background: linear-gradient(to bottom, rgba(248,250,252,0.7), transparent);
-    }
-
-    .column-body { padding: 20px; min-height: 60vh; }
-
-    .kanban-card {
-      background: white;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 20px 24px;
-      margin-bottom: 20px;
-      transition: all 0.16s ease;
-    }
-
-    .kanban-card.hidden { display: none; }
-
-    .kanban-card:hover {
-      border-color: var(--primary);
-      box-shadow: 0 6px 18px rgba(23,84,207,0.12);
-      transform: translateY(-2px);
-    }
-
-    .card-title { font-weight: 700; font-size: 1.18rem; margin-bottom: 10px; line-height: 1.35; }
-
-    .card-client { font-size: 0.96rem; color: var(--text-muted); margin-bottom: 16px; }
-
-    .card-meta {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 0.92rem;
-      color: var(--text-muted);
-    }
-
-    .priority-dot {
-      display: inline-block;
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      margin-right: 8px;
-    }
-
-    .deadline-overdue { color: #dc2626; font-weight: 600; }
-
-    /* Modal styles (same as before) */
-    .modal-overlay {
-      position: fixed;
-      inset: 0;
-      background: var(--modal-overlay);
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-    }
-
-    .modal-overlay.active { display: flex; }
-
-    .modal-content {
-      background: white;
-      border-radius: 12px;
-      width: 100%;
-      max-width: 500px;
-      padding: 28px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
-    }
-
-    .modal-header {
+    .title-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
       margin-bottom: 24px;
     }
+    h2 { margin: 0; font-size: 28px; }
+    small { color: var(--gray); font-size: 15px; }
 
-    .modal-title { font-size: 1.4rem; font-weight: 700; margin: 0; }
-
-    .modal-close {
-      background: none;
+    .btn-primary {
+      background: var(--primary);
+      color: white;
       border: none;
-      font-size: 1.5rem;
-      color: #94a3b8;
-      cursor: pointer;
-    }
-
-    .form-group { margin-bottom: 20px; }
-
-    .form-group label {
-      display: block;
-      font-weight: 600;
-      margin-bottom: 8px;
-      color: #334155;
-    }
-
-    .form-group input,
-    .form-group select {
-      width: 100%;
-      padding: 12px 16px;
-      border: 1px solid #cbd5e1;
+      padding: 10px 18px;
       border-radius: 8px;
-      font-size: 1rem;
-    }
-
-    .form-group select {
-      appearance: none;
-      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2364758b' d='M6 9L1 4h10z'/%3E%3C/svg%3E") no-repeat right 16px center;
-      background-size: 12px;
-    }
-
-    .modal-actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 12px;
-      margin-top: 28px;
-    }
-
-    .btn-secondary {
-      background: #e2e8f0;
-      color: #334155;
-      border: none;
-      padding: 12px 20px;
-      border-radius: 10px;
       font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .filters {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-bottom: 24px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .filter-select {
+      padding: 8px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      background: white;
+      font-weight: 500;
+    }
+    .clear {
+      color: var(--primary);
+      font-weight: 500;
       cursor: pointer;
     }
 
-    .btn-secondary:hover { background: #cbd5e1; }
+    .table-card {
+      background: white;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .table-head {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--light);
+      font-weight: 600;
+      font-size: 16px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 14px 18px;
+      text-align: left;
+      cursor: pointer;
+    }
+    th {
+      background: #fafafa;
+      color: var(--gray);
+      font-size: 13px;
+      font-weight: 600;
+    }
+    tr:hover { background: #f8fafc; }
+    tr.selected { background: #e8f1ff; }
+
+    .status {
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      display: inline-block;
+    }
+    .status.in-progress  { background: var(--primary-light); color: var(--primary); }
+    .status.pending      { background: #fff4e5; color: var(--warning); }
+    .status.review       { background: #f3e8ff; color: var(--purple); }
+    .status.not-started  { background: #f3f4f6; color: #4b5563; }
+
+    .priority-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-right: 6px;
+    }
+    .high   { background: #ef4444; }
+    .medium { background: #f59e0b; }
+    .low    { background: #10b981; }
+
+    .drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      width: 440px;
+      height: 100%;
+      background: white;
+      border-left: 1px solid var(--border);
+      display: none;
+      flex-direction: column;
+      overflow-y: auto;
+      z-index: 100;
+      box-shadow: -4px 0 20px rgba(0,0,0,0.1);
+    }
+    .drawer-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .client-path {
+      color: var(--gray);
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    .section {
+      padding: 20px;
+      border-bottom: 1px solid var(--light);
+    }
+    .section-title {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: #374151;
+    }
+
+    .pagination {
+      padding: 14px 20px;
+      border-top: 1px solid var(--light);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 14px;
+      color: var(--gray);
+    }
+    .page-buttons button {
+      padding: 6px 12px;
+      margin: 0 4px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: white;
+      cursor: pointer;
+    }
+    .page-buttons button.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+    .page-buttons button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+    }
+    .modal {
+      background: white;
+      width: 620px;
+      max-width: 90%;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .modal-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-body { padding: 24px; }
+    .form-group { margin-bottom: 20px; }
+    .label { font-size: 13px; font-weight: 600; color: var(--gray); margin-bottom: 6px; display: block; }
+    input, textarea, select {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 15px;
+    }
+    .priority-btns { display: flex; }
+    .priority-btns button {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #d1d5db;
+      background: #f9fafb;
+      cursor: pointer;
+    }
+    .priority-btns button.active {
+      background: white;
+      border-color: var(--primary);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    .modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid var(--border);
+      text-align: right;
+    }
+    .btn-secondary {
+      padding: 10px 20px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      background: white;
+      margin-right: 12px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
 
-    <div class="app-layout">
+<div class="main-container">
 
-<!-- SIDEBAR -->
-<aside class="sidebar">
-  <div class="sidebar-header">
-    <i class="fa-solid fa-shield-halved"></i>
+  <div class="title-row">
     <div>
-      <h1>Prospera</h1>
-      <p>Accountant Portal</p>
-    </div>
-  </div>
-
-  <nav class="nav">
-    <a href="dashboards.html" "><i class="fa fa-chart-line"></i> Dashboard</a>
-    <a href="clients.html"><i class="fa fa-users"></i> Clients</a>
-    <a href="documents.html"><i class="fa fa-file"></i> Documents</a>
-    <a href="tasks.html" class="active"><i class="fa fa-tasks"></i> Tasks</a>
-    <a href="messages.html" ><i class="fa fa-message"></i> Messages</a>
-    <a href="settings.html"><i class="fa fa-gear"></i> Settings</a>
-  </nav>
-
-  <div class="sidebar-footer">
-    <div class="user-box">
-      <p><strong>Sarah Johnson</strong></p>
-      <p>sarah@prospera.com</p>
-      <p class="role">Primary Accountant</p>
-    </div>
-    <button class="logout"><i class="fa fa-sign-out"></i> Logout</button>
-  </div>
-</aside>
-
-
-<div class="main">
-
-  <div class="header-section">
-    <div>
-      <h1>Task Management</h1>
-      <p class="tagline">Efficiently tracking 24 active accounting workflows</p>
+      <h2>Task Management</h2>
+      <small>Efficiently tracking active accounting workflows</small>
     </div>
     <button class="btn-primary" id="createTaskBtn">
-      <i class="fa-solid fa-plus"></i> Create Task
+      <i class="fa fa-plus"></i> Create Task
     </button>
   </div>
 
-  <div class="filters-bar">
-    <div class="filter-label">
-      <i class="fa-solid fa-filter"></i>
-      Filters
-    </div>
-    <button class="filter-btn" data-filter="client" data-value="all">All Clients</button>
-    <button class="filter-btn" data-filter="due" data-value="next7">Due: Next 7 Days</button>
-    <button class="filter-btn" data-filter="priority" data-value="high">Priority: High</button>
-    <button class="clear-all" id="clearFilters">Clear all</button>
+  <div class="filters">
+    <strong><i class="fa fa-filter"></i> Filters</strong>
+    <select class="filter-select"><option>All Clients</option></select>
+    <select class="filter-select"><option>Due: Next 7 Days</option></select>
+    <select class="filter-select"><option>Priority: High</option></select>
+    <span class="clear">Clear all</span>
   </div>
 
-  <div class="kanban-board">
+  <div class="table-card">
+    <div class="table-head">Tasks</div>
+    <table>
+      <thead>
+        <tr>
+          <th style="width:40px"></th>
+          <th>Task Name</th>
+          <th>Client</th>
+          <th>Status</th>
+          <th>Due</th>
+        </tr>
+      </thead>
+      <tbody id="taskBody"></tbody>
+    </table>
 
-    <div class="kanban-column column-todo" id="todoColumn">
-      <div class="column-header">To Do</div>
-      <div class="column-body" id="todoBody">
-     
-      </div>
+    <div class="pagination">
+      <div id="pageInfo">Showing 1–4 of 8 tasks</div>
+      <div class="page-buttons" id="pageButtons"></div>
     </div>
-
-    <div class="kanban-column column-doing" id="inProgressColumn">
-      <div class="column-header">In Progress</div>
-      <div class="column-body" id="inProgressBody">
-        
-      </div>
-    </div>
-
-    <div class="kanban-column column-done" id="doneColumn">
-      <div class="column-header">Done</div>
-      <div class="column-body" id="doneBody">
-       
-      </div>
-    </div>
-
   </div>
 
 </div>
 
+<aside class="drawer" id="taskDrawer"></aside>
 
-<div class="modal-overlay" id="createTaskModal">
-  <div class="modal-content">
+<!-- Create Task Modal -->
+<div class="modal-overlay" id="createModal">
+  <div class="modal">
     <div class="modal-header">
-      <h2 class="modal-title">Create New Task</h2>
-      <button class="modal-close" id="closeModal">×</button>
+      <div>
+        <h3>Create New Task</h3>
+        <small style="color:var(--gray);">Add a new workflow item for your team or client.</small>
+      </div>
+      <button id="closeModal" style="background:none;border:none;font-size:28px;color:var(--gray);cursor:pointer;">×</button>
     </div>
-
-    <form id="taskForm">
+    <div class="modal-body">
       <div class="form-group">
-        <label for="taskName">Task Name</label>
-        <input type="text" id="taskName" required placeholder="e.g. Quarterly VAT Return - Q4">
+        <label class="label">TASK NAME</label>
+        <input id="newTaskName" placeholder="e.g., Quarterly VAT Return Q4">
       </div>
       <div class="form-group">
-        <label for="clientName">Client</label>
-        <input type="text" id="clientName" required placeholder="e.g. Apex Tech Solutions">
+        <label class="label">CLIENT</label>
+        <input id="newTaskClient" placeholder="Search or enter client name...">
       </div>
       <div class="form-group">
-        <label for="priority">Priority</label>
-        <select id="priority" required>
-          <option value="High">High</option>
-          <option value="Medium" selected>Medium</option>
-          <option value="Low">Low</option>
+        <label class="label">DUE DATE</label>
+        <input id="newTaskDue" type="date">
+      </div>
+      <div class="form-group">
+        <label class="label">PRIORITY</label>
+        <div class="priority-btns" id="priorityGroup">
+          <button data-prio="low">Low</button>
+          <button data-prio="medium" class="active">Medium</button>
+          <button data-prio="high">High</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="label">STATUS</label>
+        <select id="newTaskStatus">
+          <option value="not-started">Not Started</option>
+          <option value="pending">Pending Info</option>
+          <option value="in-progress" selected>In Progress</option>
+          <option value="review">Review</option>
         </select>
       </div>
-      <div class="form-group">
-        <label for="dueDate">Due Date</label>
-        <input type="date" id="dueDate" required>
-      </div>
-      <div class="form-group">
-        <label for="status">Status / Column</label>
-        <select id="status" required>
-          <option value="todo">To Do</option>
-          <option value="inprogress">In Progress</option>
-          <option value="done">Done</option>
-        </select>
-      </div>
-      <div class="modal-actions">
-        <button type="button" class="btn-secondary" id="cancelTask">Cancel</button>
-        <button type="submit" class="btn-primary">Add Task</button>
-      </div>
-    </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="cancelModal">Cancel</button>
+      <button class="btn-primary" id="saveNewTask">Create Task</button>
+    </div>
   </div>
 </div>
 
 <script>
-  // ──────────────────────────────────────
-  // Initial tasks (with ISO dates for filtering)
-  // ──────────────────────────────────────
-  const initialTasks = [
-    { title: "Quarterly VAT Return - Q3", client: "Apex Tech Solutions", priority: "High", due: "2023-10-15", status: "todo" },
-    { title: "Capital Gains Advisory", client: "Cloud Nine Retail", priority: "High", due: "2023-10-30", status: "todo" },
-    { title: "Payroll Processing - Oct", client: "Blue Horizon Inc.", priority: "Medium", due: "2023-10-28", status: "inprogress" },
-    { title: "Monthly Bookkeeping", client: "Green Leaf Logistics", priority: "Low", due: "2023-11-05", status: "done" }
-  ];
+const tasks = [
+  { id:1, name:"Quarterly VAT Return - Q3", client:"Apex Tech Solutions", status:"pending", due:"Oct 15, 2023", priority:"high" },
+  { id:2, name:"Payroll Processing - Oct", client:"Blue Horizon Inc.", status:"in-progress", due:"Oct 28, 2023", priority:"medium" },
+  { id:3, name:"Monthly Bookkeeping", client:"Green Leaf Logistics", status:"review", due:"Oct 31, 2023", priority:"low" },
+  { id:4, name:"Capital Gains Advisory", client:"Cloud Nine Retail", status:"not-started", due:"Nov 10, 2023", priority:"high" },
+  { id:5, name:"Annual Financial Statements", client:"Peak Performance Ltd", status:"in-progress", due:"Dec 15, 2023", priority:"high" },
+  { id:6, name:"Tax Planning Meeting Prep", client:"Bright Future Co", status:"pending", due:"Nov 05, 2023", priority:"medium" },
+  { id:7, name:"Expense Reconciliation Q3", client:"Summit Traders", status:"not-started", due:"Nov 20, 2023", priority:"low" },
+  { id:8, name:"PAYE Submission - Nov", client:"Horizon Ventures", status:"in-progress", due:"Nov 30, 2023", priority:"medium" }
+];
 
-  // ──────────────────────────────────────
-  // Render all cards initially
-  // ──────────────────────────────────────
-  function renderTasks(tasks = initialTasks) {
-    const bodies = {
-      todo: document.getElementById('todoBody'),
-      inprogress: document.getElementById('inProgressBody'),
-      done: document.getElementById('doneBody')
-    };
+let currentPage = 1;
+const rowsPerPage = 4;
 
- 
-    Object.values(bodies).forEach(body => body.innerHTML = '');
+const tbody = document.getElementById("taskBody");
+const drawer = document.getElementById("taskDrawer");
+const modal = document.getElementById("createModal");
 
-    const today = new Date();
-    const next7Days = new Date(today);
-    next7Days.setDate(today.getDate() + 7);
+function getStatusClass(status) { return status; }
 
-    tasks.forEach(task => {
-      const dueDate = new Date(task.due);
-      const isNext7 = dueDate >= today && dueDate <= next7Days;
-      const isOverdue = dueDate < today;
+function getStatusText(status) {
+  if (status === "in-progress") return "In Progress";
+  if (status === "pending") return "Pending Info";
+  if (status === "review") return "Review";
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
 
-      const priorityColor = {
-        High: '#ef4444',
-        Medium: '#1754cf',
-        Low: '#84cc16'
-      }[task.priority];
+function renderTasks() {
+  tbody.innerHTML = "";
+  const start = (currentPage - 1) * rowsPerPage;
+  const end = start + rowsPerPage;
+  const pageTasks = tasks.slice(start, end);
 
-      const dueText = isOverdue
-        ? `<span class="deadline-overdue">${task.due} (overdue)</span>`
-        : task.due;
+  pageTasks.forEach(task => {
+    const tr = document.createElement("tr");
+    tr.dataset.id = task.id;
+    tr.innerHTML = `
+      <td><input type="checkbox" class="task-check" data-id="${task.id}"></td>
+      <td>
+        ${task.name}<br>
+        <span style="color:var(--gray); font-size:13px;">
+          <span class="priority-dot ${task.priority}"></span>${task.priority.toUpperCase()} PRIORITY
+        </span>
+      </td>
+      <td>${task.client}</td>
+      <td><span class="status ${getStatusClass(task.status)}">${getStatusText(task.status)}</span></td>
+      <td>${task.due}</td>
+    `;
+    tbody.appendChild(tr);
+  });
 
-      const card = document.createElement('div');
-      card.className = 'kanban-card';
-      card.innerHTML = `
-        <div class="card-title">${task.title}</div>
-        <div class="card-client">${task.client}</div>
-        <div class="card-meta">
-          <span><span class="priority-dot" style="background:${priorityColor}"></span>${task.priority} Priority</span>
-          <span>${dueText}</span>
-        </div>
-      `;
+  const totalPages = Math.ceil(tasks.length / rowsPerPage);
+  document.getElementById("pageInfo").textContent =
+    `Showing ${start+1}–${Math.min(end, tasks.length)} of ${tasks.length} tasks`;
 
-      // Apply filters
-      let show = true;
+  const pageButtons = document.getElementById("pageButtons");
+  pageButtons.innerHTML = "";
 
-      if (activeFilters.client !== 'all' && task.client !== activeFilters.client) show = false;
-      if (activeFilters.due === 'next7' && !isNext7) show = false;
-      if (activeFilters.priority === 'high' && task.priority !== 'High') show = false;
+  const prev = document.createElement("button");
+  prev.textContent = "Previous";
+  prev.disabled = currentPage === 1;
+  prev.onclick = () => { if (currentPage > 1) { currentPage--; renderTasks(); } };
+  pageButtons.appendChild(prev);
 
-      if (!show) card.classList.add('hidden');
-
-      bodies[task.status].appendChild(card);
-    });
+  for (let i = 1; i <= totalPages; i++) {
+    const btn = document.createElement("button");
+    btn.textContent = i;
+    btn.className = i === currentPage ? "active" : "";
+    btn.onclick = () => { currentPage = i; renderTasks(); };
+    pageButtons.appendChild(btn);
   }
 
-  // ──────────────────────────────────────
-  // Filter state & logic
-  // ──────────────────────────────────────
-  let activeFilters = {
-    client: 'all',
-    due: 'all',
-    priority: 'all'
+  const next = document.createElement("button");
+  next.textContent = "Next";
+  next.disabled = currentPage === totalPages;
+  next.onclick = () => { if (currentPage < totalPages) { currentPage++; renderTasks(); } };
+  pageButtons.appendChild(next);
+}
+
+function updateDrawer() {
+  const checked = document.querySelectorAll(".task-check:checked");
+  if (checked.length === 0) {
+    drawer.style.display = "none";
+    document.querySelectorAll("tr").forEach(r => r.classList.remove("selected"));
+    return;
+  }
+
+  const taskId = checked[0].dataset.id;
+  const task = tasks.find(t => t.id == taskId);
+  if (!task) return;
+
+  drawer.innerHTML = `
+    <div class="drawer-header">
+      <div>
+        <div class="client-path">${task.client.toUpperCase()} → ${task.name.split(" - ")[0]?.toUpperCase() || ""}</div>
+        <h3>${task.name}</h3>
+      </div>
+      <button style="background:none;border:none;font-size:28px;cursor:pointer;color:var(--gray);">×</button>
+    </div>
+    <div class="section">
+      <strong>Current Status:</strong> <span class="status ${task.status}">${getStatusText(task.status)}</span><br><br>
+      <strong>Deadline:</strong> ${task.due}
+    </div>
+    <div class="section">
+      <div class="section-title">Description</div>
+      <p>(Task description would appear here...)</p>
+    </div>
+  `;
+  drawer.style.display = "flex";
+
+  document.querySelectorAll("tr").forEach(r => r.classList.toggle("selected", r.dataset.id == taskId));
+
+  drawer.querySelector("button").onclick = () => {
+    document.querySelectorAll(".task-check").forEach(cb => cb.checked = false);
+    updateDrawer();
   };
+}
 
-  const filterButtons = document.querySelectorAll('.filter-btn[data-filter]');
+// Events
+tbody.addEventListener("change", e => {
+  if (e.target.classList.contains("task-check")) updateDrawer();
+});
 
-  filterButtons.forEach(btn => {
-    btn.addEventListener('click', () => {
-      const filterType = btn.dataset.filter;
-      const value = btn.dataset.value;
+tbody.addEventListener("click", e => {
+  const tr = e.target.closest("tr");
+  if (!tr) return;
+  const cb = tr.querySelector(".task-check");
+  if (e.target.tagName !== "INPUT") {
+    cb.checked = !cb.checked;
+    updateDrawer();
+  }
+});
 
-   
-      if (activeFilters[filterType] === value) {
-        activeFilters[filterType] = 'all';
-        btn.classList.remove('active');
-      } else {
-        activeFilters[filterType] = value;
-        document.querySelectorAll(`.filter-btn[data-filter="${filterType}"]`).forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-      }
+// Create Task Modal
+document.getElementById("createTaskBtn").onclick = () => modal.style.display = "flex";
+document.getElementById("closeModal").onclick = () => modal.style.display = "none";
+document.getElementById("cancelModal").onclick = () => modal.style.display = "none";
 
-      renderTasks(initialTasks);
-    });
-  });
+document.getElementById("priorityGroup").addEventListener("click", e => {
+  if (e.target.tagName !== "BUTTON") return;
+  document.querySelectorAll("#priorityGroup button").forEach(b => b.classList.remove("active"));
+  e.target.classList.add("active");
+});
 
-  document.getElementById('clearFilters').addEventListener('click', () => {
-    activeFilters = { client: 'all', due: 'all', priority: 'all' };
-    filterButtons.forEach(b => b.classList.remove('active'));
-    renderTasks(initialTasks);
-  });
+document.getElementById("saveNewTask").onclick = () => {
+  const name   = document.getElementById("newTaskName").value.trim()   || "New Task";
+  const client = document.getElementById("newTaskClient").value.trim() || "New Client";
+  const due    = document.getElementById("newTaskDue").value          || "TBD";
+  const status = document.getElementById("newTaskStatus").value;
+  const prioBtn = document.querySelector("#priorityGroup button.active");
+  const priority = prioBtn ? prioBtn.dataset.prio : "medium";
 
-  // ──────────────────────────────────────
-  // Modal & Create Task
-  // ──────────────────────────────────────
-  const modal = document.getElementById('createTaskModal');
-  const createBtn = document.getElementById('createTaskBtn');
-  const closeBtn = document.getElementById('closeModal');
-  const cancelBtn = document.getElementById('cancelTask');
-  const form = document.getElementById('taskForm');
+  const newId = Math.max(...tasks.map(t => t.id), 0) + 1;
 
-  createBtn.addEventListener('click', () => modal.classList.add('active'));
+  tasks.push({ id: newId, name, client, status, due, priority });
 
-  const closeModal = () => modal.classList.remove('active');
-  closeBtn.addEventListener('click', closeModal);
-  cancelBtn.addEventListener('click', closeModal);
-  modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
-
-  form.addEventListener('submit', e => {
-    e.preventDefault();
-
-    const newTask = {
-      title: document.getElementById('taskName').value.trim(),
-      client: document.getElementById('clientName').value.trim(),
-      priority: document.getElementById('priority').value,
-      due: document.getElementById('dueDate').value,
-      status: document.getElementById('status').value
-    };
-
-    if (!newTask.title || !newTask.client || !newTask.due) return;
-
-    initialTasks.push(newTask);
-    renderTasks(initialTasks);
-
-    form.reset();
-    closeModal();
-  });
-
-  // Initial render
+  modal.style.display = "none";
   renderTasks();
-</script>
+  updateDrawer();
+};
 
+// Initial render
+renderTasks();
+</script>
 </body>
 </html>
