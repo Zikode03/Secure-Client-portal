@@ -95,6 +95,27 @@
 
     main { flex: 1; display: flex; flex-direction: column; }
 
+.back-arrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #2563eb;
+  font-weight: 600;
+  font-size: 15px;
+  margin-bottom: 16px;
+  cursor: pointer;
+  transition: color 0.15s ease;
+  user-select: none;
+}
+
+.back-arrow:hover {
+  color: #1d4ed8;
+}
+
+.back-arrow i {
+  font-size: 18px;
+}
+
     header {
       height: 64px;
       background: white;
@@ -430,9 +451,12 @@
 
 <div class="layout">
 
-
   <!-- Main area -->
   <main>
+<a href="clients.html" class="back-arrow">
+  <i class="fa fa-arrow-left"></i>
+  <span>Back to Clients</span>
+</a>
 
   
     <div class="content">
