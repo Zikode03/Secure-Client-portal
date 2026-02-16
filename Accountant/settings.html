@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workspace Settings</title>
+
+<!-- FONT AWESOME -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+<style>
+
+/* ======================
+   RESET
+====================== */
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+}
+
+body{
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  background:#f6f6f8;
+  color:#111318;
+}
+
+/* ======================
+   LAYOUT
+====================== */
+
+.app{
+  display:flex;
+  min-height:100vh;
+}
+
+/* ======================
+   SIDEBAR (Your Previous Nav)
+====================== */
+
+.sidebar{
+  width:260px;
+  background:linear-gradient(180deg,#0f172a,#020617);
+  color:white;
+  display:flex;
+  flex-direction:column;
+  position:fixed;
+  height:100vh;
+}
+
+.sidebar-header{
+  padding:22px;
+  display:flex;
+  gap:12px;
+  align-items:center;
+}
+
+.sidebar-header i{
+  font-size:28px;
+  color:#60a5fa;
+}
+
+.nav{
+  padding:16px;
+  flex:1;
+}
+
+.nav a{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:12px 14px;
+  border-radius:10px;
+  color:#cbd5f5;
+  text-decoration:none;
+  margin-bottom:6px;
+}
+
+.nav a:hover{
+  background:#1e293b;
+}
+
+.nav a.active{
+  background:#2563eb;
+  color:white;
+}
+
+.sidebar-footer{
+  padding:16px;
+}
+
+.user-box{
+  background:#1e293b;
+  padding:12px;
+  border-radius:10px;
+  margin-bottom:12px;
+}
+
+.logout{
+  width:100%;
+  background:none;
+  border:none;
+  color:#cbd5f5;
+  padding:12px;
+  border-radius:10px;
+  cursor:pointer;
+  text-align:left;
+}
+
+.logout:hover{
+  background:#1e293b;
+}
+
+/* ======================
+   MAIN
+====================== */
+
+.main{
+  margin-left:260px;
+  flex:1;
+  padding:40px;
+}
+
+.page-title{
+  font-size:28px;
+  font-weight:700;
+  margin-bottom:8px;
+}
+
+.page-sub{
+  color:#6b7280;
+  margin-bottom:30px;
+}
+
+/* TABS */
+.tabs{
+  display:flex;
+  gap:25px;
+  border-bottom:1px solid #e5e7eb;
+  margin-bottom:30px;
+}
+
+.tabs button{
+  background:none;
+  border:none;
+  padding:12px 0;
+  font-weight:600;
+  color:#6b7280;
+  cursor:pointer;
+}
+
+.tabs button.active{
+  color:#2563eb;
+  border-bottom:3px solid #2563eb;
+}
+
+/* CARD */
+.card{
+  background:white;
+  border-radius:14px;
+  padding:25px;
+  margin-bottom:25px;
+  box-shadow:0 5px 20px rgba(0,0,0,0.05);
+}
+
+.card h3{
+  margin-bottom:20px;
+}
+
+/* FORM */
+.form-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:20px;
+}
+
+.form-group{
+  display:flex;
+  flex-direction:column;
+}
+
+.form-group label{
+  font-size:14px;
+  margin-bottom:6px;
+  font-weight:600;
+}
+
+.form-group input,
+.form-group select{
+  padding:10px;
+  border-radius:8px;
+  border:1px solid #ddd;
+  outline:none;
+}
+
+.form-group input:focus,
+.form-group select:focus{
+  border-color:#2563eb;
+}
+
+/* PROFILE IMAGE */
+.profile-img{
+  width:120px;
+  height:120px;
+  border-radius:50%;
+  background:#e5e7eb;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:40px;
+  color:#9ca3af;
+  margin-bottom:15px;
+}
+
+/* BUTTONS */
+.btn{
+  padding:10px 16px;
+  border-radius:8px;
+  border:none;
+  cursor:pointer;
+  font-weight:600;
+}
+
+.btn-primary{
+  background:#2563eb;
+  color:white;
+}
+
+.btn-outline{
+  border:1px solid #ddd;
+  background:white;
+}
+
+.btn-danger{
+  border:1px solid #fca5a5;
+  color:#dc2626;
+  background:white;
+}
+
+/* TWO COLUMN */
+.two-col{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:25px;
+}
+
+.badge-secure{
+  background:#dcfce7;
+  color:#15803d;
+  font-size:11px;
+  padding:4px 8px;
+  border-radius:999px;
+  font-weight:700;
+}
+
+/* DANGER BOX */
+.danger-box{
+  border:2px solid #fecaca;
+  background:#fff1f2;
+  padding:20px;
+  border-radius:12px;
+  margin-top:30px;
+}
+
+.danger-box h4{
+  color:#dc2626;
+  margin-bottom:5px;
+}
+
+/* RESPONSIVE */
+@media(max-width:900px){
+  .form-grid,
+  .two-col{
+    grid-template-columns:1fr;
+  }
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <i class="fa-solid fa-shield-halved"></i>
+    <div>
+      <h3>Prospera</h3>
+      <small>Accountant Portal</small>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <a href="dashboards.html"><i class="fa fa-chart-line"></i> Dashboard</a>
+    <a href="clients.html"><i class="fa fa-users"></i> Clients</a>
+    <a href="documents.html"><i class="fa fa-file"></i> Documents</a>
+    <a href="tasks.html"><i class="fa fa-tasks"></i> Tasks</a>
+    <a href="messages.html"><i class="fa fa-message"></i> Messages</a>
+    <a href="settings.html" class="active"><i class="fa fa-gear"></i> Settings</a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <div class="user-box">
+      <strong>Sarah Johnson</strong><br>
+      sarah@prospera.com
+    </div>
+    <button class="logout"><i class="fa fa-sign-out"></i> Logout</button>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<div class="main">
+
+  <div class="page-title">Workspace Settings</div>
+  <div class="page-sub">Manage your professional identity and account security.</div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="active">Profile</button>
+    <button>Preferences</button>
+    <button>Security</button>
+    <button>Notifications</button>
+  </div>
+
+  <!-- PROFILE -->
+  <div class="card">
+    <h3>Profile Information</h3>
+
+    <div class="profile-img">
+      <i class="fa fa-user"></i>
+    </div>
+
+    <div class="form-grid">
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" value="Alex Rivers">
+      </div>
+
+      <div class="form-group">
+        <label>Professional Title</label>
+        <input type="text" value="Senior Tax Accountant">
+      </div>
+
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" value="alex.rivers@standardaccounting.com">
+      </div>
+
+      <div class="form-group">
+        <label>Certification</label>
+        <select>
+          <option>CPA</option>
+          <option>ACCA</option>
+          <option>CFA</option>
+        </select>
+      </div>
+    </div>
+
+    <br>
+    <button class="btn btn-outline">Cancel</button>
+    <button class="btn btn-primary">Save Changes</button>
+  </div>
+
+  <!-- SECURITY + CONNECTED -->
+  <div class="two-col">
+
+    <div class="card">
+      <h3>Security Settings <span class="badge-secure">Highly Secure</span></h3>
+
+      <p><strong>Two-Factor Authentication</strong></p>
+      <small>Enabled</small>
+      <br><br>
+
+      <p><strong>Password Management</strong></p>
+      <small>Last changed 45 days ago</small>
+      <br><br>
+
+      <button class="btn btn-outline">Update Password</button>
+    </div>
+
+    <div class="card">
+      <h3>Connected Tools</h3>
+
+      <p><strong>QuickBooks Online</strong> — Synced</p>
+      <button class="btn btn-danger">Disconnect</button>
+
+      <br><br>
+
+      <p><strong>Xero Accounting</strong> — Not Connected</p>
+      <button class="btn btn-primary">Connect</button>
+    </div>
+
+  </div>
+
+  <!-- DEACTIVATE -->
+  <div class="danger-box">
+    <h4>Deactivate Account</h4>
+    <p>Once deactivated, you will lose access to all firm records and client portals.</p>
+    <br>
+    <button class="btn btn-danger">Start Deactivation</button>
+  </div>
+
+</div>
+</div>
+
+</body>
+</html>
