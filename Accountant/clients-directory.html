@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Client Directory - Acme Ledger</title>
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+  <style>
+    :root {
+      --primary:    #1754cf;
+      --primary-d:  #1e40af;
+      --bg:         #f6f6f8;
+      --white:      white;
+      --border:     #e5e7eb;
+      --text:       #111318;
+      --text-muted: #6b7280;
+      --gray-100:   #f3f4f6;
+      --gray-200:   #e5e7eb;
+      --gray-500:   #6b7280;
+      --gray-600:   #4b5563;
+      --green:      #10b981;
+      --green-light:#ecfdf5;
+      --amber:      #f59e0b;
+      --amber-light:#fffbeb;
+      --red:        #ef4444;
+      --red-light:  #fef2f2;
+    }
+
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .layout { display: flex; height: 100vh; overflow: hidden; }
+
+    aside {
+      width: 256px;
+      background: white;
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .logo-area {
+      padding: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .logo-square {
+      width: 40px;
+      height: 40px;
+      background: var(--primary);
+      border-radius: 8px;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+    }
+    .logo-text h1   { font-size: 1.25rem; font-weight: 700; line-height: 1.1; }
+    .logo-text small { font-size: 0.6875rem; text-transform: uppercase; font-weight: 600; color: var(--text-muted); letter-spacing: 0.04em; }
+
+    nav { flex: 1; padding: 1rem 0; }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.625rem 1rem;
+      margin: 0.25rem 0.75rem;
+      border-radius: 8px;
+      color: #4b5563;
+      font-weight: 500;
+      text-decoration: none;
+      transition: 0.15s;
+    }
+    .nav-item:hover { background: #f8fafc; }
+    .nav-item.active {
+      background: rgba(23,84,207,0.08);
+      color: var(--primary);
+      font-weight: 600;
+      border-right: 4px solid var(--primary);
+      margin-right: 0;
+      padding-right: calc(1rem - 4px);
+    }
+
+    .bottom-nav { padding: 1rem; border-top: 1px solid var(--border); }
+    .bottom-nav a { display: flex; align-items: center; gap: 0.75rem; padding: 0.625rem 1rem; color: #4b5563; text-decoration: none; }
+    .bottom-nav a:hover { background: #f8fafc; }
+
+    main { flex: 1; display: flex; flex-direction: column; }
+
+    header {
+      height: 64px;
+      background: white;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2rem;
+    }
+
+    .search-wrapper {
+      position: relative;
+      flex: 1;
+      max-width: 480px;
+    }
+    .search-input {
+      width: 100%;
+      padding: 10px 12px 10px 40px;
+      background: #f1f5f9;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+    }
+    .search-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #9ca3af;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+    }
+    .bell-btn {
+      position: relative;
+      background: none;
+      border: none;
+      font-size: 1.25rem;
+      color: #4b5563;
+      cursor: pointer;
+    }
+    .bell-dot {
+      position: absolute;
+      top: 6px;
+      right: 4px;
+      width: 8px;
+      height: 8px;
+      background: var(--red);
+      border: 2px solid white;
+      border-radius: 50%;
+    }
+
+    .user {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .user-text {
+      text-align: right;
+      line-height: 1.2;
+    }
+    .user-name { font-weight: 600; font-size: 0.95rem; }
+    .user-role { font-size: 0.8125rem; color: var(--text-muted); }
+    .avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: rgba(23,84,207,0.1);
+      border: 1px solid rgba(23,84,207,0.2);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+    .content { padding: 2rem; overflow-y: auto; flex: 1; }
+
+    .page-title-area {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    @media (min-width: 768px) {
+      .page-title-area { flex-direction: row; justify-content: space-between; align-items:center; }
+    }
+    h1 { font-size: 2rem; font-weight: 800; letter-spacing: -0.02em; }
+    .subtitle { color: var(--text-muted); font-weight: 500; }
+
+    .btn-add {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 0.625rem 1.25rem;
+      border-radius: 8px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(23,84,207,0.18);
+      transition: 0.2s;
+    }
+    .btn-add:hover { background: var(--primary-d); }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .stat-card.critical {
+      border-left: 4px solid var(--red);
+    }
+
+    .stat-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    .stat-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+    }
+    .stat-icon.primary   { background: rgba(23,84,207,0.1); color: var(--primary); }
+    .stat-icon.green     { background: #d1fae5; color: var(--green); }
+    .stat-icon.amber     { background: #fef3c7; color: var(--amber); }
+    .stat-icon.red       { background: #fee2e2; color: var(--red); }
+
+    .change-badge {
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.125rem 0.5rem;
+      border-radius: 999px;
+    }
+    .change-up   { background: #ecfdf5; color: #065f46; }
+    .change-none { background: #f3f4f6; color: #4b5563; }
+
+    .stat-label   { color: var(--text-muted); font-size: 0.875rem; font-weight: 500; }
+    .stat-number  { font-size: 1.75rem; font-weight: 800; margin-top: 0.25rem; }
+
+    .table-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .table-toolbar {
+      padding: 1rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--gray-100);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .toolbar-left { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+
+    select.filter-select {
+      padding: 0.5rem 2.25rem 0.5rem 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%236b7280' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14 2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E") no-repeat right 0.6rem center/16px;
+      font-size: 0.875rem;
+      min-width: 140px;
+      cursor: pointer;
+    }
+
+    .sort-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: white;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    .showing-text {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+    }
+    .showing-text strong { color: var(--text); font-weight: 600; }
+
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      background: var(--gray-100);
+      color: var(--gray-500);
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 1rem 1.5rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    td { padding: 1rem 1.5rem; vertical-align: middle; }
+
+    tr:hover { background: #f8fafc; }
+
+    .client-cell {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .client-logo {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--gray-100);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+    }
+    .client-name { font-weight: 600; }
+    .client-domain { font-size: 0.8125rem; color: var(--text-muted); margin-top: 0.125rem; }
+
+    .accountant-cell {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .avatar-24 {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--gray-200);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #475569;
+    }
+
+    .progress-cell {
+      max-width: 140px;
+    }
+    .progress-wrapper {
+      height: 6px;
+      background: #f1f5f9;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 0.375rem;
+    }
+    .progress-bar {
+      height: 100%;
+      border-radius: 3px;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.375rem;
+      padding: 0.25rem 0.625rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    .status-active   { background: var(--green-light); color: var(--green); }
+    .status-pending  { background: var(--amber-light); color: var(--amber); }
+    .status-risk     { background: var(--red-light);    color: var(--red);    }
+
+    .action-cell { text-align: right; }
+    .btn-view {
+      color: var(--primary);
+      font-weight: 600;
+      background: none;
+      border: none;
+      cursor: pointer;
+    }
+    .btn-view:hover { color: var(--primary-d); }
+
+    .pagination {
+      padding: 1rem 1.5rem;
+      background: var(--gray-100);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.875rem;
+    }
+    .page-numbers button {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      border: none;
+      margin: 0 2px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .page-numbers .active {
+      background: var(--primary);
+      color: white;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+<div class="layout">
+
+
+  <!-- Main area -->
+  <main>
+
+  
+    <div class="content">
+
+      <div class="page-title-area">
+        <div>
+          <h1>Client Directory</h1>
+          <div class="subtitle">Manage and monitor your accounting portfolio compliance</div>
+        </div>
+        
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-header">
+            <div class="stat-icon primary"><i class="fa-solid fa-users"></i></div>
+            <span class="change-badge change-up">+5%</span>
+          </div>
+          <div class="stat-label">Total Clients</div>
+          <div class="stat-number">124</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-header">
+            <div class="stat-icon green"><i class="fa-solid fa-circle-check"></i></div>
+            <span class="change-badge change-up">Healthy</span>
+          </div>
+          <div class="stat-label">Active</div>
+          <div class="stat-number">94</div>
+        </div>
+
+        <div class="stat-card">
+          <div class="stat-header">
+            <div class="stat-icon amber"><i class="fa-solid fa-ellipsis-h"></i></div>
+            <span class="change-badge change-none">Ongoing</span>
+          </div>
+          <div class="stat-label">Pending Onboarding</div>
+          <div class="stat-number">12</div>
+        </div>
+
+        <div class="stat-card critical">
+          <div class="stat-header">
+            <div class="stat-icon red"><i class="fa-solid fa-triangle-exclamation"></i></div>
+            <span class="change-badge" style="background:#fee2e2; color:#991b1b;">Critical</span>
+          </div>
+          <div class="stat-label">At Risk</div>
+          <div class="stat-number" style="color:var(--red);">18</div>
+        </div>
+      </div>
+
+      <div class="table-card">
+
+        <div class="table-toolbar">
+          <div class="toolbar-left">
+            <select class="filter-select">
+              <option>Status: All</option>
+              <option>Active</option>
+              <option>Pending</option>
+              <option>At Risk</option>
+            </select>
+            <select class="filter-select">
+              <option>All Accountants</option>
+              <option>Sarah Jenkins</option>
+              <option>Mark Thompson</option>
+              <option>Emily Rose</option>
+            </select>
+            <button class="sort-btn">
+              <i class="fa-solid fa-arrow-down-wide-short"></i>
+              Sort By
+            </button>
+          </div>
+          <div class="showing-text">
+            Showing <strong>1-10</strong> of 124
+          </div>
+        </div>
+
+        <div style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>CLIENT NAME</th>
+                <th>ENTITY TYPE</th>
+                <th>ASSIGNED ACCOUNTANT</th>
+                <th>COMPLIANCE HEALTH</th>
+                <th>STATUS</th>
+                <th style="text-align:right;">ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+
+          </table>
+        </div>
+
+       <div class="pagination">
+  <button id="prevBtn"
+    style="padding:0.5rem 1rem; border:1px solid var(--border); border-radius:6px; font-weight:600; background:white;">
+    Previous
+  </button>
+
+  <div class="page-numbers" id="pageNumbers"></div>
+
+  <button id="nextBtn"
+    style="padding:0.5rem 1rem; border:1px solid var(--border); border-radius:6px; font-weight:600; background:white;">
+    Next
+  </button>
+</div>
+
+      </div>
+
+    </div>
+  </main>
+
+</div>
+<script>
+const clients = [
+  { name: "Acme Global Tech", domain: "acme-global.com", type: "S-Corp", accountant: "Mark Thompson", health: 92, status: "Active" },
+  { name: "David Peterson", domain: "Individual Filer", type: "Individual", accountant: "Emily Rose", health: 45, status: "Pending" },
+  { name: "Velocity Retail Group", domain: "velocity-retail.io", type: "LLC", accountant: "Sarah Jenkins", health: 12, status: "At Risk" },
+  { name: "Stellar Media Lab", domain: "stellarmedia.com", type: "C-Corp", accountant: "Mark Thompson", health: 88, status: "Active" },
+
+  // Duplicate to simulate larger dataset
+  { name: "Bright Future Co", domain: "brightfuture.co.za", type: "Pty Ltd", accountant: "Sarah Jenkins", health: 76, status: "Active" },
+  { name: "Summit Traders", domain: "summittrade.com", type: "Pty Ltd", accountant: "Emily Rose", health: 31, status: "Pending" },
+  { name: "Peak Performance Ltd", domain: "peakperf.co.uk", type: "Ltd", accountant: "Mark Thompson", health: 95, status: "Active" },
+  { name: "Horizon Ventures", domain: "horizon.vc", type: "LLC", accountant: "Sarah Jenkins", health: 19, status: "At Risk" },
+  { name: "Cloud Nine Retail", domain: "cloud9retail.com", type: "LLC", accountant: "Emily Rose", health: 64, status: "Active" },
+  { name: "Green Leaf Logistics", domain: "greenleaf.co.za", type: "Pty Ltd", accountant: "Mark Thompson", health: 82, status: "Active" },
+  { name: "Nova Systems", domain: "nova.io", type: "LLC", accountant: "Mark Thompson", health: 77, status: "Active" },
+  { name: "Quantum Holdings", domain: "quantum.co", type: "C-Corp", accountant: "Emily Rose", health: 49, status: "Pending" },
+  { name: "Metro Retail", domain: "metroretail.com", type: "LLC", accountant: "Sarah Jenkins", health: 18, status: "At Risk" }
+];
+
+const ROWS_PER_PAGE = 5;
+let currentPage = 1;
+
+const tableBody = document.getElementById("tableBody");
+const prevBtn = document.getElementById("prevBtn");
+const nextBtn = document.getElementById("nextBtn");
+const pageNumbers = document.getElementById("pageNumbers");
+const showingText = document.querySelector(".showing-text");
+
+function getHealthColor(health) {
+  if (health >= 80) return "var(--green)";
+  if (health >= 50) return "var(--amber)";
+  return "var(--red)";
+}
+
+function renderTable() {
+  tableBody.innerHTML = "";
+
+  const start = (currentPage - 1) * ROWS_PER_PAGE;
+  const end = Math.min(start + ROWS_PER_PAGE, clients.length);
+  const pageItems = clients.slice(start, end);
+
+  pageItems.forEach(client => {
+    const healthColor = getHealthColor(client.health);
+
+    const statusClass =
+      client.status === "Active" ? "status-active" :
+      client.status === "Pending" ? "status-pending" :
+      "status-risk";
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>
+        <div class="client-cell">
+          <div class="client-logo"><i class="fa-solid fa-building"></i></div>
+          <div>
+            <div class="client-name">${client.name}</div>
+            <div class="client-domain">${client.domain}</div>
+          </div>
+        </div>
+      </td>
+      <td>${client.type}</td>
+      <td>
+        <div class="accountant-cell">
+          <div class="avatar-24">
+            ${client.accountant.split(" ").map(n => n[0]).join("")}
+          </div>
+          <span>${client.accountant}</span>
+        </div>
+      </td>
+      <td class="progress-cell">
+        <div class="progress-wrapper">
+          <div class="progress-bar"
+            style="width:${client.health}%; background:${healthColor};">
+          </div>
+        </div>
+        <div style="font-size:0.75rem; color:var(--gray-500); margin-top:4px;">
+          ${client.health}%
+        </div>
+      </td>
+      <td>
+        <span class="status-pill ${statusClass}">
+          <span class="status-dot" style="background:${healthColor};"></span>
+          ${client.status}
+        </span>
+      </td>
+      <td class="action-cell">
+        <button class="btn-view">View Profile</button>
+      </td>
+    `;
+    tableBody.appendChild(tr);
+  });
+
+  showingText.innerHTML =
+    `Showing <strong>${start + 1}-${end}</strong> of ${clients.length}`;
+
+  renderPagination();
+}
+
+function renderPagination() {
+  pageNumbers.innerHTML = "";
+  const totalPages = Math.ceil(clients.length / ROWS_PER_PAGE);
+
+  prevBtn.disabled = currentPage === 1;
+  nextBtn.disabled = currentPage === totalPages;
+
+  for (let i = 1; i <= totalPages; i++) {
+    const btn = document.createElement("button");
+    btn.textContent = i;
+    if (i === currentPage) btn.classList.add("active");
+
+    btn.addEventListener("click", () => {
+      currentPage = i;
+      renderTable();
+    });
+
+    pageNumbers.appendChild(btn);
+  }
+}
+
+prevBtn.addEventListener("click", () => {
+  if (currentPage > 1) {
+    currentPage--;
+    renderTable();
+  }
+});
+
+nextBtn.addEventListener("click", () => {
+  if (currentPage < Math.ceil(clients.length / ROWS_PER_PAGE)) {
+    currentPage++;
+    renderTable();
+  }
+});
+
+renderTable();
+</script>
+
+
+</body>
+</html>
