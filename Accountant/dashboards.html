@@ -248,6 +248,17 @@ body {
   cursor: pointer;
 }
 
+.view-all-link {
+  color: #1754cf;
+  font-weight: 600;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.view-all-link:hover {
+  text-decoration: underline;
+}
+
 /* Queue Cards */
 .queue {
   display: grid;
@@ -542,7 +553,7 @@ tbody tr {
 <!-- Review Queue -->
 <div class="section-head">
   <h3>Review Queue</h3>
-  <button>View all (12)</button>
+  <a href="review-queue.html" class="view-all-link">View all (12)</a>
 </div>
 
 <div class="queue">
@@ -588,13 +599,37 @@ tbody tr {
 
 <!-- Clients Table -->
 <div class="table-card">
-  <div class="table-head">
-    <h3>Assigned Clients</h3>
-    <div class="table-actions">
-      <button><i class="fa-solid fa-filter"></i> Filter</button>
-      <button class="primary"><i class="fa-solid fa-plus"></i> New Client</button>
+<div class="table-head">
+  <h3>Assigned Clients</h3>
+  <div class="table-actions" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+
+    <!-- Status Filter -->
+    <select id="statusFilter" style="padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; min-width: 140px;">
+      <option value="">All Statuses</option>
+      <option value="Action Required">Action Required</option>
+      <option value="Compliant">Compliant</option>
+      <option value="In Review">In Review</option>
+      <option value="Late Filing">Late Filing</option>
+    </select>
+
+    <!-- Pending Items Filter -->
+    <select id="pendingFilter" style="padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; min-width: 160px;">
+      <option value="">Any Pending Items</option>
+      <option value="0">No Pending Items</option>
+      <option value="1+">Has Pending Items</option>
+    </select>
+
+    <!-- Quick Search -->
+    <div class="search" style="max-width: 240px; margin-left: auto;">
+      <i class="fa-solid fa-magnifying-glass"></i>
+      <input type="text" id="clientSearch" placeholder="Search clients..." style="width:100%; padding:10px 12px 10px 38px; border-radius:8px; border:1px solid #d1d5db; background:#ffffff;">
     </div>
+
+    <!-- Only the filter button remains -->
+    <button><i class="fa-solid fa-filter"></i> More Filters</button>
+
   </div>
+</div>
 
   <table>
     <thead>
@@ -651,6 +686,53 @@ tbody tr {
     <i class="fa-solid fa-xmark"></i>
   </button>
 </div>
+ <script>
+// Simple client-side table filter
+document.addEventListener('DOMContentLoaded', () => {
+  const tableRows = document.querySelectorAll('tbody tr');
+  const statusFilter = document.getElementById('statusFilter');
+  const pendingFilter = document.getElementById('pendingFilter');
+  const searchInput  = document.getElementById('clientSearch');
 
+  function applyFilters() {
+    const statusVal  = statusFilter.value.trim();
+    const pendingVal = pendingFilter.value.trim();
+    const searchVal  = searchInput.value.toLowerCase().trim();
+
+    tableRows.forEach(row => {
+      const statusCell = row.cells[1].textContent.trim();           // Status column
+      const pendingCell = row.cells[2].textContent.trim();          // Pending Items
+      const clientName = row.cells[0].textContent.toLowerCase().trim(); // Client Name
+
+      let show = true;
+
+      // Status filter
+      if (statusVal && statusCell !== statusVal) {
+        show = false;
+      }
+
+      // Pending items filter
+      if (pendingVal === '0' && pendingCell !== 'None') {
+        show = false;
+      }
+      if (pendingVal === '1+' && pendingCell === 'None') {
+        show = false;
+      }
+
+      // Search by client name
+      if (searchVal && !clientName.includes(searchVal)) {
+        show = false;
+      }
+
+      row.style.display = show ? '' : 'none';
+    });
+  }
+
+  // Attach listeners
+  statusFilter.addEventListener('change', applyFilters);
+  pendingFilter.addEventListener('change', applyFilters);
+  searchInput.addEventListener('input', applyFilters);
+});
+</script>
 </body>
 </html>

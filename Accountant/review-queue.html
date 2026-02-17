@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Review Queue | Prospera Accountant Portal</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+
+  <style>
+    /* ────────────────────────────────────────────────
+       Reuse almost all your dashboard styles
+    ───────────────────────────────────────────────── */
+    * { box-sizing:border-box; margin:0; padding:0; }
+
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: #f6f6f8;
+      color: #111318;
+    }
+
+    .app-layout { display:flex; min-height:100vh; width:100%; }
+
+    .sidebar {
+      width:260px;
+      background:linear-gradient(180deg,#0f172a,#020617);
+      color:white;
+      display:flex;
+      flex-direction:column;
+      position:fixed;
+      height:100vh;
+    }
+
+    .sidebar-header {
+      padding:22px;
+      display:flex;
+      gap:12px;
+      align-items:center;
+    }
+
+    .sidebar-header i { font-size:30px; color:#60a5fa; }
+
+    .nav { padding:16px; flex:1; }
+
+    .nav a {
+      display:flex;
+      gap:12px;
+      align-items:center;
+      padding:12px 14px;
+      border-radius:10px;
+      color:#cbd5f5;
+      text-decoration:none;
+      margin-bottom:6px;
+    }
+
+    .nav a:hover { background:#1e293b; }
+    .nav a.active { background:#2563eb; color:white; }
+
+    .sidebar-footer { padding:16px; }
+
+    .user-box {
+      background:#1e293b;
+      padding:12px;
+      border-radius:10px;
+      margin-bottom:12px;
+    }
+
+    .logout {
+      width:100%;
+      background:none;
+      border:none;
+      color:#cbd5f5;
+      padding:12px;
+      border-radius:10px;
+      cursor:pointer;
+      text-align:left;
+    }
+
+    .logout:hover { background:#1e293b; }
+
+    .main { margin-left:260px; flex:1; padding:28px; }
+
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #1754cf;
+      font-weight: 600;
+      margin-bottom: 24px;
+      text-decoration: none;
+      font-size: 15px;
+    }
+
+    .back-link:hover { text-decoration: underline; }
+
+    h1 { font-size: 26px; margin-bottom: 8px; }
+    .subtitle { color: #6b7280; margin-bottom: 32px; font-size: 15px; }
+
+    .full-queue {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+      gap: 24px;
+    }
+
+    .queue-card {
+      background:#ffffff;
+      border:1px solid #e1e4ea;
+      border-radius:14px;
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+    }
+
+    .queue-top {
+      padding:12px 16px;
+      background:#f9fafb;
+      display:flex;
+      justify-content:space-between;
+      font-size:11px;
+      font-weight:700;
+      color:#1754cf;
+    }
+
+    .queue-body { padding:18px; }
+
+    .queue-body h4 { font-size:16px; font-weight:700; margin-bottom:6px; }
+
+    .queue-body p { font-size:13px; color:#6b7280; margin-bottom:16px; }
+
+    .actions { display:flex; gap:8px; }
+
+    .btn-primary {
+      flex:1;
+      background:#1754cf;
+      color:#ffffff;
+      border:none;
+      border-radius:8px;
+      padding:8px 0;
+      font-weight:700;
+      cursor:pointer;
+    }
+
+    .icon-btn {
+      width:38px;
+      border:1px solid #e1e4ea;
+      background:#ffffff;
+      border-radius:8px;
+      cursor:pointer;
+    }
+
+    .icon-btn.red { color:#ef4444; }
+
+    @media (max-width: 1100px) {
+      .full-queue { grid-template-columns: 1fr 1fr; }
+    }
+
+    @media (max-width: 768px) {
+      .full-queue { grid-template-columns: 1fr; }
+      .main { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-layout">
+
+  <!-- Sidebar (identical to dashboard) -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <i class="fa-solid fa-shield-halved"></i>
+      <div>
+        <h1>Prospera</h1>
+        <p>Accountant Portal</p>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <a href="dashboards.html"><i class="fa fa-chart-line"></i> Dashboard</a>
+      <a href="clients.html"><i class="fa fa-users"></i> Clients</a>
+      <a href="documents.html"><i class="fa fa-file"></i> Documents</a>
+      <a href="tasks.html"><i class="fa fa-tasks"></i> Tasks</a>
+      <a href="messages.html"><i class="fa fa-message"></i> Messages</a>
+      <a href="settings.html"><i class="fa fa-gear"></i> Settings</a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-box">
+        <p><strong>Sarah Johnson</strong></p>
+        <p>sarah@prospera.com</p>
+        <p class="role">Primary Accountant</p>
+      </div>
+      <button class="logout"><i class="fa fa-sign-out"></i> Logout</button>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <div class="main">
+    <a href="dashboards.html" class="back-link">
+      <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+    </a>
+
+    <h1>Full Review Queue</h1>
+    <p class="subtitle">12 items awaiting review • Sorted by most recent</p>
+
+    <div class="full-queue">
+
+      <!-- 12 dummy review items -->
+      <div class="queue-card">
+        <div class="queue-top"><span>Tax Return</span><span>2h ago</span></div>
+        <div class="queue-body">
+          <h4>Acme Corp - Q3 Filing</h4>
+          <p>Uploaded by Sarah J. • 1.2MB PDF</p>
+          <div class="actions">
+            <button class="btn-primary">Approve</button>
+            <button class="icon-btn"><i class="fa-solid fa-eye"></i></button>
+            <button class="icon-btn red"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="queue-card">
+        <div class="queue-top"><span>Invoice Batch</span><span>4h ago</span></div>
+        <div class="queue-body">
+          <h4>Global Ltd - Invoice #882</h4>
+          <p>Uploaded by Mark T. • 850KB PDF</p>
+          <div class="actions">
+            <button class="btn-primary">Approve</button>
+            <button class="icon-btn"><i class="fa-solid fa-eye"></i></button>
+            <button class="icon-btn red"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="queue-card">
+        <div class="queue-top"><span>Payroll</span><span>1d ago</span></div>
+        <div class="queue-body">
+          <h4>TechStart - Oct Salaries</h4>
+          <p>Uploaded by HR Dept • 3.4MB XLSX</p>
+          <div class="actions">
+            <button class="btn-primary">Approve</button>
+            <button class="icon-btn"><i class="fa-solid fa-eye"></i></button>
+            <button class="icon-btn red"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="queue-card">
+        <div class="queue-top"><span>VAT Return</span><span>1d ago</span></div>
+        <div class="queue-body">
+          <h4>Blue Ventures - Q4 2025</h4>
+          <p>Uploaded by client • 980KB PDF</p>
+          <div class="actions">
+            <button class="btn-primary">Approve</button>
+            <button class="icon-btn"><i class="fa-solid fa-eye"></i></button>
+            <button class="icon-btn red"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="queue-card">
+        <div class="queue-top"><span>Financial Statement</span><span>2d ago</span></div>
+        <div class="queue-body">
+          <h4>Sunrise Trading - Annual Report</h4>
+          <p>Uploaded by accountant • 2.1MB XLSX</p>
+          <div class="actions">
+            <button class="btn-primary">Approve</button>
+            <button class="icon-btn"><i class="fa-solid fa-eye"></i></button>
+            <button class="icon-btn red"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="queue-card">
+        <div class="queue-top"><span>Reconciliation</span><span>2d ago</span></div>
+        <div class="queue-body">
+          <h4>Peak Performance – Bank Rec Oct</h4>
+          <p>Uploaded by client • 1.4MB PDF</p>
+          <div class="actions">
+            <button class="btn-primary">Approve</button>
+            <button class="icon-btn"><i class="fa-solid fa-eye"></i></button>
+            <button class="icon-btn red"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="queue-card">
+        <div class="queue-top"><span>Tax Assessment</span><span>3d ago</span></div>
+        <div class="queue-body">
+          <h4>NexGen Solutions - Provisional Tax</h4>
+          <p>Uploaded by client • 760KB PDF</p>
+          <div class="actions">
+            <button class="btn-primary">Approve</button>
+            <button class="icon-btn"><i class="fa-solid fa-eye"></i></button>
+            <button class="icon-btn red"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="queue-card">
+        <div class="queue-top"><span>Expense Claim</span><span>3d ago</span></div>
+        <div class="queue-body">
+          <h4>Vista Marketing - Travel Expenses Q4</h4>
+          <p>Uploaded by employee • 1.8MB ZIP</p>
+          <div class="actions">
+            <button class="btn-primary">Approve</button>
+            <button class="icon-btn"><i class="fa-solid fa-eye"></i></button>
+            <button class="icon-btn red"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="queue-card">
+        <div class="queue-top"><span>Audit Trail</span><span>4d ago</span></div>
+        <div class="queue-body">
+          <h4>Horizon Ltd - Internal Audit 2025</h4>
+          <p>Uploaded by auditor • 4.2MB PDF</p>
+          <div class="actions">
+            <button class="btn-primary">Approve</button>
+            <button class="icon-btn"><i class="fa-solid fa-eye"></i></button>
+            <button class="icon-btn red"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="queue-card">
+        <div class="queue-top"><span>Payroll Report</span><span>5d ago</span></div>
+        <div class="queue-body">
+          <h4>Quantum Tech - November Payroll</h4>
+          <p>Uploaded by HR • 2.9MB XLSX</p>
+          <div class="actions">
+            <button class="btn-primary">Approve</button>
+            <button class="icon-btn"><i class="fa-solid fa-eye"></i></button>
+            <button class="icon-btn red"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="queue-card">
+        <div class="queue-top"><span>CIPRO Filing</span><span>6d ago</span></div>
+        <div class="queue-body">
+          <h4>Rapid Logistics - Annual Return</h4>
+          <p>Uploaded by client • 650KB PDF</p>
+          <div class="actions">
+            <button class="btn-primary">Approve</button>
+            <button class="icon-btn"><i class="fa-solid fa-eye"></i></button>
+            <button class="icon-btn red"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="queue-card">
+        <div class="queue-top"><span>Budget Review</span><span>1w ago</span></div>
+        <div class="queue-body">
+          <h4>Infinity Group - 2026 Budget</h4>
+          <p>Uploaded by CFO • 1.6MB XLSX</p>
+          <div class="actions">
+            <button class="btn-primary">Approve</button>
+            <button class="icon-btn"><i class="fa-solid fa-eye"></i></button>
+            <button class="icon-btn red"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
