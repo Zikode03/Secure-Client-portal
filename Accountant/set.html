@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Workspace Settings • Prospera Accountant Portal</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: #f6f6f8;
+      color: #111318;
+      line-height: 1.5;
+    }
+
+    .app-layout { display:flex; min-height:100vh; width:100%; }
+
+    /* SIDEBAR */
+    .sidebar {
+      width:260px;
+      background:linear-gradient(180deg,#0f172a,#020617);
+      color:white;
+      display:flex;
+      flex-direction:column;
+      position:fixed;
+      height:100vh;
+      z-index: 100;
+    }
+    .sidebar-header {
+      padding:22px;
+      display:flex;
+      gap:12px;
+      align-items:center;
+    }
+    .sidebar-header i { font-size:30px; color:#60a5fa; }
+    .sidebar-header h1 { font-size:16px; margin:0; }
+    .sidebar-header p { font-size:12px; color:#94a3b8; margin:0; }
+
+    .nav { padding:16px; flex:1; }
+    .nav a {
+      display:flex;
+      gap:12px;
+      align-items:center;
+      padding:12px 14px;
+      border-radius:10px;
+      color:#cbd5f5;
+      text-decoration:none;
+      margin-bottom:6px;
+      transition:0.15s;
+    }
+    .nav a:hover { background:#1e293b; }
+    .nav a.active { background:#2563eb; color:white; }
+
+    .sidebar-footer { padding:16px; }
+    .user-box {
+      background:#1e293b;
+      padding:12px;
+      border-radius:10px;
+      margin-bottom:12px;
+    }
+    .user-box p { margin:4px 0; }
+    .role { color:#60a5fa; font-size:12px; }
+    .logout {
+      width:100%;
+      background:none;
+      border:none;
+      color:#cbd5f5;
+      padding:12px;
+      border-radius:10px;
+      cursor:pointer;
+      text-align:left;
+      font-size:0.95rem;
+    }
+    .logout:hover { background:#1e293b; }
+
+
+    .main {
+      margin-left: 260px;
+      flex: 1;
+      padding: 40px;
+    }
+
+    .page-title {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .page-sub {
+      color: #6b7280;
+      margin-bottom: 30px;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 32px;
+      border-bottom: 1px solid #e5e7eb;
+      margin-bottom: 32px;
+    }
+
+    .tabs button {
+      background: none;
+      border: none;
+      padding: 12px 4px;
+      font-weight: 600;
+      color: #6b7280;
+      cursor: pointer;
+      font-size: 15px;
+      transition: all 0.15s;
+    }
+
+    .tabs button:hover {
+      color: #374151;
+    }
+
+    .tabs button.active {
+      color: #2563eb;
+      border-bottom: 3px solid #2563eb;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .card {
+      background: white;
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+    }
+
+    .card h3 {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+
+    .grid-2,
+    .grid-3,
+    .form-grid,
+    .two-col {
+      display: grid;
+      gap: 24px;
+    }
+
+    .form-grid,
+    .two-col,
+    .grid-2 {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .grid-3 {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-group label {
+      font-size: 14px;
+      font-weight: 600;
+      color: #374151;
+    }
+
+    .form-group input,
+    .form-group select {
+      padding: 10px 12px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 15px;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s;
+    }
+
+    .btn-primary {
+      background: #2563eb;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #1d4ed8;
+    }
+
+    .btn-outline {
+      background: white;
+      border: 1px solid #d1d5db;
+      color: #374151;
+    }
+
+    .btn-outline:hover {
+      background: #f3f4f6;
+    }
+
+    .btn-danger {
+      background: white;
+      border: 1px solid #fca5a5;
+      color: #dc2626;
+    }
+
+    .btn-danger:hover {
+      background: #fee2e2;
+    }
+
+    .btn-black {
+      background: #111318;
+      color: white;
+    }
+
+    .danger-box {
+      border: 2px solid #fecaca;
+      background: #fff1f2;
+      padding: 20px;
+      border-radius: 12px;
+      margin-top: 32px;
+    }
+
+    .danger-box h4 {
+      color: #dc2626;
+      margin-bottom: 8px;
+    }
+
+    .badge-secure {
+      background: #dcfce7;
+      color: #15803d;
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-weight: 700;
+      margin-left: 8px;
+    }
+
+    .profile-img {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: #e5e7eb;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 48px;
+      color: #9ca3af;
+      margin-bottom: 20px;
+    }
+
+    .theme-option {
+      border: 2px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 16px;
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.15s;
+    }
+
+    .theme-option:hover {
+      border-color: #bfdbfe;
+    }
+
+    .theme-option.active {
+      border-color: #2563eb;
+      background: #eff6ff;
+    }
+
+    .theme-preview {
+      height: 80px;
+      border-radius: 8px;
+      margin-top: 12px;
+      border: 1px solid #e5e7eb;
+    }
+
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 52px;
+      height: 28px;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #d1d5db;
+      transition: 0.4s;
+      border-radius: 28px;
+    }
+
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: 0.4s;
+      border-radius: 50%;
+    }
+
+    input:checked + .toggle-slider {
+      background-color: #2563eb;
+    }
+
+    input:checked + .toggle-slider:before {
+      transform: translateX(24px);
+    }
+
+    .info-box {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      color: #1e40af;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .login-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .login-table th,
+    .login-table td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .login-table th {
+      background: #f8fafc;
+      font-size: 12px;
+      font-weight: 600;
+      color: #6b7280;
+      text-transform: uppercase;
+    }
+
+    .current-session {
+      color: #16a34a;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .device-box {
+      background: #f8fafc;
+      border: 1px dashed #cbd5e1;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .status-active {
+      color: #16a34a;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .revoke-btn {
+      color: #dc2626;
+      font-size: 12px;
+      font-weight: 600;
+      background: none;
+      border: none;
+      cursor: pointer;
+    }
+
+    .revoke-btn:hover {
+      text-decoration: underline;
+    }
+
+    .notification-item {
+      padding: 16px 0;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .notification-item:last-child {
+      border-bottom: none;
+    }
+
+    .notification-item .text {
+      flex: 1;
+      padding-right: 20px;
+    }
+
+    .notification-item .title {
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .notification-item .desc {
+      font-size: 13px;
+      color: #6b7280;
+    }
+
+    .actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 16px;
+      margin-top: 40px;
+    }
+
+    @media (max-width: 1024px) {
+      .grid-2,
+      .grid-3,
+      .form-grid,
+      .two-col {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-header">
+    <i class="fa-solid fa-shield-halved"></i>
+    <div>
+      <h3>Prospera</h3>
+      <small>Accountant Portal</small>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <a href="dashboards.html"><i class="fa fa-chart-line"></i> Dashboard</a>
+    <a href="clients.html"><i class="fa fa-users"></i> Clients</a>
+    <a href="documents.html"><i class="fa fa-file"></i> Documents</a>
+    <a href="tasks.html"><i class="fa fa-tasks"></i> Tasks</a>
+    <a href="messages.html"><i class="fa fa-message"></i> Messages</a>
+    <a href="set.html" class="active"><i class="fa fa-gear"></i> Settings</a>
+  </nav>
+
+  
+    <div class="sidebar-footer">
+      <div class="user-box">
+        <p><strong>Sarah Johnson</strong></p>
+        <p>sarah@prospera.com</p>
+        <p class="role">Primary Accountant</p>
+      </div>
+      <button class="logout"><i class="fa fa-sign-out"></i> Logout</button>
+    </div>
+</aside>
+
+  <!-- Main content -->
+  <div class="main">
+
+    <div class="page-title">Workspace Settings</div>
+    <div class="page-sub">Manage your professional identity, preferences, security, notifications and account settings.</div>
+
+    <div class="tabs">
+      <button class="active" onclick="switchTab('profile', this)">Profile</button>
+      <button onclick="switchTab('preferences', this)">Preferences</button>
+      <button onclick="switchTab('security', this)">Security</button>
+      <button onclick="switchTab('notifications', this)">Notifications</button>
+    </div>
+
+    <!-- Profile -->
+    <div id="profile" class="tab-content active">
+      <div class="card">
+        <h3>Profile Information</h3>
+        <div class="profile-img"><i class="fa fa-user"></i></div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Full Name</label>
+            <input type="text" value="Thembelihle" />
+          </div>
+          <div class="form-group">
+            <label>Professional Title</label>
+            <input type="text" value="Tax Accountant" />
+          </div>
+          <div class="form-group">
+            <label>Email Address</label>
+            <input type="email" value="thembelihle@prospera.co.za" />
+          </div>
+          <div class="form-group">
+            <label>Certification</label>
+            <select>
+              <option>SAICA CA(SA)</option>
+              <option>CPA</option>
+              <option>ACCA</option>
+              <option>None</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="margin-top: 32px;">
+          <button class="btn btn-outline">Cancel</button>
+          <button class="btn btn-primary">Save Changes</button>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <h3>Account Security <span class="badge-secure">Secure</span></h3>
+          <p><strong>Two-Factor Authentication</strong></p>
+          <small>Enabled</small><br><br>
+          <p><strong>Password</strong></p>
+          <small>Last changed 38 days ago</small><br><br>
+          <button class="btn btn-outline">Change Password</button>
+        </div>
+
+        <div class="card">
+          <h3>Connected Tools</h3>
+          <p><strong>QuickBooks Online</strong> — Connected</p>
+          <button class="btn btn-danger" style="margin-top:8px;">Disconnect</button><br><br>
+          <p><strong>Xero</strong> — Not connected</p>
+          <button class="btn btn-primary" style="margin-top:8px;">Connect</button>
+        </div>
+      </div>
+
+      <div class="danger-box">
+        <h4>Deactivate Account</h4>
+        <p>Deactivation will permanently remove access to all client data and firm records.</p>
+        <div style="margin-top: 16px;">
+          <button class="btn btn-danger">Start Deactivation</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Preferences -->
+    <div id="preferences" class="tab-content">
+      <div class="card">
+        <h3>Interface Theme</h3>
+        <div class="grid-3">
+          <div class="theme-option active" onclick="setTheme('light',this)">
+            <strong><i class="fa fa-sun"></i> Light</strong>
+            <div class="theme-preview" style="background:#f6f6f8;"></div>
+          </div>
+          <div class="theme-option" onclick="setTheme('dark',this)">
+            <strong><i class="fa fa-moon"></i> Dark</strong>
+            <div class="theme-preview" style="background:#111621;"></div>
+          </div>
+          <div class="theme-option" onclick="setTheme('system',this)">
+            <strong><i class="fa fa-desktop"></i> System</strong>
+            <div class="theme-preview" style="background:linear-gradient(to right,#f6f6f8,#111621);"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Language & Region</h3>
+        <div class="grid-2">
+          <div class="form-group">
+            <label>Language</label>
+            <select>
+              <option>English (South Africa)</option>
+              <option>English (United Kingdom)</option>
+              <option>Afrikaans</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Time Zone</label>
+            <select>
+              <option>(UTC+02:00) Pretoria, Johannesburg (South Africa Standard Time)</option>
+              <option>(UTC+02:00) Harare, Pretoria</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Date Format</label>
+            <select>
+              <option>YYYY-MM-DD</option>
+              <option>DD/MM/YYYY</option>
+              <option>MM/DD/YYYY</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Currency</label>
+            <select>
+              <option>ZAR (R)</option>
+              <option>USD ($)</option>
+              <option>EUR (€)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-outline">Discard Changes</button>
+        <button class="btn btn-primary">Save Preferences</button>
+      </div>
+    </div>
+
+    <!-- Security -->
+    <div id="security" class="tab-content">
+      <div class="grid-2">
+        <div class="card">
+          <h3><i class="fa fa-shield-halved" style="color:#2563eb;margin-right:8px;"></i> Two-Factor Authentication</h3>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+            <div>
+              <div style="font-weight:600;margin-bottom:4px;">Enable 2FA</div>
+              <div style="font-size:13px;color:#6b7280;">Add an extra layer of protection to your account.</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" checked />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="info-box">
+            <i class="fa fa-info-circle"></i>
+            Your account is currently protected by an authentication app (Google Authenticator).
+          </div>
+        </div>
+
+        <div class="card">
+          <h3><i class="fa fa-lock" style="color:#2563eb;margin-right:8px;"></i> Password Management</h3>
+          <div style="font-weight:600;margin:12px 0 8px;">Change Password</div>
+          <div style="font-size:13px;color:#6b7280;margin-bottom:20px;">
+            Regularly updating your password enhances your account security.
+          </div>
+          <button class="btn btn-black" style="width:100%;">Change Password</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <h3>Recent Login Activity</h3>
+          <button class="btn btn-outline" style="font-size:13px;">View All</button>
+        </div>
+        <table class="login-table">
+          <thead>
+            <tr>
+              <th>Device</th>
+              <th>Location</th>
+              <th>IP Address</th>
+              <th>Date & Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Chrome on macOS</strong><br><span class="current-session">Current Session</span></td>
+              <td>Johannesburg, Gauteng, ZA</td>
+              <td>102.132.140.xxx</td>
+              <td>Feb 17, 2026 – 16:31</td>
+            </tr>
+            <tr>
+              <td><strong>iPhone 15 Pro (iOS App)</strong></td>
+              <td>Pretoria, Gauteng, ZA</td>
+              <td>41.193.5.xxx</td>
+              <td>Feb 16, 2026 – 09:12</td>
+            </tr>
+            <tr>
+              <td><strong>Safari on iPad</strong></td>
+              <td>Johannesburg, Gauteng, ZA</td>
+              <td>102.132.140.xxx</td>
+              <td>Feb 14, 2026 – 14:45</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="card">
+        <h3>Active Sessions</h3>
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:20px;">
+          <div>
+            <div style="font-weight:600;margin-bottom:6px;">3 active devices</div>
+            <div style="font-size:14px;color:#6b7280;">
+              If you notice suspicious activity, log out of all other devices immediately.
+            </div>
+          </div>
+          <button class="btn btn-danger">Log out all other devices</button>
+        </div>
+      </div>
+
+      <div class="danger-box">
+        <h4>Deactivate Account</h4>
+        <p>Once deactivated, you will permanently lose access to all firm records and client portals.</p>
+        <div style="margin-top:16px;">
+          <button class="btn btn-danger">Start Deactivation</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notifications -->
+    <div id="notifications" class="tab-content">
+      <div class="card">
+        <h3>Email Notifications</h3>
+        <p style="color:#6b7280;margin-bottom:20px;">Manage alerts sent to thembelihle@prospera.co.za</p>
+
+        <div class="notification-item">
+          <div class="text">
+            <div class="title">New Client Registration</div>
+            <div class="desc">Notify me when a new client signs up via the portal.</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" checked />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="notification-item">
+          <div class="text">
+            <div class="title">Document Uploads</div>
+            <div class="desc">Receive an email when a client uploads a document to their folder.</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" checked />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="notification-item">
+          <div class="text">
+            <div class="title">Client Messages</div>
+            <div class="desc">Alert me for direct messages from clients.</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" checked />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3>Push Notifications</h3>
+          <div class="device-box">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <i class="fa fa-mobile-alt" style="font-size:28px;color:#2563eb;"></i>
+              <div>
+                <div style="font-weight:600;">Thembelihle's iPhone 15 Pro</div>
+                <div class="status-active">ACTIVE</div>
+              </div>
+            </div>
+            <button class="revoke-btn">Revoke</button>
+          </div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-weight:600;">Enable Push Alerts</div>
+              <div style="font-size:13px;color:#6b7280;">Send alerts to connected devices.</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" checked />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>In-App Alerts</h3>
+          <div style="margin-bottom:20px;">
+            <label style="display:block;font-weight:600;margin-bottom:6px;">Alert Frequency</label>
+            <select style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;">
+              <option>Real-time (As events occur)</option>
+              <option>Hourly Summary</option>
+              <option>Daily Digest (EOD)</option>
+              <option>Disabled</option>
+            </select>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <input type="checkbox" checked style="width:18px;height:18px;accent-color:#2563eb;" />
+            <label style="font-size:14px;color:#6b7280;">Play notification sound for new alerts</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+          <div>
+            <h3>Do Not Disturb</h3>
+            <p style="color:#6b7280;font-size:14px;">Mute all notifications during specific hours.</p>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" checked />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:20px;">
+          <div>
+            <label style="display:block;font-weight:600;margin-bottom:6px;">From</label>
+            <input type="time" value="20:00" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;" />
+          </div>
+          <div>
+            <label style="display:block;font-weight:600;margin-bottom:6px;">To</label>
+            <input type="time" value="08:00" style="width:100%;padding:10px;border:1px solid #d1d5db;border-radius:8px;" />
+          </div>
+          <div>
+            <label style="display:block;font-weight:600;margin-bottom:6px;">Days</label>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;">
+              <button style="width:32px;height:32px;border-radius:6px;background:#2563eb;color:white;font-size:12px;border:none;cursor:pointer;">M</button>
+              <button style="width:32px;height:32px;border-radius:6px;background:#2563eb;color:white;font-size:12px;border:none;cursor:pointer;">T</button>
+              <button style="width:32px;height:32px;border-radius:6px;background:#2563eb;color:white;font-size:12px;border:none;cursor:pointer;">W</button>
+              <button style="width:32px;height:32px;border-radius:6px;background:#2563eb;color:white;font-size:12px;border:none;cursor:pointer;">T</button>
+              <button style="width:32px;height:32px;border-radius:6px;background:#2563eb;color:white;font-size:12px;border:none;cursor:pointer;">F</button>
+              <button style="width:32px;height:32px;border-radius:6px;background:#e5e7eb;color:#6b7280;font-size:12px;border:none;cursor:pointer;">S</button>
+              <button style="width:32px;height:32px;border-radius:6px;background:#e5e7eb;color:#6b7280;font-size:12px;border:none;cursor:pointer;">S</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-outline">Reset Defaults</button>
+        <button class="btn btn-primary">Save Preferences</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function switchTab(tabId, button) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+
+  document.querySelectorAll('.tabs button').forEach(btn => btn.classList.remove('active'));
+  button.classList.add('active');
+}
+
+function setTheme(mode, el) {
+  document.querySelectorAll('.theme-option').forEach(opt => opt.classList.remove('active'));
+  el.classList.add('active');
+
+  if (mode === 'dark') {
+    document.body.style.background = '#111621';
+    document.body.style.color = '#f3f4f6';
+  } else {
+    document.body.style.background = '#f6f6f8';
+    document.body.style.color = '#111318';
+  }
+}
+</script>
+
+</body>
+</html>
