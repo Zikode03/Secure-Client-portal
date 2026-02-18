@@ -1,0 +1,19 @@
+.form-message {
+  margin-top: 12px;
+  font-size: 13px;
+  color: #b91c1c;
+}
+
+.form-message-left {
+  text-align: left;
+}
+
+.field-flex-1 {
+  flex: 1;
+}
+
+.security-note {
+  margin-top: 25px;
+  font-size: 11px;
+  color: #999;
+}

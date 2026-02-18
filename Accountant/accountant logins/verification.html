@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FinSecure Portal - MFA Verification</title>
+<link rel="stylesheet" href="../../shared/auth-pages.css">
 
 <!-- FontAwesome -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -220,29 +221,29 @@ footer {
         <p>Enter the 6-digit code from your authenticator app.</p>
 
         <div class="otp-container">
-            <input type="text" maxlength="1" class="otp">
-            <input type="text" maxlength="1" class="otp">
-            <input type="text" maxlength="1" class="otp">
-            <input type="text" maxlength="1" class="otp">
-            <input type="text" maxlength="1" class="otp">
-            <input type="text" maxlength="1" class="otp">
+            <input type="text" maxlength="1" class="otp" aria-label="Verification code digit 1">
+            <input type="text" maxlength="1" class="otp" aria-label="Verification code digit 2">
+            <input type="text" maxlength="1" class="otp" aria-label="Verification code digit 3">
+            <input type="text" maxlength="1" class="otp" aria-label="Verification code digit 4">
+            <input type="text" maxlength="1" class="otp" aria-label="Verification code digit 5">
+            <input type="text" maxlength="1" class="otp" aria-label="Verification code digit 6">
         </div>
 
         <div class="error" id="errorMsg">Invalid code. Please try again.</div>
 
-        <button id="verifyBtn">
+        <button id="verifyBtn" type="button">
             Verify & Sign In <i class="fa-solid fa-arrow-right"></i>
         </button>
 
-        <button class="link-btn" id="backupBtn">
+        <button class="link-btn" id="backupBtn" type="button">
             Lost access? Use backup recovery code
         </button>
 
-        <button class="link-btn" id="resendBtn">
+        <button class="link-btn" id="resendBtn" type="button">
             Resend verification code
         </button>
 
-        <div style="margin-top:25px; font-size:11px; color:#999;">
+        <div class="security-note">
             <i class="fa-solid fa-lock"></i> End-to-End Encrypted Session
         </div>
     </div>

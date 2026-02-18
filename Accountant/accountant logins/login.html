@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Accountant Secure Login | Secure Portal</title>
+<link rel="stylesheet" href="../../shared/auth-pages.css">
 
 <!-- Font Awesome -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -191,6 +192,18 @@ main::before {
   cursor: pointer;
 }
 
+.request-access-link {
+  display: inline-block;
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  border: 2px solid rgba(23,84,207,0.2);
+  background: transparent;
+  color: var(--primary);
+  font-weight: bold;
+  text-decoration: none;
+}
+
 /* ================= TRUST BADGES ================= */
 
 .trust-badges {
@@ -266,7 +279,7 @@ footer a:hover {
 
       <form id="loginForm">
         <div class="form-group">
-          <label>Email Address</label>
+          <label for="email">Email Address</label>
           <div class="input-wrapper">
             <i class="fas fa-envelope"></i>
             <input id="email" type="email" placeholder="e.g. name@firm.com" required>
@@ -274,7 +287,7 @@ footer a:hover {
         </div>
 
         <div class="form-group">
-          <label>Password</label>
+          <label for="password">Password</label>
           <div class="input-wrapper">
             <i class="fas fa-lock-open"></i>
             <input type="password" id="password" placeholder="Enter your password" required>
@@ -283,19 +296,19 @@ footer a:hover {
         </div>
 
         <div class="form-options">
-          <label><input type="checkbox"> Keep me signed in</label>
+          <label for="keepSignedIn"><input id="keepSignedIn" type="checkbox" aria-label="Keep me signed in"> Keep me signed in</label>
           <a href="passwordRecovery.html">Forgot Password?</a>
         </div>
 
         <button class="signin-btn" id="signinBtn" type="submit">
           <i class="fas fa-sign-in-alt"></i> Sign In
         </button>
-        <p id="loginMessage" style="margin-top:12px;text-align:left;color:#b91c1c;font-size:13px;"></p>
+        <p id="loginMessage" class="form-message form-message-left"></p>
       </form>
 
       <div class="request-section">
         <p>Are you a new staff member?</p><br>
-        <button><a href="signup.html">Request Access</a></button>
+        <a class="request-access-link" href="signup.html">Request Access</a>
       </div>
 
     </div>

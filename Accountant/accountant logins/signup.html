@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Accountant Sign Up - LedgerPro Secure</title>
+<link rel="stylesheet" href="../../shared/auth-pages.css">
 
 <!-- FontAwesome -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -241,29 +242,29 @@ button:hover {
             <form id="signupForm">
 
                 <div class="form-group">
-                    <label>Full Name</label>
-                    <input type="text" required>
+                    <label for="fullName">Full Name</label>
+                    <input id="fullName" type="text" required>
                 </div>
 
                 <div class="form-group">
-                    <label>Professional Email</label>
-                    <input type="email" required>
+                    <label for="professionalEmail">Professional Email</label>
+                    <input id="professionalEmail" type="email" required>
                 </div>
 
                 <div class="row">
-                    <div class="form-group" style="flex:1;">
-                        <label>Certification #</label>
-                        <input type="text">
+                    <div class="form-group field-flex-1">
+                        <label for="certificationNumber">Certification #</label>
+                        <input id="certificationNumber" type="text">
                     </div>
 
-                    <div class="form-group" style="flex:1;">
-                        <label>Firm Invite Code</label>
-                        <input type="text">
+                    <div class="form-group field-flex-1">
+                        <label for="firmInviteCode">Firm Invite Code</label>
+                        <input id="firmInviteCode" type="text">
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label>Create Password</label>
+                    <label for="password">Create Password</label>
                     <div class="password-container">
                         <input type="password" id="password" required>
                         <i class="fa-solid fa-eye" onclick="togglePassword()"></i>
