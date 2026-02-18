@@ -433,6 +433,7 @@
     }
   </style>
   <script defer src="accountant-nav.js"></script>
+<link rel="stylesheet" href="../shared/inline-migrated.css">
 </head>
 <body>
 
@@ -502,7 +503,7 @@
         <option value="medium">Priority: Medium</option>
         <option value="low">Priority: Low</option>
       </select>
-      <button class="btn-primary" id="runAutomationBtn" style="padding:8px 12px;">Run SLA Automation</button>
+      <button class="btn-primary inl-675583ce02" id="runAutomationBtn">Run SLA Automation</button>
       <span id="clearFilters" class="clear">Clear all</span>
     </div>
 
@@ -511,7 +512,7 @@
       <table>
         <thead>
           <tr>
-            <th style="width:40px"></th>
+            <th class="inl-93de2d4b1f"></th>
             <th>Task Name</th>
             <th>Client</th>
             <th>Status</th>
@@ -537,9 +538,9 @@
       <div class="modal-header">
         <div>
           <h3>Create New Task</h3>
-          <small style="color:var(--gray);">Add a new workflow item for your team or client.</small>
+          <small class="inl-8628aadcc8">Add a new workflow item for your team or client.</small>
         </div>
-        <button id="closeModal" style="background:none;border:none;font-size:28px;color:var(--gray);cursor:pointer;"></button>
+        <button id="closeModal" class="inl-b979717ad6"></button>
       </div>
       <div class="modal-body">
         <div class="form-group">
@@ -640,7 +641,7 @@ function renderTasks() {
   tbody.innerHTML = page.map((task) => `
     <tr data-id="${task.id}">
       <td><input type="checkbox" class="task-check" data-id="${task.id}"></td>
-      <td>${task.title}<br><span style="color:var(--gray);font-size:13px;"><span class="priority-dot ${task.priority}"></span>${task.priority.toUpperCase()} PRIORITY</span></td>
+      <td>${task.title}<br><span class="inl-3ff05674dc"><span class="priority-dot ${task.priority}"></span>${task.priority.toUpperCase()} PRIORITY</span></td>
       <td>${getClientName(task.clientId)}</td>
       <td><span class="status ${task.status}">${getStatusText(task.status)}</span></td>
       <td>${task.dueDate}</td>
@@ -674,13 +675,13 @@ function updateDrawer(taskId) {
         <div class="client-path">${getClientName(task.clientId).toUpperCase()}</div>
         <h3>${task.title}</h3>
       </div>
-      <button id="closeDrawerBtn" style="background:none;border:none;font-size:24px;cursor:pointer;">x</button>
+      <button id="closeDrawerBtn" class="inl-aba57da535">x</button>
     </div>
-    <div style="padding:16px;">
+    <div class="inl-9b624ae5de">
       <p><strong>Status:</strong> ${task.status}</p>
       <p><strong>Priority:</strong> ${task.priority}</p>
       <p><strong>Due:</strong> ${task.dueDate}</p>
-      <button class="btn-primary" id="markCompleteBtn" style="margin-top:10px;">Mark Complete</button>
+      <button class="btn-primary inl-5371db1648" id="markCompleteBtn">Mark Complete</button>
     </div>
   `;
   drawer.style.display = "flex";

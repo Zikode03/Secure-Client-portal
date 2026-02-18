@@ -490,6 +490,7 @@ tbody tr {
 
 </style>
   <script defer src="accountant-nav.js"></script>
+<link rel="stylesheet" href="../shared/inline-migrated.css">
 </head>
 
 <body>
@@ -565,10 +566,10 @@ tbody tr {
 <div class="table-card">
 <div class="table-head">
   <h3>Assigned Clients</h3>
-  <div class="table-actions" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+  <div class="table-actions inl-db91d0b534">
 
     <!-- Status Filter -->
-    <select id="statusFilter" style="padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; min-width: 140px;">
+    <select id="statusFilter" class="inl-72d551e2a9">
       <option value="">All Statuses</option>
       <option value="Action Required">Action Required</option>
       <option value="Compliant">Compliant</option>
@@ -577,16 +578,16 @@ tbody tr {
     </select>
 
     <!-- Pending Items Filter -->
-    <select id="pendingFilter" style="padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; min-width: 160px;">
+    <select id="pendingFilter" class="inl-5bf8467892">
       <option value="">Any Pending Items</option>
       <option value="0">No Pending Items</option>
       <option value="1+">Has Pending Items</option>
     </select>
 
     <!-- Quick Search -->
-    <div class="search" style="max-width: 240px; margin-left: auto;">
+    <div class="search inl-0abba2931d">
       <i class="fa-solid fa-magnifying-glass"></i>
-      <input type="text" id="clientSearch" placeholder="Search clients..." style="width:100%; padding:10px 12px 10px 38px; border-radius:8px; border:1px solid #d1d5db; background:#ffffff;">
+      <input type="text" id="clientSearch" placeholder="Search clients..." class="inl-8c7129f967">
     </div>
 
     <!-- Only the filter button remains -->
@@ -598,7 +599,7 @@ tbody tr {
   <table>
     <thead>
       <tr>
-        <th>Client Name</th><th>Status</th><th>Pending Items</th><th>Last Activity</th><th style="text-align:right">Actions</th>
+        <th>Client Name</th><th>Status</th><th>Pending Items</th><th>Last Activity</th><th class="inl-f6e3d7fea5">Actions</th>
       </tr>
     </thead>
     <tbody id="assignedClientsBody"></tbody>
@@ -606,10 +607,10 @@ tbody tr {
   <div class="show-more">Show more clients</div>
 </div>
 
-<div class="table-card" style="margin-top:20px;">
-  <div class="table-head" style="display:flex;justify-content:space-between;align-items:center;">
+<div class="table-card inl-3ae1f62af1">
+  <div class="table-head inl-510ea6801a">
     <h3>Audit Trail</h3>
-    <select id="auditEntityFilter" style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;">
+    <select id="auditEntityFilter" class="inl-5cdaa032ba">
       <option value="">All Entities</option>
       <option value="document">Document</option>
       <option value="task">Task</option>
@@ -631,8 +632,8 @@ tbody tr {
 <div class="toast" id="toast">
   <i class="fa-solid fa-circle-check"></i>
   <div>
-    <div style="font-weight:700">Document Approved</div>
-    <div style="font-size:13px;opacity:.9">Acme Corp Q3 Filing has been processed.</div>
+    <div class="inl-83e4487b7f">Document Approved</div>
+    <div class="inl-407270f64f">Acme Corp Q3 Filing has been processed.</div>
   </div>
   <button onclick="document.getElementById('toast').style.display='none'">
     <i class="fa-solid fa-xmark"></i>
@@ -708,7 +709,7 @@ async function loadDashboard() {
       <td><span class="status ${statusBadgeClass(client.status)}">${client.status}</span></td>
       <td>${client.pendingItems}</td>
       <td>${shortTime(client.lastActivity)}</td>
-      <td style="text-align:right"><a class="manage" href="client-profile.html?clientId=${encodeURIComponent(client.id)}">Manage</a></td>
+      <td class="inl-f6e3d7fea5"><a class="manage" href="client-profile.html?clientId=${encodeURIComponent(client.id)}">Manage</a></td>
     </tr>
   `).join("");
 }

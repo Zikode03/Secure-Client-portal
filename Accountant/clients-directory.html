@@ -447,6 +447,7 @@
     }
   </style>
   <script defer src="accountant-nav.js"></script>
+<link rel="stylesheet" href="../shared/inline-migrated.css">
 </head>
 <body>
 
@@ -501,10 +502,10 @@
         <div class="stat-card critical">
           <div class="stat-header">
             <div class="stat-icon red"><i class="fa-solid fa-triangle-exclamation"></i></div>
-            <span class="change-badge" style="background:#fee2e2; color:#991b1b;">Critical</span>
+            <span class="change-badge inl-7ea2ec1197">Critical</span>
           </div>
           <div class="stat-label">At Risk</div>
-          <div class="stat-number" style="color:var(--red);">18</div>
+          <div class="stat-number inl-e0936291e7">18</div>
         </div>
       </div>
 
@@ -534,7 +535,7 @@
           </div>
         </div>
 
-        <div style="overflow-x:auto;">
+        <div class="inl-df74e8d856">
           <table>
             <thead>
               <tr>
@@ -543,7 +544,7 @@
                 <th>ASSIGNED ACCOUNTANT</th>
                 <th>COMPLIANCE HEALTH</th>
                 <th>STATUS</th>
-                <th style="text-align:right;">ACTIONS</th>
+                <th class="inl-f6e3d7fea5">ACTIONS</th>
               </tr>
             </thead>
             <tbody id="tableBody"></tbody>
@@ -553,14 +554,14 @@
 
        <div class="pagination">
   <button id="prevBtn"
-    style="padding:0.5rem 1rem; border:1px solid var(--border); border-radius:6px; font-weight:600; background:white;">
+    class="inl-ee862b6d1b">
     Previous
   </button>
 
   <div class="page-numbers" id="pageNumbers"></div>
 
   <button id="nextBtn"
-    style="padding:0.5rem 1rem; border:1px solid var(--border); border-radius:6px; font-weight:600; background:white;">
+    class="inl-ee862b6d1b">
     Next
   </button>
 </div>
@@ -605,6 +606,20 @@ function getHealthColor(health) {
   return "var(--red)";
 }
 
+function applyDynamicHealthStyles() {
+  document.querySelectorAll(".client-health-bar").forEach((bar) => {
+    const health = Number(bar.getAttribute("data-health") || 0);
+    const color = bar.getAttribute("data-health-color") || "var(--blue)";
+    bar.style.width = `${health}%`;
+    bar.style.background = color;
+  });
+
+  document.querySelectorAll(".status-dot[data-health-color]").forEach((dot) => {
+    const color = dot.getAttribute("data-health-color") || "var(--blue)";
+    dot.style.background = color;
+  });
+}
+
 function renderTable() {
   tableBody.innerHTML = "";
 
@@ -642,17 +657,16 @@ function renderTable() {
       </td>
       <td class="progress-cell">
         <div class="progress-wrapper">
-          <div class="progress-bar"
-            style="width:${client.health}%; background:${healthColor};">
+          <div class="progress-bar client-health-bar" data-health="${client.health}" data-health-color="${healthColor}">
           </div>
         </div>
-        <div style="font-size:0.75rem; color:var(--gray-500); margin-top:4px;">
+        <div class="inl-a31f52a0a8">
           ${client.health}%
         </div>
       </td>
       <td>
         <span class="status-pill ${statusClass}">
-          <span class="status-dot" style="background:${healthColor};"></span>
+          <span class="status-dot" data-health-color="${healthColor}"></span>
           ${client.status}
         </span>
       </td>
@@ -666,6 +680,7 @@ function renderTable() {
   showingText.innerHTML =
     `Showing <strong>${start + 1}-${end}</strong> of ${clients.length}`;
 
+  applyDynamicHealthStyles();
   renderPagination();
 }
 

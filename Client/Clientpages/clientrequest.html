@@ -454,6 +454,7 @@
 
     .hidden { display: none; }
   </style>
+<link rel="stylesheet" href="../../shared/inline-migrated.css">
 </head>
 <body>
 
@@ -525,7 +526,7 @@
       </div>
 
       <!-- Modal -->
-      <div id="newRequestModal" class="modal-overlay" style="display:none;">
+      <div id="newRequestModal" class="modal-overlay inl-cb45893012">
         <div class="modal-content">
           <div class="modal-header">
             <h2>Create Document Request</h2>
@@ -634,8 +635,8 @@ function renderRequestCard(request, isReceived) {
         <span><i class="fas fa-calendar"></i> Due: ${request.dueDate || "-"}</span>
         <span><i class="fas fa-clock"></i> Requested: ${(request.requestedAt || "").slice(0, 10)}</span>
       </div>
-      <div id="${historyId}" style="margin-top:10px;color:var(--muted);font-size:12px;">Timeline: loading...</div>
-      ${isReceived ? `<button class="action-btn" data-fulfill-id="${request.id}">Mark as Fulfilled</button>` : `<button class="action-btn" style="background:#64748b;" disabled>Sent</button>`}
+      <div id="${historyId}" class="inl-430a33be39">Timeline: loading...</div>
+      ${isReceived ? `<button class="action-btn" data-fulfill-id="${request.id}">Mark as Fulfilled</button>` : `<button class="action-btn inl-659214d47e" disabled>Sent</button>`}
     </div>
   `;
 }
@@ -665,10 +666,10 @@ async function loadRequests() {
 
   document.getElementById("receivedRequests").innerHTML = received.length
     ? received.map((r) => renderRequestCard(r, true)).join("")
-    : `<p style="color:var(--muted)">No requests received.</p>`;
+    : `<p class="inl-87ddc0dc6e">No requests received.</p>`;
   document.getElementById("sentRequests").innerHTML = sent.length
     ? sent.map((r) => renderRequestCard(r, false)).join("")
-    : `<p style="color:var(--muted)">No requests sent yet.</p>`;
+    : `<p class="inl-87ddc0dc6e">No requests sent yet.</p>`;
 
   for (const request of [...received, ...sent]) {
     const history = await loadTimeline(request.id);
