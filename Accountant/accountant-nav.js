@@ -156,7 +156,8 @@
 
       const iconEyeButton = event.target.closest('.icon-btn');
       if (iconEyeButton && iconEyeButton.querySelector('.fa-eye')) {
-        window.location.href = 'documentview.html?id=1';
+        const viewId = iconEyeButton.getAttribute('data-view-id') || '1';
+        window.location.href = 'documentview.html?id=' + encodeURIComponent(viewId);
         return;
       }
 

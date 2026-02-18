@@ -545,57 +545,20 @@ tbody tr {
 
 <!-- Stats -->
 <div class="stats">
-  <div class="card"><p>Total Active Clients</p><h3>42 <span class="green">2 this month</span></h3></div>
-  <div class="card"><p>Pending Reviews</p><h3>12 <span class="orange">4 overdue</span></h3></div>
-  <div class="card"><p>Critical Tasks</p><h3>5 <span class="red">High Priority</span></h3></div>
-  <div class="card"><p>Upcoming Deadlines</p><h3>8 <span class="blue">Within 7 days</span></h3></div>
+  <div class="card"><p>Total Active Clients</p><h3><span id="statActiveClients">0</span> <span class="green">live</span></h3></div>
+  <div class="card"><p>Pending Reviews</p><h3><span id="statPendingReviews">0</span> <span class="orange">in queue</span></h3></div>
+  <div class="card"><p>Critical Tasks</p><h3><span id="statCriticalTasks">0</span> <span class="red">high priority</span></h3></div>
+  <div class="card"><p>Upcoming Deadlines</p><h3><span id="statUpcomingDeadlines">0</span> <span class="blue">next 7 days</span></h3></div>
 </div>
 
 <!-- Review Queue -->
 <div class="section-head">
   <h3>Review Queue</h3>
-  <a href="review-queue.html" class="view-all-link">View all (12)</a>
+  <a href="review-queue.html" class="view-all-link" id="reviewQueueLink">View all</a>
 </div>
 
-<div class="queue">
-  <div class="queue-card">
-    <div class="queue-top"><span>Tax Return</span><span>2h ago</span></div>
-    <div class="queue-body">
-      <h4>Acme Corp - Q3 Filing</h4>
-      <p>Uploaded by Sarah J.  1.2MB PDF</p>
-      <div class="actions">
-        <button class="btn-primary">Approve</button>
-        <button class="icon-btn"><i class="fa-solid fa-eye"></i></button>
-        <button class="icon-btn red"><i class="fa-solid fa-xmark"></i></button>
-      </div>
-    </div>
-  </div>
-
-  <div class="queue-card">
-    <div class="queue-top"><span>Invoice Batch</span><span>4h ago</span></div>
-    <div class="queue-body">
-      <h4>Global Ltd - Invoice #882</h4>
-      <p>Uploaded by Mark T.  850KB PDF</p>
-      <div class="actions">
-        <button class="btn-primary">Approve</button>
-        <button class="icon-btn"><i class="fa-solid fa-eye"></i></button>
-        <button class="icon-btn red"><i class="fa-solid fa-xmark"></i></button>
-      </div>
-    </div>
-  </div>
-
-  <div class="queue-card">
-    <div class="queue-top"><span>Payroll</span><span>1d ago</span></div>
-    <div class="queue-body">
-      <h4>TechStart - Oct Salaries</h4>
-      <p>Uploaded by HR Dept  3.4MB XLSX</p>
-      <div class="actions">
-        <button class="btn-primary">Approve</button>
-        <button class="icon-btn"><i class="fa-solid fa-eye"></i></button>
-        <button class="icon-btn red"><i class="fa-solid fa-xmark"></i></button>
-      </div>
-    </div>
-  </div>
+<div class="queue" id="reviewQueueContainer">
+  <div class="queue-card"><div class="queue-body"><p>Loading review queue...</p></div></div>
 </div>
 
 <!-- Clients Table -->
@@ -638,38 +601,26 @@ tbody tr {
         <th>Client Name</th><th>Status</th><th>Pending Items</th><th>Last Activity</th><th style="text-align:right">Actions</th>
       </tr>
     </thead>
-    <tbody>
-      <tr>
-        <td><div class="client"><div class="avatar a-blue">AC</div>Acme Corporation</div></td>
-        <td><span class="status s-amber">Action Required</span></td>
-        <td>3 Pending Reviews</td>
-        <td>2 hours ago</td>
-        <td style="text-align:right"><span class="manage">Manage</span></td>
-      </tr>
-      <tr>
-        <td><div class="client"><div class="avatar a-green">GL</div>Global Ltd</div></td>
-        <td><span class="status s-green">Compliant</span></td>
-        <td>None</td>
-        <td>5 hours ago</td>
-        <td style="text-align:right"><span class="manage">Manage</span></td>
-      </tr>
-      <tr>
-        <td><div class="client"><div class="avatar a-indigo">TS</div>TechStart Inc.</div></td>
-        <td><span class="status s-blue">In Review</span></td>
-        <td>1 Document</td>
-        <td>Yesterday</td>
-        <td style="text-align:right"><span class="manage">Manage</span></td>
-      </tr>
-      <tr>
-        <td><div class="client"><div class="avatar a-rose">BV</div>Blue Ventures</div></td>
-        <td><span class="status s-red">Late Filing</span></td>
-        <td>5 Overdue Tasks</td>
-        <td>3 days ago</td>
-        <td style="text-align:right"><span class="manage">Manage</span></td>
-      </tr>
-    </tbody>
+    <tbody id="assignedClientsBody"></tbody>
   </table>
   <div class="show-more">Show more clients</div>
+</div>
+
+<div class="table-card" style="margin-top:20px;">
+  <div class="table-head" style="display:flex;justify-content:space-between;align-items:center;">
+    <h3>Audit Trail</h3>
+    <select id="auditEntityFilter" style="padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;">
+      <option value="">All Entities</option>
+      <option value="document">Document</option>
+      <option value="task">Task</option>
+      <option value="client">Client</option>
+      <option value="user">User</option>
+    </select>
+  </div>
+  <table>
+    <thead><tr><th>Action</th><th>Entity</th><th>When</th></tr></thead>
+    <tbody id="auditBody"></tbody>
+  </table>
 </div>
 
 </div>
@@ -687,52 +638,124 @@ tbody tr {
     <i class="fa-solid fa-xmark"></i>
   </button>
 </div>
- <script>
-// Simple client-side table filter
-document.addEventListener('DOMContentLoaded', () => {
-  const tableRows = document.querySelectorAll('tbody tr');
-  const statusFilter = document.getElementById('statusFilter');
-  const pendingFilter = document.getElementById('pendingFilter');
-  const searchInput  = document.getElementById('clientSearch');
+<script>
+const API_BASE_URL = "http://localhost:4000/api";
+const token = localStorage.getItem("authToken");
 
-  function applyFilters() {
-    const statusVal  = statusFilter.value.trim();
-    const pendingVal = pendingFilter.value.trim();
-    const searchVal  = searchInput.value.toLowerCase().trim();
+function authHeaders() {
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token || ""}`
+  };
+}
 
-    tableRows.forEach(row => {
-      const statusCell = row.cells[1].textContent.trim();           // Status column
-      const pendingCell = row.cells[2].textContent.trim();          // Pending Items
-      const clientName = row.cells[0].textContent.toLowerCase().trim(); // Client Name
+if (!token) {
+  window.location.href = "accountant logins/login.html";
+}
 
-      let show = true;
+function shortTime(iso) {
+  if (!iso) return "-";
+  const dt = new Date(iso);
+  return dt.toLocaleString();
+}
 
-      // Status filter
-      if (statusVal && statusCell !== statusVal) {
-        show = false;
-      }
+function statusBadgeClass(status) {
+  const s = String(status || "").toLowerCase();
+  if (s === "active" || s === "approved" || s === "completed") return "s-green";
+  if (s === "pending" || s === "in-review" || s === "review") return "s-blue";
+  if (s === "overdue" || s === "rejected") return "s-red";
+  return "s-amber";
+}
 
-      // Pending items filter
-      if (pendingVal === '0' && pendingCell !== 'None') {
-        show = false;
-      }
-      if (pendingVal === '1+' && pendingCell === 'None') {
-        show = false;
-      }
+async function runReviewAction(documentId, action) {
+  const response = await fetch(`${API_BASE_URL}/reviews/${encodeURIComponent(documentId)}/action`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ action })
+  });
+  if (!response.ok) throw new Error("Review action failed");
+}
 
-      // Search by client name
-      if (searchVal && !clientName.includes(searchVal)) {
-        show = false;
-      }
+async function loadDashboard() {
+  const response = await fetch(`${API_BASE_URL}/dashboard/summary`, { headers: authHeaders() });
+  if (!response.ok) throw new Error("Failed to load dashboard");
+  const data = await response.json();
 
-      row.style.display = show ? '' : 'none';
-    });
+  document.getElementById("statActiveClients").textContent = data.stats.activeClients;
+  document.getElementById("statPendingReviews").textContent = data.stats.pendingReviews;
+  document.getElementById("statCriticalTasks").textContent = data.stats.criticalTasks;
+  document.getElementById("statUpcomingDeadlines").textContent = data.stats.upcomingDeadlines;
+  document.getElementById("reviewQueueLink").textContent = `View all (${data.reviewQueue.length})`;
+
+  const queue = document.getElementById("reviewQueueContainer");
+  queue.innerHTML = data.reviewQueue.length
+    ? data.reviewQueue.map((item) => `
+      <div class="queue-card">
+        <div class="queue-top"><span>${item.category}</span><span>${shortTime(item.uploadedAt)}</span></div>
+        <div class="queue-body">
+          <h4>${item.clientName} - ${item.documentName}</h4>
+          <p>Status: ${item.status}</p>
+          <div class="actions">
+            <button class="btn-primary" data-action="approve" data-doc-id="${item.id}">Approve</button>
+            <button class="icon-btn" data-view-id="${item.id}"><i class="fa-solid fa-eye"></i></button>
+            <button class="icon-btn" data-action="request_fix" data-doc-id="${item.id}"><i class="fa-solid fa-pen"></i></button>
+            <button class="icon-btn red" data-action="reject" data-doc-id="${item.id}"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+        </div>
+      </div>
+    `).join("")
+    : `<div class="queue-card"><div class="queue-body"><p>No items awaiting review.</p></div></div>`;
+
+  const tbody = document.getElementById("assignedClientsBody");
+  tbody.innerHTML = data.assignedClients.map((client) => `
+    <tr>
+      <td><div class="client"><div class="avatar a-blue">${client.name.slice(0,2).toUpperCase()}</div>${client.name}</div></td>
+      <td><span class="status ${statusBadgeClass(client.status)}">${client.status}</span></td>
+      <td>${client.pendingItems}</td>
+      <td>${shortTime(client.lastActivity)}</td>
+      <td style="text-align:right"><a class="manage" href="client-profile.html?clientId=${encodeURIComponent(client.id)}">Manage</a></td>
+    </tr>
+  `).join("");
+}
+
+async function loadAudits() {
+  const entity = document.getElementById("auditEntityFilter").value;
+  const query = entity ? `?entityType=${encodeURIComponent(entity)}` : "";
+  const response = await fetch(`${API_BASE_URL}/audits${query}`, { headers: authHeaders() });
+  if (!response.ok) return;
+  const data = await response.json();
+  document.getElementById("auditBody").innerHTML = data.items.slice(0, 12).map((item) => `
+    <tr>
+      <td>${item.action}</td>
+      <td>${item.entityType}:${item.entityId}</td>
+      <td>${shortTime(item.createdAt)}</td>
+    </tr>
+  `).join("");
+}
+
+document.addEventListener("click", async (event) => {
+  const actionBtn = event.target.closest("[data-action][data-doc-id]");
+  if (actionBtn) {
+    try {
+      await runReviewAction(actionBtn.getAttribute("data-doc-id"), actionBtn.getAttribute("data-action"));
+      await loadDashboard();
+      await loadAudits();
+    } catch (error) {
+      console.error(error);
+    }
+    return;
   }
 
-  // Attach listeners
-  statusFilter.addEventListener('change', applyFilters);
-  pendingFilter.addEventListener('change', applyFilters);
-  searchInput.addEventListener('input', applyFilters);
+  const viewBtn = event.target.closest("[data-view-id]");
+  if (viewBtn) {
+    window.location.href = `documentview.html?id=${encodeURIComponent(viewBtn.getAttribute("data-view-id"))}`;
+  }
+});
+
+document.getElementById("auditEntityFilter").addEventListener("change", loadAudits);
+
+loadDashboard().then(loadAudits).catch((error) => {
+  console.error(error);
 });
 </script>
 </body>

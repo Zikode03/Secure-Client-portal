@@ -559,13 +559,18 @@ tbody tr:hover {
       </label>
 
       <div class="form-group">
+        <label>Client ID</label>
+        <input type="text" id="clientIdInput" value="c_1001" placeholder="e.g. c_1001">
+      </div>
+
+      <div class="form-group">
         <label>Document Name</label>
-        <input type="text" placeholder="Enter document name">
+        <input type="text" id="documentNameInput" placeholder="Enter document name">
       </div>
 
       <div class="form-group">
         <label>Category</label>
-        <select>
+        <select id="categoryInput">
           <option>Tax Documents</option>
           <option>Invoices</option>
           <option>Reports</option>
@@ -573,12 +578,13 @@ tbody tr:hover {
           <option>Legal</option>
         </select>
       </div>
+      <small id="uploadStatusText" style="display:block;margin-top:8px;color:#64748b;"></small>
 
     </div>
 
     <div class="modal-footer">
       <button class="btn-secondary" id="cancelUpload">Cancel</button>
-      <button class="btn-primary">
+      <button class="btn-primary" id="confirmUploadBtn">
         <i class="fa-solid fa-upload"></i> Upload
       </button>
     </div>
@@ -587,133 +593,260 @@ tbody tr:hover {
 </div>
 
 <script>
-const documents = [
-  { id: 1, name: 'Tax Return 2025.pdf', client: 'John Doe', category: 'Tax Documents', size: '2.4 MB', status: 'completed', date: '2026-01-25' },
-  { id: 2, name: 'Bank Statement - Dec 2025.pdf', client: 'Jane Smith', category: 'Financial Statements', size: '1.8 MB', status: 'completed', date: '2026-01-24' },
-  { id: 3, name: 'Invoice #1234.pdf', client: 'Mike Johnson', category: 'Invoices', size: '856 KB', status: 'in-review', date: '2026-01-23' },
-  { id: 4, name: 'Expense Report Q4.xlsx', client: 'Sarah Williams', category: 'Reports', size: '3.1 MB', status: 'pending', date: '2026-01-22' },
-  { id: 5, name: 'Payroll Summary Jan 2026.pdf', client: 'Robert Brown', category: 'Payroll', size: '1.2 MB', status: 'completed', date: '2026-01-21' },
-  { id: 6, name: 'Contract Agreement.pdf', client: 'John Doe', category: 'Legal', size: '4.5 MB', status: 'approved', date: '2026-01-20' },
-];
+let documents = [];
+const clientsById = {};
+const API_BASE_URL = "http://localhost:4000/api";
+const token = localStorage.getItem("authToken");
+
+if (!token) {
+  window.location.href = "accountant logins/login.html";
+}
+
+function authHeaders() {
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token || ""}`,
+  };
+}
 
 const tableBody = document.getElementById("documentsTable");
 const searchInput = document.getElementById("searchInput");
+const statusFilter = document.getElementById("statusFilter");
+const uploadBtn = document.getElementById("openUploadModal");
+const uploadModal = document.getElementById("uploadModal");
+const closeUpload = document.getElementById("closeUpload");
+const cancelUpload = document.getElementById("cancelUpload");
+const confirmUploadBtn = document.getElementById("confirmUploadBtn");
+const fileInput = document.getElementById("fileInput");
+const clientIdInput = document.getElementById("clientIdInput");
+const documentNameInput = document.getElementById("documentNameInput");
+const categoryInput = document.getElementById("categoryInput");
+const uploadStatusText = document.getElementById("uploadStatusText");
+
+function setUploadStatus(message) {
+  uploadStatusText.textContent = message || "";
+}
+
+function humanBytes(bytes) {
+  const n = Number(bytes || 0);
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  if (n < 1024 * 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(n / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+}
+
+function mapDoc(doc) {
+  return {
+    id: doc.id,
+    name: doc.name,
+    clientId: doc.clientId,
+    client: clientsById[doc.clientId] || doc.clientId,
+    category: doc.category,
+    size: humanBytes(doc.sizeBytes),
+    status: doc.status,
+    date: (doc.uploadedAt || "").slice(0, 10),
+  };
+}
 
 function renderDocuments(data) {
   tableBody.innerHTML = "";
-  data.forEach(doc => {
+  for (const doc of data) {
     const row = document.createElement("tr");
-row.innerHTML = `
-  <td><i class="fa-regular fa-file-lines file-icon"></i>${doc.name}</td>
-  <td>${doc.client}</td>
-  <td>${doc.category}</td>
-  <td><span class="badge ${doc.status}">${doc.status}</span></td>
-  <td>${doc.date}</td>
-
-  <td>
-    <div class="actions">
-      <div class="dropdown">
-        <button class="button-icon menu-btn">
-          <i class="fa-solid fa-ellipsis"></i>
-        </button>
-
-        <div class="dropdown-menu">
-          <button class="view-btn">
-            <i class="fa-regular fa-eye"></i> View
-          </button>
-
-          <button>
-            <i class="fa-solid fa-download"></i> Download
-          </button>
-
-          <button>
-            <i class="fa-solid fa-share-nodes"></i> Share
-          </button>
+    row.innerHTML = `
+      <td><i class="fa-regular fa-file-lines file-icon"></i>${doc.name}</td>
+      <td>${doc.client}</td>
+      <td>${doc.category}</td>
+      <td><span class="badge ${doc.status}">${doc.status}</span></td>
+      <td>${doc.date}</td>
+      <td>
+        <div class="actions">
+          <div class="dropdown">
+            <button class="button-icon menu-btn"><i class="fa-solid fa-ellipsis"></i></button>
+            <div class="dropdown-menu">
+              <button class="view-btn" data-doc-id="${doc.id}">
+                <i class="fa-regular fa-eye"></i> View
+              </button>
+              <button data-download-id="${doc.id}">
+                <i class="fa-solid fa-download"></i> Download
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
-  </td>
-`;
-
+      </td>
+    `;
     tableBody.appendChild(row);
-  });
+  }
 }
 
-const statusFilter = document.getElementById("statusFilter");
+async function loadClientsMap() {
+  const response = await fetch(`${API_BASE_URL}/clients`, { headers: authHeaders() });
+  if (!response.ok) return;
+  const data = await response.json();
+  for (const client of data.items || []) {
+    clientsById[client.id] = client.name;
+  }
+}
+
+async function loadDocuments() {
+  const query = new URLSearchParams();
+  const searchValue = searchInput.value.trim();
+  const statusValue = statusFilter.value;
+  if (searchValue) query.set("search", searchValue);
+  if (statusValue !== "all") query.set("status", statusValue);
+
+  const response = await fetch(`${API_BASE_URL}/documents?${query.toString()}`, { headers: authHeaders() });
+  if (!response.ok) throw new Error("Failed to fetch documents");
+  const data = await response.json();
+  documents = (data.items || []).map(mapDoc);
+  renderDocuments(documents);
+}
 
 function applyFilters() {
-  const searchValue = searchInput.value.toLowerCase();
-  const selectedStatus = statusFilter.value;
-
-  const filtered = documents.filter(doc => {
-    const matchesSearch =
-      doc.name.toLowerCase().includes(searchValue) ||
-      doc.client.toLowerCase().includes(searchValue) ||
-      doc.category.toLowerCase().includes(searchValue);
-
-    const matchesStatus =
-      selectedStatus === "all" || doc.status === selectedStatus;
-
-    return matchesSearch && matchesStatus;
-  });
-
-  renderDocuments(filtered);
+  loadDocuments().catch((error) => console.error(error));
 }
 
 searchInput.addEventListener("input", applyFilters);
 statusFilter.addEventListener("change", applyFilters);
 
-
-renderDocuments(documents);
-
-document.addEventListener("click", function(e) {
-  const dropdowns = document.querySelectorAll(".dropdown");
-
-  dropdowns.forEach(drop => {
+document.addEventListener("click", function (e) {
+  for (const drop of document.querySelectorAll(".dropdown")) {
     if (drop.contains(e.target)) {
       drop.classList.toggle("active");
     } else {
       drop.classList.remove("active");
     }
-  });
-});
-
-document.addEventListener("click", function(e){
+  }
 
   const viewBtn = e.target.closest(".view-btn");
+  if (viewBtn) {
+    window.location.href = `documentview.html?id=${encodeURIComponent(viewBtn.getAttribute("data-doc-id"))}`;
+    return;
+  }
 
-  if(viewBtn){
-    window.location.href = "documentview.html";
+  const downloadBtn = e.target.closest("[data-download-id]");
+  if (downloadBtn) {
+    const documentId = downloadBtn.getAttribute("data-download-id");
+    fetch(`${API_BASE_URL}/documents/${encodeURIComponent(documentId)}/download-url`, {
+      headers: authHeaders(),
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.signedUrl) window.open(data.signedUrl, "_blank");
+      })
+      .catch((error) => console.error(error));
   }
 });
 
-const uploadBtn = document.getElementById("openUploadModal");
-const uploadModal = document.getElementById("uploadModal");
-const closeUpload = document.getElementById("closeUpload");
-const cancelUpload = document.getElementById("cancelUpload");
+async function uploadFileMultipart(file, metadata) {
+  const initiateRes = await fetch(`${API_BASE_URL}/uploads/initiate`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({
+      fileName: file.name,
+      fileType: file.type || "application/octet-stream",
+      fileSize: file.size,
+      clientId: metadata.clientId,
+      documentName: metadata.documentName,
+      category: metadata.category,
+      client: metadata.client,
+    }),
+  });
+  if (!initiateRes.ok) {
+    const error = await initiateRes.json().catch(() => ({}));
+    throw new Error(error.error || "Failed to initialize upload");
+  }
 
-// OPEN modal
+  const initiateData = await initiateRes.json();
+  const partSize = initiateData.partSizeBytes || 8 * 1024 * 1024;
+  const partCount = Math.ceil(file.size / partSize);
+  const parts = [];
+
+  for (let partNumber = 1; partNumber <= partCount; partNumber += 1) {
+    const start = (partNumber - 1) * partSize;
+    const end = Math.min(start + partSize, file.size);
+    const blobPart = file.slice(start, end);
+
+    const urlRes = await fetch(`${API_BASE_URL}/uploads/${encodeURIComponent(initiateData.uploadId)}/part-url`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ key: initiateData.key, partNumber }),
+    });
+    if (!urlRes.ok) throw new Error(`Failed to get part URL ${partNumber}`);
+
+    const { signedUrl } = await urlRes.json();
+    const putRes = await fetch(signedUrl, {
+      method: "PUT",
+      headers: { "Content-Type": file.type || "application/octet-stream" },
+      body: blobPart,
+    });
+    if (!putRes.ok) throw new Error(`Failed to upload part ${partNumber}`);
+
+    const eTag = putRes.headers.get("ETag");
+    if (!eTag) throw new Error(`Missing ETag on part ${partNumber}`);
+    parts.push({ PartNumber: partNumber, ETag: eTag });
+    setUploadStatus(`Uploading... ${partNumber}/${partCount}`);
+  }
+
+  const completeRes = await fetch(`${API_BASE_URL}/uploads/${encodeURIComponent(initiateData.uploadId)}/complete`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ key: initiateData.key, parts }),
+  });
+  if (!completeRes.ok) throw new Error("Failed to finalize upload");
+  return completeRes.json();
+}
+
+confirmUploadBtn.addEventListener("click", async () => {
+  const file = fileInput.files?.[0];
+  const clientId = clientIdInput.value.trim();
+  const category = categoryInput.value;
+  const explicitName = documentNameInput.value.trim();
+  if (!file) return setUploadStatus("Select a file first.");
+  if (!clientId) return setUploadStatus("Client ID is required.");
+
+  confirmUploadBtn.disabled = true;
+  setUploadStatus("Starting upload...");
+
+  try {
+    await uploadFileMultipart(file, {
+      clientId,
+      documentName: explicitName || file.name,
+      category,
+      client: clientsById[clientId] || clientId,
+    });
+    await loadDocuments();
+    fileInput.value = "";
+    documentNameInput.value = "";
+    uploadModal.classList.remove("show");
+    setUploadStatus("");
+  } catch (error) {
+    console.error(error);
+    setUploadStatus(error.message || "Upload failed.");
+  } finally {
+    confirmUploadBtn.disabled = false;
+  }
+});
+
 uploadBtn.addEventListener("click", () => {
   uploadModal.classList.add("show");
+  setUploadStatus("");
 });
-
-// CLOSE modal (X)
 closeUpload.addEventListener("click", () => {
   uploadModal.classList.remove("show");
+  setUploadStatus("");
 });
-
-// CLOSE modal (Cancel button)
 cancelUpload.addEventListener("click", () => {
   uploadModal.classList.remove("show");
+  setUploadStatus("");
 });
-
-// CLOSE when clicking outside
 uploadModal.addEventListener("click", (e) => {
   if (e.target === uploadModal) {
     uploadModal.classList.remove("show");
+    setUploadStatus("");
   }
 });
 
+loadClientsMap().then(loadDocuments).catch((error) => console.error(error));
 </script>
 
 </body>

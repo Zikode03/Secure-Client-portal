@@ -328,84 +328,9 @@ body {
     </div>
 
     <div class="docs-card">
-      <strong>4 Documents</strong>
+      <strong id="docCountLabel">0 Documents</strong>
+      <div id="docsList"></div>
 
-      <!-- Document items remain unchanged -->
-      <div class="doc-item" data-category="tax returns">
-        <div class="doc-left">
-          <i class="fa fa-file-lines"></i>
-          <div>
-            <strong>Tax_Return_2025.pdf</strong>
-            <div class="badges">
-              <span>Tax Returns</span>
-              <span>2025</span>
-              <span>2.34 MB</span>
-            </div>
-            <small>Uploaded by Sarah Mitchell on 2026/01/20</small>
-          </div>
-        </div>
-        <div class="doc-actions">
-          <button><i class="fa fa-eye"></i></button>
-          <button><i class="fa fa-download"></i> Download</button>
-        </div>
-      </div>
-
-      <div class="doc-item" data-category="bank statements">
-        <div class="doc-left">
-          <i class="fa fa-file-lines"></i>
-          <div>
-            <strong>Bank_Statements_Jan2026.pdf</strong>
-            <div class="badges">
-              <span>Bank Statements</span>
-              <span>January 2026</span>
-              <span>1.76 MB</span>
-            </div>
-            <small>Uploaded by John Doe on 2026/01/25</small>
-          </div>
-        </div>
-        <div class="doc-actions">
-          <button><i class="fa fa-eye"></i></button>
-          <button><i class="fa fa-download"></i> Download</button>
-        </div>
-      </div>
-
-      <div class="doc-item" data-category="financial statements">
-        <div class="doc-left">
-          <i class="fa fa-file-lines"></i>
-          <div>
-            <strong>Annual_Financial_Statements_2025.pdf</strong>
-            <div class="badges">
-              <span>Financial Statements</span>
-              <span>2025</span>
-              <span>5 MB</span>
-            </div>
-            <small>Uploaded by Sarah Mitchell on 2026/01/18</small>
-          </div>
-        </div>
-        <div class="doc-actions">
-          <button><i class="fa fa-eye"></i></button>
-          <button><i class="fa fa-download"></i> Download</button>
-        </div>
-      </div>
-
-      <div class="doc-item" data-category="payroll">
-        <div class="doc-left">
-          <i class="fa fa-file-lines"></i>
-          <div>
-            <strong>Payroll_Records_2025.xlsx</strong>
-            <div class="badges">
-              <span>Payroll</span>
-              <span>2025</span>
-              <span>3 MB</span>
-            </div>
-            <small>Uploaded by John Doe on 2026/01/22</small>
-          </div>
-        </div>
-        <div class="doc-actions">
-          <button><i class="fa fa-eye"></i></button>
-          <button><i class="fa fa-download"></i> Download</button>
-        </div>
-      </div>
     </div>
 
   </main>
@@ -413,39 +338,99 @@ body {
 </div>
 
 <script>
-// Your existing filter script remains unchanged
-const searchInput = document.querySelector('.search input');
-const tags = document.querySelectorAll('.tag');
-const docs = document.querySelectorAll('.doc-item');
+const API_BASE_URL = "http://localhost:4000/api";
+const token = localStorage.getItem("authToken");
+if (!token) window.location.href = "../Clientlogins/login.html";
 
-let activeFilter = 'all';
-
-searchInput.addEventListener('input', () => {
-  filterDocs();
-});
-
-tags.forEach(tag => {
-  tag.addEventListener('click', () => {
-    tags.forEach(t => t.classList.remove('active'));
-    tag.classList.add('active');
-    activeFilter = tag.dataset.filter;
-    filterDocs();
-  });
-});
-
-function filterDocs() {
-  const searchValue = searchInput.value.toLowerCase();
-
-  docs.forEach(doc => {
-    const text = doc.innerText.toLowerCase();
-    const category = doc.dataset.category;
-
-    const matchesSearch = text.includes(searchValue);
-    const matchesCategory = activeFilter === 'all' || category === activeFilter;
-
-    doc.style.display = (matchesSearch && matchesCategory) ? 'flex' : 'none';
-  });
+function authHeaders() {
+  return { "Content-Type": "application/json", Authorization: `Bearer ${token || ""}` };
 }
+
+let docs = [];
+let activeFilter = "all";
+const searchInput = document.querySelector(".search input");
+const tags = document.querySelectorAll(".tag");
+const docsList = document.getElementById("docsList");
+const docCountLabel = document.getElementById("docCountLabel");
+
+function bytes(n) {
+  const b = Number(n || 0);
+  if (b < 1024) return `${b} B`;
+  if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
+  return `${(b / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function renderDocs() {
+  const search = searchInput.value.toLowerCase().trim();
+  const filtered = docs.filter((doc) => {
+    const text = `${doc.name} ${doc.category}`.toLowerCase();
+    const categoryOk =
+      activeFilter === "all" ||
+      doc.category.toLowerCase() === activeFilter ||
+      doc.category.toLowerCase().includes(activeFilter) ||
+      activeFilter.includes(doc.category.toLowerCase());
+    return categoryOk && (!search || text.includes(search));
+  });
+
+  docCountLabel.textContent = `${filtered.length} Documents`;
+  docsList.innerHTML = filtered.map((doc) => `
+    <div class="doc-item">
+      <div class="doc-left">
+        <i class="fa fa-file-lines"></i>
+        <div>
+          <strong>${doc.name}</strong>
+          <div class="badges">
+            <span>${doc.category}</span>
+            <span>${doc.status}</span>
+            <span>${bytes(doc.sizeBytes)}</span>
+          </div>
+          <small>Uploaded on ${(doc.uploadedAt || "").slice(0, 10)}</small>
+        </div>
+      </div>
+      <div class="doc-actions">
+        <button data-view-id="${doc.id}"><i class="fa fa-eye"></i></button>
+        <button data-download-id="${doc.id}"><i class="fa fa-download"></i> Download</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+async function loadDocs() {
+  const response = await fetch(`${API_BASE_URL}/documents`, { headers: authHeaders() });
+  if (!response.ok) return;
+  const data = await response.json();
+  docs = data.items || [];
+  renderDocs();
+}
+
+searchInput.addEventListener("input", renderDocs);
+tags.forEach((tag) => {
+  tag.addEventListener("click", () => {
+    tags.forEach((t) => t.classList.remove("active"));
+    tag.classList.add("active");
+    activeFilter = tag.dataset.filter;
+    renderDocs();
+  });
+});
+
+document.addEventListener("click", async (event) => {
+  const downloadBtn = event.target.closest("[data-download-id]");
+  if (downloadBtn) {
+    const id = downloadBtn.getAttribute("data-download-id");
+    const response = await fetch(`${API_BASE_URL}/documents/${encodeURIComponent(id)}/download-url`, { headers: authHeaders() });
+    if (response.ok) {
+      const data = await response.json();
+      if (data.signedUrl) window.open(data.signedUrl, "_blank");
+    }
+    return;
+  }
+  const viewBtn = event.target.closest("[data-view-id]");
+  if (viewBtn) {
+    window.location.href = `../../Accountant/documentview.html?id=${encodeURIComponent(viewBtn.getAttribute("data-view-id"))}`;
+  }
+});
+
+loadDocs();
 </script>
 
 </body>

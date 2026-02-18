@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -466,150 +466,162 @@
 </div>
 
 <script>
-  // Simulated data 
-  const contacts = [
-    {
-      id: 1,
-      name: "Sarah Johnson",
-      role: "Primary Accountant",
-      status: "online",
-      section: "assigned",
-      messages: [
-        { from: "other", text: "Good afternoon John Doe. I've reviewed your latest documents.", time: "14:20" },
-        { from: "own",   text: "Hi Sarah, thank you. Any questions on the investment summary?", time: "14:35" },
-        { from: "other", text: "All looks clear — we can file by next week.", time: "15:10" }
-      ]
-    },
-    {
-      id: 2,
-      name: "Michael Smith",
-      role: "Tax Specialist",
-      status: "offline",
-      section: "assigned",
-      messages: []
-    },
-    {
-      id: 3,
-      name: "Prospera Support",
-      role: "General Support",
-      status: "online",
-      section: "support",
-      messages: [
-        { from: "other", text: "Welcome! How can we assist you today?", time: "10:05" }
-      ]
-    },
-    {
-      id: 4,
-      name: "Previous Accountant",
-      role: "Senior Accountant (Archived)",
-      status: "offline",
-      section: "archived",
-      messages: []
-    }
-  ];
+const API_BASE_URL = "http://localhost:4000/api";
+const token = localStorage.getItem("authToken");
+if (!token) window.location.href = "../Clientlogins/login.html";
 
-  const contactListEl  = document.getElementById("contactList");
-  const messageArea    = document.getElementById("messageArea");
-  const messageHeader  = document.getElementById("messageHeader");
-  const inputArea      = document.getElementById("inputArea");
+function authHeaders() {
+  return { "Content-Type": "application/json", Authorization: `Bearer ${token || ""}` };
+}
 
-  function renderContacts() {
-    contactListEl.innerHTML = "";
-    contacts.forEach(contact => {
-      const div = document.createElement("div");
-      div.className = `contact ${contact.section}`;
-      div.dataset.id = contact.id;
-      div.innerHTML = `
-        <div>
-          <div class="contact-name">
-            ${contact.name}
-            <span class="status-dot ${contact.status}"></span>
-          </div>
-          <div class="contact-role">${contact.role}</div>
-        </div>
-      `;
-      div.addEventListener("click", () => openContact(contact, div));
-      contactListEl.appendChild(div);
-    });
-  }
+const contactListEl = document.getElementById("contactList");
+const messageArea = document.getElementById("messageArea");
+const messageHeader = document.getElementById("messageHeader");
+const inputArea = document.getElementById("inputArea");
+const messageInput = document.getElementById("messageInput");
+let threads = [];
+let selectedClientId = null;
+let currentPage = 1;
+const pageLimit = 20;
 
-  function filterContacts(tab) {
-    document.querySelectorAll(".contact").forEach(el => {
-      if (el.classList.contains(tab)) {
-        el.classList.remove("hidden");
-      } else {
-        el.classList.add("hidden");
-      }
-    });
-  }
+function formatTime(iso) {
+  if (!iso) return "";
+  return new Date(iso).toLocaleString();
+}
 
-  
-  function openContact(contact, clickedEl) {
-    document.querySelectorAll(".contact").forEach(el => el.classList.remove("active"));
-    clickedEl.classList.add("active");
-
-    messageHeader.innerHTML = `
-      <h3>${contact.name}</h3>
-      <p>${contact.role} • ${contact.status === "online" ? "Online" : "Offline"}</p>
-    `;
-
-    messageArea.innerHTML = "";
-    inputArea.style.display = "flex";
-
-    if (!contact.messages || contact.messages.length === 0) {
-      messageArea.innerHTML = `
-        <div class="empty">
-          <i class="fa fa-comments"></i>
-          <h3>No messages yet</h3>
-          <p>Send a message to start the conversation.</p>
-        </div>
-      `;
-      return;
-    }
-
-    const container = document.createElement("div");
-    container.className = "messages";
-
-    contact.messages.forEach(msg => {
-      const row = document.createElement("div");
-      row.className = `message-row ${msg.from}`;
-      row.innerHTML = `
-        <div class="message-bubble ${msg.from}">
-          ${msg.text}
-          <div class="meta">${msg.from === "own" ? "You" : contact.name} • ${msg.time}</div>
-        </div>
-      `;
-      container.appendChild(row);
-    });
-
-    messageArea.appendChild(container);
-    messageArea.scrollTop = messageArea.scrollHeight;
-  }
-
-  // Tab switching logic
-  document.querySelectorAll(".thread-filter").forEach(btn => {
-    btn.addEventListener("click", () => {
-      document.querySelectorAll(".thread-filter").forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-      const tab = btn.dataset.tab;
-      filterContacts(tab);
-    });
-  });
-
-  
-  document.getElementById("sendBtn")?.addEventListener("click", () => {
-    const input = document.getElementById("messageInput");
-    if (input.value.trim()) {
-      alert("Message sent (demo): " + input.value);
-      input.value = "";
-    }
-  });
-
- 
+async function loadThreads() {
+  const response = await fetch(`${API_BASE_URL}/messages/threads`, { headers: authHeaders() });
+  if (!response.ok) return;
+  const data = await response.json();
+  threads = (data.items || []).map((thread) => ({
+    ...thread,
+    section: "assigned",
+    role: "Accountant Team",
+    status: "online",
+  }));
   renderContacts();
-  filterContacts("assigned");   
-</script>
+}
 
+function renderContacts() {
+  contactListEl.innerHTML = "";
+  for (const thread of threads) {
+    const div = document.createElement("div");
+    div.className = `contact ${thread.section} ${thread.clientId === selectedClientId ? "active" : ""}`;
+    div.dataset.clientId = thread.clientId;
+    div.innerHTML = `
+      <div>
+        <div class="contact-name">${thread.clientName}
+          <span class="status-dot ${thread.status || "online"}"></span>
+        </div>
+        <div class="contact-role">${thread.role} ${thread.unreadCount ? `- ${thread.unreadCount} unread` : ""}</div>
+      </div>
+    `;
+    div.addEventListener("click", () => openThread(thread.clientId, div));
+    contactListEl.appendChild(div);
+  }
+}
+
+async function loadMessages(clientId, page = 1) {
+  const response = await fetch(
+    `${API_BASE_URL}/messages/threads/${encodeURIComponent(clientId)}?page=${page}&limit=${pageLimit}`,
+    { headers: authHeaders() }
+  );
+  if (!response.ok) return { items: [], hasMore: false };
+  const data = await response.json();
+  return {
+    items: data.items || [],
+    hasMore: Boolean(data.pagination?.hasMore),
+  };
+}
+
+function renderMessageRows(container, clientName, messages) {
+  const currentUserId = JSON.parse(localStorage.getItem("authUser") || "{}").id;
+  for (const msg of messages) {
+    const own = msg.fromUserId === currentUserId;
+    const row = document.createElement("div");
+    row.className = `message-row ${own ? "own" : "other"}`;
+    row.innerHTML = `
+      <div class="message-bubble ${own ? "own" : "other"}">
+        ${msg.body}
+        <div class="meta">${own ? "You" : clientName} - ${formatTime(msg.createdAt)} - ${msg.deliveryStatus || "sent"}</div>
+      </div>
+    `;
+    container.appendChild(row);
+  }
+}
+
+function renderMessageList(clientName, messages, hasMore) {
+  if (!messages.length) {
+    messageArea.innerHTML = `<div class="empty"><i class="fa fa-comments"></i><h3>No messages yet</h3><p>Send a message to start.</p></div>`;
+    return;
+  }
+  const container = document.createElement("div");
+  container.className = "messages";
+
+  if (hasMore) {
+    const loadOlder = document.createElement("button");
+    loadOlder.className = "send-btn";
+    loadOlder.textContent = "Load older messages";
+    loadOlder.onclick = async () => {
+      currentPage += 1;
+      const payload = await loadMessages(selectedClientId, currentPage);
+      renderMessageRows(container, clientName, payload.items);
+      if (!payload.hasMore) loadOlder.remove();
+    };
+    container.appendChild(loadOlder);
+  }
+
+  renderMessageRows(container, clientName, messages);
+  messageArea.innerHTML = "";
+  messageArea.appendChild(container);
+  messageArea.scrollTop = messageArea.scrollHeight;
+}
+
+async function openThread(clientId, clickedEl) {
+  selectedClientId = clientId;
+  currentPage = 1;
+  document.querySelectorAll(".contact").forEach((el) => el.classList.remove("active"));
+  clickedEl.classList.add("active");
+  const thread = threads.find((item) => item.clientId === clientId);
+  messageHeader.innerHTML = `<h3>${thread?.clientName || clientId}</h3><p>Synced thread</p>`;
+  inputArea.style.display = "flex";
+
+  const payload = await loadMessages(clientId, currentPage);
+  renderMessageList(thread?.clientName || "Contact", payload.items, payload.hasMore);
+
+  await fetch(`${API_BASE_URL}/messages/threads/${encodeURIComponent(clientId)}/read`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: "{}",
+  });
+  await loadThreads();
+}
+
+document.getElementById("sendBtn").addEventListener("click", async () => {
+  if (!selectedClientId) return;
+  const body = messageInput.value.trim();
+  if (!body) return;
+  const response = await fetch(`${API_BASE_URL}/messages/threads/${encodeURIComponent(selectedClientId)}`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ body }),
+  });
+  if (!response.ok) return;
+  messageInput.value = "";
+  const row = document.querySelector(`.contact[data-client-id="${selectedClientId}"]`);
+  if (row) await openThread(selectedClientId, row);
+});
+
+document.querySelectorAll(".thread-filter").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".thread-filter").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+  });
+});
+
+loadThreads();
+</script>
 </body>
 </html>
+
 

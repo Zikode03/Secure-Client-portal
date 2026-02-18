@@ -200,9 +200,9 @@
     </a>
 
     <h1>Full Review Queue</h1>
-    <p class="subtitle">12 items awaiting review  Sorted by most recent</p>
+    <p class="subtitle" id="queueSubtitle">Loading queue...</p>
 
-    <div class="full-queue">
+    <div class="full-queue" id="fullQueue">
 
       <!-- 12 dummy review items -->
       <div class="queue-card">
@@ -365,6 +365,89 @@
   </div>
 
 </div>
+
+<script>
+const API_BASE_URL = "http://localhost:4000/api";
+const token = localStorage.getItem("authToken");
+if (!token) window.location.href = "accountant logins/login.html";
+
+function authHeaders() {
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token || ""}`
+  };
+}
+
+function shortTime(iso) {
+  if (!iso) return "-";
+  return new Date(iso).toLocaleString();
+}
+
+function humanSize(bytes) {
+  const n = Number(bytes || 0);
+  if (!n) return "-";
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+async function runReviewAction(documentId, action) {
+  const response = await fetch(`${API_BASE_URL}/reviews/${encodeURIComponent(documentId)}/action`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ action })
+  });
+  if (!response.ok) throw new Error("Review action failed");
+}
+
+async function loadQueue() {
+  const response = await fetch(`${API_BASE_URL}/dashboard/review-queue`, { headers: authHeaders() });
+  if (!response.ok) throw new Error("Failed to load review queue");
+  const data = await response.json();
+
+  document.getElementById("queueSubtitle").textContent =
+    `${data.items.length} items awaiting review - sorted by most recent`;
+
+  const container = document.getElementById("fullQueue");
+  container.innerHTML = data.items.length
+    ? data.items.map((item) => `
+      <div class="queue-card">
+        <div class="queue-top"><span>${item.category}</span><span>${shortTime(item.uploadedAt)}</span></div>
+        <div class="queue-body">
+          <h4>${item.clientName} - ${item.documentName}</h4>
+          <p>Status: ${item.status} - ${humanSize(item.sizeBytes)}</p>
+          <div class="actions">
+            <button class="btn-primary" data-action="approve" data-doc-id="${item.id}">Approve</button>
+            <button class="icon-btn" data-view-id="${item.id}"><i class="fa-solid fa-eye"></i></button>
+            <button class="icon-btn" data-action="request_fix" data-doc-id="${item.id}"><i class="fa-solid fa-pen"></i></button>
+            <button class="icon-btn red" data-action="reject" data-doc-id="${item.id}"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+        </div>
+      </div>
+    `).join("")
+    : `<div class="queue-card"><div class="queue-body"><p>No pending reviews.</p></div></div>`;
+}
+
+document.addEventListener("click", async (event) => {
+  const actionBtn = event.target.closest("[data-action][data-doc-id]");
+  if (actionBtn) {
+    try {
+      await runReviewAction(actionBtn.getAttribute("data-doc-id"), actionBtn.getAttribute("data-action"));
+      await loadQueue();
+    } catch (error) {
+      console.error(error);
+    }
+    return;
+  }
+
+  const viewBtn = event.target.closest("[data-view-id]");
+  if (viewBtn) {
+    window.location.href = `documentview.html?id=${encodeURIComponent(viewBtn.getAttribute("data-view-id"))}`;
+  }
+});
+
+loadQueue().catch((error) => console.error(error));
+</script>
 
 </body>
 </html>

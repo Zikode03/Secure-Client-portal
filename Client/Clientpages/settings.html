@@ -472,24 +472,24 @@
                 <div class="form-grid">
                   <div class="form-group">
                     <label>First Name</label>
-                    <input value="Alex">
+                    <input id="firstNameInput" value="Alex">
                   </div>
                   <div class="form-group">
                     <label>Last Name</label>
-                    <input value="Thompson">
+                    <input id="lastNameInput" value="Thompson">
                   </div>
                   <div class="form-group full">
                     <label>Email Address</label>
-                    <input value="alex.thompson@example.com">
+                    <input id="emailInput" value="alex.thompson@example.com">
                   </div>
                   <div class="form-group full">
                     <label>Phone Number</label>
-                    <input value="+1 (555) 000-0000">
+                    <input id="phoneInput" value="+1 (555) 000-0000">
                   </div>
                 </div>
               </div>
               <div class="form-footer">
-                <button class="btn-primary" onclick="saveChanges()">Save Changes</button>
+                <button class="btn-primary" id="saveProfileBtn">Save Changes</button>
               </div>
             </div>
 
@@ -508,26 +508,7 @@
                       <th>Time</th>
                     </tr>
                   </thead>
-                  <tbody>
-                    <tr>
-                      <td>Chrome on Windows</td>
-                      <td>New York</td>
-                      <td>192.168.1.45</td>
-                      <td>Just now</td>
-                    </tr>
-                    <tr>
-                      <td>iPhone 13</td>
-                      <td>New York</td>
-                      <td>192.168.1.22</td>
-                      <td>Oct 24</td>
-                    </tr>
-                    <tr>
-                      <td>Edge on macOS</td>
-                      <td>London</td>
-                      <td>84.22.10.155</td>
-                      <td>Oct 21</td>
-                    </tr>
-                  </tbody>
+                  <tbody id="loginActivityBody"></tbody>
                 </table>
               </div>
             </div>
@@ -569,11 +550,11 @@
                 <div>
                   <div>Two-Factor Authentication (2FA)</div>
                   <div class="flex-align">
-                    <span class="status-dot"></span>
-                    <span class="status-text">Active</span>
+                    <span class="status-dot" id="twoFactorDot"></span>
+                    <span class="status-text" id="twoFactorStatus">Active</span>
                   </div>
                 </div>
-                <a href="#" class="link-primary">Generate Backup Codes</a>
+                <a href="#" class="link-primary" id="generateBackupCodesBtn">Generate Backup Codes</a>
               </div>
               <div class="card-body flex-column">
                 <div class="method-item">
@@ -592,10 +573,10 @@
                   <div class="method-icon"><i class="fa-solid fa-comment-sms"></i></div>
                   <div>
                     <h4>SMS Authentication</h4>
-                    <p class="link-muted">Receive a code via text message to +1 (555) •••-••00.</p>
+                    <p class="link-muted" id="smsMethodText">Receive a code via text message.</p>
                     <div class="flex-align">
                       <a href="#" class="link-primary">Edit Phone</a>
-                      <a href="#" class="link-danger">Deactivate</a>
+                      <a href="#" class="link-danger" id="deactivateSmsBtn">Deactivate</a>
                     </div>
                   </div>
                 </div>
@@ -661,21 +642,106 @@
 </div>
 
 <script>
-  function saveChanges() {
-    alert("Your changes have been saved successfully.");
-  }
+const API_BASE_URL = "http://localhost:4000/api";
+const token = localStorage.getItem("authToken");
+if (!token) window.location.href = "../Clientlogins/login.html";
 
-  const tabButtons = document.querySelectorAll(".tab-btn");
-  const tabPanels = document.querySelectorAll(".tab-panel");
+function authHeaders() {
+  return { "Content-Type": "application/json", Authorization: `Bearer ${token || ""}` };
+}
 
-  tabButtons.forEach(btn => {
-    btn.addEventListener("click", () => {
-      tabButtons.forEach(b => b.classList.remove("active"));
-      tabPanels.forEach(p => p.classList.remove("active"));
-      btn.classList.add("active");
-      document.getElementById(btn.dataset.tab).classList.add("active");
-    });
+const tabButtons = document.querySelectorAll(".tab-btn");
+const tabPanels = document.querySelectorAll(".tab-panel");
+tabButtons.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    tabButtons.forEach((b) => b.classList.remove("active"));
+    tabPanels.forEach((p) => p.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById(btn.dataset.tab).classList.add("active");
   });
+});
+
+async function loadProfile() {
+  const response = await fetch(`${API_BASE_URL}/profile/me`, { headers: authHeaders() });
+  if (!response.ok) return;
+  const data = await response.json();
+  document.getElementById("firstNameInput").value = data.profile.firstName || "";
+  document.getElementById("lastNameInput").value = data.profile.lastName || "";
+  document.getElementById("emailInput").value = data.profile.email || "";
+  document.getElementById("phoneInput").value = data.profile.phone || "";
+}
+
+async function loadLoginActivity() {
+  const response = await fetch(`${API_BASE_URL}/profile/login-activity`, { headers: authHeaders() });
+  if (!response.ok) return;
+  const data = await response.json();
+  const body = document.getElementById("loginActivityBody");
+  body.innerHTML = (data.items || []).map((item) => `
+    <tr>
+      <td>${item.device}</td>
+      <td>${item.location}</td>
+      <td>${item.ipAddress}</td>
+      <td>${new Date(item.createdAt).toLocaleString()}</td>
+    </tr>
+  `).join("");
+}
+
+async function loadSecurity() {
+  const response = await fetch(`${API_BASE_URL}/profile/security`, { headers: authHeaders() });
+  if (!response.ok) return;
+  const data = await response.json();
+  const security = data.security || {};
+  const enabled = Boolean(security.twoFactorEnabled);
+  document.getElementById("twoFactorStatus").textContent = enabled ? "Active" : "Inactive";
+  document.getElementById("twoFactorStatus").style.color = enabled ? "var(--green)" : "var(--red)";
+  document.getElementById("twoFactorDot").style.background = enabled ? "var(--green)" : "var(--red)";
+  document.getElementById("smsMethodText").textContent = security.smsEnabled
+    ? "SMS authentication is enabled."
+    : "SMS authentication is disabled.";
+}
+
+document.getElementById("saveProfileBtn").addEventListener("click", async () => {
+  const payload = {
+    firstName: document.getElementById("firstNameInput").value.trim(),
+    lastName: document.getElementById("lastNameInput").value.trim(),
+    email: document.getElementById("emailInput").value.trim(),
+    phone: document.getElementById("phoneInput").value.trim(),
+  };
+  const response = await fetch(`${API_BASE_URL}/profile/me`, {
+    method: "PATCH",
+    headers: authHeaders(),
+    body: JSON.stringify(payload),
+  });
+  if (response.ok) alert("Profile saved.");
+});
+
+document.getElementById("generateBackupCodesBtn").addEventListener("click", async (event) => {
+  event.preventDefault();
+  const response = await fetch(`${API_BASE_URL}/profile/security/generate-backup-codes`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: "{}",
+  });
+  if (!response.ok) return;
+  const data = await response.json();
+  alert(`Backup codes:\\n${(data.codes || []).join("\\n")}`);
+});
+
+document.getElementById("deactivateSmsBtn").addEventListener("click", async (event) => {
+  event.preventDefault();
+  const response = await fetch(`${API_BASE_URL}/profile/security`, {
+    method: "PATCH",
+    headers: authHeaders(),
+    body: JSON.stringify({ smsEnabled: false }),
+  });
+  if (response.ok) {
+    loadSecurity();
+  }
+});
+
+loadProfile();
+loadLoginActivity();
+loadSecurity();
 </script>
 
 </body>

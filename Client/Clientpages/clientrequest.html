@@ -562,76 +562,184 @@
 
           <div class="modal-footer">
             <button class="btn-secondary" onclick="document.getElementById('newRequestModal').style.display='none'">Cancel</button>
-            <button class="btn-primary" onclick="alert('Request created!'); document.getElementById('newRequestModal').style.display='none'">Create Request</button>
+            <button class="btn-primary">Create Request</button>
           </div>
         </div>
       </div>
 
       <!-- Tabs -->
       <div class="tabs">
-        <div class="tab active" onclick="document.getElementById('received').classList.remove('hidden'); document.getElementById('sent').classList.add('hidden');">Received (2)</div>
-        <div class="tab" onclick="document.getElementById('sent').classList.remove('hidden'); document.getElementById('received').classList.add('hidden');">Sent (0)</div>
+        <div class="tab active" id="tabReceived">Received (0)</div>
+        <div class="tab" id="tabSent">Sent (0)</div>
       </div>
 
       <!-- Received -->
       <div id="received" class="card">
-        <h3>Requests You Received (2)</h3>
-
-        <div class="request">
-          <div class="request-header">
-            <div class="request-title">
-              <i class="fas fa-file-alt doc-icon"></i>
-              <div>
-                <h4>Bank Statements</h4>
-                <p>From: Sarah Mitchell</p>
-                <p>Please upload your bank statements for February 2026</p>
-              </div>
-            </div>
-            <div class="badges">
-              <div class="badge high">HIGH</div>
-              <div class="badge pending">PENDING</div>
-            </div>
-          </div>
-          <div class="meta">
-            <span><i class="fas fa-calendar"></i> Due: 15/02/2026</span>
-            <span><i class="fas fa-clock"></i> Requested: 08/02/2026</span>
-          </div>
-          <button class="action-btn" onclick="this.innerHTML='✔ Fulfilled'; this.style.background='#10b981'; this.disabled=true">Mark as Fulfilled</button>
-        </div>
-
-        <div class="request">
-          <div class="request-header">
-            <div class="request-title">
-              <i class="fas fa-file-invoice doc-icon"></i>
-              <div>
-                <h4>Invoices</h4>
-                <p>From: Sarah Mitchell</p>
-                <p>Please upload all invoices for January 2026</p>
-              </div>
-            </div>
-            <div class="badges">
-              <div class="badge medium">MEDIUM</div>
-              <div class="badge pending">PENDING</div>
-            </div>
-          </div>
-          <div class="meta">
-            <span><i class="fas fa-calendar"></i> Due: 20/02/2026</span>
-            <span><i class="fas fa-clock"></i> Requested: 08/02/2026</span>
-          </div>
-          <button class="action-btn" onclick="this.innerHTML='✔ Fulfilled'; this.style.background='#10b981'; this.disabled=true">Mark as Fulfilled</button>
-        </div>
+        <h3 id="receivedHeader">Requests You Received (0)</h3>
+        <div id="receivedRequests"></div>
       </div>
 
       <!-- Sent -->
       <div id="sent" class="card hidden">
-        <h3>Requests You Sent (0)</h3>
-        <p style="color:var(--muted)">No requests sent yet.</p>
+        <h3 id="sentHeader">Requests You Sent (0)</h3>
+        <div id="sentRequests"></div>
       </div>
 
     </div>
   </main>
 </div>
 
+<script>
+const API_BASE_URL = "http://localhost:4000/api";
+const token = localStorage.getItem("authToken");
+if (!token) window.location.href = "../Clientlogins/login.html";
+
+function authHeaders() {
+  return { "Content-Type": "application/json", Authorization: `Bearer ${token || ""}` };
+}
+
+function priorityClass(priority) {
+  const p = String(priority || "medium").toLowerCase();
+  if (p === "high") return "high";
+  return "medium";
+}
+
+function statusClass(status) {
+  const s = String(status || "pending").toLowerCase();
+  if (s === "fulfilled" || s === "completed") return "high";
+  return "pending";
+}
+
+function renderRequestCard(request, isReceived) {
+  const historyId = `history_${request.id}`;
+  return `
+    <div class="request">
+      <div class="request-header">
+        <div class="request-title">
+          <i class="fas fa-file-alt doc-icon"></i>
+          <div>
+            <h4>${request.title}</h4>
+            <p>${request.description || ""}</p>
+          </div>
+        </div>
+        <div class="badges">
+          <div class="badge ${priorityClass(request.priority)}">${String(request.priority || "").toUpperCase()}</div>
+          <div class="badge ${statusClass(request.status)}">${String(request.status || "").toUpperCase()}</div>
+        </div>
+      </div>
+      <div class="meta">
+        <span><i class="fas fa-calendar"></i> Due: ${request.dueDate || "-"}</span>
+        <span><i class="fas fa-clock"></i> Requested: ${(request.requestedAt || "").slice(0, 10)}</span>
+      </div>
+      <div id="${historyId}" style="margin-top:10px;color:var(--muted);font-size:12px;">Timeline: loading...</div>
+      ${isReceived ? `<button class="action-btn" data-fulfill-id="${request.id}">Mark as Fulfilled</button>` : `<button class="action-btn" style="background:#64748b;" disabled>Sent</button>`}
+    </div>
+  `;
+}
+
+async function loadTimeline(requestId) {
+  const response = await fetch(`${API_BASE_URL}/requests/${encodeURIComponent(requestId)}/timeline`, { headers: authHeaders() });
+  if (!response.ok) return [];
+  const data = await response.json();
+  return data.history || [];
+}
+
+async function loadRequests() {
+  const [receivedRes, sentRes] = await Promise.all([
+    fetch(`${API_BASE_URL}/requests?role=received`, { headers: authHeaders() }),
+    fetch(`${API_BASE_URL}/requests?role=sent`, { headers: authHeaders() })
+  ]);
+  if (!receivedRes.ok || !sentRes.ok) return;
+  const receivedData = await receivedRes.json();
+  const sentData = await sentRes.json();
+  const received = receivedData.items || [];
+  const sent = sentData.items || [];
+
+  document.getElementById("tabReceived").textContent = `Received (${received.length})`;
+  document.getElementById("tabSent").textContent = `Sent (${sent.length})`;
+  document.getElementById("receivedHeader").textContent = `Requests You Received (${received.length})`;
+  document.getElementById("sentHeader").textContent = `Requests You Sent (${sent.length})`;
+
+  document.getElementById("receivedRequests").innerHTML = received.length
+    ? received.map((r) => renderRequestCard(r, true)).join("")
+    : `<p style="color:var(--muted)">No requests received.</p>`;
+  document.getElementById("sentRequests").innerHTML = sent.length
+    ? sent.map((r) => renderRequestCard(r, false)).join("")
+    : `<p style="color:var(--muted)">No requests sent yet.</p>`;
+
+  for (const request of [...received, ...sent]) {
+    const history = await loadTimeline(request.id);
+    const holder = document.getElementById(`history_${request.id}`);
+    if (holder) {
+      holder.textContent = history.length
+        ? `Timeline: ${history.slice(0, 3).map((h) => `${h.action} (${(h.at || "").slice(0, 10)})`).join(" | ")}`
+        : "Timeline: no activity";
+    }
+  }
+}
+
+async function createRequest() {
+  const title = document.getElementById("docType").value.trim();
+  const description = document.getElementById("description").value.trim();
+  const priority = document.getElementById("priority").value.toLowerCase();
+  const dueDate = document.getElementById("dueDate").value;
+  const user = JSON.parse(localStorage.getItem("authUser") || "{}");
+  const clientId = Array.isArray(user.clientIds) && user.clientIds.length ? user.clientIds[0] : "c_1001";
+  if (!title || !dueDate) return;
+
+  const response = await fetch(`${API_BASE_URL}/requests`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({
+      clientId,
+      title,
+      description,
+      priority,
+      dueDate
+    })
+  });
+  if (response.ok) {
+    document.getElementById("newRequestModal").style.display = "none";
+    document.getElementById("docType").value = "";
+    document.getElementById("description").value = "";
+    await loadRequests();
+  }
+}
+
+async function fulfillRequest(id) {
+  const response = await fetch(`${API_BASE_URL}/requests/${encodeURIComponent(id)}/status`, {
+    method: "PATCH",
+    headers: authHeaders(),
+    body: JSON.stringify({ status: "fulfilled", note: "Fulfilled by client" })
+  });
+  if (response.ok) await loadRequests();
+}
+
+document.getElementById("tabReceived").addEventListener("click", () => {
+  document.getElementById("received").classList.remove("hidden");
+  document.getElementById("sent").classList.add("hidden");
+  document.getElementById("tabReceived").classList.add("active");
+  document.getElementById("tabSent").classList.remove("active");
+});
+
+document.getElementById("tabSent").addEventListener("click", () => {
+  document.getElementById("sent").classList.remove("hidden");
+  document.getElementById("received").classList.add("hidden");
+  document.getElementById("tabSent").classList.add("active");
+  document.getElementById("tabReceived").classList.remove("active");
+});
+
+document.querySelector(".modal-footer .btn-primary").addEventListener("click", createRequest);
+
+document.addEventListener("click", (event) => {
+  const fulfillBtn = event.target.closest("[data-fulfill-id]");
+  if (fulfillBtn) {
+    fulfillRequest(fulfillBtn.getAttribute("data-fulfill-id")).catch((error) => console.error(error));
+  }
+});
+
+loadRequests().catch((error) => console.error(error));
+</script>
 </body>
 </html>
 

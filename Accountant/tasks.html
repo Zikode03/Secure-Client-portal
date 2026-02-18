@@ -502,6 +502,7 @@
         <option value="medium">Priority: Medium</option>
         <option value="low">Priority: Low</option>
       </select>
+      <button class="btn-primary" id="runAutomationBtn" style="padding:8px 12px;">Run SLA Automation</button>
       <span id="clearFilters" class="clear">Clear all</span>
     </div>
 
@@ -581,243 +582,197 @@
 </div>
 
 <script>
-// 
-// DATA
-// 
-const tasks = [
-  { id:1, name:"Quarterly VAT Return - Q3", client:"Apex Tech Solutions", status:"pending", due:"2023-10-15", priority:"high" },
-  { id:2, name:"Payroll Processing - Oct", client:"Blue Horizon Inc.", status:"in-progress", due:"2023-10-28", priority:"medium" },
-  { id:3, name:"Monthly Bookkeeping", client:"Green Leaf Logistics", status:"review", due:"2023-10-31", priority:"low" },
-  { id:4, name:"Capital Gains Advisory", client:"Cloud Nine Retail", status:"not-started", due:"2023-11-10", priority:"high" },
-  { id:5, name:"Annual Financial Statements", client:"Peak Performance Ltd", status:"in-progress", due:"2023-12-15", priority:"high" },
-  { id:6, name:"Tax Planning Meeting Prep", client:"Bright Future Co", status:"pending", due:"2023-11-05", priority:"medium" },
-  { id:7, name:"Expense Reconciliation Q3", client:"Summit Traders", status:"not-started", due:"2023-11-20", priority:"low" },
-  { id:8, name:"PAYE Submission - Nov", client:"Horizon Ventures", status:"in-progress", due:"2023-11-30", priority:"medium" }
-];
+const API_BASE_URL = "http://localhost:4000/api";
+const token = localStorage.getItem("authToken");
+if (!token) window.location.href = "accountant logins/login.html";
 
-// 
-// STATE & CONFIG
-// 
-const ROWS_PER_PAGE = 4;
-let currentPage = 1;
-let filteredTasks = [...tasks];
-
-// DOM elements
-const clientFilter   = document.getElementById("clientFilter");
-const dueFilter      = document.getElementById("dueFilter");
-const priorityFilter = document.getElementById("priorityFilter");
-const clearBtn       = document.getElementById("clearFilters");
-
-const tbody       = document.getElementById("taskBody");
-const pageInfo    = document.getElementById("pageInfo");
-const pageButtons = document.getElementById("pageButtons");
-const drawer      = document.getElementById("taskDrawer");
-const modal       = document.getElementById("createModal");
-
-// 
-// FILTER LOGIC
-// 
-function isDueInNext7Days(dueStr) {
-  if (!dueStr) return false;
-  const due = new Date(dueStr);
-  const today = new Date();
-  const diff = Math.ceil((due - today) / (1000 * 60 * 60 * 24));
-  return diff >= 0 && diff <= 7;
+function authHeaders() {
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token || ""}`,
+  };
 }
 
-function applyFilters() {
-  let result = [...tasks];
+let tasks = [];
+let clients = [];
+let currentPage = 1;
+const ROWS_PER_PAGE = 6;
 
-  // Client
-  const clientVal = clientFilter.value;
-  if (clientVal !== "all") {
-    result = result.filter(t => t.client === clientVal);
+const clientFilter = document.getElementById("clientFilter");
+const dueFilter = document.getElementById("dueFilter");
+const priorityFilter = document.getElementById("priorityFilter");
+const clearBtn = document.getElementById("clearFilters");
+const tbody = document.getElementById("taskBody");
+const pageInfo = document.getElementById("pageInfo");
+const pageButtons = document.getElementById("pageButtons");
+const drawer = document.getElementById("taskDrawer");
+const modal = document.getElementById("createModal");
+
+function getClientName(clientId) {
+  return (clients.find((c) => c.id === clientId) || {}).name || clientId;
+}
+
+function getStatusText(status) {
+  return String(status || "").replace(/-/g, " ");
+}
+
+function filteredTasks() {
+  return tasks.filter((task) => {
+    if (clientFilter.value !== "all" && task.clientId !== clientFilter.value) return false;
+    if (priorityFilter.value !== "all" && task.priority !== priorityFilter.value) return false;
+    if (dueFilter.value === "next7") {
+      const diff = Math.ceil((new Date(task.dueDate) - new Date()) / (1000 * 60 * 60 * 24));
+      if (diff < 0 || diff > 7) return false;
+    }
+    return true;
+  });
+}
+
+function renderTasks() {
+  const list = filteredTasks();
+  const start = (currentPage - 1) * ROWS_PER_PAGE;
+  const end = Math.min(start + ROWS_PER_PAGE, list.length);
+  const page = list.slice(start, end);
+
+  tbody.innerHTML = page.map((task) => `
+    <tr data-id="${task.id}">
+      <td><input type="checkbox" class="task-check" data-id="${task.id}"></td>
+      <td>${task.title}<br><span style="color:var(--gray);font-size:13px;"><span class="priority-dot ${task.priority}"></span>${task.priority.toUpperCase()} PRIORITY</span></td>
+      <td>${getClientName(task.clientId)}</td>
+      <td><span class="status ${task.status}">${getStatusText(task.status)}</span></td>
+      <td>${task.dueDate}</td>
+    </tr>
+  `).join("");
+
+  pageInfo.textContent = `Showing ${list.length ? start + 1 : 0}-${end} of ${list.length} tasks`;
+  const totalPages = Math.max(1, Math.ceil(list.length / ROWS_PER_PAGE));
+  pageButtons.innerHTML = "";
+  for (let i = 1; i <= totalPages; i += 1) {
+    const btn = document.createElement("button");
+    btn.textContent = i;
+    btn.className = i === currentPage ? "active" : "";
+    btn.onclick = () => {
+      currentPage = i;
+      renderTasks();
+    };
+    pageButtons.appendChild(btn);
   }
+}
 
-  // Due
-  const dueVal = dueFilter.value;
-  if (dueVal === "next7") {
-    result = result.filter(t => isDueInNext7Days(t.due));
+function updateDrawer(taskId) {
+  const task = tasks.find((item) => item.id === taskId);
+  if (!task) {
+    drawer.style.display = "none";
+    return;
   }
+  drawer.innerHTML = `
+    <div class="drawer-header">
+      <div>
+        <div class="client-path">${getClientName(task.clientId).toUpperCase()}</div>
+        <h3>${task.title}</h3>
+      </div>
+      <button id="closeDrawerBtn" style="background:none;border:none;font-size:24px;cursor:pointer;">x</button>
+    </div>
+    <div style="padding:16px;">
+      <p><strong>Status:</strong> ${task.status}</p>
+      <p><strong>Priority:</strong> ${task.priority}</p>
+      <p><strong>Due:</strong> ${task.dueDate}</p>
+      <button class="btn-primary" id="markCompleteBtn" style="margin-top:10px;">Mark Complete</button>
+    </div>
+  `;
+  drawer.style.display = "flex";
+  document.getElementById("closeDrawerBtn").onclick = () => (drawer.style.display = "none");
+  document.getElementById("markCompleteBtn").onclick = async () => {
+    await fetch(`${API_BASE_URL}/tasks/${encodeURIComponent(task.id)}`, {
+      method: "PATCH",
+      headers: authHeaders(),
+      body: JSON.stringify({ status: "completed" }),
+    });
+    await loadTasks();
+    drawer.style.display = "none";
+  };
+}
 
-  // Priority
-  const prioVal = priorityFilter.value;
-  if (prioVal !== "all") {
-    result = result.filter(t => t.priority === prioVal);
-  }
+async function loadClients() {
+  const response = await fetch(`${API_BASE_URL}/clients`, { headers: authHeaders() });
+  if (!response.ok) return;
+  const data = await response.json();
+  clients = data.items || [];
 
-  filteredTasks = result;
+  clientFilter.innerHTML = `<option value="all">All Clients</option>` + clients
+    .map((c) => `<option value="${c.id}">${c.name}</option>`)
+    .join("");
+}
+
+async function loadTasks() {
+  const query = new URLSearchParams();
+  if (clientFilter.value && clientFilter.value !== "all") query.set("clientId", clientFilter.value);
+  if (priorityFilter.value && priorityFilter.value !== "all") query.set("priority", priorityFilter.value);
+  if (dueFilter.value === "next7") query.set("dueWithinDays", "7");
+
+  const response = await fetch(`${API_BASE_URL}/tasks?${query.toString()}`, { headers: authHeaders() });
+  if (!response.ok) return;
+  const data = await response.json();
+  tasks = data.items || [];
   currentPage = 1;
   renderTasks();
 }
 
-// 
-// RENDER TASKS + PAGINATION
-// 
-function getStatusClass(status) { return status; }
-
-function getStatusText(status) {
-  if (status === "in-progress") return "In Progress";
-  if (status === "pending")     return "Pending Info";
-  if (status === "review")      return "Review";
-  return status.charAt(0).toUpperCase() + status.slice(1);
-}
-
-function renderTasks() {
-  tbody.innerHTML = "";
-
-  const start = (currentPage - 1) * ROWS_PER_PAGE;
-  const end = Math.min(start + ROWS_PER_PAGE, filteredTasks.length);
-  const pageTasks = filteredTasks.slice(start, end);
-
-  pageTasks.forEach(task => {
-    const tr = document.createElement("tr");
-    tr.dataset.id = task.id;
-    tr.innerHTML = `
-      <td><input type="checkbox" class="task-check" data-id="${task.id}"></td>
-      <td>
-        ${task.name}<br>
-        <span style="color:var(--gray); font-size:13px;">
-          <span class="priority-dot ${task.priority}"></span>${task.priority.toUpperCase()} PRIORITY
-        </span>
-      </td>
-      <td>${task.client}</td>
-      <td><span class="status ${getStatusClass(task.status)}">${getStatusText(task.status)}</span></td>
-      <td>${task.due}</td>
-    `;
-    tbody.appendChild(tr);
-  });
-
-  // Showing info
-  const showingStart = start + 1;
-  const showingEnd = end;
-  pageInfo.textContent = `Showing ${showingStart}${showingEnd} of ${filteredTasks.length} tasks`;
-
-  // Pagination buttons
-  pageButtons.innerHTML = "";
-  const totalPages = Math.ceil(filteredTasks.length / ROWS_PER_PAGE) || 1;
-
-  const prev = document.createElement("button");
-  prev.textContent = "Previous";
-  prev.disabled = currentPage === 1;
-  prev.onclick = () => { if (currentPage > 1) { currentPage--; renderTasks(); } };
-  pageButtons.appendChild(prev);
-
-  for (let i = 1; i <= totalPages; i++) {
-    const btn = document.createElement("button");
-    btn.textContent = i;
-    btn.className = i === currentPage ? "active" : "";
-    btn.onclick = () => { currentPage = i; renderTasks(); };
-    pageButtons.appendChild(btn);
-  }
-
-  const next = document.createElement("button");
-  next.textContent = "Next";
-  next.disabled = currentPage >= totalPages;
-  next.onclick = () => { if (currentPage < totalPages) { currentPage++; renderTasks(); } };
-  pageButtons.appendChild(next);
-}
-
-// 
-// DRAWER LOGIC
-// 
-function updateDrawer() {
-  const checked = document.querySelectorAll(".task-check:checked");
-  if (checked.length === 0) {
-    drawer.style.display = "none";
-    document.querySelectorAll("tr").forEach(r => r.classList.remove("selected"));
-    return;
-  }
-
-  const taskId = checked[0].dataset.id;
-  const task = tasks.find(t => t.id == taskId);
-  if (!task) return;
-
-  drawer.innerHTML = `
-    <div class="drawer-header">
-      <div>
-        <div class="client-path">${task.client.toUpperCase()}  ${task.name.split(" - ")[0]?.toUpperCase() || ""}</div>
-        <h3>${task.name}</h3>
-      </div>
-      <button style="background:none;border:none;font-size:28px;cursor:pointer;color:var(--gray);"></button>
-    </div>
-    <div class="section">
-      <strong>Current Status:</strong> <span class="status ${task.status}">${getStatusText(task.status)}</span><br><br>
-      <strong>Deadline:</strong> ${task.due}
-    </div>
-    <div class="section">
-      <div class="section-title">Description</div>
-      <p>(Task description would appear here...)</p>
-    </div>
-  `;
-  drawer.style.display = "flex";
-
-  document.querySelectorAll("tr").forEach(r => r.classList.toggle("selected", r.dataset.id == taskId));
-
-  drawer.querySelector("button").onclick = () => {
-    document.querySelectorAll(".task-check").forEach(cb => cb.checked = false);
-    updateDrawer();
-  };
-}
-
-// 
-// EVENTS
-// 
-tbody.addEventListener("change", e => {
-  if (e.target.classList.contains("task-check")) updateDrawer();
-});
-
-tbody.addEventListener("click", e => {
-  const tr = e.target.closest("tr");
-  if (!tr) return;
-  const cb = tr.querySelector(".task-check");
-  if (e.target.tagName !== "INPUT") {
-    cb.checked = !cb.checked;
-    updateDrawer();
-  }
-});
-
-// Filters
-clientFilter.addEventListener("change", applyFilters);
-dueFilter.addEventListener("change", applyFilters);
-priorityFilter.addEventListener("change", applyFilters);
-
+clientFilter.addEventListener("change", loadTasks);
+dueFilter.addEventListener("change", loadTasks);
+priorityFilter.addEventListener("change", loadTasks);
 clearBtn.addEventListener("click", () => {
   clientFilter.value = "all";
   dueFilter.value = "all";
   priorityFilter.value = "all";
-  applyFilters();
+  loadTasks();
 });
 
-// Create Task Modal
-document.getElementById("createTaskBtn").onclick = () => modal.style.display = "flex";
-document.getElementById("closeModal").onclick = () => modal.style.display = "none";
-document.getElementById("cancelModal").onclick = () => modal.style.display = "none";
+tbody.addEventListener("click", (event) => {
+  const row = event.target.closest("tr[data-id]");
+  if (!row) return;
+  updateDrawer(row.getAttribute("data-id"));
+});
 
-document.getElementById("priorityGroup").addEventListener("click", e => {
+document.getElementById("createTaskBtn").onclick = () => (modal.style.display = "flex");
+document.getElementById("closeModal").onclick = () => (modal.style.display = "none");
+document.getElementById("cancelModal").onclick = () => (modal.style.display = "none");
+
+document.getElementById("priorityGroup").addEventListener("click", (e) => {
   if (e.target.tagName !== "BUTTON") return;
-  document.querySelectorAll("#priorityGroup button").forEach(b => b.classList.remove("active"));
+  document.querySelectorAll("#priorityGroup button").forEach((b) => b.classList.remove("active"));
   e.target.classList.add("active");
 });
 
-document.getElementById("saveNewTask").onclick = () => {
-  const name   = document.getElementById("newTaskName").value.trim()   || "New Task";
-  const client = document.getElementById("newTaskClient").value.trim() || "New Client";
-  const due    = document.getElementById("newTaskDue").value          || "TBD";
-  const status = document.getElementById("newTaskStatus").value;
-  const prioBtn = document.querySelector("#priorityGroup button.active");
-  const priority = prioBtn ? prioBtn.dataset.prio : "medium";
+document.getElementById("saveNewTask").onclick = async () => {
+  const title = document.getElementById("newTaskName").value.trim();
+  const clientName = document.getElementById("newTaskClient").value.trim();
+  const dueDate = document.getElementById("newTaskDue").value;
+  const priority = (document.querySelector("#priorityGroup button.active") || {}).dataset?.prio || "medium";
 
-  const newId = Math.max(...tasks.map(t => t.id), 0) + 1;
+  const client = clients.find((c) => c.name.toLowerCase() === clientName.toLowerCase()) || clients[0];
+  if (!title || !client || !dueDate) return;
 
-  tasks.push({ id: newId, name, client, status, due, priority });
+  await fetch(`${API_BASE_URL}/tasks`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ clientId: client.id, title, dueDate, priority }),
+  });
 
   modal.style.display = "none";
-  applyFilters(); // refresh filtered list
+  await loadTasks();
 };
 
-// Initial render
-applyFilters();
+document.getElementById("runAutomationBtn").onclick = async () => {
+  await fetch(`${API_BASE_URL}/tasks/automation/run`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: "{}",
+  });
+  await loadTasks();
+};
+
+loadClients().then(loadTasks);
 </script>
 
 </body>

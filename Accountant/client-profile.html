@@ -513,7 +513,7 @@ body{
 </a>
 
 <div class="breadcrumb">
-Clients / <strong>Acme Corp</strong>
+Clients / <strong id="clientBreadcrumbName">Acme Corp</strong>
 </div>
 
 <div class="main-grid">
@@ -531,23 +531,23 @@ Clients / <strong>Acme Corp</strong>
 <div>
 
 <h2>
-Acme Corp
-<span class="status">ACTIVE</span>
+<span id="clientName">Acme Corp</span>
+<span class="status" id="clientStatus">ACTIVE</span>
 </h2>
 
-<div class="sub-info">
+<div class="sub-info" id="clientPrimaryContact">
 <i class="fa fa-user"></i>
 Primary Contact: Jane Doe
 </div>
 
-<div class="sub-info">
+<div class="sub-info" id="clientMetaInfo">
 Technology & Software Services  Member since 2021
 </div>
 
 </div>
 </div>
 
-<button class="edit-btn">
+<button class="edit-btn" id="editProfileBtn">
 <i class="fa fa-pen"></i>
 Edit Profile
 </button>
@@ -886,6 +886,63 @@ tabs.forEach(tab=>{
     }
   });
 });
+
+const API_BASE_URL = "http://localhost:4000/api";
+const token = localStorage.getItem("authToken");
+if (!token) window.location.href = "accountant logins/login.html";
+
+function authHeaders() {
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token || ""}`
+  };
+}
+
+function currentClientId() {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("clientId") || "c_1001";
+}
+
+async function loadClientProfile() {
+  const clientId = currentClientId();
+  const response = await fetch(`${API_BASE_URL}/clients/${encodeURIComponent(clientId)}`, { headers: authHeaders() });
+  if (!response.ok) return;
+  const data = await response.json();
+  const client = data.client;
+
+  document.getElementById("clientBreadcrumbName").textContent = client.name;
+  document.getElementById("clientName").textContent = client.name;
+  document.getElementById("clientStatus").textContent = String(client.status || "").toUpperCase();
+  document.getElementById("clientPrimaryContact").innerHTML = `<i class="fa fa-user"></i> Primary Contact: ${client.primaryContact}`;
+  document.getElementById("clientMetaInfo").textContent = `${client.entityType}  ${client.email}`;
+}
+
+document.getElementById("editProfileBtn").addEventListener("click", async () => {
+  const clientId = currentClientId();
+  const name = prompt("Client Name");
+  const primaryContact = prompt("Primary Contact");
+  const status = prompt("Status (active/pending/at-risk)");
+  const email = prompt("Email");
+  const entityType = prompt("Entity Type");
+  const payload = {};
+  if (name) payload.name = name;
+  if (primaryContact) payload.primaryContact = primaryContact;
+  if (status) payload.status = status;
+  if (email) payload.email = email;
+  if (entityType) payload.entityType = entityType;
+  if (!Object.keys(payload).length) return;
+
+  const response = await fetch(`${API_BASE_URL}/clients/${encodeURIComponent(clientId)}`, {
+    method: "PATCH",
+    headers: authHeaders(),
+    body: JSON.stringify(payload)
+  });
+  if (response.ok) {
+    await loadClientProfile();
+  }
+});
+
+loadClientProfile().catch((error) => console.error(error));
 </script>
 
 </body>

@@ -319,79 +319,128 @@ main {
     <div class="drawer-header">
       <div>
         <h2>Notifications</h2>
-        <p>You have 3 unread updates</p>
+        <p id="unreadText">You have 0 unread updates</p>
       </div>
       <span class="material-symbols-outlined close">close</span>
     </div>
 
     <div class="filters">
-      <div class="filter active">All</div>
-      <div class="filter">Unread</div>
-      <div class="filter">Action Required</div>
+      <div class="filter active" data-filter="all">All</div>
+      <div class="filter" data-filter="unread">Unread</div>
+      <div class="filter" data-filter="action">Action Required</div>
     </div>
 
-    <div class="list">
-
-      <!-- Document Request -->
-      <div class="item unread">
-        <div class="icon">
-          <span class="material-symbols-outlined">upload_file</span>
-        </div>
-        <div class="content">
-          <div style="display:flex;justify-content:space-between">
-            <h4>Document Request</h4>
-            <span class="time">2 hours ago</span>
-          </div>
-          <p>Please upload your <strong>2023 W-2</strong> and <strong>Schedule K-1</strong>.</p>
-          <div class="actions">
-            <button class="btn primary">Upload</button>
-            <span class="link">Mark as read</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Message -->
-      <div class="item unread">
-        <div class="icon avatar">
-          <img src="https://i.pravatar.cc/100?img=32">
-        </div>
-        <div class="content">
-          <div style="display:flex;justify-content:space-between">
-            <h4>New Message</h4>
-            <span class="time">5 hours ago</span>
-          </div>
-          <p><em>"I've updated your tax projection for Q4."</em></p>
-          <div class="actions">
-            <button class="btn outline">Reply</button>
-            <span class="link">Mark as read</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Status -->
-      <div class="item">
-        <div class="icon" style="background:#dcfce7;color:var(--success)">
-          <span class="material-symbols-outlined">verified</span>
-        </div>
-        <div class="content">
-          <div style="display:flex;justify-content:space-between">
-            <h4>Status Update</h4>
-            <span class="time">Yesterday</span>
-          </div>
-          <p>Your document <strong>Lease_Agreement_Final.pdf</strong> was approved.</p>
-          <span class="link">Archived</span>
-        </div>
-      </div>
-
-    </div>
+    <div class="list" id="notificationList"></div>
 
     <div class="drawer-footer">
-      <button class="btn primary">View All Notifications</button>
-      <div class="secondary">Mark all as read</div>
+      <button class="btn primary" id="loadMoreBtn">Load More</button>
+      <div class="secondary" id="markAllReadBtn">Mark all as read</div>
     </div>
 
   </div>
 </div>
 
+<script>
+const API_BASE_URL = "http://localhost:4000/api";
+const token = localStorage.getItem("authToken");
+if (!token) window.location.href = "../Clientlogins/login.html";
+
+function authHeaders() {
+  return { "Content-Type": "application/json", Authorization: `Bearer ${token || ""}` };
+}
+
+let page = 1;
+const limit = 10;
+let activeFilter = "all";
+let hasMore = false;
+
+function iconForType(type) {
+  if (type === "message_received") return "mail";
+  if (type === "request_created" || type === "document_request") return "upload_file";
+  return "notifications";
+}
+
+function renderItems(items, append = false) {
+  const list = document.getElementById("notificationList");
+  if (!append) list.innerHTML = "";
+  for (const n of items) {
+    const div = document.createElement("div");
+    div.className = `item ${n.read ? "" : "unread"}`;
+    div.innerHTML = `
+      <div class="icon"><span class="material-symbols-outlined">${iconForType(n.type)}</span></div>
+      <div class="content">
+        <div style="display:flex;justify-content:space-between">
+          <h4>${n.title}</h4>
+          <span class="time">${new Date(n.createdAt).toLocaleString()}</span>
+        </div>
+        <p>${n.message}</p>
+        <div class="actions">
+          <span class="link" data-read-id="${n.id}">${n.read ? "Read" : "Mark as read"}</span>
+        </div>
+      </div>
+    `;
+    list.appendChild(div);
+  }
+}
+
+async function loadNotifications(append = false) {
+  const unreadQuery = activeFilter === "unread" ? "&unread=true" : "";
+  const typeQuery = activeFilter === "action" ? "&type=request_created" : "";
+  const response = await fetch(`${API_BASE_URL}/notifications?page=${page}&limit=${limit}${unreadQuery}${typeQuery}`, {
+    headers: authHeaders(),
+  });
+  if (!response.ok) return;
+  const data = await response.json();
+  renderItems(data.items || [], append);
+  document.getElementById("unreadText").textContent = `You have ${data.unreadCount || 0} unread updates`;
+  hasMore = Boolean(data.pagination?.hasMore);
+  document.getElementById("loadMoreBtn").style.display = hasMore ? "block" : "none";
+}
+
+document.querySelectorAll(".filter").forEach((el) => {
+  el.addEventListener("click", () => {
+    document.querySelectorAll(".filter").forEach((f) => f.classList.remove("active"));
+    el.classList.add("active");
+    activeFilter = el.getAttribute("data-filter");
+    page = 1;
+    loadNotifications(false);
+  });
+});
+
+document.getElementById("loadMoreBtn").addEventListener("click", () => {
+  if (!hasMore) return;
+  page += 1;
+  loadNotifications(true);
+});
+
+document.getElementById("markAllReadBtn").addEventListener("click", async () => {
+  const response = await fetch(`${API_BASE_URL}/notifications/read-all`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: "{}",
+  });
+  if (response.ok) {
+    page = 1;
+    loadNotifications(false);
+  }
+});
+
+document.addEventListener("click", async (event) => {
+  const readBtn = event.target.closest("[data-read-id]");
+  if (!readBtn) return;
+  const id = readBtn.getAttribute("data-read-id");
+  const response = await fetch(`${API_BASE_URL}/notifications/${encodeURIComponent(id)}/read`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: "{}",
+  });
+  if (response.ok) {
+    page = 1;
+    loadNotifications(false);
+  }
+});
+
+loadNotifications(false);
+</script>
 </body>
 </html>
