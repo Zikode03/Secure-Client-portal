@@ -239,9 +239,9 @@ body{
   cursor:pointer;
 }
 
-/* ────────────────────────────────────────────── */
+/*  */
 /*     RESTORED STYLES FOR CONTACTS TAB           */
-/* ────────────────────────────────────────────── */
+/*  */
 
 .table-header{
   display:flex;
@@ -306,9 +306,9 @@ body{
   margin-left:5px;
 }
 
-/* ────────────────────────────────────────────── */
+/*  */
 /*     RESTORED STYLES FOR COMPLIANCE HISTORY     */
-/* ────────────────────────────────────────────── */
+/*  */
 
 .timeline-header{
   display:flex;
@@ -431,7 +431,7 @@ body{
 
 /* RIGHT SIDE */
 .card.quick-actions {
-  margin-bottom: 24px;   /* or 20px, 16px – adjust as you like */
+  margin-bottom: 24px;   /* or 20px, 16px  adjust as you like */
 }
 .quick-actions{
   padding:20px;
@@ -501,6 +501,7 @@ body{
 }
 
 </style>
+  <script defer src="accountant-nav.js"></script>
 </head>
 <body>
 
@@ -540,7 +541,7 @@ Primary Contact: Jane Doe
 </div>
 
 <div class="sub-info">
-Technology & Software Services • Member since 2021
+Technology & Software Services  Member since 2021
 </div>
 
 </div>
@@ -612,7 +613,7 @@ Compliance History
 <div>
 <strong>Quarterly Tax Document Uploaded</strong>
 <br>
-<small>by Jane Doe • 45 minutes ago</small>
+<small>by Jane Doe  45 minutes ago</small>
 </div>
 
 </div>
@@ -632,7 +633,7 @@ Compliance History
 <div>
 <strong>Annual Report Approved</strong>
 <br>
-<small>by Admin System • Yesterday</small>
+<small>by Admin System  Yesterday</small>
 </div>
 
 </div>
@@ -741,7 +742,7 @@ Jane Doe
 <div class="timeline-top">
 <strong>Quarterly Filing Approved</strong>
 <span class="badge-approved">APPROVED</span>
-<span class="time">Oct 12, 2024 • 2:45 PM</span>
+<span class="time">Oct 12, 2024  2:45 PM</span>
 </div>
 <p>The Q3 Sales Tax filing has been reviewed and approved for submission.</p>
 <div class="timeline-bottom">
@@ -757,7 +758,7 @@ Jane Doe
 <div class="timeline-top">
 <strong>Tax Document Rejected</strong>
 <span class="badge-rejected">REJECTED</span>
-<span class="time">Oct 10, 2024 • 11:20 AM</span>
+<span class="time">Oct 10, 2024  11:20 AM</span>
 </div>
 <p>Income Statement 2023_ Revised.pdf was rejected due to missing expense breakdown on page 4.</p>
 <div class="timeline-bottom">
@@ -773,7 +774,7 @@ Jane Doe
 <div class="timeline-top">
 <strong>New Document Uploaded</strong>
 <span class="badge-pending">PENDING REVIEW</span>
-<span class="time">Oct 09, 2024 • 04:15 PM</span>
+<span class="time">Oct 09, 2024  04:15 PM</span>
 </div>
 <p>Quarterly Payroll Summary_Q3 2024 has been uploaded by the client.</p>
 <div class="timeline-bottom">
@@ -789,7 +790,7 @@ Jane Doe
 <div class="timeline-top">
 <strong>KYC Verification Requested</strong>
 <span class="badge-warning">NEEDS ACTION</span>
-<span class="time">Oct 05, 2024 • 09:00 AM</span>
+<span class="time">Oct 05, 2024  09:00 AM</span>
 </div>
 <p>Annual AML/KYC review is due. Please provide updated proof of address for all stakeholders.</p>
 <div class="timeline-bottom">
@@ -817,24 +818,24 @@ Jane Doe
 
 <h3>Quick Actions</h3>
 
-<button class="primary">
+<button class="primary" data-route="messages.html">
 <i class="fa fa-comment"></i>
 Message Client
 </button>
 
-<button class="outline">
+<button class="outline" data-route="documents.html">
 <i class="fa fa-file-circle-plus"></i>
 Request Document
 </button>
 
-<button class="outline">
+<button class="outline" data-route="documents.html">
 <i class="fa fa-download"></i>
 Export Client Data
 </button>
 
 <hr>
 
-<button class="danger">
+<button class="danger" data-route="clients.html">
 <i class="fa fa-ban"></i>
 Suspend Account
 </button>
@@ -865,7 +866,7 @@ Suspend Account
 </div>
 
 <div class="footer">
-© 2024 FirmPortal Management System
+ 2024 FirmPortal Management System
 </div>
 
 </div>
@@ -889,3 +890,6 @@ tabs.forEach(tab=>{
 
 </body>
 </html>
+
+
+

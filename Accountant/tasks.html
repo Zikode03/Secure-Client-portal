@@ -167,7 +167,7 @@
       gap: 8px;
     }
 
-/* ────────────── IMPROVED HORIZONTAL FILTERS ────────────── */
+/*  IMPROVED HORIZONTAL FILTERS  */
     .filters {
       background: var(--bg-filter);
       border: 1px solid var(--border);
@@ -432,6 +432,7 @@
       cursor: pointer;
     }
   </style>
+  <script defer src="accountant-nav.js"></script>
 </head>
 <body>
 
@@ -520,7 +521,7 @@
       </table>
 
       <div class="pagination">
-        <div id="pageInfo">Showing 1–4 of 8 tasks</div>
+        <div id="pageInfo">Showing 14 of 8 tasks</div>
         <div class="page-buttons" id="pageButtons"></div>
       </div>
     </div>
@@ -537,7 +538,7 @@
           <h3>Create New Task</h3>
           <small style="color:var(--gray);">Add a new workflow item for your team or client.</small>
         </div>
-        <button id="closeModal" style="background:none;border:none;font-size:28px;color:var(--gray);cursor:pointer;">×</button>
+        <button id="closeModal" style="background:none;border:none;font-size:28px;color:var(--gray);cursor:pointer;"></button>
       </div>
       <div class="modal-body">
         <div class="form-group">
@@ -580,9 +581,9 @@
 </div>
 
 <script>
-// ──────────────────────────────────────────────────────────────
+// 
 // DATA
-// ──────────────────────────────────────────────────────────────
+// 
 const tasks = [
   { id:1, name:"Quarterly VAT Return - Q3", client:"Apex Tech Solutions", status:"pending", due:"2023-10-15", priority:"high" },
   { id:2, name:"Payroll Processing - Oct", client:"Blue Horizon Inc.", status:"in-progress", due:"2023-10-28", priority:"medium" },
@@ -594,9 +595,9 @@ const tasks = [
   { id:8, name:"PAYE Submission - Nov", client:"Horizon Ventures", status:"in-progress", due:"2023-11-30", priority:"medium" }
 ];
 
-// ──────────────────────────────────────────────────────────────
+// 
 // STATE & CONFIG
-// ──────────────────────────────────────────────────────────────
+// 
 const ROWS_PER_PAGE = 4;
 let currentPage = 1;
 let filteredTasks = [...tasks];
@@ -613,9 +614,9 @@ const pageButtons = document.getElementById("pageButtons");
 const drawer      = document.getElementById("taskDrawer");
 const modal       = document.getElementById("createModal");
 
-// ──────────────────────────────────────────────────────────────
+// 
 // FILTER LOGIC
-// ──────────────────────────────────────────────────────────────
+// 
 function isDueInNext7Days(dueStr) {
   if (!dueStr) return false;
   const due = new Date(dueStr);
@@ -650,9 +651,9 @@ function applyFilters() {
   renderTasks();
 }
 
-// ──────────────────────────────────────────────────────────────
+// 
 // RENDER TASKS + PAGINATION
-// ──────────────────────────────────────────────────────────────
+// 
 function getStatusClass(status) { return status; }
 
 function getStatusText(status) {
@@ -690,7 +691,7 @@ function renderTasks() {
   // Showing info
   const showingStart = start + 1;
   const showingEnd = end;
-  pageInfo.textContent = `Showing ${showingStart}–${showingEnd} of ${filteredTasks.length} tasks`;
+  pageInfo.textContent = `Showing ${showingStart}${showingEnd} of ${filteredTasks.length} tasks`;
 
   // Pagination buttons
   pageButtons.innerHTML = "";
@@ -717,9 +718,9 @@ function renderTasks() {
   pageButtons.appendChild(next);
 }
 
-// ──────────────────────────────────────────────────────────────
+// 
 // DRAWER LOGIC
-// ──────────────────────────────────────────────────────────────
+// 
 function updateDrawer() {
   const checked = document.querySelectorAll(".task-check:checked");
   if (checked.length === 0) {
@@ -735,10 +736,10 @@ function updateDrawer() {
   drawer.innerHTML = `
     <div class="drawer-header">
       <div>
-        <div class="client-path">${task.client.toUpperCase()} → ${task.name.split(" - ")[0]?.toUpperCase() || ""}</div>
+        <div class="client-path">${task.client.toUpperCase()}  ${task.name.split(" - ")[0]?.toUpperCase() || ""}</div>
         <h3>${task.name}</h3>
       </div>
-      <button style="background:none;border:none;font-size:28px;cursor:pointer;color:var(--gray);">×</button>
+      <button style="background:none;border:none;font-size:28px;cursor:pointer;color:var(--gray);"></button>
     </div>
     <div class="section">
       <strong>Current Status:</strong> <span class="status ${task.status}">${getStatusText(task.status)}</span><br><br>
@@ -759,9 +760,9 @@ function updateDrawer() {
   };
 }
 
-// ──────────────────────────────────────────────────────────────
+// 
 // EVENTS
-// ──────────────────────────────────────────────────────────────
+// 
 tbody.addEventListener("change", e => {
   if (e.target.classList.contains("task-check")) updateDrawer();
 });
@@ -821,3 +822,4 @@ applyFilters();
 
 </body>
 </html>
+

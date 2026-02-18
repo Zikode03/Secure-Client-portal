@@ -228,6 +228,7 @@ textarea{
   margin-top:10px;
 }
 </style>
+  <script defer src="accountant-nav.js"></script>
 </head>
 
 <body>
@@ -243,7 +244,7 @@ textarea{
   </div>
 
   <div class="header-right">
-    <button class="upload-btn">
+    <button class="upload-btn" data-route="documents.html">
       <i class="fa-solid fa-upload"></i> Upload Document
     </button>
     <span class="status">Pending Review</span>
@@ -395,4 +396,6 @@ document.getElementById("backBtn").addEventListener("click", function(){
 
 </body>
 </html>
+
+
 

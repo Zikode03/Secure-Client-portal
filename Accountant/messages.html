@@ -225,6 +225,7 @@ body{
   color:#6b7280;
 }
 </style>
+  <script defer src="accountant-nav.js"></script>
 </head>
 
 <body>
@@ -416,7 +417,7 @@ function openChat(client,clickedEl){
     row.innerHTML=`
       <div class="message-bubble ${msg.from}">
         ${msg.text}
-        <div class="meta">${msg.from==="own"?"You":client.name} • ${msg.time}</div>
+        <div class="meta">${msg.from==="own"?"You":client.name}  ${msg.time}</div>
       </div>
     `;
     container.appendChild(row);
@@ -440,3 +441,5 @@ filterClients("assigned");
 
 </body>
 </html>
+
+
