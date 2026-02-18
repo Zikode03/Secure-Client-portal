@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Prospera – Documents</title>
+<title>Prospera ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“ Documents</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
@@ -34,7 +34,7 @@ body {
   overflow: hidden;
 }
 
-/* SIDEBAR – fixed, non-scrolling */
+/* SIDEBAR ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“ fixed, non-scrolling */
 .sidebar {
   width: 260px;
   background: linear-gradient(180deg, #0f172a, #020617);
@@ -260,7 +260,7 @@ body {
 
 <div class="app-layout">
 
-  <!-- SIDEBAR – fixed on left -->
+  <!-- SIDEBAR ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“ fixed on left -->
   <aside class="sidebar">
     <div class="sidebar-header">
       <i class="fa-solid fa-shield-halved"></i>
@@ -337,13 +337,16 @@ body {
 
 </div>
 
+<script src="../../shared/portal-config.js"></script>
+<script src="../../shared/portal-auth.js"></script>
 <script>
-const API_BASE_URL = "http://localhost:4000/api";
-const token = localStorage.getItem("authToken");
-if (!token) window.location.href = "../Clientlogins/login.html";
+const API_BASE_URL = window.PortalConfig.API_BASE_URL;
+const session = window.PortalAuth.requireRole("client", "../Clientlogins/login.html");
+if (!session) { throw new Error("Unauthorized"); }
+const { token } = session;
 
 function authHeaders() {
-  return { "Content-Type": "application/json", Authorization: `Bearer ${token || ""}` };
+  return window.PortalAuth.authHeaders(token);
 }
 
 let docs = [];

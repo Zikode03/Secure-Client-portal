@@ -467,7 +467,11 @@ footer {
 
 </div>
 
+<script src="../../shared/portal-config.js"></script>
+<script src="../../shared/portal-auth.js"></script>
 <script>
+  const session = window.PortalAuth.requireRole("client", "../Clientlogins/login.html");
+  if (!session) { throw new Error("Unauthorized"); }
 const dropZone = document.getElementById("dropZone");
 const fileInput = document.getElementById("fileInput");
 const browseBtn = document.getElementById("browseBtn");
@@ -517,7 +521,7 @@ function addToQueue(file) {
     <td>${guessType(file.name)}</td>
     <td class="status ready"><span class="dot"></span>READY</td>
     <td class="action-cell">
-      <button class="delete-btn">🗑️</button>
+      <button class="delete-btn">Remove</button>
     </td>
   `;
 

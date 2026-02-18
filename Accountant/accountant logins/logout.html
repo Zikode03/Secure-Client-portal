@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Signed Out | Accountant Portal</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    body { margin: 0; font-family: Arial, Helvetica, sans-serif; background: #f6f6f8; min-height: 100vh; display: flex; flex-direction: column; }
+    main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 24px; }
+    .card { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; max-width: 520px; width: 100%; padding: 36px 28px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); text-align: center; }
+    .icon { width: 70px; height: 70px; border-radius: 999px; background: #e8efff; color: #1754cf; display: grid; place-items: center; margin: 0 auto 14px; font-size: 30px; }
+    h1 { margin: 0 0 10px; font-size: 28px; color: #0f172a; }
+    p { margin: 0; color: #475569; line-height: 1.6; }
+    .actions { margin-top: 22px; display: grid; gap: 10px; }
+    .btn { border: none; border-radius: 8px; padding: 12px 14px; cursor: pointer; font-weight: 700; }
+    .btn-primary { background: #1754cf; color: #fff; }
+    .btn-secondary { background: #e2e8f0; color: #0f172a; }
+    footer { text-align: center; padding: 14px; color: #64748b; font-size: 12px; border-top: 1px solid #e2e8f0; background: #fff; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="card">
+      <div class="icon"><i class="fa-solid fa-lock"></i></div>
+      <h1>Signed Out Safely</h1>
+      <p>Your accountant session has been closed and local credentials were cleared on this browser.</p>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="window.location.href='login.html'">Log In Again</button>
+        <button class="btn btn-secondary" onclick="window.location.href='../../Accountant/dashboards.html'">Back to Portal</button>
+      </div>
+    </div>
+  </main>
+  <footer>(c) 2024 Ledge & Ledger Accounting Firms. All rights reserved.</footer>
+
+  <script>
+    window.localStorage.removeItem("authToken");
+    window.localStorage.removeItem("authUser");
+  </script>
+</body>
+</html>

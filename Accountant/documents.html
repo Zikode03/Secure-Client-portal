@@ -592,15 +592,15 @@ tbody tr:hover {
   </div>
 </div>
 
+<script src="../shared/portal-config.js"></script>
+<script src="../shared/portal-auth.js"></script>
 <script>
 let documents = [];
 const clientsById = {};
-const API_BASE_URL = "http://localhost:4000/api";
-const token = localStorage.getItem("authToken");
-
-if (!token) {
-  window.location.href = "accountant logins/login.html";
-}
+const API_BASE_URL = window.PortalConfig.API_BASE_URL;
+const session = window.PortalAuth.requireRole("accountant", "accountant logins/login.html");
+if (!session) { throw new Error("Unauthorized"); }
+const { token } = session;
 
 function authHeaders() {
   return {

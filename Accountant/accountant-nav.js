@@ -1,4 +1,20 @@
-﻿(() => {
+(() => {
+  const token = window.localStorage.getItem('authToken');
+  const rawUser = window.localStorage.getItem('authUser');
+  let user = null;
+
+  try {
+    user = rawUser ? JSON.parse(rawUser) : null;
+  } catch (_error) {
+    user = null;
+  }
+
+  if (!token || !user || user.role !== 'accountant') {
+    window.localStorage.removeItem('authToken');
+    window.localStorage.removeItem('authUser');
+    window.location.href = 'accountant logins/login.html';
+    return;
+  }
   const NAV_ITEMS = [
     { key: 'dashboard', href: 'dashboards.html', icon: 'fa fa-chart-line', label: 'Dashboard' },
     { key: 'clients', href: 'clients.html', icon: 'fa fa-users', label: 'Clients' },
@@ -143,6 +159,8 @@
   function wireCommonClicks() {
     document.querySelectorAll('.logout').forEach((button) => {
       button.addEventListener('click', () => {
+        window.localStorage.removeItem('authToken');
+        window.localStorage.removeItem('authUser');
         window.location.href = 'accountant logins/login.html';
       });
     });

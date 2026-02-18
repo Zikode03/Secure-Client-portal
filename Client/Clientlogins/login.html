@@ -249,13 +249,15 @@
 </main>
 
 <footer>
-  © 2023 Premium Accounting Firm. All rights reserved |
+  (c) 2023 Premium Accounting Firm. All rights reserved |
   <a href="#">Privacy Policy</a> |
   <a href="#">Terms of Service</a>
 </footer>
 
+<script src="../../shared/portal-config.js"></script>
+<script src="../../shared/portal-auth.js"></script>
 <script>
-  const API_BASE_URL = "http://localhost:4000/api";
+const API_BASE_URL = window.PortalConfig.API_BASE_URL;
 
   document.getElementById('toggle').addEventListener('click', e => {
     const input = document.getElementById('password');
@@ -277,11 +279,17 @@
     const messageEl = document.getElementById("loginMessage");
     const button = document.getElementById("signinBtn");
 
-    messageEl.style.color = "#334155";
-    messageEl.textContent = "Signing in...";
     button.disabled = true;
 
     try {
+      messageEl.style.color = "#334155";
+      messageEl.textContent = "Checking server...";
+      const online = await window.PortalConfig.checkApiOnline();
+      if (!online) {
+        throw new Error("Backend is offline. Start backend with: cd backend && npm run dev");
+      }
+      messageEl.textContent = "Signing in...";
+
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -303,7 +311,11 @@
       window.location.href = "../Clientpages/Clientportal.html";
     } catch (error) {
       messageEl.style.color = "#b91c1c";
-      messageEl.textContent = error.message || "Login failed.";
+      if (error instanceof TypeError) {
+        messageEl.textContent = "Unable to reach backend API. Confirm backend is running on http://localhost:4000.";
+      } else {
+        messageEl.textContent = error.message || "Login failed.";
+      }
     } finally {
       button.disabled = false;
     }
