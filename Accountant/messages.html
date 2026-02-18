@@ -208,6 +208,18 @@ body{
   border-radius:8px;
   border:1px solid #d1d5db;
 }
+
+.sr-only{
+  position:absolute;
+  width:1px;
+  height:1px;
+  padding:0;
+  margin:-1px;
+  overflow:hidden;
+  clip:rect(0,0,0,0);
+  white-space:nowrap;
+  border:0;
+}
 .send-btn{
   background:#2563eb;
   color:white;
@@ -258,7 +270,7 @@ body{
       <p>sarah@prospera.com</p>
       <p class="role">Primary Accountant</p>
     </div>
-    <button class="logout"><i class="fa fa-sign-out"></i> Logout</button>
+    <button type="button" class="logout"><i class="fa fa-sign-out"></i> Logout</button>
   </div>
 </aside>
 
@@ -274,9 +286,9 @@ body{
   <div class="card-header">
     <h2>Your Clients</h2>
     <div class="thread-filters">
-      <button class="thread-filter active" data-tab="assigned">Assigned Clients</button>
-      <button class="thread-filter" data-tab="support">Internal Support</button>
-      <button class="thread-filter" data-tab="archived">Archived</button>
+      <button type="button" class="thread-filter active" data-tab="assigned">Assigned Clients</button>
+      <button type="button" class="thread-filter" data-tab="support">Internal Support</button>
+      <button type="button" class="thread-filter" data-tab="archived">Archived</button>
     </div>
   </div>
 
@@ -298,8 +310,9 @@ body{
   </div>
 
   <div class="input-area inl-cb45893012" id="inputArea">
-    <input id="messageInput" placeholder="Type your reply..." />
-    <button class="send-btn" id="sendBtn">
+    <label for="messageInput" class="sr-only">Type your message reply</label>
+    <input id="messageInput" placeholder="Type your reply..." aria-label="Type your message reply" />
+    <button type="button" class="send-btn" id="sendBtn" aria-label="Send message" title="Send message">
       <i class="fa fa-paper-plane"></i>
     </button>
   </div>

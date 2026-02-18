@@ -39,6 +39,7 @@ body{
   cursor: pointer;
   transition: color 0.15s ease;
   user-select: none;
+  -webkit-user-select: none;
 }
 
 .back-arrow:hover {
@@ -69,6 +70,18 @@ body{
   background:white;
   border-radius:12px;
   box-shadow:0 1px 4px rgba(0,0,0,0.08);
+}
+
+.sr-only{
+  position:absolute;
+  width:1px;
+  height:1px;
+  padding:0;
+  margin:-1px;
+  overflow:hidden;
+  clip:rect(0,0,0,0);
+  white-space:nowrap;
+  border:0;
 }
 
 .profile-header{
@@ -547,7 +560,7 @@ Technology & Software Services  Member since 2021
 </div>
 </div>
 
-<button class="edit-btn" id="editProfileBtn">
+<button type="button" class="edit-btn" id="editProfileBtn">
 <i class="fa fa-pen"></i>
 Edit Profile
 </button>
@@ -618,7 +631,7 @@ Compliance History
 
 </div>
 
-<button class="link-btn">View</button>
+<button type="button" class="link-btn">View</button>
 
 </div>
 
@@ -638,7 +651,7 @@ Compliance History
 
 </div>
 
-<button class="link-btn">Download</button>
+<button type="button" class="link-btn">Download</button>
 
 </div>
 
@@ -653,7 +666,7 @@ Compliance History
 
 <h3>Contact Directory</h3>
 
-<button class="primary-btn">
+<button type="button" class="primary-btn">
 <i class="fa fa-user-plus"></i>
 Add New Contact
 </button>
@@ -728,9 +741,11 @@ Jane Doe
 <div class="timeline-header">
 <h3>Timeline</h3>
 <div class="timeline-filters">
-<select><option>All Document Types</option></select>
-<select><option>All Statuses</option></select>
-<button class="date-btn"><i class="fa fa-calendar"></i> Date Range</button>
+<label for="docTypeFilter" class="sr-only">Filter by document type</label>
+<select id="docTypeFilter" aria-label="Filter by document type"><option>All Document Types</option></select>
+<label for="statusFilter" class="sr-only">Filter by status</label>
+<select id="statusFilter" aria-label="Filter by status"><option>All Statuses</option></select>
+<button type="button" class="date-btn"><i class="fa fa-calendar"></i> Date Range</button>
 </div>
 </div>
 
@@ -747,7 +762,7 @@ Jane Doe
 <p>The Q3 Sales Tax filing has been reviewed and approved for submission.</p>
 <div class="timeline-bottom">
 <span><span class="avatar-sm">ST</span>Performed by: <strong>Sarah Thompson (CPA)</strong></span>
-<button class="link-btn">View Document</button>
+<button type="button" class="link-btn">View Document</button>
 </div>
 </div>
 </div>
@@ -763,7 +778,7 @@ Jane Doe
 <p>Income Statement 2023_ Revised.pdf was rejected due to missing expense breakdown on page 4.</p>
 <div class="timeline-bottom">
 <span><span class="avatar-sm">ST</span>Performed by: <strong>Sarah Thompson (CPA)</strong></span>
-<button class="link-btn">View Details</button>
+<button type="button" class="link-btn">View Details</button>
 </div>
 </div>
 </div>
@@ -779,7 +794,7 @@ Jane Doe
 <p>Quarterly Payroll Summary_Q3 2024 has been uploaded by the client.</p>
 <div class="timeline-bottom">
 <span><span class="avatar-sm gray-bg">JD</span>Performed by: <strong>Jane Doe (Client)</strong></span>
-<button class="link-btn">Download File</button>
+<button type="button" class="link-btn">Download File</button>
 </div>
 </div>
 </div>
@@ -795,7 +810,7 @@ Jane Doe
 <p>Annual AML/KYC review is due. Please provide updated proof of address for all stakeholders.</p>
 <div class="timeline-bottom">
 <span><span class="avatar-sm gray-bg">SY</span>Performed by: <strong>System Bot</strong></span>
-<button class="link-btn">Resend Request</button>
+<button type="button" class="link-btn">Resend Request</button>
 </div>
 </div>
 </div>
@@ -803,7 +818,7 @@ Jane Doe
 </div>
 
 <div class="load-more">
-<button class="edit-btn">Load More History</button>
+<button type="button" class="edit-btn">Load More History</button>
 </div>
 
 </div>
@@ -818,24 +833,24 @@ Jane Doe
 
 <h3>Quick Actions</h3>
 
-<button class="primary" data-route="messages.html">
+<button type="button" class="primary" data-route="messages.html">
 <i class="fa fa-comment"></i>
 Message Client
 </button>
 
-<button class="outline" data-route="documents.html">
+<button type="button" class="outline" data-route="documents.html">
 <i class="fa fa-file-circle-plus"></i>
 Request Document
 </button>
 
-<button class="outline" data-route="documents.html">
+<button type="button" class="outline" data-route="documents.html">
 <i class="fa fa-download"></i>
 Export Client Data
 </button>
 
 <hr>
 
-<button class="danger" data-route="clients.html">
+<button type="button" class="danger" data-route="clients.html">
 <i class="fa fa-ban"></i>
 Suspend Account
 </button>
