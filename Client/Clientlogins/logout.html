@@ -4,184 +4,51 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Securely Signed Out | Client Portal</title>
-
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-
   <style>
-    body {
-      margin: 0;
-      font-family: system-ui, sans-serif;
-      background: #f8f9fa;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-
-
-    main {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 2rem 1rem;
-    }
-
-    .card {
-      background: white;
-      border-radius: 12px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-      padding: 3rem 2.5rem;
-      width: 100%;
-      max-width: 520px;
-      text-align: center;
-    }
-
-    .icon-wrap {
-      width: 80px;
-      height: 80px;
-      border-radius: 50%;
-      background: rgba(13,110,253,0.12);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0 auto 1.5rem;
-    }
-
-    .icon-wrap i {
-      font-size: 36px;
-      color: #0d6efd;
-    }
-
-    h1 {
-      font-size: 2rem;
-      font-weight: 700;
-      margin-bottom: 0.75rem;
-      color: #212529;
-    }
-
-    p {
-      color: #6c757d;
-      font-size: 1rem;
-      line-height: 1.6;
-      margin-bottom: 2rem;
-    }
-
-    .actions {
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
-      margin-bottom: 2rem;
-    }
-
-    .btn-primary {
-      padding: 0.85rem;
-      background: #0d6efd;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      font-size: 1rem;
-      font-weight: 500;
-      cursor: pointer;
-    }
-
-    .btn-primary:hover {
-      background: #0b5ed7;
-    }
-
-    .btn-secondary {
-      padding: 0.85rem;
-      background: #e9ecef;
-      color: #212529;
-      border: none;
-      border-radius: 6px;
-      font-size: 1rem;
-      font-weight: 500;
-      cursor: pointer;
-    }
-
-    .btn-secondary:hover {
-      background: #dee2e6;
-    }
-
-    .security-tip {
-      text-align: left;
-      border: 1px solid #dee2e6;
-      border-radius: 8px;
-      padding: 1.25rem;
-      background: #f8f9fa;
-    }
-
-    .security-tip h3 {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      font-size: 1rem;
-      font-weight: 600;
-      margin-bottom: 0.5rem;
-      color: #212529;
-    }
-
-    .security-tip h3 i {
-      color: #0d6efd;
-    }
-
-    .security-tip p {
-      font-size: 0.9rem;
-      margin: 0;
-      color: #6c757d;
-    }
-
-    footer {
-      padding: 1.5rem;
-      text-align: center;
-      font-size: 0.85rem;
-      color: #6c757d;
-      background: white;
-      border-top: 1px solid #dee2e6;
-    }
-
-    footer a {
-      color: #0d6efd;
-      text-decoration: none;
-    }
+    body { margin: 0; font-family: system-ui, sans-serif; background: #f8f9fa; min-height: 100vh; display: flex; flex-direction: column; }
+    main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 2rem 1rem; }
+    .card { background: #fff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); padding: 3rem 2.5rem; width: 100%; max-width: 520px; text-align: center; }
+    .icon-wrap { width: 80px; height: 80px; border-radius: 50%; background: rgba(13,110,253,0.12); display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; }
+    .icon-wrap i { font-size: 36px; color: #0d6efd; }
+    h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.75rem; color: #212529; }
+    p { color: #6c757d; font-size: 1rem; line-height: 1.6; margin-bottom: 2rem; }
+    .actions { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 2rem; }
+    .btn-primary { padding: 0.85rem; background: #0d6efd; color: #fff; border: none; border-radius: 6px; font-size: 1rem; font-weight: 500; cursor: pointer; }
+    .btn-secondary { padding: 0.85rem; background: #e9ecef; color: #212529; border: none; border-radius: 6px; font-size: 1rem; font-weight: 500; cursor: pointer; }
+    .security-tip { text-align: left; border: 1px solid #dee2e6; border-radius: 8px; padding: 1.25rem; background: #f8f9fa; }
+    .security-tip h3 { display: flex; align-items: center; gap: 0.5rem; font-size: 1rem; font-weight: 600; margin-bottom: 0.5rem; color: #212529; }
+    .security-tip h3 i { color: #0d6efd; }
+    .security-tip p { font-size: 0.9rem; margin: 0; color: #6c757d; }
+    footer { padding: 1.5rem; text-align: center; font-size: 0.85rem; color: #6c757d; background: #fff; border-top: 1px solid #dee2e6; }
+    footer a { color: #0d6efd; text-decoration: none; }
   </style>
 </head>
-
 <body>
-
-
 <main>
   <div class="card">
-    <div class="icon-wrap">
-      <i class="fas fa-lock"></i>
-    </div>
-
+    <div class="icon-wrap"><i class="fas fa-lock"></i></div>
     <h1>You have been safely signed out</h1>
-
-    <p>
-      Thank you for using our portal. Your session has ended securely, and your
-      financial data remains protected.
-    </p>
-
+    <p>Thank you for using our portal. Your session has ended securely, and your financial data remains protected.</p>
     <div class="actions">
       <button class="btn-primary" onclick="window.location.href='login.html'">Log In Again</button>
-      <button class="btn-secondary">Go to Firm Homepage</button>
+      <button class="btn-secondary" onclick="window.location.href='../Clientpages/Clientportal.html'">Go to Client Portal</button>
     </div>
-
     <div class="security-tip">
       <h3><i class="fas fa-info-circle"></i> Security Tip</h3>
-      <p>
-        Always close your browser window when using a public or shared computer
-        to keep your session information private.
-      </p>
+      <p>Always close your browser window when using a public or shared computer to keep your session information private.</p>
     </div>
   </div>
 </main>
 
 <footer>
-  © 2024 Accounting Firm Services. All rights reserved |
+  (c) 2024 Accounting Firm Services. All rights reserved |
   <a href="#">Privacy Policy</a>
 </footer>
 
+<script>
+window.localStorage.removeItem("authToken");
+window.localStorage.removeItem("authUser");
+</script>
 </body>
 </html>

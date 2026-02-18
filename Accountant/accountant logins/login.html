@@ -320,7 +320,10 @@ footer a:hover {
 <script src="../../shared/portal-config.js"></script>
 <script src="../../shared/portal-auth.js"></script>
 <script>
-const API_BASE_URL = window.PortalConfig.API_BASE_URL;
+const API_BASE_URL =
+  window.PortalConfig && window.PortalConfig.API_BASE_URL
+    ? window.PortalConfig.API_BASE_URL
+    : "http://localhost:4000/api";
 
 function togglePassword() {
   const password = document.getElementById("password");
@@ -349,7 +352,10 @@ document.getElementById("loginForm").addEventListener("submit", async (event) =>
   try {
     messageEl.style.color = "#334155";
     messageEl.textContent = "Checking server...";
-    const online = await window.PortalConfig.checkApiOnline();
+    let online = true;
+    if (window.PortalConfig && typeof window.PortalConfig.checkApiOnline === "function") {
+      online = await window.PortalConfig.checkApiOnline();
+    }
     if (!online) {
       throw new Error("Backend is offline. Start backend with: cd backend && npm run dev");
     }

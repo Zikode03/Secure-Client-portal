@@ -1,335 +1,90 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Client 2FA Verification | Secure Accounting Portal</title>
-
-<!-- Font Awesome -->
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
-
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <style>
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-html, body {
-  height: 100%;
-}
-
-body {
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-  background-color: #f6f6f8;
-  color: #111318;
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  line-height: 1.5;
-}
-
-
-main {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1.5rem;
-}
-
-.card {
-  width: 100%;
-  max-width: 480px;
-  background-color: white;
-  border-radius: 0.75rem;
-  box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
-  border: 1px solid #f3f4f6;
-  overflow: hidden;
-}
-
-.top-section {
-  padding: 2.5rem 2rem 1.5rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-}
-
-.shield-circle {
-  width: 5rem;
-  height: 5rem;
-  background-color: rgba(23,84,207,0.1);
-  border-radius: 9999px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 1.5rem;
-  font-size: 2rem;
-  color: #1754cf;
-}
-
-.title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  margin-bottom: 0.5rem;
-}
-
-.subtitle {
-  color: #6b7280;
-  font-size: 1rem;
-}
-
-.subtitle strong {
-  color: #111318;
-}
-
-.form-section {
-  padding: 0 2rem 2.5rem;
-}
-
-.otp-group {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.5rem;
-  margin-bottom: 2rem;
-}
-
-input.otp-input {
-  width: 100%;
-  height: 3.5rem;
-  text-align: center;
-  font-size: 1.5rem;
-  font-weight: 700;
-  border: 2px solid #e5e7eb;
-  border-radius: 0.5rem;
-  background: transparent;
-  caret-color: transparent;
-}
-
-input.otp-input:focus,
-input.otp-input.active {
-  border-color: #1754cf;
-  outline: none;
-}
-
-.verify-btn {
-  width: 100%;
-  background-color: #1754cf;
-  color: white;
-  font-weight: 700;
-  padding: 1rem;
-  border-radius: 0.5rem;
-  box-shadow: 0 10px 15px -3px rgba(23,84,207,0.2);
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-}
-
-.verify-btn:hover {
-  background-color: rgba(23,84,207,0.9);
-}
-
-.timer-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1rem;
-  padding-top: 1rem;
-}
-
-.divider-row {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.divider {
-  height: 1px;
-  background-color: #e5e7eb;
-  flex: 1;
-}
-
-.timer-label {
-  font-size: 0.875rem;
-  color: #9ca3af;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  font-weight: 500;
-}
-
-.timer-display {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1.5rem;
-  width: 100%;
-}
-
-.timer-box {
-  width: 3rem;
-  height: 3rem;
-  background-color: #f3f4f6;
-  border: 1px solid #e5e7eb;
-  border-radius: 0.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  color: #1754cf;
-}
-
-.resend-text {
-  font-size: 0.875rem;
-  color: #6b7280;
-  margin-top: 0.5rem;
-}
-
-.resend-text button {
-  color: #1754cf;
-  font-weight: 700;
-  margin-left: 0.25rem;
-  background: none;
-  border: none;
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.support-footer {
-  background-color: #f9fafb;
-  padding: 1rem 2rem;
-  border-top: 1px solid #e5e7eb;
-  display: flex;
-  justify-content: center;
-}
-
-.support-footer a {
-  font-size: 0.875rem;
-  color: #6b7280;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  text-decoration: none;
-}
-
-footer {
-  padding: 1.5rem;
-  text-align: center;
-  color: #9ca3af;
-  font-size: 0.75rem;
-}
-
-.footer-icons {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1.5rem;
-  margin-bottom: 1rem;
-  flex-wrap: wrap;
-}
-
-.footer-icons div {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-}
-
-.decorative-bg {
-  position: fixed;
-  top: 0;
-  right: 0;
-  z-index: -10;
-  opacity: 0.1;
-  pointer-events: none;
-}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, sans-serif; background: #f6f6f8; min-height: 100vh; display: flex; flex-direction: column; color: #111318; }
+main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 1.5rem; }
+.card { width: 100%; max-width: 480px; background: #fff; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); border: 1px solid #f3f4f6; overflow: hidden; }
+.top-section { padding: 2.25rem 2rem 1.25rem; text-align: center; }
+.shield-circle { width: 5rem; height: 5rem; border-radius: 999px; background: rgba(23,84,207,0.1); display: grid; place-items: center; margin: 0 auto 1rem; font-size: 2rem; color: #1754cf; }
+.title { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.5rem; }
+.subtitle { color: #6b7280; font-size: 1rem; }
+.form-section { padding: 0 2rem 2rem; }
+.otp-group { display: flex; gap: 0.5rem; margin: 1.25rem 0; }
+.otp-input { width: 100%; height: 3.2rem; text-align: center; font-size: 1.2rem; font-weight: 700; border: 2px solid #e5e7eb; border-radius: 0.5rem; }
+.otp-input:focus { border-color: #1754cf; outline: none; }
+.verify-btn { width: 100%; background: #1754cf; color: #fff; font-weight: 700; padding: 0.95rem; border-radius: 0.5rem; border: none; cursor: pointer; }
+.verify-btn:hover { background: #1346b0; }
+.status { margin-top: 10px; font-size: 13px; min-height: 18px; color: #6b7280; }
+.support-footer { background: #f9fafb; padding: 1rem 2rem; border-top: 1px solid #e5e7eb; text-align: center; }
+.support-footer a { font-size: 0.875rem; color: #6b7280; text-decoration: none; }
+footer { padding: 1.25rem; text-align: center; color: #9ca3af; font-size: 0.75rem; }
 </style>
 </head>
-
 <body>
-
-
-
 <main>
   <div class="card">
     <div class="top-section">
       <div class="shield-circle"><i class="fa-solid fa-shield-halved"></i></div>
       <h1 class="title">Security Verification</h1>
-      <p class="subtitle">
-        A 6-digit verification code has been sent to your registered mobile number ending in
-        <strong>â€¢â€¢â€¢â€¢ 4231</strong>.
-      </p>
+      <p class="subtitle">Enter the 6-digit code sent to your mobile ending in <strong>**** 4231</strong>.</p>
     </div>
 
     <div class="form-section">
       <div class="otp-group">
-        <input class="otp-input active" type="text" maxlength="1" autofocus />
-        <input class="otp-input" type="text" maxlength="1" readonly />
-        <input class="otp-input" type="text" maxlength="1" readonly />
-        <input class="otp-input" type="text" maxlength="1" />
-        <input class="otp-input" type="text" maxlength="1" />
-        <input class="otp-input" type="text" maxlength="1" />
+        <input class="otp-input" type="text" maxlength="1" autofocus>
+        <input class="otp-input" type="text" maxlength="1">
+        <input class="otp-input" type="text" maxlength="1">
+        <input class="otp-input" type="text" maxlength="1">
+        <input class="otp-input" type="text" maxlength="1">
+        <input class="otp-input" type="text" maxlength="1">
       </div>
 
-      <button class="verify-btn">
-        Verify & Continue <i class="fa-solid fa-arrow-right"></i>
-      </button>
-
-      <div class="timer-section">
-        <div class="divider-row">
-          <div class="divider"></div>
-          <span class="timer-label">Timer</span>
-          <div class="divider"></div>
-        </div>
-
-        <div class="timer-display">
-          <div>
-            <div class="timer-box">00</div>
-            <div class="timer-label">Min</div>
-          </div>
-          <div style="font-weight:700;color:#d1d5db;">:</div>
-          <div>
-            <div class="timer-box">48</div>
-            <div class="timer-label">Sec</div>
-          </div>
-        </div>
-
-        <p class="resend-text">
-          Didn't receive the code?
-          <button disabled>Resend Code</button>
-        </p>
-      </div>
+      <button class="verify-btn" id="verifyBtn">Verify & Continue <i class="fa-solid fa-arrow-right"></i></button>
+      <p class="status" id="verificationStatus"></p>
     </div>
 
     <div class="support-footer">
-      <a href="#"><i class="fa-solid fa-headset"></i> Trouble verifying? Contact Support</a>
+      <a href="login.html"><i class="fa-solid fa-arrow-left"></i> Back to Login</a>
     </div>
   </div>
 </main>
 
-<footer>
-  <div class="footer-icons">
-    <div><i class="fa-solid fa-user-shield"></i> 256-bit AES Encryption</div>
-    <div><i class="fa-solid fa-lock"></i> ISO 27001 Certified</div>
-  </div>
-  <p>© 2024 Accounting Firm Secure Portal. All rights reserved.</p>
-</footer>
+<footer>(c) 2024 Accounting Firm Secure Portal. All rights reserved.</footer>
 
-<div class="decorative-bg">
-  <svg width="400" height="400" viewBox="0 0 400 400" fill="none">
-    <circle cx="300" cy="100" r="150" fill="url(#paint0_linear)"/>
-    <defs>
-      <linearGradient id="paint0_linear" x1="150" y1="100" x2="450" y2="100">
-        <stop stop-color="#1754cf"/>
-        <stop offset="1" stop-color="#1754cf" stop-opacity="0"/>
-      </linearGradient>
-    </defs>
-  </svg>
-</div>
+<script>
+const inputs = Array.from(document.querySelectorAll(".otp-input"));
+const verifyBtn = document.getElementById("verifyBtn");
+const verificationStatus = document.getElementById("verificationStatus");
 
+inputs.forEach((input, index) => {
+  input.addEventListener("input", () => {
+    input.value = input.value.replace(/[^0-9]/g, "").slice(0, 1);
+    if (input.value && index < inputs.length - 1) inputs[index + 1].focus();
+  });
+  input.addEventListener("keydown", (event) => {
+    if (event.key === "Backspace" && !input.value && index > 0) inputs[index - 1].focus();
+  });
+});
+
+verifyBtn.addEventListener("click", () => {
+  const code = inputs.map((i) => i.value).join("");
+  if (code.length !== 6) {
+    verificationStatus.style.color = "#b91c1c";
+    verificationStatus.textContent = "Please enter all 6 digits.";
+    return;
+  }
+  verificationStatus.style.color = "#166534";
+  verificationStatus.textContent = "Verification successful. Redirecting...";
+  setTimeout(() => {
+    window.location.href = "../Clientpages/Clientportal.html";
+  }, 700);
+});
+</script>
 </body>
 </html>
