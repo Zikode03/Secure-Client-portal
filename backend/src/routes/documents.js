@@ -1,16 +1,12 @@
 import express from "express";
-import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { canAccessClient, requireRole } from "../lib/auth.js";
 import { addAudit } from "../lib/audit.js";
-import { config } from "../lib/config.js";
 import { store, utils } from "../lib/store.js";
 import { getDb } from "../lib/db.js";
+import { config } from "../lib/config.js";
 
 const router = express.Router();
 const db = config.databaseUrl ? getDb() : null;
-
-const s3 = config.awsRegion ? new S3Client({ region: config.awsRegion }) : null;
 
 router.get("/", async (req, res) => {
   const search = String(req.query.search || "").toLowerCase();
@@ -39,7 +35,7 @@ router.get("/", async (req, res) => {
 });
 
 router.post("/", async (req, res) => {
-  const { clientId, name, category = "Uncategorized", status = "pending", sizeBytes = 0, key = null } = req.body || {};
+  const { clientId, name, category = "Uncategorized", status = "pending", sizeBytes = 0 } = req.body || {};
   if (!clientId || !name) return res.status(400).json({ error: "clientId and name are required" });
   if (!canAccessClient(req.user, clientId)) return res.status(403).json({ error: "Access denied" });
 
@@ -50,7 +46,7 @@ router.post("/", async (req, res) => {
     category,
     status,
     sizeBytes: Number(sizeBytes) || 0,
-    key,
+    key: null,
     uploadedBy: req.user.id,
     uploadedAt: utils.nowIso(),
   };
@@ -65,7 +61,7 @@ router.post("/", async (req, res) => {
     action: "document.create",
     entityType: "document",
     entityId: document.id,
-    metadata: { clientId, key },
+    metadata: { clientId },
   });
 
   res.status(201).json({ document });
@@ -103,27 +99,7 @@ router.patch("/:documentId/status", requireRole("accountant"), async (req, res) 
 });
 
 router.get("/:documentId/download-url", async (req, res) => {
-  try {
-    const document = db
-      ? await db.document.findUnique({ where: { id: req.params.documentId } })
-      : store.documents.find((doc) => doc.id === req.params.documentId);
-    if (!document) return res.status(404).json({ error: "Document not found" });
-    if (!canAccessClient(req.user, document.clientId)) return res.status(403).json({ error: "Access denied" });
-    if (!document.key) return res.status(400).json({ error: "Document has no storage key" });
-
-    if (!s3 || !config.s3Bucket) {
-      return res.status(503).json({ error: "S3 not configured" });
-    }
-
-    const command = new GetObjectCommand({
-      Bucket: config.s3Bucket,
-      Key: document.key,
-    });
-    const signedUrl = await getSignedUrl(s3, command, { expiresIn: config.signedUrlTtlSeconds });
-    res.json({ signedUrl });
-  } catch (error) {
-    res.status(500).json({ error: "Failed to generate download URL", details: error.message });
-  }
+  return res.status(410).json({ error: "Document file downloads are disabled in this system." });
 });
 
 export default router;

@@ -55,7 +55,6 @@ async function startServer() {
 
   app.listen(config.port, () => {
     console.log(`Backend running at http://localhost:${config.port}`);
-    console.log("Demo login: accountant@prospera.com / Password123!");
   });
 }
 
