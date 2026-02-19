@@ -2,14 +2,21 @@ import express from "express";
 import { canAccessClient } from "../lib/auth.js";
 import { store, utils } from "../lib/store.js";
 import { addAudit, addNotification } from "../lib/audit.js";
+import { getDb } from "../lib/db.js";
+import { config } from "../lib/config.js";
 
 const router = express.Router();
+const db = config.databaseUrl ? getDb() : null;
 
-router.get("/threads", (req, res) => {
+router.get("/threads", async (req, res) => {
   const visibleClientIds = req.user.clientIds;
+  const sourceClients = db ? await db.client.findMany({ where: { id: { in: visibleClientIds } } }) : store.clients;
+  const sourceMessages = db
+    ? await db.message.findMany({ where: { clientId: { in: visibleClientIds } } })
+    : store.messages;
   const threads = visibleClientIds.map((clientId) => {
-    const client = store.clients.find((item) => item.id === clientId);
-    const messages = store.messages
+    const client = sourceClients.find((item) => item.id === clientId);
+    const messages = sourceMessages
       .filter((msg) => msg.clientId === clientId)
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
     const lastMessage = messages[0] || null;
@@ -24,14 +31,17 @@ router.get("/threads", (req, res) => {
   res.json({ items: threads });
 });
 
-router.get("/threads/:clientId", (req, res) => {
+router.get("/threads/:clientId", async (req, res) => {
   const { clientId } = req.params;
   const page = Math.max(1, Number(req.query.page || 1));
   const limit = Math.min(100, Math.max(1, Number(req.query.limit || 30)));
   if (!canAccessClient(req.user, clientId)) {
     return res.status(403).json({ error: "Access denied" });
   }
-  const all = store.messages
+  const sourceMessages = db
+    ? await db.message.findMany({ where: { clientId } })
+    : store.messages;
+  const all = sourceMessages
     .filter((msg) => msg.clientId === clientId)
     .sort((a, b) => (a.createdAt > b.createdAt ? 1 : -1));
   const start = (page - 1) * limit;
@@ -48,7 +58,7 @@ router.get("/threads/:clientId", (req, res) => {
   });
 });
 
-router.post("/threads/:clientId", (req, res) => {
+router.post("/threads/:clientId", async (req, res) => {
   const { clientId } = req.params;
   const { body } = req.body || {};
   if (!canAccessClient(req.user, clientId)) {
@@ -66,7 +76,11 @@ router.post("/threads/:clientId", (req, res) => {
     readBy: [req.user.id],
     createdAt: utils.nowIso(),
   };
-  store.messages.push(message);
+  if (db) {
+    await db.message.create({ data: message });
+  } else {
+    store.messages.push(message);
+  }
 
   addAudit({
     actorUserId: req.user.id,
@@ -77,7 +91,10 @@ router.post("/threads/:clientId", (req, res) => {
   });
 
   if (req.user.role === "client") {
-    for (const user of store.users.filter((u) => u.role === "accountant" && u.clientIds.includes(clientId))) {
+    const users = db
+      ? await db.user.findMany({ where: { role: "accountant" } })
+      : store.users.filter((u) => u.role === "accountant");
+    for (const user of users.filter((u) => (u.clientIds || []).includes(clientId))) {
       addNotification({
         userId: user.id,
         type: "message_received",
@@ -86,7 +103,10 @@ router.post("/threads/:clientId", (req, res) => {
       });
     }
   } else {
-    for (const user of store.users.filter((u) => u.role === "client" && u.clientIds.includes(clientId))) {
+    const users = db
+      ? await db.user.findMany({ where: { role: "client" } })
+      : store.users.filter((u) => u.role === "client");
+    for (const user of users.filter((u) => (u.clientIds || []).includes(clientId))) {
       addNotification({
         userId: user.id,
         type: "message_received",
@@ -99,20 +119,35 @@ router.post("/threads/:clientId", (req, res) => {
   res.status(201).json({ message });
 });
 
-router.post("/threads/:clientId/read", (req, res) => {
+router.post("/threads/:clientId/read", async (req, res) => {
   const { clientId } = req.params;
   if (!canAccessClient(req.user, clientId)) {
     return res.status(403).json({ error: "Access denied" });
   }
   let updated = 0;
-  for (const message of store.messages) {
-    if (message.clientId !== clientId) continue;
-    if (!Array.isArray(message.readBy)) message.readBy = [];
-    if (!message.readBy.includes(req.user.id)) {
-      message.readBy.push(req.user.id);
+  const sourceMessages = db
+    ? await db.message.findMany({ where: { clientId } })
+    : store.messages.filter((msg) => msg.clientId === clientId);
+
+  for (const message of sourceMessages) {
+    const readBy = Array.isArray(message.readBy) ? message.readBy : [];
+    if (!readBy.includes(req.user.id)) {
+      readBy.push(req.user.id);
       updated += 1;
     }
-    message.deliveryStatus = "read";
+
+    if (db) {
+      await db.message.update({
+        where: { id: message.id },
+        data: {
+          readBy,
+          deliveryStatus: "read",
+        },
+      });
+    } else {
+      message.readBy = readBy;
+      message.deliveryStatus = "read";
+    }
   }
   addAudit({
     actorUserId: req.user.id,

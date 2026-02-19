@@ -1,0 +1,138 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String          @id
+  fullName         String
+  email            String          @unique
+  passwordHash     String
+  role             String
+  clientIds        Json
+  profile          Json?
+  security         Json?
+  createdAt        DateTime        @default(now())
+  sessions         Session[]
+  loginActivities  LoginActivity[]
+  notifications    Notification[]
+  auditsAsActor    Audit[]         @relation("AuditActor")
+  tasksCreated     Task[]          @relation("TaskCreator")
+  requestsCreated  Request[]       @relation("RequestCreator")
+  documentsUploaded Document[]     @relation("DocumentUploader")
+}
+
+model Session {
+  token     String   @id
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Client {
+  id                 String      @id
+  name               String
+  entityType         String
+  status             String
+  complianceHealth   Int
+  assignedAccountantId String
+  primaryContact     String
+  email              String
+  createdAt          DateTime    @default(now())
+  documents          Document[]
+  tasks              Task[]
+  requests           Request[]
+  messages           Message[]
+}
+
+model Message {
+  id            String   @id
+  clientId      String
+  client        Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  fromUserId    String
+  toRole        String
+  body          String
+  deliveryStatus String
+  readBy        Json
+  createdAt     DateTime @default(now())
+}
+
+model Request {
+  id                String   @id
+  clientId          String
+  client            Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  title             String
+  description       String
+  priority          String
+  status            String
+  dueDate           DateTime?
+  requestedByUserId String
+  requestedBy       User     @relation("RequestCreator", fields: [requestedByUserId], references: [id], onDelete: Restrict)
+  requestedAt       DateTime @default(now())
+  history           Json
+}
+
+model Task {
+  id         String   @id
+  clientId   String
+  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  title      String
+  status     String
+  dueDate    DateTime?
+  priority   String
+  createdBy  String
+  creator    User     @relation("TaskCreator", fields: [createdBy], references: [id], onDelete: Restrict)
+  createdAt  DateTime @default(now())
+}
+
+model Document {
+  id          String   @id
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  name        String
+  category    String
+  status      String
+  sizeBytes   Int
+  key         String?
+  uploadedBy  String
+  uploader    User     @relation("DocumentUploader", fields: [uploadedBy], references: [id], onDelete: Restrict)
+  uploadedAt  DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model LoginActivity {
+  id        String   @id
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  device    String
+  location  String
+  ipAddress String
+  createdAt DateTime @default(now())
+}
+
+model Audit {
+  id          String   @id
+  actorUserId String?
+  actor       User?    @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  action      String
+  entityType  String
+  entityId    String
+  metadata    Json?
+  createdAt   DateTime @default(now())
+}
+

@@ -5,18 +5,21 @@ import { canAccessClient, requireRole } from "../lib/auth.js";
 import { addAudit } from "../lib/audit.js";
 import { config } from "../lib/config.js";
 import { store, utils } from "../lib/store.js";
+import { getDb } from "../lib/db.js";
 
 const router = express.Router();
+const db = config.databaseUrl ? getDb() : null;
 
 const s3 = config.awsRegion ? new S3Client({ region: config.awsRegion }) : null;
 
-router.get("/", (req, res) => {
+router.get("/", async (req, res) => {
   const search = String(req.query.search || "").toLowerCase();
   const status = String(req.query.status || "").toLowerCase();
   const clientId = String(req.query.clientId || "");
   const category = String(req.query.category || "").toLowerCase();
 
-  const items = store.documents.filter((doc) => {
+  const sourceDocuments = db ? await db.document.findMany() : store.documents;
+  const items = sourceDocuments.filter((doc) => {
     if (!canAccessClient(req.user, doc.clientId)) return false;
     if (clientId && doc.clientId !== clientId) return false;
     if (status && doc.status.toLowerCase() !== status) return false;
@@ -35,7 +38,7 @@ router.get("/", (req, res) => {
   res.json({ items });
 });
 
-router.post("/", (req, res) => {
+router.post("/", async (req, res) => {
   const { clientId, name, category = "Uncategorized", status = "pending", sizeBytes = 0, key = null } = req.body || {};
   if (!clientId || !name) return res.status(400).json({ error: "clientId and name are required" });
   if (!canAccessClient(req.user, clientId)) return res.status(403).json({ error: "Access denied" });
@@ -51,7 +54,11 @@ router.post("/", (req, res) => {
     uploadedBy: req.user.id,
     uploadedAt: utils.nowIso(),
   };
-  store.documents.unshift(document);
+  if (db) {
+    await db.document.create({ data: document });
+  } else {
+    store.documents.unshift(document);
+  }
 
   addAudit({
     actorUserId: req.user.id,
@@ -64,14 +71,25 @@ router.post("/", (req, res) => {
   res.status(201).json({ document });
 });
 
-router.patch("/:documentId/status", requireRole("accountant"), (req, res) => {
-  const document = store.documents.find((doc) => doc.id === req.params.documentId);
+router.patch("/:documentId/status", requireRole("accountant"), async (req, res) => {
+  const document = db
+    ? await db.document.findUnique({ where: { id: req.params.documentId } })
+    : store.documents.find((doc) => doc.id === req.params.documentId);
   if (!document) return res.status(404).json({ error: "Document not found" });
   if (!canAccessClient(req.user, document.clientId)) return res.status(403).json({ error: "Access denied" });
 
   const { status } = req.body || {};
   if (!status) return res.status(400).json({ error: "status is required" });
-  document.status = String(status);
+  const nextStatus = String(status);
+  if (db) {
+    await db.document.update({
+      where: { id: document.id },
+      data: { status: nextStatus },
+    });
+    document.status = nextStatus;
+  } else {
+    document.status = nextStatus;
+  }
 
   addAudit({
     actorUserId: req.user.id,
@@ -86,7 +104,9 @@ router.patch("/:documentId/status", requireRole("accountant"), (req, res) => {
 
 router.get("/:documentId/download-url", async (req, res) => {
   try {
-    const document = store.documents.find((doc) => doc.id === req.params.documentId);
+    const document = db
+      ? await db.document.findUnique({ where: { id: req.params.documentId } })
+      : store.documents.find((doc) => doc.id === req.params.documentId);
     if (!document) return res.status(404).json({ error: "Document not found" });
     if (!canAccessClient(req.user, document.clientId)) return res.status(403).json({ error: "Access denied" });
     if (!document.key) return res.status(400).json({ error: "Document has no storage key" });

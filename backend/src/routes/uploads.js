@@ -12,9 +12,11 @@ import { canAccessClient } from "../lib/auth.js";
 import { addAudit, addNotification } from "../lib/audit.js";
 import { config } from "../lib/config.js";
 import { store, utils } from "../lib/store.js";
+import { getDb } from "../lib/db.js";
 
 const router = express.Router();
 const s3 = config.awsRegion ? new S3Client({ region: config.awsRegion }) : null;
+const db = config.databaseUrl ? getDb() : null;
 
 function assertS3(res) {
   if (!s3 || !config.s3Bucket) {
@@ -150,7 +152,11 @@ router.post("/:uploadId/complete", (req, res, next) => {
         uploadedBy: req.user.id,
         uploadedAt: utils.nowIso(),
       };
-      store.documents.unshift(document);
+      if (db) {
+        await db.document.create({ data: document });
+      } else {
+        store.documents.unshift(document);
+      }
       store.uploadSessions.delete(uploadId);
 
       addAudit({
@@ -161,7 +167,10 @@ router.post("/:uploadId/complete", (req, res, next) => {
         metadata: { key, clientId: document.clientId },
       });
 
-      for (const user of store.users.filter((u) => u.role === "accountant" && u.clientIds.includes(document.clientId))) {
+      const users = db
+        ? await db.user.findMany({ where: { role: "accountant" } })
+        : store.users.filter((u) => u.role === "accountant");
+      for (const user of users.filter((u) => (u.clientIds || []).includes(document.clientId))) {
         if (user.id === req.user.id) continue;
         addNotification({
           userId: user.id,
@@ -224,12 +233,22 @@ router.delete("/files", (req, res, next) => {
       if (!assertS3(res)) return;
       if (!key) return res.status(400).json({ error: "key is required" });
 
-      const document = store.documents.find((doc) => doc.key === key || doc.id === documentId);
+      const document = db
+        ? await db.document.findFirst({
+            where: {
+              OR: [{ key }, ...(documentId ? [{ id: documentId }] : [])],
+            },
+          })
+        : store.documents.find((doc) => doc.key === key || doc.id === documentId);
       if (!document) return res.status(404).json({ error: "Document not found" });
       if (!canAccessClient(req.user, document.clientId)) return res.status(403).json({ error: "Access denied" });
 
       await s3.send(new DeleteObjectCommand({ Bucket: config.s3Bucket, Key: key }));
-      store.documents = store.documents.filter((doc) => doc.id !== document.id);
+      if (db) {
+        await db.document.delete({ where: { id: document.id } });
+      } else {
+        store.documents = store.documents.filter((doc) => doc.id !== document.id);
+      }
 
       addAudit({
         actorUserId: req.user.id,

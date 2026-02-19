@@ -2,14 +2,18 @@ import express from "express";
 import { canAccessClient, requireRole } from "../lib/auth.js";
 import { store, utils } from "../lib/store.js";
 import { addAudit } from "../lib/audit.js";
+import { getDb } from "../lib/db.js";
+import { config } from "../lib/config.js";
 
 const router = express.Router();
+const db = config.databaseUrl ? getDb() : null;
 
-router.get("/", (req, res) => {
+router.get("/", async (req, res) => {
   const search = String(req.query.search || "").toLowerCase();
   const status = String(req.query.status || "").toLowerCase();
 
-  const visible = store.clients.filter((client) => canAccessClient(req.user, client.id));
+  const sourceClients = db ? await db.client.findMany() : store.clients;
+  const visible = sourceClients.filter((client) => canAccessClient(req.user, client.id));
   const filtered = visible.filter((client) => {
     const statusOk = !status || client.status.toLowerCase() === status;
     const searchOk =
@@ -23,8 +27,10 @@ router.get("/", (req, res) => {
   res.json({ items: filtered });
 });
 
-router.get("/:clientId", (req, res) => {
-  const client = store.clients.find((item) => item.id === req.params.clientId);
+router.get("/:clientId", async (req, res) => {
+  const client = db
+    ? await db.client.findUnique({ where: { id: req.params.clientId } })
+    : store.clients.find((item) => item.id === req.params.clientId);
   if (!client) return res.status(404).json({ error: "Client not found" });
   if (!canAccessClient(req.user, client.id)) {
     return res.status(403).json({ error: "Access denied" });
@@ -32,7 +38,7 @@ router.get("/:clientId", (req, res) => {
   res.json({ client });
 });
 
-router.post("/", requireRole("accountant"), (req, res) => {
+router.post("/", requireRole("accountant"), async (req, res) => {
   const { name, entityType, primaryContact, email } = req.body || {};
   if (!name || !entityType || !primaryContact || !email) {
     return res.status(400).json({ error: "name, entityType, primaryContact and email are required" });
@@ -49,11 +55,28 @@ router.post("/", requireRole("accountant"), (req, res) => {
     email,
     createdAt: utils.nowIso(),
   };
-  store.clients.push(client);
 
-  const linkedUser = store.users.find((user) => user.id === req.user.id);
-  if (linkedUser && !linkedUser.clientIds.includes(client.id)) {
-    linkedUser.clientIds.push(client.id);
+  if (db) {
+    await db.client.create({ data: client });
+    const accountant = await db.user.findUnique({ where: { id: req.user.id } });
+    if (accountant) {
+      const ids = Array.isArray(accountant.clientIds) ? accountant.clientIds : [];
+      if (!ids.includes(client.id)) {
+        await db.user.update({
+          where: { id: req.user.id },
+          data: { clientIds: [...ids, client.id] },
+        });
+      }
+    }
+  } else {
+    store.clients.push(client);
+  }
+
+  if (!db) {
+    const linkedUser = store.users.find((user) => user.id === req.user.id);
+    if (linkedUser && !linkedUser.clientIds.includes(client.id)) {
+      linkedUser.clientIds.push(client.id);
+    }
   }
 
   addAudit({
@@ -66,14 +89,27 @@ router.post("/", requireRole("accountant"), (req, res) => {
   res.status(201).json({ client });
 });
 
-router.patch("/:clientId", requireRole("accountant"), (req, res) => {
-  const client = store.clients.find((item) => item.id === req.params.clientId);
+router.patch("/:clientId", requireRole("accountant"), async (req, res) => {
+  const client = db
+    ? await db.client.findUnique({ where: { id: req.params.clientId } })
+    : store.clients.find((item) => item.id === req.params.clientId);
   if (!client) return res.status(404).json({ error: "Client not found" });
   if (!canAccessClient(req.user, client.id)) return res.status(403).json({ error: "Access denied" });
 
   const allowed = ["name", "entityType", "status", "complianceHealth", "primaryContact", "email"];
+  const updateData = {};
   for (const key of allowed) {
-    if (req.body[key] !== undefined) client[key] = req.body[key];
+    if (req.body[key] !== undefined) {
+      updateData[key] = req.body[key];
+      client[key] = req.body[key];
+    }
+  }
+
+  if (db && Object.keys(updateData).length) {
+    await db.client.update({
+      where: { id: client.id },
+      data: updateData,
+    });
   }
 
   addAudit({

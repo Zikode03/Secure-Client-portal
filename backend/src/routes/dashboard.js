@@ -1,8 +1,11 @@
 import express from "express";
 import { canAccessClient, requireRole } from "../lib/auth.js";
 import { store } from "../lib/store.js";
+import { getDb } from "../lib/db.js";
+import { config } from "../lib/config.js";
 
 const router = express.Router();
+const db = config.databaseUrl ? getDb() : null;
 
 function daysUntil(dateStr) {
   const now = new Date();
@@ -10,11 +13,15 @@ function daysUntil(dateStr) {
   return Math.ceil((target - now) / (1000 * 60 * 60 * 24));
 }
 
-router.get("/summary", requireRole("accountant"), (req, res) => {
+router.get("/summary", requireRole("accountant"), async (req, res) => {
   const visibleClientIds = req.user.clientIds;
-  const visibleClients = store.clients.filter((client) => visibleClientIds.includes(client.id));
-  const visibleTasks = store.tasks.filter((task) => visibleClientIds.includes(task.clientId));
-  const visibleDocuments = store.documents.filter((doc) => visibleClientIds.includes(doc.clientId));
+  const clientsSource = db ? await db.client.findMany() : store.clients;
+  const tasksSource = db ? await db.task.findMany() : store.tasks;
+  const docsSource = db ? await db.document.findMany() : store.documents;
+
+  const visibleClients = clientsSource.filter((client) => visibleClientIds.includes(client.id));
+  const visibleTasks = tasksSource.filter((task) => visibleClientIds.includes(task.clientId));
+  const visibleDocuments = docsSource.filter((doc) => visibleClientIds.includes(doc.clientId));
 
   const activeClients = visibleClients.filter((client) => client.status === "active").length;
   const pendingReviews = visibleDocuments.filter((doc) => ["pending", "in-review", "review"].includes(doc.status)).length;
@@ -31,7 +38,7 @@ router.get("/summary", requireRole("accountant"), (req, res) => {
     .sort((a, b) => (a.uploadedAt < b.uploadedAt ? 1 : -1))
     .slice(0, 8)
     .map((doc) => {
-      const client = store.clients.find((c) => c.id === doc.clientId);
+      const client = clientsSource.find((c) => c.id === doc.clientId);
       return {
         id: doc.id,
         documentName: doc.name,
@@ -44,7 +51,7 @@ router.get("/summary", requireRole("accountant"), (req, res) => {
     });
 
   const assignedClients = visibleClients.map((client) => {
-    const pendingItems = store.documents.filter(
+    const pendingItems = docsSource.filter(
       (doc) => doc.clientId === client.id && ["pending", "in-review", "review"].includes(doc.status)
     ).length;
     return {
@@ -69,13 +76,15 @@ router.get("/summary", requireRole("accountant"), (req, res) => {
   });
 });
 
-router.get("/review-queue", requireRole("accountant"), (req, res) => {
-  const items = store.documents
+router.get("/review-queue", requireRole("accountant"), async (req, res) => {
+  const docsSource = db ? await db.document.findMany() : store.documents;
+  const clientsSource = db ? await db.client.findMany() : store.clients;
+  const items = docsSource
     .filter((doc) => canAccessClient(req.user, doc.clientId))
     .filter((doc) => ["pending", "in-review", "review", "request-fix"].includes(doc.status))
     .sort((a, b) => (a.uploadedAt < b.uploadedAt ? 1 : -1))
     .map((doc) => {
-      const client = store.clients.find((c) => c.id === doc.clientId);
+      const client = clientsSource.find((c) => c.id === doc.clientId);
       return {
         id: doc.id,
         documentName: doc.name,

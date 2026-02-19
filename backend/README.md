@@ -20,6 +20,34 @@ copy .env.example .env
 
 Fill `.env` with real AWS values.
 
+## PostgreSQL (Phase 1 Scaffold)
+
+This repo now includes Prisma + PostgreSQL scaffolding.
+
+1. Set `DATABASE_URL` in `.env`.
+2. Generate Prisma client:
+
+```bash
+npm run db:generate
+```
+
+3. Create migration and apply:
+
+```bash
+npm run db:migrate -- --name init
+```
+
+4. Seed initial data:
+
+```bash
+npm run db:seed
+```
+
+Notes:
+- Current API routes still read/write the in-memory store in `src/lib/store.js`.
+- PostgreSQL connection is initialized on server start when `DATABASE_URL` is set.
+- Phase 2 will move routes from in-memory to Prisma queries.
+
 ## Run
 
 ```bash

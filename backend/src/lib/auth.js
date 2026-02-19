@@ -1,6 +1,13 @@
 import crypto from "crypto";
 import { config } from "./config.js";
+import { getDb } from "./db.js";
 import { store, utils } from "./store.js";
+
+const db = config.databaseUrl ? getDb() : null;
+
+function normalizeClientIds(clientIds) {
+  return Array.isArray(clientIds) ? clientIds : [];
+}
 
 function sanitizeUser(user) {
   return {
@@ -8,18 +15,39 @@ function sanitizeUser(user) {
     fullName: user.fullName,
     email: user.email,
     role: user.role,
-    clientIds: user.clientIds,
+    clientIds: normalizeClientIds(user.clientIds),
   };
 }
 
-export function issueToken(userId) {
+export async function issueToken(userId) {
   const token = crypto.randomBytes(32).toString("hex");
-  const expiresAt = Date.now() + config.authTokenTtlSeconds * 1000;
-  store.sessions.set(token, { userId, expiresAt });
+  const expiresAtMs = Date.now() + config.authTokenTtlSeconds * 1000;
+
+  if (db) {
+    await db.session.create({
+      data: {
+        token,
+        userId,
+        expiresAt: new Date(expiresAtMs),
+      },
+    });
+    return token;
+  }
+
+  store.sessions.set(token, { userId, expiresAt: expiresAtMs });
   return token;
 }
 
-export function revokeToken(token) {
+export async function revokeToken(token) {
+  if (db) {
+    try {
+      await db.session.delete({ where: { token } });
+    } catch {
+      // Ignore missing token.
+    }
+    return;
+  }
+
   store.sessions.delete(token);
 }
 
@@ -37,25 +65,49 @@ export function authRequired(req, res, next) {
     return res.status(401).json({ error: "Missing Bearer token" });
   }
 
-  const session = store.sessions.get(token);
-  if (!session) {
-    return res.status(401).json({ error: "Invalid token" });
-  }
+  (async () => {
+    if (db) {
+      const session = await db.session.findUnique({ where: { token } });
+      if (!session) {
+        return res.status(401).json({ error: "Invalid token" });
+      }
 
-  if (session.expiresAt < Date.now()) {
-    store.sessions.delete(token);
-    return res.status(401).json({ error: "Session expired" });
-  }
+      if (new Date(session.expiresAt).getTime() < Date.now()) {
+        await revokeToken(token);
+        return res.status(401).json({ error: "Session expired" });
+      }
 
-  const user = store.users.find((candidate) => candidate.id === session.userId);
-  if (!user) {
-    store.sessions.delete(token);
-    return res.status(401).json({ error: "User not found" });
-  }
+      const user = await db.user.findUnique({ where: { id: session.userId } });
+      if (!user) {
+        await revokeToken(token);
+        return res.status(401).json({ error: "User not found" });
+      }
 
-  req.authToken = token;
-  req.user = sanitizeUser(user);
-  return next();
+      req.authToken = token;
+      req.user = sanitizeUser(user);
+      return next();
+    }
+
+    const session = store.sessions.get(token);
+    if (!session) {
+      return res.status(401).json({ error: "Invalid token" });
+    }
+
+    if (session.expiresAt < Date.now()) {
+      store.sessions.delete(token);
+      return res.status(401).json({ error: "Session expired" });
+    }
+
+    const user = store.users.find((candidate) => candidate.id === session.userId);
+    if (!user) {
+      store.sessions.delete(token);
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    req.authToken = token;
+    req.user = sanitizeUser(user);
+    return next();
+  })().catch(next);
 }
 
 export function requireRole(...roles) {

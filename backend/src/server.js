@@ -3,6 +3,7 @@ import cors from "cors";
 import helmet from "helmet";
 import { config } from "./lib/config.js";
 import { authRequired } from "./lib/auth.js";
+import { initDb } from "./lib/db.js";
 
 import authRoutes from "./routes/auth.js";
 import clientRoutes from "./routes/clients.js";
@@ -49,7 +50,16 @@ app.use((error, _req, res, _next) => {
   res.status(500).json({ error: "Internal server error", details: error.message });
 });
 
-app.listen(config.port, () => {
-  console.log(`Backend running at http://localhost:${config.port}`);
-  console.log("Demo login: accountant@prospera.com / Password123!");
+async function startServer() {
+  await initDb();
+
+  app.listen(config.port, () => {
+    console.log(`Backend running at http://localhost:${config.port}`);
+    console.log("Demo login: accountant@prospera.com / Password123!");
+  });
+}
+
+startServer().catch((error) => {
+  console.error("Failed to start backend:", error);
+  process.exit(1);
 });
