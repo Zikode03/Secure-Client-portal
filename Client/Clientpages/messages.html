@@ -9,6 +9,17 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
   <style>
+    :root {
+      --blue: #2563eb;
+      --bg: #f5f7fb;
+      --dark: #0f172a;
+      --muted: #64748b;
+      --border: #e5e7eb;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+    }
+
     * {
       margin: 0;
       padding: 0;
@@ -17,27 +28,25 @@
 
     body {
       font-family: "Segoe UI", Arial, sans-serif;
-      background: #f8fafc;
-      color: #0f172a;
+      background: var(--bg);
+      color: var(--dark);
+      height: 100vh;
+      overflow: hidden;
     }
 
     .app-layout {
       display: flex;
-      min-height: 100vh;
-      width: 100%;
+      height: 100vh;
     }
 
-    /* SIDEBAR */
+    /* SIDEBAR – consistent with other pages */
     .sidebar {
       width: 260px;
       background: linear-gradient(180deg, #0f172a, #020617);
       color: white;
       display: flex;
       flex-direction: column;
-      position: fixed;
-      top: 0;
-      left: 0;
-      height: 100vh;
+      flex-shrink: 0;
     }
 
     .sidebar-header {
@@ -82,7 +91,7 @@
     }
 
     .nav a.active {
-      background: #2563eb;
+      background: var(--blue);
       color: white;
     }
 
@@ -99,6 +108,7 @@
 
     .user-box p {
       font-size: 13px;
+      margin: 2px 0;
     }
 
     .role {
@@ -121,30 +131,35 @@
       background: #1e293b;
     }
 
-    /* MAIN CONTENT */
-    .page {
+    /* MAIN CONTENT – updated for consistency */
+    .main-content {
       flex: 1;
-      margin-left: 260px;
-      padding: 24px;
       overflow-y: auto;
+      padding: 24px;
     }
 
-    .page h1 {
-      font-size: 24px;
-      font-weight: 600;
+    .top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
     }
 
-    .page p {
-      color: #64748b;
-      margin-top: 4px;
+    .top-row h2 {
+      font-size: 30px;
+      margin-bottom: 4px;
+    }
+
+    .top-row p {
+      color: var(--muted);
+      font-size: 14px;
     }
 
     .grid {
       display: grid;
       grid-template-columns: 1fr 2fr;
-      gap: 24px;
-      margin-top: 24px;
-      height: calc(100vh - 140px);
+      gap: 20px;
+      height: calc(100vh - 120px);
     }
 
     @media (max-width: 1000px) {
@@ -153,95 +168,95 @@
       }
     }
 
-    .card {
+    .panel {
       background: white;
       border-radius: 12px;
-      border: 1px solid #e5e7eb;
+      border: 1px solid var(--border);
       display: flex;
       flex-direction: column;
     }
 
-    .card-header {
+    .panel-header {
       padding: 16px 20px;
-      border-bottom: 1px solid #e5e7eb;
+      border-bottom: 1px solid var(--border);
     }
 
-    .card-header h2 {
+    .panel-header h3 {
       font-size: 16px;
     }
 
-    .card-content {
+    .panel-content {
       padding: 16px;
       flex: 1;
       overflow-y: auto;
     }
 
-    .search {
+    .search-wrap {
       position: relative;
       margin-top: 12px;
     }
 
-    .search input {
+    .search-wrap input {
       width: 100%;
       padding: 10px 12px 10px 36px;
       border-radius: 8px;
-      border: 1px solid #d1d5db;
+      border: 1px solid var(--border);
+      font-size: 13px;
     }
 
-    .search i {
+    .search-wrap i {
       position: absolute;
       left: 12px;
       top: 11px;
-      color: #9ca3af;
+      color: var(--muted);
     }
 
-    /* TABS */
-    .thread-filters {
+    /* Tabs – updated */
+    .tabs {
       display: flex;
-      gap: 24px;
+      gap: 16px;
       margin-top: 16px;
-      border-bottom: 1px solid #e5e7eb;
+      border-bottom: 1px solid var(--border);
       padding-bottom: 4px;
     }
 
-    .thread-filter {
+    .tab-btn {
       background: none;
       border: none;
       padding: 10px 0;
       font-size: 14px;
       font-weight: 500;
       cursor: pointer;
-      color: #64748b;
+      color: var(--muted);
       position: relative;
       transition: color 0.2s;
     }
 
-    .thread-filter:hover {
-      color: #2563eb;
+    .tab-btn:hover {
+      color: var(--blue);
     }
 
-    .thread-filter.active {
-      color: #2563eb;
+    .tab-btn.active {
+      color: var(--blue);
       font-weight: 600;
     }
 
-    .thread-filter.active::after {
+    .tab-btn.active::after {
       content: "";
       position: absolute;
-      bottom: -6px;
+      bottom: -5px;
       left: 0;
       width: 100%;
-      height: 3px;
-      background: #2563eb;
-      border-radius: 3px 3px 0 0;
+      height: 2px;
+      background: var(--blue);
+      border-radius: 2px;
     }
 
-    /* CONTACT ITEMS */
+    /* Contact items */
     .contact {
       padding: 12px;
       border-radius: 10px;
       cursor: pointer;
-      margin-bottom: 8px;
       transition: all 0.15s;
     }
 
@@ -251,7 +266,6 @@
 
     .contact.active {
       background: #eff6ff;
-      border-left: 4px solid #2563eb;
     }
 
     .contact-name {
@@ -261,36 +275,22 @@
 
     .contact-role {
       font-size: 13px;
-      color: #64748b;
+      color: var(--muted);
       margin-top: 2px;
     }
 
     .status-dot {
-      width: 10px;
-      height: 10px;
+      width: 8px;
+      height: 8px;
       border-radius: 50%;
       display: inline-block;
       margin-left: 8px;
     }
 
-    .online { background: #22c55e; }
-    .offline { background: #9ca3af; }
+    .online { background: var(--success); }
+    .offline { background: var(--muted); }
 
-    .hidden {
-      display: none !important;
-    }
-
-    /* MESSAGES */
-    .message-header h3 {
-      font-size: 16px;
-    }
-
-    .message-header p {
-      font-size: 13px;
-      color: #64748b;
-      margin-top: 4px;
-    }
-
+    /* Messages */
     .messages {
       display: flex;
       flex-direction: column;
@@ -308,14 +308,14 @@
 
     .message-bubble {
       max-width: 70%;
-      padding: 14px 16px;
+      padding: 12px 16px;
       border-radius: 14px;
       font-size: 14px;
-      line-height: 1.4;
+      line-height: 1.5;
     }
 
     .message-bubble.own {
-      background: #2563eb;
+      background: var(--blue);
       color: white;
       border-bottom-right-radius: 4px;
     }
@@ -325,16 +325,16 @@
       border-bottom-left-radius: 4px;
     }
 
-    .meta {
+    .message-meta {
       font-size: 11px;
       color: #64748b;
       margin-top: 6px;
-      opacity: 0.9;
+      opacity: 0.8;
     }
 
     .input-area {
-      border-top: 1px solid #e5e7eb;
-      padding: 14px;
+      border-top: 1px solid var(--border);
+      padding: 14px 20px;
       display: flex;
       gap: 10px;
       background: white;
@@ -342,40 +342,57 @@
 
     .input-area input {
       flex: 1;
-      padding: 12px 16px;
-      border-radius: 8px;
-      border: 1px solid #d1d5db;
+      padding: 10px 16px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
       font-size: 14px;
     }
 
     .send-btn {
-      background: #2563eb;
+      background: var(--dark);
       color: white;
       border: none;
-      padding: 0 20px;
-      border-radius: 8px;
+      padding: 10px 20px;
+      border-radius: 10px;
       cursor: pointer;
-      font-size: 16px;
+      font-size: 14px;
+      font-weight: 600;
     }
 
-    .empty {
+    .send-btn:hover {
+      background: #020617;
+    }
+
+    .empty-state {
       height: 100%;
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      color: #6b7280;
+      color: var(--muted);
       text-align: center;
       padding: 40px;
     }
 
-    .empty i {
+    .empty-state i {
       font-size: 48px;
       margin-bottom: 16px;
       color: #d1d5db;
     }
+
+    .empty-state h3 {
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+
+    .empty-state p {
+      font-size: 14px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
   </style>
-<link rel="stylesheet" href="../../shared/inline-migrated.css">
 </head>
 
 <body>
@@ -402,62 +419,64 @@
 
     <div class="sidebar-footer">
       <div class="user-box">
-        <p><strong>John Doe</strong></p>
-        <p>client@example.com</p>
+        <p><strong id="sidebarName">Client</strong></p>
+        <p id="sidebarEmail">client@example.com</p>
         <p class="role">Client</p>
       </div>
-      <button class="logout"><i class="fa fa-sign-out"></i> Logout</button>
+      <button class="logout" id="logoutBtn"><i class="fa fa-sign-out"></i> Logout</button>
     </div>
   </aside>
 
   <!-- MAIN CONTENT -->
-  <main class="page">
-    <h1>Messages</h1>
-    <p>Secure communication with your assigned accountant and support team</p>
+  <main class="main-content">
+    <div class="top-row">
+      <div>
+        <h2>Messages</h2>
+        <p>Secure communication with your accountant and support team</p>
+      </div>
+    </div>
 
     <div class="grid">
 
-      <!-- CONVERSATIONS CARD -->
-      <div class="card">
-        <div class="card-header">
-          <h2>Conversations</h2>
-          <div class="search">
+      <!-- CONVERSATIONS PANEL -->
+      <div class="panel">
+        <div class="panel-header">
+          <h3>Conversations</h3>
+          <div class="search-wrap">
             <i class="fa fa-search"></i>
-            <input type="text" placeholder="Search contacts or messages...">
+            <input type="text" id="searchInput" placeholder="Search contacts or messages...">
           </div>
 
-          <div class="thread-filters">
-            <button class="thread-filter active" data-tab="assigned">Assigned To You</button>
-            <button class="thread-filter" data-tab="support">Support Team</button>
-            <button class="thread-filter" data-tab="archived">Archived</button>
+          <div class="tabs">
+            <button class="tab-btn active" data-tab="assigned">Assigned</button>
+            <button class="tab-btn" data-tab="support">Support</button>
+            <button class="tab-btn" data-tab="archived">Archived</button>
           </div>
         </div>
 
-        <div class="card-content" id="contactList">
-          <!-- Contacts appear here -->
+        <div class="panel-content" id="contactList">
+          <!-- Contacts will be loaded here -->
         </div>
       </div>
 
-      <!-- MESSAGE VIEW CARD -->
-      <div class="card">
-        <div class="card-header message-header" id="messageHeader">
+      <!-- MESSAGE VIEW PANEL -->
+      <div class="panel">
+        <div class="panel-header" id="messageHeader">
           <h3>Select a conversation</h3>
-          <p>Choose a contact to begin</p>
+          <p>Choose a contact to start chatting</p>
         </div>
 
-        <div class="card-content" id="messageArea">
-          <div class="empty">
+        <div class="panel-content" id="messageArea">
+          <div class="empty-state">
             <i class="fa fa-comments"></i>
             <h3>No conversation selected</h3>
             <p>Your messages will appear here once you select a contact.</p>
           </div>
         </div>
 
-        <div class="input-area inl-cb45893012" id="inputArea">
+        <div class="input-area hidden" id="inputArea">
           <input id="messageInput" placeholder="Type your message..." />
-          <button class="send-btn" id="sendBtn">
-            <i class="fa fa-paper-plane"></i>
-          </button>
+          <button class="send-btn" id="sendBtn">Send</button>
         </div>
       </div>
 
@@ -469,163 +488,271 @@
 <script src="../../shared/portal-config.js"></script>
 <script src="../../shared/portal-auth.js"></script>
 <script>
-const API_BASE_URL = window.PortalConfig.API_BASE_URL;
+// ────────────────────────────────────────────────
+//   Auth & User Display (keeps user signed in)
+// ────────────────────────────────────────────────
 const session = window.PortalAuth.requireRole("client", "../Clientlogins/login.html");
-if (!session) { throw new Error("Unauthorized"); }
-const { token } = session;
+if (!session) throw new Error("Unauthorized");
+
+const { token, user } = session;
+
+document.getElementById("sidebarName").textContent  = user.fullName || "Client";
+document.getElementById("sidebarEmail").textContent = user.email || "client@example.com";
+
+const API_BASE_URL = window.PortalConfig?.API_BASE_URL || "http://127.0.0.1:4010/api";
 
 function authHeaders() {
   return window.PortalAuth.authHeaders(token);
 }
 
+// ────────────────────────────────────────────────
+//   Global variables
+// ────────────────────────────────────────────────
 const contactListEl = document.getElementById("contactList");
-const messageArea = document.getElementById("messageArea");
-const messageHeader = document.getElementById("messageHeader");
-const inputArea = document.getElementById("inputArea");
-const messageInput = document.getElementById("messageInput");
+const messageAreaEl = document.getElementById("messageArea");
+const messageHeaderEl = document.getElementById("messageHeader");
+const inputAreaEl = document.getElementById("inputArea");
+const messageInputEl = document.getElementById("messageInput");
+const searchInputEl = document.getElementById("searchInput");
 let threads = [];
-let selectedClientId = null;
+let selectedThreadId = null;
 let currentPage = 1;
 const pageLimit = 20;
+let currentTab = "assigned";
 
+// ────────────────────────────────────────────────
+//   Helpers
+// ────────────────────────────────────────────────
 function formatTime(iso) {
   if (!iso) return "";
-  return new Date(iso).toLocaleString();
+  return new Date(iso).toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
-async function loadThreads() {
-  const response = await fetch(`${API_BASE_URL}/messages/threads`, { headers: authHeaders() });
-  if (!response.ok) return;
-  const data = await response.json();
-  threads = (data.items || []).map((thread) => ({
-    ...thread,
-    section: "assigned",
-    role: "Accountant Team",
-    status: "online",
-  }));
-  renderContacts();
+function getStatusDot(status) {
+  return status === "online" ? "online" : "offline";
 }
 
+// ────────────────────────────────────────────────
+//   Render single contact
+// ────────────────────────────────────────────────
+function renderContact(thread) {
+  return `
+    <div class="contact ${thread.id === selectedThreadId ? "active" : ""}" data-id="${thread.id}" data-tab="${thread.tab || "assigned"}">
+      <div class="contact-name">
+        ${thread.name}
+        <span class="status-dot ${getStatusDot(thread.status)}"></span>
+      </div>
+      <div class="contact-role">
+        ${thread.role} ${thread.unread ? `• ${thread.unread} unread` : ""}
+      </div>
+    </div>
+  `;
+}
+
+// ────────────────────────────────────────────────
+//   Render contacts list (with filter/search)
+// ────────────────────────────────────────────────
 function renderContacts() {
   contactListEl.innerHTML = "";
-  for (const thread of threads) {
-    const div = document.createElement("div");
-    div.className = `contact ${thread.section} ${thread.clientId === selectedClientId ? "active" : ""}`;
-    div.dataset.clientId = thread.clientId;
-    div.innerHTML = `
-      <div>
-        <div class="contact-name">${thread.clientName}
-          <span class="status-dot ${thread.status || "online"}"></span>
-        </div>
-        <div class="contact-role">${thread.role} ${thread.unreadCount ? `- ${thread.unreadCount} unread` : ""}</div>
-      </div>
-    `;
-    div.addEventListener("click", () => openThread(thread.clientId, div));
-    contactListEl.appendChild(div);
-  }
-}
-
-async function loadMessages(clientId, page = 1) {
-  const response = await fetch(
-    `${API_BASE_URL}/messages/threads/${encodeURIComponent(clientId)}?page=${page}&limit=${pageLimit}`,
-    { headers: authHeaders() }
-  );
-  if (!response.ok) return { items: [], hasMore: false };
-  const data = await response.json();
-  return {
-    items: data.items || [],
-    hasMore: Boolean(data.pagination?.hasMore),
-  };
-}
-
-function renderMessageRows(container, clientName, messages) {
-  const currentUserId = JSON.parse(localStorage.getItem("authUser") || "{}").id;
-  for (const msg of messages) {
-    const own = msg.fromUserId === currentUserId;
-    const row = document.createElement("div");
-    row.className = `message-row ${own ? "own" : "other"}`;
-    row.innerHTML = `
-      <div class="message-bubble ${own ? "own" : "other"}">
-        ${msg.body}
-        <div class="meta">${own ? "You" : clientName} - ${formatTime(msg.createdAt)} - ${msg.deliveryStatus || "sent"}</div>
-      </div>
-    `;
-    container.appendChild(row);
-  }
-}
-
-function renderMessageList(clientName, messages, hasMore) {
-  if (!messages.length) {
-    messageArea.innerHTML = `<div class="empty"><i class="fa fa-comments"></i><h3>No messages yet</h3><p>Send a message to start.</p></div>`;
+  const query = searchInputEl.value.toLowerCase().trim();
+  const filtered = threads.filter(t => t.tab === currentTab && t.name.toLowerCase().includes(query));
+  if (!filtered.length) {
+    contactListEl.innerHTML = '<div class="empty-state"><p>No contacts found.</p></div>';
     return;
   }
+  contactListEl.innerHTML = filtered.map(renderContact).join("");
+}
+
+// ────────────────────────────────────────────────
+//   Load threads from backend
+// ────────────────────────────────────────────────
+async function loadThreads() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/messages/threads`, { headers: authHeaders() });
+    if (!res.ok) throw new Error("Failed to load threads");
+    const data = await res.json();
+    threads = (data.items || []).map(thread => ({
+      id: thread.id,
+      name: thread.name || "Unknown",
+      role: thread.role || "Accountant",
+      status: thread.status || "online",
+      unread: thread.unreadCount || 0,
+      tab: thread.tab || "assigned"  // assume backend provides tab or default
+    }));
+    renderContacts();
+  } catch (err) {
+    console.error(err);
+    contactListEl.innerHTML = '<div class="empty-state"><p>Error loading conversations.</p></div>';
+  }
+}
+
+// ────────────────────────────────────────────────
+//   Load messages for a thread
+// ────────────────────────────────────────────────
+async function loadMessages(threadId, page = 1) {
+  try {
+    const res = await fetch(`${API_BASE_URL}/messages/threads/${threadId}?page=${page}&limit=${pageLimit}`, { headers: authHeaders() });
+    if (!res.ok) throw new Error("Failed to load messages");
+    const data = await res.json();
+    return {
+      items: data.items || [],
+      hasMore: data.pagination?.hasMore || false
+    };
+  } catch (err) {
+    console.error(err);
+    return { items: [], hasMore: false };
+  }
+}
+
+// ────────────────────────────────────────────────
+//   Render messages
+// ────────────────────────────────────────────────
+function renderMessages(threadName, messages, hasMore) {
+  messageAreaEl.innerHTML = "";
+  if (!messages.length) {
+    messageAreaEl.innerHTML = `
+      <div class="empty-state">
+        <i class="fa fa-comments"></i>
+        <h3>No messages yet</h3>
+        <p>Start the conversation by sending a message.</p>
+      </div>
+    `;
+    return;
+  }
+
   const container = document.createElement("div");
   container.className = "messages";
 
   if (hasMore) {
-    const loadOlder = document.createElement("button");
-    loadOlder.className = "send-btn";
-    loadOlder.textContent = "Load older messages";
-    loadOlder.onclick = async () => {
-      currentPage += 1;
-      const payload = await loadMessages(selectedClientId, currentPage);
-      renderMessageRows(container, clientName, payload.items);
-      if (!payload.hasMore) loadOlder.remove();
+    const loadBtn = document.createElement("button");
+    loadBtn.className = "send-btn";
+    loadBtn.textContent = "Load older messages";
+    loadBtn.onclick = async () => {
+      currentPage++;
+      const { items, hasMore: more } = await loadMessages(selectedThreadId, currentPage);
+      renderMessageRows(container, items);
+      if (!more) loadBtn.remove();
+      messageAreaEl.scrollTop = 0;
     };
-    container.appendChild(loadOlder);
+    container.appendChild(loadBtn);
   }
 
-  renderMessageRows(container, clientName, messages);
-  messageArea.innerHTML = "";
-  messageArea.appendChild(container);
-  messageArea.scrollTop = messageArea.scrollHeight;
+  renderMessageRows(container, messages);
+  messageAreaEl.appendChild(container);
+  messageAreaEl.scrollTop = messageAreaEl.scrollHeight;
 }
 
-async function openThread(clientId, clickedEl) {
-  selectedClientId = clientId;
+// ────────────────────────────────────────────────
+//   Render message rows
+// ────────────────────────────────────────────────
+function renderMessageRows(container, messages) {
+  const currentUserId = user.id;  // assume user has id from session
+  messages.forEach(msg => {
+    const own = msg.fromUserId === currentUserId;
+    const row = document.createElement("div");
+    row.className = `message-row ${own ? "own" : ""}`;
+    row.innerHTML = `
+      <div class="message-bubble ${own ? "own" : "other"}">
+        ${msg.body}
+        <div class="message-meta">${formatTime(msg.createdAt)} • ${msg.status || "Sent"}</div>
+      </div>
+    `;
+    container.appendChild(row);
+  });
+}
+
+// ────────────────────────────────────────────────
+//   Open thread
+// ────────────────────────────────────────────────
+async function openThread(threadId) {
+  selectedThreadId = threadId;
   currentPage = 1;
-  document.querySelectorAll(".contact").forEach((el) => el.classList.remove("active"));
-  clickedEl.classList.add("active");
-  const thread = threads.find((item) => item.clientId === clientId);
-  messageHeader.innerHTML = `<h3>${thread?.clientName || clientId}</h3><p>Synced thread</p>`;
-  inputArea.style.display = "flex";
+  document.querySelectorAll(".contact").forEach(el => el.classList.remove("active"));
+  document.querySelector(`.contact[data-id="${threadId}"]`)?.classList.add("active");
 
-  const payload = await loadMessages(clientId, currentPage);
-  renderMessageList(thread?.clientName || "Contact", payload.items, payload.hasMore);
+  const thread = threads.find(t => t.id === threadId);
+  messageHeaderEl.innerHTML = `
+    <h3>${thread.name}</h3>
+    <p>${thread.role}</p>
+  `;
+  inputAreaEl.classList.remove("hidden");
 
-  await fetch(`${API_BASE_URL}/messages/threads/${encodeURIComponent(clientId)}/read`, {
+  const { items, hasMore } = await loadMessages(threadId, currentPage);
+  renderMessages(thread.name, items, hasMore);
+
+  // Mark as read
+  fetch(`${API_BASE_URL}/messages/threads/${threadId}/read`, {
     method: "POST",
     headers: authHeaders(),
-    body: "{}",
-  });
-  await loadThreads();
+    body: JSON.stringify({})
+  }).then(() => loadThreads());
 }
 
-document.getElementById("sendBtn").addEventListener("click", async () => {
-  if (!selectedClientId) return;
-  const body = messageInput.value.trim();
+// ────────────────────────────────────────────────
+//   Send message
+// ────────────────────────────────────────────────
+async function sendMessage() {
+  if (!selectedThreadId) return;
+  const body = messageInputEl.value.trim();
   if (!body) return;
-  const response = await fetch(`${API_BASE_URL}/messages/threads/${encodeURIComponent(selectedClientId)}`, {
-    method: "POST",
-    headers: authHeaders(),
-    body: JSON.stringify({ body }),
-  });
-  if (!response.ok) return;
-  messageInput.value = "";
-  const row = document.querySelector(`.contact[data-client-id="${selectedClientId}"]`);
-  if (row) await openThread(selectedClientId, row);
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/messages/threads/${selectedThreadId}`, {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ body })
+    });
+    if (!res.ok) throw new Error("Failed to send message");
+
+    messageInputEl.value = "";
+    const thread = threads.find(t => t.id === selectedThreadId);
+    openThread(selectedThreadId);  // reload messages
+  } catch (err) {
+    console.error(err);
+    alert("Failed to send message");
+  }
+}
+
+// ────────────────────────────────────────────────
+//   Event listeners
+// ────────────────────────────────────────────────
+document.getElementById("logoutBtn").addEventListener("click", () => {
+  window.PortalAuth.clearSession();
+  window.location.href = "../Clientlogins/login.html";
 });
 
-document.querySelectorAll(".thread-filter").forEach((btn) => {
+document.getElementById("sendBtn").addEventListener("click", sendMessage);
+
+messageInputEl.addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+});
+
+searchInputEl.addEventListener("input", renderContacts);
+
+document.querySelectorAll(".tab-btn").forEach(btn => {
   btn.addEventListener("click", () => {
-    document.querySelectorAll(".thread-filter").forEach((b) => b.classList.remove("active"));
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
+    currentTab = btn.dataset.tab;
+    renderContacts();
   });
 });
 
+contactListEl.addEventListener("click", e => {
+  const contactEl = e.target.closest(".contact");
+  if (contactEl) openThread(contactEl.dataset.id);
+});
+
+// Initial load
 loadThreads();
 </script>
 </body>
 </html>
-
-

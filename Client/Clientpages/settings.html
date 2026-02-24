@@ -3,41 +3,43 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>User Profile & Security | Prospera Secure Client Portal</title>
-
-
+  <title>User Profile & Security - Prospera</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-
   <style>
-   /* ================= GLOBAL ================= */
-    * { box-sizing: border-box; margin:0; padding:0; }
+    /* ──────────────────────────────────────────────── */
+    /* Consistent variables and base from other pages   */
+    /* ──────────────────────────────────────────────── */
+    :root {
+      --blue: #2563eb;
+      --bg: #f5f7fb;
+      --dark: #0f172a;
+      --muted: #64748b;
+      --border: #e5e7eb;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       font-family: "Segoe UI", Arial, sans-serif;
-      background: #f8fafc;
-      color: #0f172a;
+      background: var(--bg);
+      color: var(--dark);
+      height: 100vh;
+      overflow: hidden;
     }
 
-    a { text-decoration: none; color: inherit; }
-    button { font-family: inherit; cursor: pointer; border: none; }
+    .app-layout { display: flex; height: 100vh; }
 
-    .app-layout {
-      display: flex;
-      min-height: 100vh;
-      width: 100%;
-    }
-
-    /* SIDEBAR ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ identical to messages.html */
+    /* Sidebar – identical to other pages */
     .sidebar {
       width: 260px;
       background: linear-gradient(180deg, #0f172a, #020617);
       color: white;
       display: flex;
       flex-direction: column;
-      position: fixed;
-      top: 0;
-      left: 0;
-      height: 100vh;
+      flex-shrink: 0;
     }
 
     .sidebar-header {
@@ -47,19 +49,10 @@
       align-items: center;
     }
 
-    .sidebar-header i {
-      font-size: 30px;
-      color: #60a5fa;
-    }
+    .sidebar-header i { font-size: 30px; color: #60a5fa; }
 
-    .sidebar-header h1 {
-      font-size: 16px;
-    }
-
-    .sidebar-header p {
-      font-size: 12px;
-      color: #94a3b8;
-    }
+    .sidebar-header h1 { font-size: 16px; margin: 0; }
+    .sidebar-header p { font-size: 12px; color: #94a3b8; margin: 0; }
 
     .nav {
       padding: 16px;
@@ -77,18 +70,10 @@
       margin-bottom: 6px;
     }
 
-    .nav a:hover {
-      background: #1e293b;
-    }
+    .nav a:hover { background: #1e293b; }
+    .nav a.active { background: var(--blue); color: white; }
 
-    .nav a.active {
-      background: #2563eb;
-      color: white;
-    }
-
-    .sidebar-footer {
-      padding: 16px;
-    }
+    .sidebar-footer { padding: 16px; }
 
     .user-box {
       background: #1e293b;
@@ -97,14 +82,8 @@
       margin-bottom: 12px;
     }
 
-    .user-box p {
-      font-size: 13px;
-    }
-
-    .role {
-      color: #60a5fa;
-      font-size: 12px;
-    }
+    .user-box p { margin: 2px 0; font-size: 13px; }
+    .role { color: #60a5fa; font-size: 12px; }
 
     .logout {
       width: 100%;
@@ -117,297 +96,231 @@
       text-align: left;
     }
 
-    .logout:hover {
-      background: #1e293b;
-    }
+    .logout:hover { background: #1e293b; }
 
-    /* ================= MAIN CONTENT ================= */
-    .page {
+    /* Main content */
+    .main-content {
       flex: 1;
-      margin-left: 260px;
-      padding: 24px;
       overflow-y: auto;
+      padding: 24px;
     }
 
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
+    .top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
     }
 
-    .page-title h1 {
-      font-size: 36px;
-      font-weight: 900;
-      margin-bottom: 4px;
-    }
+    .top-row h2 { font-size: 30px; margin-bottom: 4px; }
+    .top-row p { color: var(--muted); font-size: 14px; }
 
-    .page-title p {
-      color: #64748b;
-    }
-
- 
-    :root {
-      --primary: #1754cf;
-      --bg-light: #f6f6f8;
-      --text: #0f172a;
-      --text-muted: #64748b;
-      --border: #e2e8f0;
-      --card: #ffffff;
-      --green: #10b981;
-      --red: #ef4444;
-    }
-
+    /* Profile card */
     .profile-card {
-      background: #fff;
+      background: white;
       border: 1px solid var(--border);
       border-radius: 16px;
       padding: 24px;
       display: flex;
       align-items: center;
       gap: 24px;
-      margin-top: 24px;
+      margin-bottom: 24px;
     }
 
-    .avatar-lg {
+    .avatar {
       width: 96px;
       height: 96px;
       border-radius: 50%;
-      background-size: cover;
-      background-position: center;
-      border: 4px solid #f1f5f9;
+      background: #f1f5f9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+      color: var(--muted);
     }
 
-    .avatar-profile {
-      background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuAsNL3y9TY4lsEXHLOREQ9JWyw7vHBnH7xz17MRc8Zt8nPNXOWCj6NXF0LHmhgUaIuN9L5wE6LKkxWtYkMVi8Lzt8rilvHGz5q8-NNTsuZgx6Lzc2Ps1ny-cmj9gxtBiPI6Rai_k1SP91ZUqlzKaYXgLsXxuYS4Uy7Wzc9M4eZB_J557lFrpozqwJk-hZxFqi5KjAfRD3aFOKKItZhoE-3J1Y7y8vLwErY5BK5ioegTkzbatnahl-_g9XjluJu8DlbTov1aBiBR7fk');
-    }
+    .profile-info h3 { font-size: 20px; margin-bottom: 4px; }
+    .profile-info .tier { color: var(--blue); font-weight: 600; font-size: 14px; }
+    .profile-info p { color: var(--muted); font-size: 13px; }
 
-    .profile-info .tier { color: var(--primary); font-weight: 600; }
-
+    /* Tabs */
     .tabs {
       display: flex;
-      gap: 32px;
+      gap: 24px;
       border-bottom: 1px solid var(--border);
-      margin-top: 30px;
+      margin-bottom: 24px;
     }
 
-    .tabs button {
+    .tab-btn {
       background: none;
-      font-weight: 700;
-      color: var(--text-muted);
-      padding-bottom: 14px;
+      border: none;
+      padding: 12px 0;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      position: relative;
     }
 
-    .tabs button.active {
-      color: var(--primary);
-      border-bottom: 3px solid var(--primary);
+    .tab-btn.active {
+      color: var(--dark);
     }
 
-    .tab-panel { display: none; margin-top: 30px; }
+    .tab-btn.active::after {
+      content: "";
+      position: absolute;
+      bottom: -1px;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background: var(--blue);
+    }
+
+    .tab-panel { display: none; }
     .tab-panel.active { display: block; }
 
-    .grid, .security-grid {
+    /* Grid layouts */
+    .grid {
       display: grid;
       grid-template-columns: 2fr 1fr;
-      gap: 30px;
+      gap: 24px;
     }
 
+    @media (max-width: 1024px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+
+    /* Cards */
     .card {
-      background: #fff;
+      background: white;
       border: 1px solid var(--border);
-      border-radius: 16px;
+      border-radius: 12px;
       overflow: hidden;
     }
 
     .card-header {
-      padding: 20px;
-      font-weight: 700;
+      padding: 16px 20px;
       border-bottom: 1px solid var(--border);
+      font-size: 16px;
+      font-weight: 600;
     }
 
     .card-body { padding: 20px; }
 
+    /* Form */
     .form-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 20px;
     }
 
-    .form-group label { font-size: 13px; font-weight: 700; }
+    .form-group label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; }
+    .form-group input { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: #f8fafc; font-size: 14px; }
 
-    .form-group input {
-      width: 100%;
-      margin-top: 6px;
-      padding: 10px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      background: #f8fafc;
-    }
-
-    .full { grid-column: 1 / -1; }
-
-    .form-footer {
-      padding: 20px;
-      background: #f8fafc;
+    .form-actions {
+      margin-top: 24px;
       text-align: right;
     }
 
-    .btn-primary {
-      background: var(--primary);
-      color: #fff;
-      padding: 10px 18px;
+    .btn {
+      padding: 10px 20px;
       border-radius: 8px;
-      font-weight: 700;
-    }
-
-    .btn-primary:hover { background: #1347b8; }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 14px;
-    }
-
-    thead {
-      background: #f8fafc;
-    }
-
-    thead th {
-      text-align: left;
-      padding: 12px 16px;
       font-weight: 600;
-      color: #64748b;
-      border-bottom: 1px solid #e2e8f0;
+      cursor: pointer;
+      border: none;
     }
 
-    tbody td {
-      padding: 14px 16px;
-      border-bottom: 1px solid #f1f5f9;
-    }
+    .btn-primary { background: var(--blue); color: white; }
+    .btn-primary:hover { background: #1d4ed8; }
 
-    tbody tr:hover {
-      background: #f9fafb;
-    }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-danger:hover { background: #dc2626; }
 
-    .flex-between { display: flex; justify-content: space-between; align-items: center; }
-    .flex-align { display: flex; align-items: center; gap: 8px; }
-    .flex-column { display: flex; flex-direction: column; gap: 24px; }
+    .btn-secondary { background: #f1f5f9; color: var(--dark); border: 1px solid var(--border); }
+    .btn-secondary:hover { background: #e5e7eb; }
 
-    .link-primary { color: var(--primary); font-weight: 700; font-size: 0.875rem; }
-    .link-danger { color: var(--red); font-weight: 700; font-size: 0.875rem; }
-    .link-muted { color: var(--text-muted); font-weight: 700; font-size: 0.875rem; pointer-events: none; }
+    /* Table */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
 
-    .status-dot {
-      width: 10px;
-      height: 10px;
-      background: var(--green);
-      border-radius: 50%;
-    }
+    th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border); }
 
-    .status-text {
-      color: var(--green);
-      font-weight: 700;
-      font-size: 0.8125rem;
-      text-transform: uppercase;
-    }
+    th { color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 12px; }
 
-    .method-item {
-      display: flex;
-      gap: 16px;
-      padding: 16px;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-    }
-
-    .method-icon {
-      width: 40px;
-      height: 40px;
-      background: rgba(23,84,207,0.1);
-      color: var(--primary);
-      border-radius: 8px;
-      display: grid;
-      place-items: center;
-    }
-
-    .method-label {
-      background: var(--primary);
-      color: white;
-      font-size: 0.75rem;
-      font-weight: 700;
-      padding: 2px 8px;
-      border-radius: 999px;
-    }
-
-    .device-item {
-      padding: 24px;
+    /* Security items */
+    .security-item {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      padding: 16px 20px;
       border-bottom: 1px solid var(--border);
     }
 
-    .device-icon {
-      width: 48px;
-      height: 48px;
-      background: #f1f5f9;
-      border-radius: 8px;
-      display: grid;
-      place-items: center;
-      color: var(--text-muted);
-    }
+    .security-item:last-child { border-bottom: none; }
 
-    .current-badge {
-      font-size: 10px;
-      padding: 2px 8px;
+    .security-info h4 { font-size: 15px; margin-bottom: 4px; }
+    .security-info p { font-size: 13px; color: var(--muted); }
+
+    .status-badge {
+      padding: 4px 10px;
       border-radius: 999px;
-      background: rgba(16,185,129,0.15);
-      color: var(--green);
+      font-size: 12px;
       font-weight: 600;
     }
 
-    .btn-unlink {
-      padding: 4px 12px;
-      border: 1px solid #fecaca;
-      color: var(--red);
-      background: transparent;
-      border-radius: 6px;
-      font-size: 0.875rem;
-      font-weight: 700;
-    }
+    .status-active { background: #d1fae5; color: var(--success); }
+    .status-inactive { background: #fee2e2; color: var(--danger); }
 
+    /* Sidebar card */
     .sidebar-card {
-      background: rgba(23,84,207,0.05);
-      border: 1px solid rgba(23,84,207,0.15);
+      background: white;
+      border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 24px;
+      padding: 20px;
+      text-align: center;
     }
 
     .progress-bar {
       height: 8px;
-      background: #e2e8f0;
+      background: #e5e7eb;
       border-radius: 999px;
-      overflow: hidden;
-      margin: 12px 0;
+      margin: 16px 0;
     }
 
     .progress-fill {
       height: 100%;
-      width: 85%;
-      background: var(--primary);
+      background: var(--blue);
+      border-radius: 999px;
+      width: 85%; /* Example */
     }
 
-    @media (max-width: 900px) {
-      .grid, .security-grid { grid-template-columns: 1fr; }
-      .profile-card { flex-direction: column; text-align: center; }
-      .page { margin-left: 0; padding: 16px; }
-      .sidebar { position: relative; width: 100%; height: auto; }
+    .sidebar-card h4 { font-size: 16px; margin-bottom: 8px; }
+    .sidebar-card p { color: var(--muted); font-size: 13px; }
+
+    /* Notice */
+    .notice {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      z-index: 1000;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      transition: opacity 0.3s;
     }
+
+    .notice.success { background: #ecfdf5; color: #065f46; border: 1px solid #86efac; }
+    .notice.error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+    .notice.info { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+
+    .hidden { display: none; }
   </style>
 </head>
-
 <body>
 
 <div class="app-layout">
 
-  <!-- SIDEBAR ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚ÂÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ identical copy from messages.html -->
+  <!-- Sidebar -->
   <aside class="sidebar">
     <div class="sidebar-header">
       <i class="fa-solid fa-shield-halved"></i>
@@ -427,361 +340,413 @@
 
     <div class="sidebar-footer">
       <div class="user-box">
-        <p><strong>John Doe</strong></p>
-        <p>client@example.com</p>
+        <p><strong id="sidebarName">Client</strong></p>
+        <p id="sidebarEmail">client@example.com</p>
         <p class="role">Client</p>
       </div>
-      <button class="logout"><i class="fa fa-sign-out"></i> Logout</button>
+      <button class="logout" id="logoutBtn"><i class="fa fa-sign-out"></i> Logout</button>
     </div>
   </aside>
 
-  <!-- MAIN CONTENT -->
-  <main class="page">
-    <div class="container">
-
-      <div class="page-title">
-        <h1>User Profile & Security</h1>
-        <p>Manage your identity, security protocols, and login history.</p>
+  <!-- Main Content -->
+  <main class="main-content">
+    <div class="top-row">
+      <div>
+        <h2>User Profile & Security</h2>
+        <p>Manage your personal information, security settings, and account activity.</p>
       </div>
-
-      <!-- PROFILE CARD -->
-      <div class="profile-card">
-        <div class="avatar-lg avatar-profile"></div>
-        <div class="profile-info">
-          <h2>Alex Thompson</h2>
-          <p class="tier">Client Account ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ Premium Tier</p>
-          <p>Member since January 2023</p>
-        </div>
-      </div>
-
-      <!-- TABS -->
-      <div class="tabs">
-        <button class="tab-btn active" data-tab="profile">Personal Information</button>
-        <button class="tab-btn" data-tab="security">Security Settings</button>
-      </div>
-
-      <!-- PROFILE TAB -->
-      <div class="tab-panel active" id="profile">
-        <div class="grid">
-          <!-- Left column -->
-          <div>
-            <!-- Account Details -->
-            <div class="card">
-              <div class="card-header">Account Details</div>
-              <div class="card-body">
-                <div class="form-grid">
-                  <div class="form-group">
-                    <label>First Name</label>
-                    <input id="firstNameInput" value="Alex">
-                  </div>
-                  <div class="form-group">
-                    <label>Last Name</label>
-                    <input id="lastNameInput" value="Thompson">
-                  </div>
-                  <div class="form-group full">
-                    <label>Email Address</label>
-                    <input id="emailInput" value="alex.thompson@example.com">
-                  </div>
-                  <div class="form-group full">
-                    <label>Phone Number</label>
-                    <input id="phoneInput" value="+1 (555) 000-0000">
-                  </div>
-                </div>
-              </div>
-              <div class="form-footer">
-                <button class="btn-primary" id="saveProfileBtn">Save Changes</button>
-              </div>
-            </div>
-
-            <br>
-
-            <!-- Login Activity -->
-            <div class="card">
-              <div class="card-header">Recent Login Activity</div>
-              <div class="card-body">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Device</th>
-                      <th>Location</th>
-                      <th>IP</th>
-                      <th>Time</th>
-                    </tr>
-                  </thead>
-                  <tbody id="loginActivityBody"></tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
-          <!-- Right column -->
-          <div>
-            <div class="sidebar-card">
-              <h4>Security Score</h4>
-              <div class="progress-bar">
-                <div class="progress-fill"></div>
-              </div>
-              <p><strong>85% secure</strong></p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- SECURITY TAB -->
-      <div class="tab-panel" id="security">
-        <div class="security-grid">
-          <!-- Left column -->
-          <div class="flex-column">
-            <!-- Password -->
-            <div class="card">
-              <div class="card-header">Password Management</div>
-              <div class="card-body flex-between">
-                <div>
-                  <div>Update Password</div>
-                  <div class="link-muted">Last changed on <strong>October 12, 2023</strong></div>
-                </div>
-                <button class="btn-primary">Change Password</button>
-              </div>
-            </div>
-
-            <!-- 2FA -->
-            <div class="card">
-              <div class="card-header flex-between">
-                <div>
-                  <div>Two-Factor Authentication (2FA)</div>
-                  <div class="flex-align">
-                    <span class="status-dot" id="twoFactorDot"></span>
-                    <span class="status-text" id="twoFactorStatus">Active</span>
-                  </div>
-                </div>
-                <a href="#" class="link-primary" id="generateBackupCodesBtn">Generate Backup Codes</a>
-              </div>
-              <div class="card-body flex-column">
-                <div class="method-item">
-                  <div class="method-icon"><i class="fa-solid fa-mobile-screen-button"></i></div>
-                  <div>
-                    <h4>Authenticator App <span class="method-label">Primary</span></h4>
-                    <p class="link-muted">Google Authenticator, Authy, or Microsoft Authenticator.</p>
-                    <div class="flex-align">
-                      <a href="#" class="link-primary">Edit Method</a>
-                      <a href="#" class="link-muted">Remove</a>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="method-item">
-                  <div class="method-icon"><i class="fa-solid fa-comment-sms"></i></div>
-                  <div>
-                    <h4>SMS Authentication</h4>
-                    <p class="link-muted" id="smsMethodText">Receive a code via text message.</p>
-                    <div class="flex-align">
-                      <a href="#" class="link-primary">Edit Phone</a>
-                      <a href="#" class="link-danger" id="deactivateSmsBtn">Deactivate</a>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Connected Devices -->
-            <div class="card">
-              <div class="card-header">Connected Devices</div>
-              <div class="device-item">
-                <div class="flex-align">
-                  <div class="device-icon"><i class="fa-solid fa-desktop"></i></div>
-                  <div>
-                    <h4>Chrome on Windows <span class="current-badge">Current</span></h4>
-                    <p class="link-muted">New York, NY ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ 192.168.1.45</p>
-                  </div>
-                </div>
-                <button class="btn-unlink" disabled>Unlink</button>
-              </div>
-
-              <div class="device-item">
-                <div class="flex-align">
-                  <div class="device-icon"><i class="fa-solid fa-mobile-screen"></i></div>
-                  <div>
-                    <h4>iPhone 13 - Safari</h4>
-                    <p class="link-muted">New York, NY ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ Last active 2 hours ago</p>
-                  </div>
-                </div>
-                <button class="btn-unlink">Unlink</button>
-              </div>
-
-              <div class="device-item">
-                <div class="flex-align">
-                  <div class="device-icon"><i class="fa-solid fa-desktop"></i></div>
-                  <div>
-                    <h4>Edge on macOS</h4>
-                    <p class="link-muted">London, UK ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ Last active Oct 21</p>
-                  </div>
-                </div>
-                <button class="btn-unlink">Unlink</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Right column -->
-          <div class="flex-column">
-            <div class="sidebar-card">
-              <div class="flex-align">
-                <i class="fa-solid fa-shield-halved"></i>
-                <h4>Security Score</h4>
-              </div>
-              <div class="progress-bar"><div class="progress-fill"></div></div>
-              <p><strong>Your profile is 85% secure</strong></p>
-              <p class="link-muted">To reach 100%, update your password.</p>
-              <button class="link-primary">Improve Security ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬Ãƒâ€šÃ‚Â ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬ÃƒÂ¢Ã¢â‚¬Å¾Ã‚Â¢</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
     </div>
+
+    <!-- Profile Card -->
+    <div class="profile-card">
+      <div class="avatar"><i class="fa fa-user"></i></div>
+      <div class="profile-info">
+        <h3 id="profileName">Loading...</h3>
+        <span class="tier">Client Account</span>
+        <p id="memberSince">Member since...</p>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="profile">Profile</button>
+      <button class="tab-btn" data-tab="security">Security</button>
+    </div>
+
+    <!-- Profile Tab -->
+    <div class="tab-panel active" id="profile">
+      <div class="grid">
+        <!-- Account Details -->
+        <div class="card">
+          <div class="card-header">Account Details</div>
+          <div class="card-body">
+            <div class="form-grid">
+              <div class="form-group">
+                <label>First Name</label>
+                <input id="firstName" placeholder="First Name">
+              </div>
+              <div class="form-group">
+                <label>Last Name</label>
+                <input id="lastName" placeholder="Last Name">
+              </div>
+              <div class="form-group">
+                <label>Email</label>
+                <input id="email" type="email" placeholder="Email">
+              </div>
+              <div class="form-group">
+                <label>Phone</label>
+                <input id="phone" placeholder="Phone">
+              </div>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="btn btn-primary" id="saveProfile">Save Changes</button>
+          </div>
+        </div>
+
+        <!-- Login Activity -->
+        <div class="card">
+          <div class="card-header">Recent Login Activity</div>
+          <div class="card-body">
+            <table>
+              <thead>
+                <tr>
+                  <th>Device</th>
+                  <th>Location</th>
+                  <th>IP</th>
+                  <th>Time</th>
+                </tr>
+              </thead>
+              <tbody id="activityTable">
+                <!-- Loaded dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Sidebar Card -->
+        <div class="sidebar-card">
+          <h4>Account Security Score</h4>
+          <div class="progress-bar">
+            <div class="progress-fill" id="securityScoreFill"></div>
+          </div>
+          <p id="securityScore">Loading...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Security Tab -->
+    <div class="tab-panel" id="security">
+      <div class="grid">
+        <!-- Password Management -->
+        <div class="card">
+          <div class="card-header">Password</div>
+          <div class="card-body">
+            <div class="security-item">
+              <div class="security-info">
+                <h4>Change Password</h4>
+                <p id="lastPasswordChange">Last changed: Loading...</p>
+              </div>
+              <button class="btn btn-secondary" id="changePassword">Change</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2FA -->
+        <div class="card">
+          <div class="card-header">Two-Factor Authentication</div>
+          <div class="card-body">
+            <div class="security-item">
+              <div class="security-info">
+                <h4>2FA Status</h4>
+                <span class="status-badge" id="twoFaStatus">Loading...</span>
+              </div>
+              <button class="btn btn-secondary" id="toggleTwoFa">Toggle</button>
+            </div>
+            <div class="security-item">
+              <div class="security-info">
+                <h4>Backup Codes</h4>
+                <p>Generate new codes for emergency access</p>
+              </div>
+              <button class="btn btn-secondary" id="generateCodes">Generate</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Connected Devices -->
+        <div class="card">
+          <div class="card-header">Connected Devices</div>
+          <div class="card-body">
+            <div id="devicesList">
+              <!-- Loaded dynamically -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </main>
 </div>
+
+<!-- Notice Element -->
+<div id="notice" class="notice hidden"></div>
 
 <script src="../../shared/portal-config.js"></script>
 <script src="../../shared/portal-auth.js"></script>
 <script>
-const API_BASE_URL = window.PortalConfig.API_BASE_URL;
+// ────────────────────────────────────────────────
+//   Auth & Session (keeps user signed in)
+// ────────────────────────────────────────────────
 const session = window.PortalAuth.requireRole("client", "../Clientlogins/login.html");
-if (!session) { throw new Error("Unauthorized"); }
-const { token } = session;
+if (!session) throw new Error("Unauthorized");
+
+const { token, user } = session;
+
+document.getElementById("sidebarName").textContent  = user.fullName || "Client";
+document.getElementById("sidebarEmail").textContent = user.email || "client@example.com";
+
+const API_BASE_URL = window.PortalConfig?.API_BASE_URL || "http://127.0.0.1:4010/api";
 
 function authHeaders() {
   return window.PortalAuth.authHeaders(token);
 }
 
-const tabButtons = document.querySelectorAll(".tab-btn");
+// ────────────────────────────────────────────────
+//   Helpers
+// ────────────────────────────────────────────────
+function showNotice(message, type = "info") {
+  const noticeEl = document.getElementById("notice");
+  noticeEl.textContent = message;
+  noticeEl.className = `notice ${type}`;
+  noticeEl.classList.remove("hidden");
+  setTimeout(() => noticeEl.classList.add("hidden"), 3000);
+}
 
-function showSettingsNotice(message, tone = "info") {
-  let box = document.getElementById("settingsNotice");
-  if (!box) {
-    box = document.createElement("div");
-    box.id = "settingsNotice";
-    box.style.position = "fixed";
-    box.style.right = "20px";
-    box.style.bottom = "20px";
-    box.style.padding = "12px 14px";
-    box.style.borderRadius = "10px";
-    box.style.fontSize = "13px";
-    box.style.fontWeight = "600";
-    box.style.zIndex = "9999";
-    box.style.boxShadow = "0 10px 25px rgba(15,23,42,0.2)";
-    document.body.appendChild(box);
+function formatDate(iso) {
+  if (!iso) return "Unknown";
+  return new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+// ────────────────────────────────────────────────
+//   Load Profile
+// ────────────────────────────────────────────────
+async function loadProfile() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/profile`, { headers: authHeaders() });
+    if (!res.ok) throw new Error("Failed to load profile");
+    const data = await res.json();
+
+    document.getElementById("profileName").textContent = data.fullName || "User";
+    document.getElementById("memberSince").textContent = `Member since ${formatDate(data.createdAt)}`;
+
+    document.getElementById("firstName").value = data.firstName || "";
+    document.getElementById("lastName").value = data.lastName || "";
+    document.getElementById("email").value = data.email || "";
+    document.getElementById("phone").value = data.phone || "";
+  } catch (err) {
+    console.error(err);
+    showNotice("Error loading profile", "error");
   }
+}
 
-  const palettes = {
-    success: { bg: "#ecfdf5", text: "#166534", border: "1px solid #86efac" },
-    error: { bg: "#fef2f2", text: "#991b1b", border: "1px solid #fecaca" },
-    info: { bg: "#eff6ff", text: "#1d4ed8", border: "1px solid #bfdbfe" },
+// ────────────────────────────────────────────────
+//   Load Security Info
+// ────────────────────────────────────────────────
+async function loadSecurity() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/security`, { headers: authHeaders() });
+    if (!res.ok) throw new Error("Failed to load security info");
+    const data = await res.json();
+
+    const score = data.score || 85;
+    document.getElementById("securityScoreFill").style.width = `${score}%`;
+    document.getElementById("securityScore").textContent = `${score}% Secure`;
+
+    const twoFaEnabled = data.twoFaEnabled;
+    document.getElementById("twoFaStatus").textContent = twoFaEnabled ? "Active" : "Inactive";
+    document.getElementById("twoFaStatus").className = `status-badge status-${twoFaEnabled ? "active" : "inactive"}`;
+
+    document.getElementById("lastPasswordChange").textContent = `Last changed: ${formatDate(data.lastPasswordChange)}`;
+  } catch (err) {
+    console.error(err);
+    showNotice("Error loading security info", "error");
+  }
+}
+
+// ────────────────────────────────────────────────
+//   Load Login Activity
+// ────────────────────────────────────────────────
+async function loadActivity() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/activity`, { headers: authHeaders() });
+    if (!res.ok) throw new Error("Failed to load activity");
+    const data = await res.json();
+
+    const tableBody = document.getElementById("activityTable");
+    tableBody.innerHTML = data.items.map(item => `
+      <tr>
+        <td>${item.device}</td>
+        <td>${item.location}</td>
+        <td>${item.ip}</td>
+        <td>${formatDate(item.time)}</td>
+      </tr>
+    `).join("") || '<tr><td colspan="4" class="empty">No recent activity</td></tr>';
+  } catch (err) {
+    console.error(err);
+    showNotice("Error loading activity", "error");
+  }
+}
+
+// ────────────────────────────────────────────────
+//   Load Devices
+// ────────────────────────────────────────────────
+async function loadDevices() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/devices`, { headers: authHeaders() });
+    if (!res.ok) throw new Error("Failed to load devices");
+    const data = await res.json();
+
+    const list = document.getElementById("devicesList");
+    list.innerHTML = data.items.map(device => `
+      <div class="security-item">
+        <div class="security-info">
+          <h4>${device.name} ${device.current ? '<span class="status-badge status-active">Current</span>' : ''}</h4>
+          <p>${device.location} • Last active: ${formatDate(device.lastActive)}</p>
+        </div>
+        <button class="btn btn-danger" data-id="${device.id}">Unlink</button>
+      </div>
+    `).join("") || '<div class="empty">No connected devices</div>';
+  } catch (err) {
+    console.error(err);
+    showNotice("Error loading devices", "error");
+  }
+}
+
+// ────────────────────────────────────────────────
+//   Save Profile
+// ────────────────────────────────────────────────
+async function saveProfile() {
+  const payload = {
+    firstName: document.getElementById("firstName").value.trim(),
+    lastName: document.getElementById("lastName").value.trim(),
+    email: document.getElementById("email").value.trim(),
+    phone: document.getElementById("phone").value.trim()
   };
 
-  const style = palettes[tone] || palettes.info;
-  box.style.background = style.bg;
-  box.style.color = style.text;
-  box.style.border = style.border;
-  box.textContent = message;
-  box.style.display = "block";
-
-  clearTimeout(showSettingsNotice._timer);
-  showSettingsNotice._timer = setTimeout(() => {
-    box.style.display = "none";
-  }, 3500);
+  try {
+    const res = await fetch(`${API_BASE_URL}/profile`, {
+      method: "PATCH",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error("Failed to save profile");
+    showNotice("Profile updated successfully", "success");
+    loadProfile();  // Reload to reflect changes
+  } catch (err) {
+    console.error(err);
+    showNotice("Error saving profile", "error");
+  }
 }
-const tabPanels = document.querySelectorAll(".tab-panel");
-tabButtons.forEach((btn) => {
+
+// ────────────────────────────────────────────────
+//   Change Password (placeholder – open modal or form)
+// ────────────────────────────────────────────────
+function changePassword() {
+  // In a real app, open a modal with old/new/confirm fields
+  showNotice("Password change requested – implement modal", "info");
+}
+
+// ────────────────────────────────────────────────
+//   Toggle 2FA
+// ────────────────────────────────────────────────
+async function toggleTwoFa() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/security/twofa`, {
+      method: "PATCH",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled: !document.getElementById("twoFaStatus").textContent.includes("Active") })
+    });
+    if (!res.ok) throw new Error("Failed to toggle 2FA");
+    showNotice("2FA updated", "success");
+    loadSecurity();
+  } catch (err) {
+    console.error(err);
+    showNotice("Error toggling 2FA", "error");
+  }
+}
+
+// ────────────────────────────────────────────────
+//   Generate Backup Codes
+// ────────────────────────────────────────────────
+async function generateCodes() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/security/backup-codes`, {
+      method: "POST",
+      headers: authHeaders()
+    });
+    if (!res.ok) throw new Error("Failed to generate codes");
+    const data = await res.json();
+    showNotice(`New codes: ${data.codes.join(", ")} – Save them securely!`, "success");
+  } catch (err) {
+    console.error(err);
+    showNotice("Error generating codes", "error");
+  }
+}
+
+// ────────────────────────────────────────────────
+//   Unlink Device
+// ────────────────────────────────────────────────
+function unlinkDevice(id) {
+  if (!confirm("Unlink this device?")) return;
+  fetch(`${API_BASE_URL}/devices/${id}`, {
+    method: "DELETE",
+    headers: authHeaders()
+  }).then(res => {
+    if (res.ok) {
+      showNotice("Device unlinked", "success");
+      loadDevices();
+    } else {
+      showNotice("Error unlinking device", "error");
+    }
+  });
+}
+
+// ────────────────────────────────────────────────
+//   Event Listeners
+// ────────────────────────────────────────────────
+document.getElementById("logoutBtn").addEventListener("click", () => {
+  window.PortalAuth.clearSession();
+  window.location.href = "../Clientlogins/login.html";
+});
+
+document.querySelectorAll(".tab-btn").forEach(btn => {
   btn.addEventListener("click", () => {
-    tabButtons.forEach((b) => b.classList.remove("active"));
-    tabPanels.forEach((p) => p.classList.remove("active"));
+    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
     btn.classList.add("active");
     document.getElementById(btn.dataset.tab).classList.add("active");
   });
 });
 
-async function loadProfile() {
-  const response = await fetch(`${API_BASE_URL}/profile/me`, { headers: authHeaders() });
-  if (!response.ok) return;
-  const data = await response.json();
-  document.getElementById("firstNameInput").value = data.profile.firstName || "";
-  document.getElementById("lastNameInput").value = data.profile.lastName || "";
-  document.getElementById("emailInput").value = data.profile.email || "";
-  document.getElementById("phoneInput").value = data.profile.phone || "";
-}
+document.getElementById("saveProfile").addEventListener("click", saveProfile);
+document.getElementById("changePassword").addEventListener("click", changePassword);
+document.getElementById("toggleTwoFa").addEventListener("click", toggleTwoFa);
+document.getElementById("generateCodes").addEventListener("click", generateCodes);
 
-async function loadLoginActivity() {
-  const response = await fetch(`${API_BASE_URL}/profile/login-activity`, { headers: authHeaders() });
-  if (!response.ok) return;
-  const data = await response.json();
-  const body = document.getElementById("loginActivityBody");
-  body.innerHTML = (data.items || []).map((item) => `
-    <tr>
-      <td>${item.device}</td>
-      <td>${item.location}</td>
-      <td>${item.ipAddress}</td>
-      <td>${new Date(item.createdAt).toLocaleString()}</td>
-    </tr>
-  `).join("");
-}
-
-async function loadSecurity() {
-  const response = await fetch(`${API_BASE_URL}/profile/security`, { headers: authHeaders() });
-  if (!response.ok) return;
-  const data = await response.json();
-  const security = data.security || {};
-  const enabled = Boolean(security.twoFactorEnabled);
-  document.getElementById("twoFactorStatus").textContent = enabled ? "Active" : "Inactive";
-  document.getElementById("twoFactorStatus").style.color = enabled ? "var(--green)" : "var(--red)";
-  document.getElementById("twoFactorDot").style.background = enabled ? "var(--green)" : "var(--red)";
-  document.getElementById("smsMethodText").textContent = security.smsEnabled
-    ? "SMS authentication is enabled."
-    : "SMS authentication is disabled.";
-}
-
-document.getElementById("saveProfileBtn").addEventListener("click", async () => {
-  const payload = {
-    firstName: document.getElementById("firstNameInput").value.trim(),
-    lastName: document.getElementById("lastNameInput").value.trim(),
-    email: document.getElementById("emailInput").value.trim(),
-    phone: document.getElementById("phoneInput").value.trim(),
-  };
-  const response = await fetch(`${API_BASE_URL}/profile/me`, {
-    method: "PATCH",
-    headers: authHeaders(),
-    body: JSON.stringify(payload),
-  });
-  if (response.ok) showSettingsNotice("Profile saved.", "success");
-});
-
-document.getElementById("generateBackupCodesBtn").addEventListener("click", async (event) => {
-  event.preventDefault();
-  const response = await fetch(`${API_BASE_URL}/profile/security/generate-backup-codes`, {
-    method: "POST",
-    headers: authHeaders(),
-    body: "{}",
-  });
-  if (!response.ok) return;
-  const data = await response.json();
-  showSettingsNotice(`Backup codes: ${(data.codes || []).join(", ")}`, "info");
-});
-
-document.getElementById("deactivateSmsBtn").addEventListener("click", async (event) => {
-  event.preventDefault();
-  const response = await fetch(`${API_BASE_URL}/profile/security`, {
-    method: "PATCH",
-    headers: authHeaders(),
-    body: JSON.stringify({ smsEnabled: false }),
-  });
-  if (response.ok) {
-    loadSecurity();
+document.getElementById("devicesList").addEventListener("click", e => {
+  if (e.target.matches(".btn-danger")) {
+    const id = e.target.dataset.id;
+    unlinkDevice(id);
   }
 });
 
+// ────────────────────────────────────────────────
+//   Initial Loads
+// ────────────────────────────────────────────────
 loadProfile();
-loadLoginActivity();
 loadSecurity();
+loadActivity();
+loadDevices();
 </script>
-
 </body>
 </html>

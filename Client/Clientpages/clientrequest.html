@@ -1,460 +1,328 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Document Requests</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-  <style>
-    :root {
-      --primary: #4f63f9;
-      --bg: #f5f7fb;
-      --card: #ffffff;
-      --text: #111827;
-      --muted: #6b7280;
-      --border: #e5e7eb;
-      --high: #fee2e2;
-      --high-text: #b91c1c;
-      --medium: #fef3c7;
-      --medium-text: #92400e;
-      --pending: #e0e7ff;
-      --pending-text: #3730a3;
-      --blue: #2563eb;
-    }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: system-ui, -apple-system, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      height: 100vh;
-      overflow: hidden;
-    }
-
-    .app-layout {
-      display: flex;
-      height: 100vh;
-      overflow: hidden;
-    }
-
-    /* Sidebar */
-    .sidebar {
-      width: 260px;
-      background: linear-gradient(180deg, #0f172a, #020617);
-      color: white;
-      display: flex;
-      flex-direction: column;
-      flex-shrink: 0;
-    }
-
-    .sidebar-header {
-      padding: 22px;
-      display: flex;
-      gap: 12px;
-      align-items: center;
-    }
-
-    .sidebar-header i {
-      font-size: 30px;
-      color: #60a5fa;
-    }
-
-    .sidebar-header h1 {
-      margin: 0;
-      font-size: 16px;
-    }
-
-    .sidebar-header p {
-      margin: 0;
-      font-size: 12px;
-      color: #94a3b8;
-    }
-
-    .nav {
-      padding: 16px;
-      flex: 1;
-    }
-
-    .nav a {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      padding: 12px 14px;
-      border-radius: 10px;
-      color: #cbd5f5;
-      text-decoration: none;
-      margin-bottom: 6px;
-    }
-
-    .nav a.active {
-      background: var(--blue);
-      color: white;
-    }
-
-    .nav a:hover {
-      background: #1e293b;
-    }
-
-    .sidebar-footer {
-      padding: 16px;
-    }
-
-    .user-box {
-      background: #1e293b;
-      padding: 12px;
-      border-radius: 10px;
-      margin-bottom: 12px;
-    }
-
-    .user-box p {
-      margin: 2px 0;
-      font-size: 13px;
-    }
-
-    .role {
-      color: #60a5fa;
-      font-size: 12px;
-    }
-
-    .logout {
-      width: 100%;
-      background: none;
-      border: none;
-      color: #cbd5f5;
-      padding: 12px;
-      border-radius: 10px;
-      cursor: pointer;
-      text-align: left;
-    }
-
-    .logout:hover {
-      background: #1e293b;
-    }
-
-    /* Main */
-    .main-content {
-      flex: 1;
-      overflow-y: auto;
-      padding: 24px;
-    }
-
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-
-    .top-bar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 32px;
-    }
-
-    .top-left h1 {
-      font-size: 26px;
-      font-weight: 700;
-    }
-
-    .top-left p {
-      color: var(--muted);
-      margin-top: 4px;
-    }
-
-    .bell {
-      position: relative;
-      font-size: 22px;
-      cursor: pointer;
-    }
-
-    .bell span {
-      position: absolute;
-      top: -6px;
-      right: -6px;
-      background: #ef4444;
-      color: #fff;
-      font-size: 11px;
-      padding: 2px 6px;
-      border-radius: 999px;
-    }
-
-    .title-row-container {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 24px;
-    }
-
-    .title-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .title-row h2 {
-      font-size: 28px;
-    }
-
-    .title-row p {
-      color: var(--muted);
-    }
-
-    .new-btn {
-      background: var(--primary);
-      color: #fff;
-      border: none;
-      padding: 12px 18px;
-      border-radius: 10px;
-      font-size: 15px;
-      cursor: pointer;
-    }
-
-    .new-btn:hover {
-      background: #3b52e0;
-    }
-
-    /* Modal */
-    .modal-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.6);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-      backdrop-filter: blur(4px);
-    }
-
-    .modal-content {
-      background: var(--card);
-      border-radius: 16px;
-      width: 100%;
-      max-width: 520px;
-      margin: 20px;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.25);
-      overflow: hidden;
-      border: 1px solid var(--border);
-    }
-
-    .modal-header {
-      padding: 20px 24px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .modal-header h2 {
-      margin: 0;
-      font-size: 22px;
-    }
-
-    .close-modal {
-      background: none;
-      border: none;
-      font-size: 28px;
-      color: var(--muted);
-      cursor: pointer;
-    }
-
-    .close-modal:hover {
-      color: var(--text);
-    }
-
-    .modal-body {
-      padding: 24px;
-    }
-
-    .form-group {
-      margin-bottom: 20px;
-    }
-
-    .form-group label {
-      display: block;
-      margin-bottom: 8px;
-      font-weight: 600;
-    }
-
-    .form-group input,
-    .form-group textarea,
-    .form-group select {
-      width: 100%;
-      padding: 12px 14px;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      font-size: 15px;
-      background: #fafafa;
-    }
-
-    .form-group input:focus,
-    .form-group textarea:focus,
-    .form-group select:focus {
-      outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(79,99,249,0.15);
-    }
-
-    .form-group textarea {
-      resize: vertical;
-      min-height: 100px;
-    }
-
-    .form-row {
-      display: flex;
-      gap: 20px;
-    }
-
-    .form-row .half {
-      flex: 1;
-    }
-
-    .modal-footer {
-      padding: 20px 24px;
-      border-top: 1px solid var(--border);
-      display: flex;
-      justify-content: flex-end;
-      gap: 12px;
-    }
-
-    .btn-primary,
-    .btn-secondary {
-      padding: 14px 28px;
-      border-radius: 10px;
-      font-size: 15px;
-      font-weight: 600;
-      cursor: pointer;
-      border: none;
-    }
-
-    .btn-primary {
-      background: var(--primary);
-      color: white;
-    }
-
-    .btn-primary:hover {
-      background: #3b52e0;
-    }
-
-    .btn-secondary {
-      background: #f1f5f9;
-      color: #334155;
-    }
-
-    .btn-secondary:hover {
-      background: #e2e8f0;
-    }
-
-    /* Tabs */
-    .tabs {
-      display: flex;
-      background: #ededf1;
-      border-radius: 999px;
-      padding: 4px;
-      width: 320px;
-      margin-bottom: 24px;
-    }
-
-    .tab {
-      flex: 1;
-      text-align: center;
-      padding: 10px;
-      border-radius: 999px;
-      cursor: pointer;
-      font-weight: 600;
-    }
-
-    .tab.active {
-      background: #fff;
-      box-shadow: 0 2px 8px rgba(0,0,0,.08);
-    }
-
-    /* Card & Request */
-    .card {
-      background: var(--card);
-      border-radius: 14px;
-      border: 1px solid var(--border);
-      padding: 24px;
-    }
-
-    .card h3 {
-      font-size: 20px;
-      margin-bottom: 16px;
-    }
-
-    .request {
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 20px;
-      margin-bottom: 20px;
-    }
-
-    .request-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-    }
-
-    .request-title {
-      display: flex;
-      gap: 12px;
-    }
-
-    .doc-icon {
-      font-size: 24px;
-      color: var(--primary);
-    }
-
-    .request-title h4 {
-      font-size: 18px;
-    }
-
-    .request-title p {
-      color: var(--muted);
-      margin-top: 4px;
-    }
-
-    .badges {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      align-items: flex-end;
-    }
-
-    .badge {
-      padding: 6px 12px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 700;
-    }
-
-    .high { background: var(--high); color: var(--high-text); }
-    .medium { background: var(--medium); color: var(--medium-text); }
-    .pending { background: var(--pending); color: var(--pending-text); }
-
-    .meta {
-      display: flex;
-      gap: 16px;
-      color: var(--muted);
-      font-size: 13px;
-      margin-top: 14px;
-    }
-
-    .action-btn {
-      width: 100%;
-      margin-top: 18px;
-      padding: 14px;
-      background: var(--primary);
-      color: white;
-      border: none;
-      border-radius: 12px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-
-    .hidden { display: none; }
-  </style>
-<link rel="stylesheet" href="../../shared/inline-migrated.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Document Requests - Prospera</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+<style>
+:root {
+  --blue: #2563eb;
+  --bg: #f5f7fb;
+  --dark: #0f172a;
+  --muted: #64748b;
+  --border: #e5e7eb;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: var(--bg);
+  height: 100vh;
+  overflow: hidden;
+  color: var(--dark);
+}
+
+.app-layout { display: flex; height: 100vh; }
+
+/* Sidebar */
+.sidebar {
+  width: 260px;
+  background: linear-gradient(180deg, #0f172a, #020617);
+  color: white;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.sidebar-header {
+  padding: 22px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.sidebar-header i { font-size: 30px; color: #60a5fa; }
+
+.sidebar-header h1 { font-size: 16px; margin: 0; }
+.sidebar-header p { font-size: 12px; color: #94a3b8; margin: 0; }
+
+.nav {
+  padding: 16px;
+  flex: 1;
+}
+
+.nav a {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 10px;
+  color: #cbd5f5;
+  text-decoration: none;
+  margin-bottom: 6px;
+}
+
+.nav a.active { background: var(--blue); color: white; }
+.nav a:hover { background: #1e293b; }
+
+.sidebar-footer { padding: 16px; }
+
+.user-box {
+  background: #1e293b;
+  padding: 12px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+
+.user-box p { margin: 2px 0; font-size: 13px; }
+.role { color: #60a5fa; font-size: 12px; }
+
+.logout {
+  width: 100%;
+  background: none;
+  border: none;
+  color: #cbd5f5;
+  padding: 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.logout:hover { background: #1e293b; }
+
+/* Main content */
+.main-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.top-row h2 { font-size: 30px; margin-bottom: 4px; }
+.top-row p { color: var(--muted); font-size: 14px; }
+
+.btn {
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  padding: 10px 16px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.btn-primary { background: var(--dark); color: white; }
+.btn-primary:hover { background: #020617; }
+
+/* Tabs */
+.tabs {
+  display: flex;
+  background: #f1f5f9;
+  border-radius: 999px;
+  padding: 4px;
+  width: fit-content;
+  margin-bottom: 20px;
+}
+
+.tab {
+  padding: 10px 20px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.tab.active {
+  background: white;
+  color: var(--dark);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* Panels & Cards */
+.panel {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.request-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.request-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.request-title h4 { margin: 0; font-size: 16px; }
+.request-title p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+
+.badges { display: flex; gap: 8px; }
+
+.badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.priority-high   { background: #fee2e2; color: #b91c1c; }
+.priority-medium { background: #fef3c7; color: #92400e; }
+.priority-low    { background: #e0f2fe; color: #0369a1; }
+
+.status-pending   { background: #e0e7ff; color: #3730a3; }
+.status-fulfilled { background: #ecfdf5; color: #065f46; }
+
+.meta {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 13px;
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  margin-top: 12px;
+  width: 100%;
+  padding: 12px;
+  background: var(--blue);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.action-btn:disabled { background: #94a3b8; cursor: not-allowed; }
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 520px;
+  margin: 20px;
+}
+
+.modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h2 { margin: 0; font-size: 20px; }
+
+.close-modal {
+  background: none;
+  border: none;
+  font-size: 28px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.modal-body { padding: 24px; }
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.form-row {
+  display: flex;
+  gap: 16px;
+}
+
+.form-row > div { flex: 1; }
+
+.modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.btn-secondary {
+  background: white;
+  border: 1px solid var(--border);
+  color: var(--dark);
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.status-message {
+  margin-top: 12px;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.success { background: #ecfdf5; color: #065f46; }
+.error   { background: #fef2f2; color: #991b1b; }
+
+/* Empty state styling */
+.empty {
+  color: var(--muted);
+  text-align: center;
+  padding: 60px 20px;
+  font-size: 15px;
+  line-height: 1.5;
+  background: #f8fafc;
+  border-radius: 10px;
+  border: 1px dashed var(--border);
+  margin: 20px 0;
+}
+
+.hidden { display: none !important; }
+
+@media (max-width: 768px) {
+  .main-content { padding: 16px; }
+  .form-row { flex-direction: column; gap: 0; }
+}
+</style>
 </head>
 <body>
 
@@ -463,290 +331,292 @@
   <!-- Sidebar -->
   <aside class="sidebar">
     <div class="sidebar-header">
-      <i class="fas fa-shield-halved"></i>
+      <i class="fa-solid fa-shield-halved"></i>
       <div>
         <h1>Prospera</h1>
         <p>Secure Client Portal</p>
       </div>
     </div>
 
-                <nav class="nav">
-      <a href="Clientportal.html">
-        <i class="fa fa-chart-line"></i> Dashboard
-      </a>
-      <a href="documents.html">
-        <i class="fa fa-file"></i> Documents
-      </a>
-      <a href="clientrequest.html" class="active">
-        <i class="fa fa-file-alt"></i> Requests
-      </a>
-      <a href="messages.html">
-        <i class="fa fa-message"></i> Messages
-      </a>
-      <a href="settings.html">
-        <i class="fa fa-gear"></i> Settings
-      </a>
+    <nav class="nav">
+      <a href="Clientportal.html"><i class="fa fa-chart-line"></i> Dashboard</a>
+      <a href="documents.html"><i class="fa fa-file"></i> Documents</a>
+      <a href="clientrequest.html" class="active"><i class="fa fa-file-alt"></i> Requests</a>
+      <a href="messages.html"><i class="fa fa-message"></i> Messages</a>
+      <a href="settings.html"><i class="fa fa-gear"></i> Settings</a>
     </nav>
 
     <div class="sidebar-footer">
       <div class="user-box">
-        <p><strong>John Doe</strong></p>
-        <p>client@example.com</p>
+        <p><strong id="sidebarName">Client</strong></p>
+        <p id="sidebarEmail">client@example.com</p>
         <p class="role">Client</p>
       </div>
-      <button class="logout">
-        <i class="fas fa-sign-out-alt"></i> Logout
-      </button>
+      <button class="logout" id="logoutBtn"><i class="fa fa-sign-out"></i> Logout</button>
     </div>
   </aside>
 
-  <!-- Main -->
+  <!-- Main content -->
   <main class="main-content">
-    <div class="container">
 
-      <div class="top-bar">
-        <div class="top-left">
-          <h1>Welcome back, John Doe</h1>
-          <p>Monday, 9 February 2026</p>
-        </div>
-        <div class="bell">
-          <i class="fas fa-bell"></i>
-          <span id="notifCount">1</span>
-        </div>
+    <div class="top-row">
+      <div>
+        <h2>Document Requests</h2>
+        <p>View and respond to document requests from your accountant</p>
       </div>
-
-      <div class="title-row-container">
-        <div class="title-row">
-          <div>
-            <h2>Document Requests</h2>
-            <p>Request and manage document submissions</p>
-          </div>
-          <button class="new-btn" onclick="document.getElementById('newRequestModal').style.display='flex'">ÃƒÂ¯Ã‚Â¼Ã¢â‚¬Â¹ New Request</button>
-        </div>
-      </div>
-
-      <!-- Modal -->
-      <div id="newRequestModal" class="modal-overlay inl-cb45893012">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h2>Create Document Request</h2>
-            <button class="close-modal" onclick="document.getElementById('newRequestModal').style.display='none'">ÃƒÆ’Ã¢â‚¬â€</button>
-          </div>
-
-          <div class="modal-body">
-            <div class="form-group">
-              <label for="docType">Document Type</label>
-              <input type="text" id="docType" placeholder="e.g., Bank Statements, Invoices, Tax Documents">
-            </div>
-
-            <div class="form-group">
-              <label for="description">Description</label>
-              <textarea id="description" rows="4" placeholder="Provide details about what documents are needed..."></textarea>
-            </div>
-
-            <div class="form-row">
-              <div class="form-group half">
-                <label for="priority">Priority</label>
-                <select id="priority">
-                  <option value="Low">Low</option>
-                  <option value="Medium" selected>Medium</option>
-                  <option value="High">High</option>
-                </select>
-              </div>
-
-              <div class="form-group half">
-                <label for="dueDate">Due Date</label>
-                <input type="date" id="dueDate">
-              </div>
-            </div>
-          </div>
-
-          <div class="modal-footer">
-            <button class="btn-secondary" onclick="document.getElementById('newRequestModal').style.display='none'">Cancel</button>
-            <button class="btn-primary">Create Request</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Tabs -->
-      <div class="tabs">
-        <div class="tab active" id="tabReceived">Received (0)</div>
-        <div class="tab" id="tabSent">Sent (0)</div>
-      </div>
-
-      <!-- Received -->
-      <div id="received" class="card">
-        <h3 id="receivedHeader">Requests You Received (0)</h3>
-        <div id="receivedRequests"></div>
-      </div>
-
-      <!-- Sent -->
-      <div id="sent" class="card hidden">
-        <h3 id="sentHeader">Requests You Sent (0)</h3>
-        <div id="sentRequests"></div>
-      </div>
-
+      <button class="btn btn-primary" id="newRequestBtn">+ New Request</button>
     </div>
+
+    <div class="tabs">
+      <div class="tab active" id="tab-received">Received (0)</div>
+      <div class="tab" id="tab-sent">Sent (0)</div>
+    </div>
+
+    <!-- Received requests -->
+    <div class="panel" id="received-panel">
+      <h3>Requests You Received</h3>
+      <div id="received-list">
+        <div class="empty">No requests received yet.</div>
+      </div>
+    </div>
+
+    <!-- Sent requests -->
+    <div class="panel hidden" id="sent-panel">
+      <h3>Requests You Sent</h3>
+      <div id="sent-list">
+        <div class="empty">No requests sent yet.</div>
+      </div>
+    </div>
+
   </main>
+</div>
+
+<!-- Modal -->
+<div id="new-request-modal" class="modal-overlay hidden">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Create Document Request</h2>
+      <button class="close-modal" id="close-modal">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label for="req-title">Title / Document Type *</label>
+        <input type="text" id="req-title" placeholder="e.g. Latest Company Bank Statements" required>
+      </div>
+      <div class="form-group">
+        <label for="req-description">Description</label>
+        <textarea id="req-description" rows="4" placeholder="Please describe exactly what documents are needed..."></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="req-priority">Priority</label>
+          <select id="req-priority">
+            <option value="low">Low</option>
+            <option value="medium" selected>Medium</option>
+            <option value="high">High</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="req-due">Due Date *</label>
+          <input type="date" id="req-due" required>
+        </div>
+      </div>
+      <div id="modal-status" class="status-message hidden"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" id="cancel-create">Cancel</button>
+      <button class="btn btn-primary" id="submit-create">Create Request</button>
+    </div>
+  </div>
 </div>
 
 <script src="../../shared/portal-config.js"></script>
 <script src="../../shared/portal-auth.js"></script>
 <script>
-const API_BASE_URL = window.PortalConfig.API_BASE_URL;
+// ────────────────────────────────────────────────
+//   Auth & setup
+// ────────────────────────────────────────────────
 const session = window.PortalAuth.requireRole("client", "../Clientlogins/login.html");
-if (!session) { throw new Error("Unauthorized"); }
-const { token } = session;
+if (!session) throw new Error("Unauthorized");
+
+const { token, user } = session;
+
+document.getElementById("sidebarName").textContent  = user.fullName || user.name || "Client";
+document.getElementById("sidebarEmail").textContent = user.email || "client@example.com";
+
+const API_BASE = window.PortalConfig?.API_BASE_URL || "http://127.0.0.1:4010/api";
 
 function authHeaders() {
   return window.PortalAuth.authHeaders(token);
 }
 
-function priorityClass(priority) {
-  const p = String(priority || "medium").toLowerCase();
-  if (p === "high") return "high";
-  return "medium";
+// ────────────────────────────────────────────────
+//   Helpers
+// ────────────────────────────────────────────────
+function formatDate(str) {
+  if (!str) return "—";
+  return new Date(str).toLocaleDateString("en-ZA", {
+    day: "numeric", month: "short", year: "numeric"
+  });
 }
 
-function statusClass(status) {
-  const s = String(status || "pending").toLowerCase();
-  if (s === "fulfilled" || s === "completed") return "high";
-  return "pending";
-}
+// ────────────────────────────────────────────────
+//   Render card
+// ────────────────────────────────────────────────
+function renderCard(request, isReceived) {
+  const done = ["fulfilled","completed"].includes((request.status||"").toLowerCase());
+  const btn = isReceived
+    ? `<button class="action-btn" data-id="${request.id}" ${done?"disabled":""}>${done?"Already Fulfilled":"Mark as Fulfilled"}</button>`
+    : `<button class="action-btn" disabled>Sent Request</button>`;
 
-function renderRequestCard(request, isReceived) {
-  const historyId = `history_${request.id}`;
   return `
-    <div class="request">
+    <div class="request-card">
       <div class="request-header">
         <div class="request-title">
-          <i class="fas fa-file-alt doc-icon"></i>
+          <i class="fa-solid fa-file-alt" style="font-size:24px;color:var(--blue);margin-right:12px;"></i>
           <div>
-            <h4>${request.title}</h4>
-            <p>${request.description || ""}</p>
+            <h4>${request.title || "Untitled Request"}</h4>
+            <p>${request.description || "No description"}</p>
           </div>
         </div>
         <div class="badges">
-          <div class="badge ${priorityClass(request.priority)}">${String(request.priority || "").toUpperCase()}</div>
-          <div class="badge ${statusClass(request.status)}">${String(request.status || "").toUpperCase()}</div>
+          <span class="badge priority-${(request.priority||"medium").toLowerCase()}">${(request.priority||"Medium").toUpperCase()}</span>
+          <span class="badge status-${done?"fulfilled":"pending"}">${done?"FULFILLED":"PENDING"}</span>
         </div>
       </div>
       <div class="meta">
-        <span><i class="fas fa-calendar"></i> Due: ${request.dueDate || "-"}</span>
-        <span><i class="fas fa-clock"></i> Requested: ${(request.requestedAt || "").slice(0, 10)}</span>
+        <span><i class="fa fa-calendar"></i> Due: ${formatDate(request.dueDate)}</span>
+        <span><i class="fa fa-clock"></i> Requested: ${formatDate(request.createdAt)}</span>
       </div>
-      <div id="${historyId}" class="inl-430a33be39">Timeline: loading...</div>
-      ${isReceived ? `<button class="action-btn" data-fulfill-id="${request.id}">Mark as Fulfilled</button>` : `<button class="action-btn inl-659214d47e" disabled>Sent</button>`}
+      ${btn}
     </div>
   `;
 }
 
-async function loadTimeline(requestId) {
-  const response = await fetch(`${API_BASE_URL}/requests/${encodeURIComponent(requestId)}/timeline`, { headers: authHeaders() });
-  if (!response.ok) return [];
-  const data = await response.json();
-  return data.history || [];
+// ────────────────────────────────────────────────
+//   Load requests
+// ────────────────────────────────────────────────
+async function load() {
+  try {
+    const [r1, r2] = await Promise.all([
+      fetch(`${API_BASE}/requests?role=received`, { headers: authHeaders() }),
+      fetch(`${API_BASE}/requests?role=sent`,     { headers: authHeaders() })
+    ]);
+
+    const received = (await r1.json()).items || [];
+    const sent     = (await r2.json()).items || [];
+
+    document.getElementById("tab-received").textContent = `Received (${received.length})`;
+    document.getElementById("tab-sent").textContent     = `Sent (${sent.length})`;
+
+    document.getElementById("received-list").innerHTML = received.length
+      ? received.map(r => renderCard(r, true)).join("")
+      : '<div class="empty">No requests received yet.</div>';
+
+    document.getElementById("sent-list").innerHTML = sent.length
+      ? sent.map(r => renderCard(r, false)).join("")
+      : '<div class="empty">No requests sent yet.</div>';
+
+  } catch (e) {
+    console.error(e);
+    document.getElementById("received-list").innerHTML =
+    document.getElementById("sent-list").innerHTML = '<div class="empty">Error loading requests</div>';
+  }
 }
 
-async function loadRequests() {
-  const [receivedRes, sentRes] = await Promise.all([
-    fetch(`${API_BASE_URL}/requests?role=received`, { headers: authHeaders() }),
-    fetch(`${API_BASE_URL}/requests?role=sent`, { headers: authHeaders() })
-  ]);
-  if (!receivedRes.ok || !sentRes.ok) return;
-  const receivedData = await receivedRes.json();
-  const sentData = await sentRes.json();
-  const received = receivedData.items || [];
-  const sent = sentData.items || [];
+// ────────────────────────────────────────────────
+//   Create request
+// ────────────────────────────────────────────────
+async function create() {
+  const title = document.getElementById("req-title").value.trim();
+  const desc  = document.getElementById("req-description").value.trim();
+  const pri   = document.getElementById("req-priority").value;
+  const due   = document.getElementById("req-due").value;
+  const stat  = document.getElementById("modal-status");
 
-  document.getElementById("tabReceived").textContent = `Received (${received.length})`;
-  document.getElementById("tabSent").textContent = `Sent (${sent.length})`;
-  document.getElementById("receivedHeader").textContent = `Requests You Received (${received.length})`;
-  document.getElementById("sentHeader").textContent = `Requests You Sent (${sent.length})`;
+  stat.classList.add("hidden");
 
-  document.getElementById("receivedRequests").innerHTML = received.length
-    ? received.map((r) => renderRequestCard(r, true)).join("")
-    : `<p class="inl-87ddc0dc6e">No requests received.</p>`;
-  document.getElementById("sentRequests").innerHTML = sent.length
-    ? sent.map((r) => renderRequestCard(r, false)).join("")
-    : `<p class="inl-87ddc0dc6e">No requests sent yet.</p>`;
+  if (!title || !due) {
+    stat.textContent = "Title and due date are required";
+    stat.className = "status-message error";
+    stat.classList.remove("hidden");
+    return;
+  }
 
-  for (const request of [...received, ...sent]) {
-    const history = await loadTimeline(request.id);
-    const holder = document.getElementById(`history_${request.id}`);
-    if (holder) {
-      holder.textContent = history.length
-        ? `Timeline: ${history.slice(0, 3).map((h) => `${h.action} (${(h.at || "").slice(0, 10)})`).join(" | ")}`
-        : "Timeline: no activity";
+  try {
+    const res = await fetch(`${API_BASE}/requests`, {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ title, description: desc || undefined, priority: pri, dueDate: due })
+    });
+
+    if (!res.ok) throw new Error("Failed to create request");
+
+    stat.textContent = "Request created successfully";
+    stat.className = "status-message success";
+    stat.classList.remove("hidden");
+
+    setTimeout(() => {
+      document.getElementById("new-request-modal").classList.add("hidden");
+      document.getElementById("req-title").value = "";
+      document.getElementById("req-description").value = "";
+      document.getElementById("req-due").value = "";
+      load();
+    }, 1400);
+
+  } catch (err) {
+    stat.textContent = err.message;
+    stat.className = "status-message error";
+    stat.classList.remove("hidden");
+  }
+}
+
+// ────────────────────────────────────────────────
+//   Event listeners
+// ────────────────────────────────────────────────
+document.getElementById("newRequestBtn").onclick = () =>
+  document.getElementById("new-request-modal").classList.remove("hidden");
+
+document.getElementById("close-modal").onclick =
+document.getElementById("cancel-create").onclick = () =>
+  document.getElementById("new-request-modal").classList.add("hidden");
+
+document.getElementById("submit-create").onclick = create;
+
+document.getElementById("tab-received").onclick = () => {
+  document.getElementById("received-panel").classList.remove("hidden");
+  document.getElementById("sent-panel").classList.add("hidden");
+  document.getElementById("tab-received").classList.add("active");
+  document.getElementById("tab-sent").classList.remove("active");
+};
+
+document.getElementById("tab-sent").onclick = () => {
+  document.getElementById("sent-panel").classList.remove("hidden");
+  document.getElementById("received-panel").classList.add("hidden");
+  document.getElementById("tab-sent").classList.add("active");
+  document.getElementById("tab-received").classList.remove("active");
+};
+
+document.addEventListener("click", e => {
+  if (e.target.matches("[data-id]")) {
+    const id = e.target.dataset.id;
+    if (confirm("Mark request as fulfilled?")) {
+      fetch(`${API_BASE}/requests/${id}/status`, {
+        method: "PATCH",
+        headers: { ...authHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "fulfilled" })
+      }).then(r => { if (r.ok) load(); });
     }
   }
-}
-
-async function createRequest() {
-  const title = document.getElementById("docType").value.trim();
-  const description = document.getElementById("description").value.trim();
-  const priority = document.getElementById("priority").value.toLowerCase();
-  const dueDate = document.getElementById("dueDate").value;
-  const user = JSON.parse(localStorage.getItem("authUser") || "{}");
-  const clientId = Array.isArray(user.clientIds) && user.clientIds.length ? user.clientIds[0] : "c_1001";
-  if (!title || !dueDate) return;
-
-  const response = await fetch(`${API_BASE_URL}/requests`, {
-    method: "POST",
-    headers: authHeaders(),
-    body: JSON.stringify({
-      clientId,
-      title,
-      description,
-      priority,
-      dueDate
-    })
-  });
-  if (response.ok) {
-    document.getElementById("newRequestModal").style.display = "none";
-    document.getElementById("docType").value = "";
-    document.getElementById("description").value = "";
-    await loadRequests();
-  }
-}
-
-async function fulfillRequest(id) {
-  const response = await fetch(`${API_BASE_URL}/requests/${encodeURIComponent(id)}/status`, {
-    method: "PATCH",
-    headers: authHeaders(),
-    body: JSON.stringify({ status: "fulfilled", note: "Fulfilled by client" })
-  });
-  if (response.ok) await loadRequests();
-}
-
-document.getElementById("tabReceived").addEventListener("click", () => {
-  document.getElementById("received").classList.remove("hidden");
-  document.getElementById("sent").classList.add("hidden");
-  document.getElementById("tabReceived").classList.add("active");
-  document.getElementById("tabSent").classList.remove("active");
 });
 
-document.getElementById("tabSent").addEventListener("click", () => {
-  document.getElementById("sent").classList.remove("hidden");
-  document.getElementById("received").classList.add("hidden");
-  document.getElementById("tabSent").classList.add("active");
-  document.getElementById("tabReceived").classList.remove("active");
-});
+document.getElementById("logoutBtn").onclick = () => {
+  window.PortalAuth.clearSession();
+  window.location.href = "../Clientlogins/login.html";
+};
 
-document.querySelector(".modal-footer .btn-primary").addEventListener("click", createRequest);
-
-document.addEventListener("click", (event) => {
-  const fulfillBtn = event.target.closest("[data-fulfill-id]");
-  if (fulfillBtn) {
-    fulfillRequest(fulfillBtn.getAttribute("data-fulfill-id")).catch((error) => console.error(error));
-  }
-});
-
-loadRequests().catch((error) => console.error(error));
+// Initial load
+load();
 </script>
 </body>
 </html>
-
-
-
-
