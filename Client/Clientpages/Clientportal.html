@@ -1,36 +1,28 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Prospera Ã¢â‚¬â€œ Client Dashboard</title>
-
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
-
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Client Dashboard</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <style>
     :root {
-      --primary:       #1754cf;
-      --primary-dark:  #1346b0;
-      --bg:            #f6f6f8;
-      --card:          #ffffff;
-      --text:          #111318;
-      --muted:         #64748b;
-      --border:        #e2e8f0;
-      --success:       #10b981;
-      --radius:        1rem;
-      --shadow-sm:     0 1px 3px rgba(0,0,0,0.06);
-      --shadow-md:     0 10px 25px rgba(0,0,0,0.1);
-      --blue:          #2563eb;     /* active nav link */
+      --bg: #f4f6fb;
+      --card: #ffffff;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --primary: #1754cf;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --slate: #64748b;
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: system-ui, sans-serif;
+      font-family: Arial, Helvetica, sans-serif;
       background: var(--bg);
       color: var(--text);
       height: 100vh;
@@ -40,14 +32,12 @@
     .layout {
       display: flex;
       height: 100vh;
-      overflow: hidden;
     }
 
-    /* Ã¢â€â‚¬Ã¢â€â‚¬ FIXED DARK SIDEBAR Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
     .sidebar {
       width: 260px;
       background: linear-gradient(180deg, #0f172a, #020617);
-      color: white;
+      color: #fff;
       display: flex;
       flex-direction: column;
       flex-shrink: 0;
@@ -60,1054 +50,599 @@
       align-items: center;
     }
 
-    .sidebar-header i {
-      font-size: 30px;
-      color: #60a5fa;
-    }
+    .sidebar-header i { font-size: 30px; color: #60a5fa; }
+    .sidebar-header h1 { font-size: 16px; }
+    .sidebar-header p { font-size: 12px; color: #94a3b8; }
 
-    .sidebar-header h1 {
-      margin: 0;
-      font-size: 16px;
-    }
-
-    .sidebar-header p {
-      margin: 0;
-      font-size: 12px;
-      color: #94a3b8;
-    }
-
-    .nav {
-      padding: 16px;
-      flex: 1;
-    }
+    .nav { padding: 16px; flex: 1; }
 
     .nav a {
       display: flex;
-      gap: 12px;
       align-items: center;
-      padding: 12px 14px;
-      border-radius: 10px;
-      color: #cbd5f5;
+      gap: 12px;
       text-decoration: none;
+      color: #cbd5f5;
+      border-radius: 10px;
+      padding: 12px 14px;
       margin-bottom: 6px;
     }
 
-    .nav a.active {
-      background: var(--blue);
-      color: white;
-    }
+    .nav a.active { background: #2563eb; color: #fff; }
+    .nav a:hover { background: #1e293b; }
 
-    .nav a:hover {
-      background: #1e293b;
-    }
-
-    .sidebar-footer {
-      padding: 16px;
-    }
-
+    .sidebar-footer { padding: 16px; }
     .user-box {
       background: #1e293b;
-      padding: 12px;
       border-radius: 10px;
+      padding: 12px;
       margin-bottom: 12px;
-    }
-
-    .user-box p {
-      margin: 2px 0;
       font-size: 13px;
     }
-
-    .role {
-      color: #60a5fa;
-      font-size: 12px;
-    }
-
+    .role { color: #60a5fa; font-size: 12px; }
     .logout {
       width: 100%;
-      background: none;
-      border: none;
-      color: #cbd5f5;
-      padding: 12px;
+      border: 0;
       border-radius: 10px;
-      cursor: pointer;
+      background: transparent;
+      color: #cbd5f5;
       text-align: left;
+      padding: 12px;
+      cursor: pointer;
     }
+    .logout:hover { background: #1e293b; }
 
-    .logout:hover {
-      background: #1e293b;
-    }
-
-    /* Ã¢â€â‚¬Ã¢â€â‚¬ Scrollable Main Content Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
-    .main-content {
+    .main {
       flex: 1;
       overflow-y: auto;
-      display: flex;
-      flex-direction: column;
     }
 
-    header {
-      background: white;
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      background: #fff;
       border-bottom: 1px solid var(--border);
-      padding: 1.25rem 2.5rem;
+      padding: 18px 28px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      box-shadow: var(--shadow-sm);
-      flex-shrink: 0;
     }
 
-    .search {
-      position: relative;
-      max-width: 520px;
-      width: 100%;
-    }
+    .title h2 { font-size: 28px; margin-bottom: 4px; }
+    .title p { color: var(--muted); font-size: 14px; }
 
-    .search input {
-      width: 100%;
-      padding: 0.9rem 1rem 0.9rem 3.25rem;
-      border-radius: var(--radius);
-      border: 1px solid var(--border);
-      font-size: 0.95rem;
-    }
-
-    .search input:focus {
-      outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(23,84,207,0.15);
-    }
-
-    .search i {
-      position: absolute;
-      left: 1.25rem;
-      top: 50%;
-      transform: translateY(-50%);
-      color: var(--muted);
-    }
-
-    .user {
+    .top-actions {
       display: flex;
+      gap: 10px;
       align-items: center;
-      gap: 1rem;
-      padding: 0.4rem 1rem;
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      background: white;
     }
 
-    .avatar {
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background: #e0f2fe url('https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=80') center/cover;
-      border: 2px solid rgba(23,84,207,0.2);
+    .btn {
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .btn.primary {
+      background: #0f172a;
+      color: #fff;
     }
 
     .content {
-      padding: 2.5rem;
-      flex: 1;
-    }
-
-    h2 {
-      font-size: 2.8rem;
-      margin-bottom: 0.5rem;
-      font-weight: 800;
-    }
-
-    .welcome-text {
-      color: var(--muted);
-      margin-bottom: 2.5rem;
-      font-size: 1.1rem;
-    }
-
-    .grid {
+      padding: 24px 28px 32px;
       display: grid;
-      grid-template-columns: 2fr 1fr;
-      gap: 2rem;
+      gap: 16px;
+    }
+
+    .kpis {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
     }
 
     .card {
       background: var(--card);
       border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.75rem;
-      box-shadow: var(--shadow-md);
-      margin-bottom: 2rem;
+      border-radius: 14px;
+      padding: 16px;
     }
 
-    /* Health Progress Ring */
-    .health { display: flex; gap: 2.5rem; align-items: center; }
-
-    .progress-ring {
-      position: relative;
-      width: 120px;
-      height: 120px;
-    }
-
-    .progress-ring svg {
-      width: 100%;
-      height: 100%;
-      transform: rotate(-90deg);
-    }
-
-    .progress-ring circle {
-      fill: none;
-      stroke-width: 14;
-      stroke-linecap: round;
-    }
-
-    .bg { stroke: #e5e7eb; }
-    .fg {
-      stroke: var(--success);
-      stroke-dasharray: 270;
-      stroke-dashoffset: 40.5; /* Ã¢â€°Ë†85% */
-    }
-
-    .value {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.25rem;
-      font-weight: 700;
-      color: var(--success);
-    }
-
-    .stats { display: flex; gap: 1.25rem; margin-top: 1.25rem; }
-    .stat {
-      padding: 0.6rem 1.25rem;
-      border-radius: 0.75rem;
-      font-size: 0.9rem;
-      font-weight: 600;
-    }
-    .stat.green { background: rgba(16,185,129,0.1); color: var(--success); }
-    .stat.blue   { background: rgba(23,84,207,0.1);  color: var(--primary); }
-
-    /* Task Items */
-    .task-item {
-      background: white;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1.5rem;
-      margin-bottom: 1.25rem;
-    }
-
-    .task-header {
+    .kpi-head {
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 1.25rem;
-    }
-
-    .task-icon {
-      width: 52px;
-      height: 52px;
-      background: rgba(23,84,207,0.1);
-      border-radius: 0.875rem;
-      display: flex;
       align-items: center;
-      justify-content: center;
-      color: var(--primary);
-      font-size: 1.6rem;
+      margin-bottom: 10px;
+      color: var(--muted);
+      font-size: 12px;
     }
 
-    .upload-zone {
-      border: 2px dashed #cbd5e1;
-      border-radius: 0.875rem;
-      padding: 2rem;
-      text-align: center;
-      cursor: pointer;
-      transition: border-color 0.2s;
-    }
-    .upload-zone:hover { border-color: var(--primary); }
-    .upload-zone i { font-size: 3rem; color: #94a3b8; margin-bottom: 1rem; }
-
-    .sign-btn {
-      padding: 0.75rem 1.75rem;
-      background: var(--primary);
-      color: white;
-      border: none;
-      border-radius: 0.875rem;
-      font-weight: 600;
-      cursor: pointer;
+    .kpi-value {
+      font-size: 26px;
+      font-weight: 800;
+      margin-bottom: 4px;
     }
 
-    /* Timeline */
-    .timeline {
-      position: relative;
-      padding-left: 3rem;
+    .kpi-title {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .05em;
     }
-    .timeline::before {
-      content: '';
-      position: absolute;
-      left: 24px;
-      top: 12px;
-      bottom: 12px;
-      width: 2px;
+
+    .grid-3 {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: 1.2fr 1fr 1fr;
+    }
+
+    .section-title {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    .status-row {
+      margin-bottom: 10px;
+    }
+
+    .status-line {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      margin-bottom: 6px;
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 8px;
+    }
+
+    .bar {
       background: #e2e8f0;
-    }
-
-    .event {
-      display: flex;
-      gap: 1.25rem;
-      margin-bottom: 1.5rem;
-    }
-
-    .event-dot {
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-size: 1rem;
-      flex-shrink: 0;
-      border: 4px solid white;
-    }
-
-    /* Help Card */
-    .help-card {
-      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-      color: white;
-      border-radius: var(--radius);
-      padding: 2rem;
-      box-shadow: 0 12px 30px rgba(23,84,207,0.3);
-    }
-
-    .help-btn {
-      width: 100%;
-      margin-top: 1.5rem;
-      padding: 1rem;
-      background: white;
-      color: var(--primary);
-      border: none;
-      border-radius: var(--radius);
-      font-weight: 700;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.75rem;
-      font-size: 1.05rem;
-    }
-
-    /* Ã¢â€â‚¬Ã¢â€â‚¬ Notification Drawer Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬ */
-    .overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.45);
-      backdrop-filter: blur(6px);
-      display: none;
-      justify-content: flex-end;
-      z-index: 1000;
-      transition: opacity 0.3s ease;
-    }
-
-    .overlay.active {
-      display: flex;
-      opacity: 1;
-    }
-
-    .drawer {
-      width: 440px;
-      height: 100%;
-      background: white;
-      box-shadow: -20px 0 50px rgba(0,0,0,0.2);
-      display: flex;
-      flex-direction: column;
-      transform: translateX(100%);
-      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-      border-radius: 0 0 0 var(--radius);
-    }
-
-    .overlay.active .drawer {
-      transform: translateX(0);
-    }
-
-    .drawer-header {
-      padding: 1.5rem 2rem;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .drawer-header h2 {
-      margin: 0;
-      font-size: 1.5rem;
-      font-weight: 700;
-    }
-
-    .drawer-header p {
-      margin: 0.25rem 0 0;
-      color: var(--muted);
-      font-size: 0.95rem;
-    }
-
-    .close-btn {
-      font-size: 1.6rem;
-      color: var(--muted);
-      cursor: pointer;
-      padding: 0.25rem;
-    }
-
-    .close-btn:hover {
-      color: var(--text);
-    }
-
-    .filters {
-      display: flex;
-      gap: 0.75rem;
-      padding: 1rem 2rem;
-      border-bottom: 1px solid var(--border);
-      background: #f8faff;
-    }
-
-    .filter {
-      padding: 0.5rem 1.25rem;
+      height: 6px;
       border-radius: 999px;
-      font-size: 0.9rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
+      overflow: hidden;
     }
 
-    .filter.active {
-      background: var(--primary);
-      color: white;
+    .bar > span {
+      display: block;
+      height: 100%;
+      background: #0f172a;
     }
 
-    .filter:not(.active) {
-      background: #f1f5f9;
-      color: var(--muted);
+    .chart-wrap {
+      display: grid;
+      align-items: end;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 8px;
+      height: 140px;
     }
 
-    .notification-list {
-      flex: 1;
-      overflow-y: auto;
-      padding: 1rem 0;
-    }
-
-    .notification-item {
-      padding: 1.25rem 2rem;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      gap: 1rem;
-    }
-
-    .notification-item.unread {
-      background: rgba(23, 84, 207, 0.04);
-    }
-
-    .notification-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.4rem;
-      flex-shrink: 0;
-    }
-
-    .notification-icon.document { background: rgba(23,84,207,0.1); color: var(--primary); }
-    .notification-icon.message   { background: #e0f2fe; color: #1d4ed8; }
-    .notification-icon.status    { background: rgba(16,185,129,0.1); color: var(--success); }
-    .notification-icon.payroll   { background: rgba(245,158,11,0.1); color: #d97706; }
-
-    .notification-avatar {
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      object-fit: cover;
-      flex-shrink: 0;
-    }
-
-    .notification-content h4 {
-      margin: 0 0 0.25rem;
-      font-size: 1.05rem;
-      font-weight: 700;
-    }
-
-    .notification-time {
-      font-size: 0.82rem;
-      color: var(--muted);
-      margin-bottom: 0.4rem;
-    }
-
-    .notification-content p {
-      margin: 0.3rem 0 0.8rem;
-      color: var(--muted);
-      line-height: 1.4;
-      font-size: 0.95rem;
-    }
-
-    .notification-actions {
-      display: flex;
-      gap: 1rem;
-      align-items: center;
-    }
-
-    .action-btn {
-      padding: 0.55rem 1.2rem;
-      border-radius: 0.75rem;
-      font-weight: 600;
-      font-size: 0.9rem;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 0.4rem;
-    }
-
-    .action-btn.primary {
-      background: var(--primary);
-      color: white;
-      border: none;
-    }
-
-    .action-btn.outline {
-      background: white;
-      border: 1px solid var(--primary);
-      color: var(--primary);
-    }
-
-    .action-link {
-      color: var(--muted);
-      font-size: 0.9rem;
-      cursor: pointer;
-    }
-
-    .action-link:hover {
-      color: var(--primary);
-      text-decoration: underline;
-    }
-
-    .drawer-footer {
-      padding: 1.5rem 2rem;
-      border-top: 1px solid var(--border);
+    .chart-col {
       text-align: center;
-    }
-
-    .view-all-btn {
-      width: 100%;
-      padding: 1rem;
-      background: var(--primary);
-      color: white;
-      border: none;
-      border-radius: 0.875rem;
-      font-weight: 700;
-      font-size: 1.05rem;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 0.5rem;
-    }
-
-    .mark-all {
-      margin-top: 1rem;
+      font-size: 11px;
       color: var(--muted);
-      font-size: 0.95rem;
-      cursor: pointer;
     }
 
-    .mark-all:hover {
-      color: var(--primary);
+    .chart-bar {
+      width: 100%;
+      border-radius: 8px 8px 0 0;
+      background: linear-gradient(180deg, #3b82f6, #1d4ed8);
+      margin-bottom: 6px;
+      min-height: 8px;
     }
 
-    /* =========================
-   DOCUMENT STATUS CARD
-========================= */
+    .two-col {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: 2fr 1fr;
+    }
 
-.document-card {
-  background: #e5e7eb; /* light grey like screenshot */
-  border-radius: 16px;
-  padding: 24px;
-  width: 100%;
-  max-width: 420px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.06);
-}
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
 
-.document-title {
-  font-size: 18px;
-  font-weight: 600;
-  margin-bottom: 25px;
-  color: #0f172a;
-}
+    th, td {
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+      padding: 10px 8px;
+      font-size: 13px;
+    }
 
-.status-item {
-  margin-bottom: 22px;
-}
+    th {
+      font-size: 11px;
+      text-transform: uppercase;
+      color: var(--muted);
+      letter-spacing: .05em;
+    }
 
-.status-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 8px;
-}
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      border: 1px solid var(--border);
+    }
 
-.status-left {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 15px;
-  color: #0f172a;
-}
+    .timeline-item {
+      border-left: 2px solid #e2e8f0;
+      padding-left: 12px;
+      margin-left: 4px;
+      margin-bottom: 12px;
+    }
 
-.count {
-  font-size: 15px;
-  font-weight: 500;
-  color: #0f172a;
-}
+    .timeline-item h4 {
+      font-size: 13px;
+      margin-bottom: 2px;
+    }
 
-/* Dots */
+    .timeline-item p {
+      font-size: 12px;
+      color: var(--muted);
+    }
 
-.dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-}
+    .empty {
+      color: var(--muted);
+      font-size: 13px;
+      padding: 10px 0;
+    }
 
-.green { background: #10b981; }
-.yellow { background: #f59e0b; }
-.red { background: #ef4444; }
-.grey { background: #6b7280; }
-
-/* Progress Bars */
-
-.progress {
-  width: 100%;
-  height: 6px;
-  background: #cbd5e1;
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.progress-fill {
-  height: 100%;
-  background: #1f2937; /* dark fill like screenshot */
-  border-radius: 6px;
-}
-
-/* Widths based on totals (153 total) */
-.approved-fill { width: 81%; }
-.pending-fill { width: 12%; }
-.rejected-fill { width: 3%; }
-.expired-fill { width: 5%; }
+    @media (max-width: 1200px) {
+      .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .grid-3, .two-col { grid-template-columns: 1fr; }
+    }
   </style>
-<link rel="stylesheet" href="../../shared/inline-migrated.css">
 </head>
 <body>
-
-<div class="layout">
-
-  <!-- Sidebar -->
-  <aside class="sidebar">
-    <div class="sidebar-header">
-      <i class="fa-solid fa-shield-halved"></i>
-      <div>
-        <h1>Prospera</h1>
-        <p>Secure Client Portal</p>
-      </div>
-    </div>
-
-    <nav class="nav">
-      <a href="Clientportal.html" class="active">
-        <i class="fa fa-chart-line"></i> Dashboard
-      </a>
-      <a href="documents.html">
-        <i class="fa fa-file"></i> Documents
-      </a>
-      <a href="clientrequest.html">
-        <i class="fa fa-file-alt"></i> Requests
-      </a>
-      <a href="messages.html">
-        <i class="fa fa-message"></i> Messages
-      </a>
-      <a href="settings.html">
-        <i class="fa fa-gear"></i> Settings
-      </a>
-    </nav>
-
-    <div class="sidebar-footer">
-      <div class="user-box">
-        <p><strong>John Doe</strong></p>
-        <p>client@example.com</p>
-        <p class="role">Client</p>
-      </div>
-      <button class="logout">
-        <i class="fa fa-sign-out"></i> Logout
-      </button>
-    </div>
-  </aside>
-
-  <!-- Main Content -->
-  <div class="main-content">
-
-    <header>
-      <div class="search">
-        <i class="fas fa-search"></i>
-        <input placeholder="Search for documents or requests..."/>
-      </div>
-
-      <div class="inl-c12c8051a3">
-        <button id="notifications-toggle" class="inl-ff94770a13">
-          <i class="fas fa-bell"></i>
-          <span class="notification-dot inl-145cce33d1"></span>
-        </button>
-       
-        
-        <div class="user">
-          <div class="avatar"></div>
-          <strong>Alex Richards</strong>
-        </div>
-      </div>
-    </header>
-
-    <div class="content">
-      <h2>Welcome back, Alex</h2>
-      <p class="welcome-text">
-        Your 2024 Tax Season filing is currently in progress. 3 tasks need your attention.
-      </p>
-
-      <div class="grid">
-
-        <!-- Left column -->
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <i class="fa-solid fa-shield-halved"></i>
         <div>
-          <!-- Compliance Health -->
-          <div class="card health">
-            <div class="progress-ring">
-              <svg viewBox="0 0 100 100">
-                <circle class="bg" cx="50" cy="50" r="43"/>
-                <circle class="fg" cx="50" cy="50" r="43"/>
-              </svg>
-              <div class="value">85%</div>
-            </div>
-            <div>
-              <h3 class="inl-c26f7678c0">
-                Compliance Health
-                <i class="fas fa-shield-check inl-6e17958f7f"></i>
-              </h3>
-              <p class="inl-65bee2b28f">
-                You're on track for your Q1 filing deadline. Complete pending requests to reach 100%.
-              </p>
-              <div class="stats">
-                <div class="stat green"><i class="fas fa-check-circle"></i> 12 Completed</div>
-                <div class="stat blue"><i class="fas fa-clock"></i> 3 Pending</div>
-              </div>
-            </div>
-          </div>
+          <h1>Prospera</h1>
+          <p>Secure Client Portal</p>
+        </div>
+      </div>
 
-          <!-- Pending Requests -->
+      <nav class="nav">
+        <a href="Clientportal.html" class="active"><i class="fa fa-chart-line"></i> Dashboard</a>
+        <a href="documents.html"><i class="fa fa-file"></i> Documents</a>
+        <a href="clientrequest.html"><i class="fa fa-file-alt"></i> Requests</a>
+        <a href="messages.html"><i class="fa fa-message"></i> Messages</a>
+        <a href="settings.html"><i class="fa fa-gear"></i> Settings</a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-box">
+          <p><strong id="sidebar-user-name">Client User</strong></p>
+          <p id="sidebar-user-email">client@example.com</p>
+          <p class="role">Client</p>
+        </div>
+        <button class="logout" id="logout-btn"><i class="fa fa-sign-out"></i> Logout</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="title">
+          <h2>Dashboard</h2>
+          <p id="welcome-line">Welcome back. Here is your latest overview.</p>
+        </div>
+        <div class="top-actions">
+          <button class="btn primary" id="upload-btn"><i class="fa fa-upload"></i> Upload Document</button>
+        </div>
+      </header>
+
+      <section class="content">
+        <div class="kpis">
           <div class="card">
-            <div class="inl-06a70bbfb0">
-              <h3 class="inl-1386d5036f">Pending Document Requests</h3>
-              <a href="#" class="inl-9f5c50c0c2">View all</a>
-            </div>
-
-            <div class="task-item">
-              <div class="task-header">
-                <div class="inl-4b8199efa1">
-                  <div class="task-icon"><i class="fas fa-file-upload"></i></div>
-                  <div>
-                    <h4 class="inl-8ead09bc11">2023 Form W-2</h4>
-                    <p class="inl-e4782d7e95">
-                      Required for federal income tax return filing.
-                    </p>
-                  </div>
-                </div>
-                <div class="inl-f6e3d7fea5">
-                  <span class="inl-6f1a85f820">
-                    Priority: High
-                  </span>
-                  <p class="inl-df40fb51a5">
-                    Due in 2 days
-                  </p>
-                </div>
-              </div>
-              <div class="upload-zone">
-                <i class="fas fa-cloud-upload-alt"></i>
-                <p><strong>Click to upload</strong> or drag and drop</p>
-                <p class="inl-f5454b88c2">
-                  PDF, JPG or PNG (max. 10MB)
-                </p>
-              </div>
-            </div>
-
-            <div class="task-item inl-3390debaa8">
-              <div class="inl-4b8199efa1">
-                <div class="task-icon"><i class="fas fa-signature"></i></div>
-                <div>
-                  <h4 class="inl-8ead09bc11">Engagement Letter 2024</h4>
-                  <p class="inl-e4782d7e95">
-                    Please review and sign to authorize services.
-                  </p>
-                </div>
-              </div>
-              <button class="sign-btn">Sign Document</button>
-            </div>
+            <div class="kpi-head"><span><i class="fa fa-file-alt"></i></span><span id="kpi-total-docs-note">docs</span></div>
+            <div class="kpi-value" id="kpi-total-docs">0</div>
+            <div class="kpi-title">Total Documents</div>
           </div>
-        </div>
-
-        <!-- Right column -->
-        <div>
           <div class="card">
-            <h3>Recent Activity</h3>
-            <div class="timeline">
-              <div class="event">
-                <div class="event-dot inl-18767fcb4c">
-                  <i class="fas fa-check"></i>
-                </div>
-                <div>
-                  <p class="inl-36fc644c6d">Bank Statement Approved</p>
-                  <p class="inl-b8b20bbc7a">
-                    March 2024 records verified by Sarah K.
-                  </p>
-                  <p class="inl-6cc9dd2755">
-                    2 hours ago
-                  </p>
-                </div>
-              </div>
-
-              <div class="event">
-                <div class="event-dot inl-a40d2afcb1">
-                  <i class="fas fa-envelope"></i>
-                </div>
-                <div>
-                  <p class="inl-36fc644c6d">New Message from Sarah</p>
-                  <p class="inl-b8b20bbc7a">
-                    "Got the W-2, looks good. Just one more..."
-                  </p>
-                  <p class="inl-6cc9dd2755">
-                    5 hours ago
-                  </p>
-                </div>
-              </div>
-
-              <div class="event">
-                <div class="event-dot inl-72be4b4b70">
-                  <i class="fas fa-cloud-upload-alt"></i>
-                </div>
-                <div>
-                  <p class="inl-36fc644c6d">You uploaded 1099-INT</p>
-                  <p class="inl-b8b20bbc7a">
-                    Uploaded for Chase Bank account.
-                  </p>
-                  <p class="inl-6cc9dd2755">
-                    Yesterday
-                  </p>
-                </div>
-              </div>
-            </div>
+            <div class="kpi-head"><span><i class="fa fa-clock"></i></span><span id="kpi-pending-note">pending</span></div>
+            <div class="kpi-value" id="kpi-pending-docs">0</div>
+            <div class="kpi-title">Pending Documents</div>
           </div>
-
-          <div class="help-card">
-            <h3 class="inl-9dcdde5e17">Need Help?</h3>
-            <p class="inl-ff20be9ae0">
-              Message your accountant directly through our encrypted channel.
-            </p>
-            <button class="help-btn">
-              <i class="fas fa-comment-dots"></i> Start Secure Chat
-            </button>
+          <div class="card">
+            <div class="kpi-head"><span><i class="fa fa-exclamation-circle"></i></span><span id="kpi-missing-note">action</span></div>
+            <div class="kpi-value" id="kpi-missing-docs">0</div>
+            <div class="kpi-title">Missing Documents</div>
+          </div>
+          <div class="card">
+            <div class="kpi-head"><span><i class="fa fa-file-invoice-dollar"></i></span><span id="kpi-invoice-note">invoice docs</span></div>
+            <div class="kpi-value" id="kpi-invoices">0</div>
+            <div class="kpi-title">Total Invoices</div>
+          </div>
+          <div class="card">
+            <div class="kpi-head"><span><i class="fa fa-calendar-clock"></i></span><span id="kpi-expiring-note">30 days</span></div>
+            <div class="kpi-value" id="kpi-expiring">0</div>
+            <div class="kpi-title">Expiring Soon</div>
           </div>
         </div>
 
-      </div>
-    </div>
-
-    <!-- Notification Drawer -->
-    <div class="overlay" id="notification-overlay">
-      <div class="drawer">
-
-        <div class="drawer-header">
-          <div>
-            <h2>Notifications</h2>
-            <p>You have 3 unread updates</p>
+        <div class="grid-3">
+          <div class="card">
+            <h3 class="section-title">Document Status</h3>
+            <div id="status-wrap"></div>
           </div>
-          <i class="fas fa-times close-btn" id="close-notifications"></i>
+          <div class="card">
+            <h3 class="section-title">Upload Activity</h3>
+            <div class="chart-wrap" id="upload-chart"></div>
+          </div>
+          <div class="card">
+            <h3 class="section-title">Activity Timeline</h3>
+            <div id="timeline-wrap"></div>
+          </div>
         </div>
 
-        <div class="filters">
-          <div class="filter active">All</div>
-          <div class="filter">Unread</div>
-          <div class="filter">Action Required</div>
+        <div class="two-col">
+          <div class="card">
+            <h3 class="section-title">Recent Documents</h3>
+            <div id="recent-documents-wrap"></div>
+          </div>
+          <div class="card">
+            <h3 class="section-title">Invoices</h3>
+            <div id="invoices-wrap"></div>
+          </div>
         </div>
-
-        <div class="notification-list">
-
-          <!-- Document Request -->
-          <div class="notification-item unread">
-            <div class="notification-icon document">
-              <i class="fas fa-file-upload"></i>
-            </div>
-            <div class="notification-content">
-              <div class="inl-2b3333f709">
-                <h4>Document Request</h4>
-                <span class="notification-time">2 hours ago</span>
-              </div>
-              <p>Please upload your <strong>2023 W-2</strong> form and <strong>Schedule K-1</strong> for tax filing prep.</p>
-              <div class="notification-actions">
-                <button class="action-btn primary"><i class="fas fa-upload"></i> Upload</button>
-                <span class="action-link">Mark as read</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- New Message -->
-          <div class="notification-item unread">
-            <img class="notification-avatar" src="https://i.pravatar.cc/100?img=32" alt="Sarah">
-            <div class="notification-content">
-              <div class="inl-2b3333f709">
-                <h4>New Message</h4>
-                <span class="notification-time">5 hours ago</span>
-              </div>
-              <p>"I've updated your tax projection for Q4. Can we jump on a quick call tomorrow to review?"</p>
-              <div class="notification-actions">
-                <button class="action-btn outline"><i class="fas fa-reply"></i> Reply</button>
-                <span class="action-link">Mark as read</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Status Update -->
-          <div class="notification-item">
-            <div class="notification-icon status">
-              <i class="fas fa-check-circle"></i>
-            </div>
-            <div class="notification-content">
-              <div class="inl-2b3333f709">
-                <h4>Status Update</h4>
-                <span class="notification-time">Yesterday</span>
-              </div>
-              <p>Your document <strong>Lease_Agreement_Final.pdf</strong> has been approved and verified.</p>
-              <span class="action-link">Archived</span>
-            </div>
-          </div>
-
-          <!-- Payroll Processed -->
-          <div class="notification-item">
-            <div class="notification-icon payroll">
-              <i class="fas fa-money-check-alt"></i>
-            </div>
-            <div class="notification-content">
-              <div class="inl-2b3333f709">
-                <h4>Payroll Processed</h4>
-                <span class="notification-time">Oct 24</span>
-              </div>
-              <p>Payroll for the period Oct 1 - Oct 15 has been successfully processed for 12 employees.</p>
-              <span class="action-link">View Payroll Report</span>
-            </div>
-          </div>
-
-        </div>
-
-        <div class="drawer-footer">
-          <button class="view-all-btn">View All Notifications <i class="fas fa-arrow-right"></i></button>
-          <div class="mark-all">Mark all as read</div>
-        </div>
-
-      </div>
-    </div>
- 
-    <div class="document-card">
-  <h3 class="document-title">Document Status</h3>
-
-  <div class="status-item">
-    <div class="status-row">
-      <div class="status-left">
-        <span class="dot green"></span>
-        <span>Approved</span>
-      </div>
-      <span class="count">124</span>
-    </div>
-    <div class="progress">
-      <div class="progress-fill approved-fill"></div>
-    </div>
+      </section>
+    </main>
   </div>
 
-  <div class="status-item">
-    <div class="status-row">
-      <div class="status-left">
-        <span class="dot yellow"></span>
-        <span>Pending</span>
-      </div>
-      <span class="count">18</span>
-    </div>
-    <div class="progress">
-      <div class="progress-fill pending-fill"></div>
-    </div>
-  </div>
+  <script src="../../shared/portal-config.js"></script>
+  <script src="../../shared/portal-auth.js"></script>
+  <script>
+    const session = window.PortalAuth.requireRole("client", "../Clientlogins/login.html");
+    if (!session) throw new Error("Unauthorized");
 
-  <div class="status-item">
-    <div class="status-row">
-      <div class="status-left">
-        <span class="dot red"></span>
-        <span>Rejected</span>
-      </div>
-      <span class="count">4</span>
-    </div>
-    <div class="progress">
-      <div class="progress-fill rejected-fill"></div>
-    </div>
-  </div>
+    const API_BASE_URL =
+      window.PortalConfig && window.PortalConfig.API_BASE_URL
+        ? window.PortalConfig.API_BASE_URL
+        : "http://127.0.0.1:4010/api";
 
-  <div class="status-item">
-    <div class="status-row">
-      <div class="status-left">
-        <span class="dot grey"></span>
-        <span>Expired</span>
-      </div>
-      <span class="count">7</span>
-    </div>
-    <div class="progress">
-      <div class="progress-fill expired-fill"></div>
-    </div>
-  </div>
+    const sidebarUserName = document.getElementById("sidebar-user-name");
+    const sidebarUserEmail = document.getElementById("sidebar-user-email");
+    const welcomeLine = document.getElementById("welcome-line");
 
-</div>
-  </div>
+    const totalDocsEl = document.getElementById("kpi-total-docs");
+    const pendingDocsEl = document.getElementById("kpi-pending-docs");
+    const missingDocsEl = document.getElementById("kpi-missing-docs");
+    const invoicesEl = document.getElementById("kpi-invoices");
+    const expiringEl = document.getElementById("kpi-expiring");
 
-</div>
+    const statusWrap = document.getElementById("status-wrap");
+    const chartWrap = document.getElementById("upload-chart");
+    const timelineWrap = document.getElementById("timeline-wrap");
+    const recentDocumentsWrap = document.getElementById("recent-documents-wrap");
+    const invoicesWrap = document.getElementById("invoices-wrap");
 
-<!-- JavaScript for Drawer -->
-<script src="../../shared/portal-config.js"></script>
-<script src="../../shared/portal-auth.js"></script>
-<script>
-  const session = window.PortalAuth.requireRole("client", "../Clientlogins/login.html");
-  if (!session) { throw new Error("Unauthorized"); }
-const overlay = document.getElementById('notification-overlay');
-  const toggleBtn = document.getElementById('notifications-toggle');
-  const closeBtn = document.getElementById('close-notifications');
+    document.getElementById("upload-btn").addEventListener("click", () => {
+      window.location.href = "upload.html";
+    });
 
-  function openDrawer() {
-    overlay.classList.add('active');
-    document.body.style.overflow = 'hidden';
-  }
+    document.getElementById("logout-btn").addEventListener("click", () => {
+      window.PortalAuth.clearSession();
+      window.location.href = "../Clientlogins/login.html";
+    });
 
-  function closeDrawer() {
-    overlay.classList.remove('active');
-    document.body.style.overflow = '';
-  }
-
-  toggleBtn.addEventListener('click', openDrawer);
-  closeBtn.addEventListener('click', closeDrawer);
-
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) closeDrawer();
-  });
-
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && overlay.classList.contains('active')) {
-      closeDrawer();
+    function safeDate(value) {
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? null : date;
     }
-  });
-</script>
 
+    function formatDate(value) {
+      const date = safeDate(value);
+      if (!date) return "Unknown";
+      return date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+    }
+
+    function statusBadgeClass(status) {
+      const normalized = String(status || "").toLowerCase();
+      if (["approved", "complete", "completed"].includes(normalized)) return "color:#10b981;border-color:#10b98133;background:#10b98111;";
+      if (["pending", "in-review", "review", "processing"].includes(normalized)) return "color:#f59e0b;border-color:#f59e0b33;background:#f59e0b11;";
+      if (["rejected", "request-fix", "missing"].includes(normalized)) return "color:#ef4444;border-color:#ef444433;background:#ef444411;";
+      return "color:#64748b;border-color:#64748b33;background:#64748b11;";
+    }
+
+    function renderStatusRows(counts, total) {
+      const rows = [
+        { label: "Approved", count: counts.approved || 0, color: "#10b981" },
+        { label: "Pending", count: counts.pending || 0, color: "#f59e0b" },
+        { label: "Rejected", count: counts.rejected || 0, color: "#ef4444" },
+        { label: "Expired", count: counts.expired || 0, color: "#64748b" },
+      ];
+
+      statusWrap.innerHTML = rows.map((row) => {
+        const percent = total > 0 ? Math.max(3, Math.round((row.count / total) * 100)) : 0;
+        return `
+          <div class="status-row">
+            <div class="status-line">
+              <div><span class="dot" style="background:${row.color}"></span>${row.label}</div>
+              <strong>${row.count}</strong>
+            </div>
+            <div class="bar"><span style="width:${percent}%"></span></div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderUploadChart(documents) {
+      const now = new Date();
+      const items = [];
+      for (let i = 5; i >= 0; i -= 1) {
+        const bucketDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const next = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+        const label = bucketDate.toLocaleDateString(undefined, { month: "short" });
+        const count = documents.filter((doc) => {
+          const uploaded = safeDate(doc.uploadedAt);
+          return uploaded && uploaded >= bucketDate && uploaded < next;
+        }).length;
+        items.push({ label, count });
+      }
+
+      const max = Math.max(1, ...items.map((item) => item.count));
+      chartWrap.innerHTML = items.map((item) => {
+        const h = Math.max(8, Math.round((item.count / max) * 110));
+        return `
+          <div class="chart-col">
+            <div class="chart-bar" style="height:${h}px"></div>
+            <div>${item.label}</div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderTimeline(notifications) {
+      if (!notifications.length) {
+        timelineWrap.innerHTML = '<p class="empty">No recent activity yet.</p>';
+        return;
+      }
+      timelineWrap.innerHTML = notifications.slice(0, 6).map((item) => `
+        <div class="timeline-item">
+          <h4>${item.title || "Activity"}</h4>
+          <p>${item.message || ""}</p>
+          <p>${formatDate(item.createdAt)}</p>
+        </div>
+      `).join("");
+    }
+
+    function renderRecentDocuments(documents) {
+      if (!documents.length) {
+        recentDocumentsWrap.innerHTML = '<p class="empty">No documents uploaded yet.</p>';
+        return;
+      }
+
+      recentDocumentsWrap.innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Category</th>
+              <th>Status</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${documents.slice(0, 8).map((doc) => `
+              <tr>
+                <td>${doc.name || "Untitled"}</td>
+                <td>${doc.category || "-"}</td>
+                <td><span class="badge" style="${statusBadgeClass(doc.status)}">${doc.status || "unknown"}</span></td>
+                <td>${formatDate(doc.uploadedAt)}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function renderInvoices(documents) {
+      const invoiceDocs = documents.filter((doc) => {
+        const category = String(doc.category || "").toLowerCase();
+        const name = String(doc.name || "").toLowerCase();
+        return category.includes("invoice") || name.includes("invoice") || /^inv[-_ ]?/i.test(name);
+      });
+
+      if (!invoiceDocs.length) {
+        invoicesWrap.innerHTML = '<p class="empty">No invoice documents found yet.</p>';
+        return;
+      }
+
+      invoicesWrap.innerHTML = invoiceDocs.slice(0, 6).map((doc) => `
+        <div style="padding:10px 0;border-bottom:1px solid #e2e8f0;">
+          <div style="font-size:13px;font-weight:700;">${doc.name || "Invoice"}</div>
+          <div style="font-size:12px;color:#64748b;">${doc.category || "Invoice"} • ${formatDate(doc.uploadedAt)}</div>
+          <div style="margin-top:6px;"><span class="badge" style="${statusBadgeClass(doc.status)}">${doc.status || "unknown"}</span></div>
+        </div>
+      `).join("");
+    }
+
+    function normalizeStatus(status) {
+      const s = String(status || "").toLowerCase();
+      if (["approved", "complete", "completed"].includes(s)) return "approved";
+      if (["rejected", "declined", "request-fix"].includes(s)) return "rejected";
+      if (["expired"].includes(s)) return "expired";
+      return "pending";
+    }
+
+    async function loadDashboard() {
+      const { user, token } = session;
+      sidebarUserName.textContent = user.fullName || "Client User";
+      sidebarUserEmail.textContent = user.email || "";
+      const firstName = (user.fullName || "Client").split(" ")[0];
+      welcomeLine.textContent = `Welcome back, ${firstName}. Here is your financial overview.`;
+
+      const headers = window.PortalAuth.authHeaders(token);
+
+      const [documentsRes, requestsRes, notificationsRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/documents`, { headers }),
+        fetch(`${API_BASE_URL}/requests`, { headers }),
+        fetch(`${API_BASE_URL}/notifications?limit=20`, { headers }),
+      ]);
+
+      if (!documentsRes.ok) throw new Error("Failed to load documents.");
+      if (!requestsRes.ok) throw new Error("Failed to load requests.");
+      if (!notificationsRes.ok) throw new Error("Failed to load notifications.");
+
+      const documents = (await documentsRes.json()).items || [];
+      const requests = (await requestsRes.json()).items || [];
+      const notifications = (await notificationsRes.json()).items || [];
+
+      const sortedDocs = [...documents].sort((a, b) => {
+        const left = safeDate(a.uploadedAt)?.getTime() || 0;
+        const right = safeDate(b.uploadedAt)?.getTime() || 0;
+        return right - left;
+      });
+
+      const counts = { approved: 0, pending: 0, rejected: 0, expired: 0 };
+      for (const doc of sortedDocs) {
+        counts[normalizeStatus(doc.status)] += 1;
+      }
+
+      const pendingDocs = sortedDocs.filter((doc) => normalizeStatus(doc.status) === "pending").length;
+      const missingDocs = requests.filter((request) => String(request.status || "").toLowerCase() === "pending").length;
+      const invoiceCount = sortedDocs.filter((doc) => {
+        const category = String(doc.category || "").toLowerCase();
+        const name = String(doc.name || "").toLowerCase();
+        return category.includes("invoice") || name.includes("invoice") || /^inv[-_ ]?/i.test(name);
+      }).length;
+      const now = new Date();
+      const expiringSoon = requests.filter((request) => {
+        const due = safeDate(request.dueDate);
+        if (!due) return false;
+        const days = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        return days >= 0 && days <= 30 && String(request.status || "").toLowerCase() !== "completed";
+      }).length;
+
+      totalDocsEl.textContent = String(sortedDocs.length);
+      pendingDocsEl.textContent = String(pendingDocs);
+      missingDocsEl.textContent = String(missingDocs);
+      invoicesEl.textContent = String(invoiceCount);
+      expiringEl.textContent = String(expiringSoon);
+
+      renderStatusRows(counts, sortedDocs.length);
+      renderUploadChart(sortedDocs);
+      renderTimeline(notifications);
+      renderRecentDocuments(sortedDocs);
+      renderInvoices(sortedDocs);
+    }
+
+    loadDashboard().catch((error) => {
+      console.error(error);
+      const message = error?.message || "Failed to load dashboard.";
+      timelineWrap.innerHTML = `<p class="empty">${message}</p>`;
+      recentDocumentsWrap.innerHTML = `<p class="empty">${message}</p>`;
+      invoicesWrap.innerHTML = `<p class="empty">${message}</p>`;
+      statusWrap.innerHTML = `<p class="empty">${message}</p>`;
+      chartWrap.innerHTML = `<p class="empty">${message}</p>`;
+    });
+  </script>
 </body>
 </html>
-
-
