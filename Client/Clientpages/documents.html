@@ -2,11 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Prospera ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“ Documents</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+<title>Client Documents</title>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
-
 <style>
 :root {
   --blue: #2563eb;
@@ -14,7 +12,9 @@
   --dark: #0f172a;
   --muted: #64748b;
   --border: #e5e7eb;
-  --primary: #2563eb;     /* added for .tag.active consistency if needed */
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -25,16 +25,15 @@ body {
   background: var(--bg);
   height: 100vh;
   overflow: hidden;
+  color: var(--dark);
 }
 
-/* LAYOUT */
 .app-layout {
   display: flex;
   height: 100vh;
-  overflow: hidden;
 }
 
-/* SIDEBAR ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“ fixed, non-scrolling */
+/* Sidebar stays exactly in your portal style */
 .sidebar {
   width: 260px;
   background: linear-gradient(180deg, #0f172a, #020617);
@@ -56,16 +55,8 @@ body {
   color: #60a5fa;
 }
 
-.sidebar-header h1 {
-  margin: 0;
-  font-size: 16px;
-}
-
-.sidebar-header p {
-  margin: 0;
-  font-size: 12px;
-  color: #94a3b8;
-}
+.sidebar-header h1 { font-size: 16px; }
+.sidebar-header p { font-size: 12px; color: #94a3b8; }
 
 .nav {
   padding: 16px;
@@ -83,18 +74,10 @@ body {
   margin-bottom: 6px;
 }
 
-.nav a.active {
-  background: var(--blue);
-  color: white;
-}
+.nav a.active { background: var(--blue); color: white; }
+.nav a:hover { background: #1e293b; }
 
-.nav a:hover {
-  background: #1e293b;
-}
-
-.sidebar-footer {
-  padding: 16px;
-}
+.sidebar-footer { padding: 16px; }
 
 .user-box {
   background: #1e293b;
@@ -103,15 +86,8 @@ body {
   margin-bottom: 12px;
 }
 
-.user-box p {
-  margin: 2px 0;
-  font-size: 13px;
-}
-
-.role {
-  color: #60a5fa;
-  font-size: 12px;
-}
+.user-box p { margin: 2px 0; font-size: 13px; }
+.role { color: #60a5fa; font-size: 12px; }
 
 .logout {
   width: 100%;
@@ -124,143 +100,282 @@ body {
   text-align: left;
 }
 
-.logout:hover {
-  background: #1e293b;
-}
+.logout:hover { background: #1e293b; }
 
-/* MAIN SCROLLABLE AREA */
+/* Main area styled to match your reference structure */
 .main-content {
   flex: 1;
   overflow-y: auto;
-  padding: 2rem;
+  padding: 24px;
 }
 
-/* CONTENT STYLES */
-.section-header {
+.top-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 16px;
+}
+
+.top-row h2 {
+  font-size: 30px;
+  margin-bottom: 4px;
+}
+
+.top-row p {
+  color: var(--muted);
+  font-size: 14px;
 }
 
 .upload-btn {
-  background: var(--blue);
-  color: white;
   border: none;
-  padding: 10px 16px;
-  border-radius: 8px;
+  border-radius: 10px;
+  background: #0f172a;
+  color: #f8fafc;
+  font-weight: 700;
+  padding: 10px 14px;
   cursor: pointer;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.95rem;
 }
 
-/* SEARCH & FILTERS */
-.filters {
+.upload-zone {
+  border: 2px dashed #cbd5e1;
+  border-radius: 14px;
+  background: white;
+  padding: 28px 20px;
+  text-align: center;
+  margin-bottom: 12px;
+  transition: .2s border-color, .2s background;
+}
+
+.upload-zone.drag {
+  border-color: var(--blue);
+  background: #eff6ff;
+}
+
+.upload-zone i {
+  font-size: 30px;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+.upload-zone .line1 { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+.upload-zone .line2 { font-size: 12px; color: var(--muted); }
+.upload-zone .line3 { margin-top: 10px; font-size: 12px; color: var(--muted); }
+
+.cat-row {
   display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  margin-bottom: 14px;
 }
 
-.search {
-  position: relative;
-}
-
-.search input {
-  width: 100%;
-  padding: 0.75rem 1rem 0.75rem 3rem;
+.cat-btn {
   border: 1px solid var(--border);
-  border-radius: 0.75rem;
-  font-size: 0.95rem;
+  background: white;
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+  padding: 8px 12px;
+  cursor: pointer;
 }
 
-.search i {
+.cat-btn.active {
+  background: #0f172a;
+  color: #f8fafc;
+  border-color: #0f172a;
+}
+
+.layout-grid {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 14px;
+}
+
+.panel {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.panel h3 {
+  font-size: 15px;
+  margin-bottom: 10px;
+}
+
+.toolbar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.search-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 220px;
+}
+
+.search-wrap i {
   position: absolute;
-  left: 1rem;
+  left: 12px;
   top: 50%;
   transform: translateY(-50%);
   color: var(--muted);
 }
 
-.tags {
-  display: flex;
-  gap: 0.5rem;
-  overflow-x: auto;
-  padding-bottom: 0.5rem;
+.search-wrap input, .status-select {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  background: white;
 }
 
-.tag {
-  padding: 0.4rem 1rem;
-  background: white;
+.search-wrap input { padding-left: 34px; }
+
+.view-toggle {
+  display: flex;
   border: 1px solid var(--border);
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-  white-space: nowrap;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.view-toggle button {
+  border: none;
+  background: white;
+  padding: 8px 10px;
   cursor: pointer;
 }
 
-.tag.active {
-  background: var(--primary);
-  color: white;
-  border-color: var(--primary);
+.view-toggle button.active {
+  background: #0f172a;
+  color: #f8fafc;
 }
 
-/* DOCUMENTS LIST */
-.docs-card {
-  background: white;
-  padding: 20px;
-  border-radius: 12px;
-  border: 1px solid var(--border);
+table {
+  width: 100%;
+  border-collapse: collapse;
 }
 
-.doc-item {
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 16px;
+th, td {
+  border-bottom: 1px solid var(--border);
+  padding: 10px 8px;
+  font-size: 13px;
+  text-align: left;
+}
+
+th {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.name-cell {
   display: flex;
-  justify-content: space-between;
+  gap: 10px;
   align-items: center;
-  margin-top: 14px;
 }
 
-.doc-left {
+.name-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #f1f5f9;
   display: flex;
-  gap: 14px;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
 }
 
-.doc-left i {
-  font-size: 30px;
-  color: var(--blue);
+.submeta {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
-.badges span {
-  background: #eef2ff;
-  color: var(--blue);
-  font-size: 12px;
-  padding: 4px 8px;
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid;
   border-radius: 999px;
-  margin-right: 6px;
+  padding: 3px 8px;
+  font-size: 11px;
 }
 
-.doc-actions button {
+.success { color: var(--success); background: #10b98111; border-color: #10b98133; }
+.warn { color: var(--warning); background: #f59e0b11; border-color: #f59e0b33; }
+.danger { color: var(--danger); background: #ef444411; border-color: #ef444433; }
+.neutral { color: var(--muted); background: #64748b11; border-color: #64748b33; }
+
+.action-btn {
   border: 1px solid var(--border);
   background: white;
-  padding: 8px 12px;
   border-radius: 8px;
+  padding: 6px 8px;
   cursor: pointer;
-  margin-left: 8px;
+}
+
+.grid-wrap {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.doc-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.doc-card h4 {
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.doc-card .meta {
+  font-size: 11px;
+  color: var(--muted);
+  margin: 6px 0;
+}
+
+.side-item {
+  border-bottom: 1px solid var(--border);
+  padding: 8px 0;
+}
+
+.side-item:last-child { border-bottom: 0; }
+
+.side-item h4 {
+  font-size: 12px;
+  margin-bottom: 2px;
+}
+
+.side-item p {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.empty {
+  color: var(--muted);
+  font-size: 13px;
+  padding: 10px 0;
+}
+
+@media (max-width: 1200px) {
+  .layout-grid { grid-template-columns: 1fr; }
+  .grid-wrap { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 </style>
 </head>
-
 <body>
-
 <div class="app-layout">
-
-  <!-- SIDEBAR ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Å“ fixed on left -->
   <aside class="sidebar">
     <div class="sidebar-header">
       <i class="fa-solid fa-shield-halved"></i>
@@ -270,174 +385,391 @@ body {
       </div>
     </div>
 
-                <nav class="nav">
-      <a href="Clientportal.html">
-        <i class="fa fa-chart-line"></i> Dashboard
-      </a>
-      <a href="documents.html" class="active">
-        <i class="fa fa-file"></i> Documents
-      </a>
-      <a href="clientrequest.html">
-        <i class="fa fa-file-alt"></i> Requests
-      </a>
-      <a href="messages.html">
-        <i class="fa fa-message"></i> Messages
-      </a>
-      <a href="settings.html">
-        <i class="fa fa-gear"></i> Settings
-      </a>
+    <nav class="nav">
+      <a href="Clientportal.html"><i class="fa fa-chart-line"></i> Dashboard</a>
+      <a href="documents.html" class="active"><i class="fa fa-file"></i> Documents</a>
+      <a href="clientrequest.html"><i class="fa fa-file-alt"></i> Requests</a>
+      <a href="messages.html"><i class="fa fa-message"></i> Messages</a>
+      <a href="settings.html"><i class="fa fa-gear"></i> Settings</a>
     </nav>
 
     <div class="sidebar-footer">
       <div class="user-box">
-        <p><strong>John Doe</strong></p>
-        <p>client@example.com</p>
+        <p><strong id="sidebarName">Client</strong></p>
+        <p id="sidebarEmail">client@example.com</p>
         <p class="role">Client</p>
       </div>
-      <button class="logout">
-        <i class="fa fa-sign-out"></i> Logout
-      </button>
+      <button class="logout" id="logoutBtn"><i class="fa fa-sign-out"></i> Logout</button>
     </div>
   </aside>
 
-  <!-- SCROLLABLE MAIN CONTENT -->
   <main class="main-content">
-
-    <div class="section-header">
+    <div class="top-row">
       <div>
         <h2>Documents</h2>
-        <p class="muted">Manage and access your secure documents</p>
+        <p>Manage, upload, and track all your documents.</p>
       </div>
-      <a href="upload.html" class="upload-btn">
-        <i class="fa fa-upload"></i> Upload Document
-      </a>
+      <button class="upload-btn" id="uploadBtn"><i class="fa fa-upload"></i> Upload Document</button>
     </div>
 
-    <div class="filters">
-      <div class="search">
-        <i class="fas fa-search"></i>
-        <input placeholder="Search documents...">
-      </div>
-      <div class="tags">
-        <button class="tag active" data-filter="all">All</button>
-        <button class="tag" data-filter="tax returns">Tax Returns</button>
-        <button class="tag" data-filter="bank statements">Bank Statements</button>
-        <button class="tag" data-filter="financial statements">Financial Statements</button>
-        <button class="tag" data-filter="payroll">Payroll</button>
-      </div>
+    <div class="upload-zone" id="uploadZone">
+      <i class="fa fa-cloud-upload-alt"></i>
+      <p class="line1">Drag and drop files here</p>
+      <p class="line2">or click to browse. PDF, DOC, XLS, JPG, PNG up to 25MB</p>
+      <p class="line3"><i class="fa fa-tag"></i> Auto-naming and smart categorization enabled</p>
     </div>
 
-    <div class="docs-card">
-      <strong id="docCountLabel">0 Documents</strong>
-      <div id="docsList"></div>
+    <div class="cat-row" id="catRow"></div>
 
+    <div class="layout-grid">
+      <section class="panel">
+        <h3>Document Library</h3>
+        <div class="toolbar">
+          <div class="search-wrap">
+            <i class="fa fa-search"></i>
+            <input id="searchInput" placeholder="Search documents...">
+          </div>
+          <select id="statusSelect" class="status-select">
+            <option value="all">All Status</option>
+            <option value="approved">Approved</option>
+            <option value="pending">Pending</option>
+            <option value="rejected">Rejected</option>
+            <option value="processing">Processing</option>
+          </select>
+          <div class="view-toggle">
+            <button id="listBtn" class="active" type="button"><i class="fa fa-list"></i></button>
+            <button id="gridBtn" type="button"><i class="fa fa-table-cells"></i></button>
+          </div>
+        </div>
+
+        <div id="listView"></div>
+        <div id="gridView" hidden></div>
+      </section>
+
+      <aside>
+        <div class="panel" style="margin-bottom: 12px;">
+          <h3><i class="fa fa-calendar"></i> Expiry Tracker</h3>
+          <div id="expiryWrap"></div>
+        </div>
+        <div class="panel">
+          <h3><i class="fa fa-history"></i> Audit Trail</h3>
+          <div id="auditWrap"></div>
+        </div>
+      </aside>
     </div>
-
   </main>
-
 </div>
 
 <script src="../../shared/portal-config.js"></script>
 <script src="../../shared/portal-auth.js"></script>
 <script>
-const API_BASE_URL = window.PortalConfig.API_BASE_URL;
+const API_BASE_URL =
+  window.PortalConfig && window.PortalConfig.API_BASE_URL
+    ? window.PortalConfig.API_BASE_URL
+    : "http://127.0.0.1:4010/api";
+
 const session = window.PortalAuth.requireRole("client", "../Clientlogins/login.html");
 if (!session) { throw new Error("Unauthorized"); }
-const { token } = session;
+
+const { token, user } = session;
+const sidebarName = document.getElementById("sidebarName");
+const sidebarEmail = document.getElementById("sidebarEmail");
+sidebarName.textContent = user.fullName || "Client";
+sidebarEmail.textContent = user.email || "";
+
+const logoutBtn = document.getElementById("logoutBtn");
+const uploadBtn = document.getElementById("uploadBtn");
+const uploadZone = document.getElementById("uploadZone");
+const catRow = document.getElementById("catRow");
+const searchInput = document.getElementById("searchInput");
+const statusSelect = document.getElementById("statusSelect");
+const listBtn = document.getElementById("listBtn");
+const gridBtn = document.getElementById("gridBtn");
+const listView = document.getElementById("listView");
+const gridView = document.getElementById("gridView");
+const expiryWrap = document.getElementById("expiryWrap");
+const auditWrap = document.getElementById("auditWrap");
+
+let docs = [];
+let requests = [];
+let notifications = [];
+let category = "All Documents";
+let view = "list";
 
 function authHeaders() {
   return window.PortalAuth.authHeaders(token);
 }
 
-let docs = [];
-let activeFilter = "all";
-const searchInput = document.querySelector(".search input");
-const tags = document.querySelectorAll(".tag");
-const docsList = document.getElementById("docsList");
-const docCountLabel = document.getElementById("docCountLabel");
-
-function bytes(n) {
-  const b = Number(n || 0);
-  if (b < 1024) return `${b} B`;
-  if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
-  return `${(b / (1024 * 1024)).toFixed(1)} MB`;
+function safeDate(v) {
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? null : d;
 }
 
-function renderDocs() {
-  const search = searchInput.value.toLowerCase().trim();
-  const filtered = docs.filter((doc) => {
-    const text = `${doc.name} ${doc.category}`.toLowerCase();
-    const categoryOk =
-      activeFilter === "all" ||
-      doc.category.toLowerCase() === activeFilter ||
-      doc.category.toLowerCase().includes(activeFilter) ||
-      activeFilter.includes(doc.category.toLowerCase());
-    return categoryOk && (!search || text.includes(search));
-  });
+function formatDate(v) {
+  const d = safeDate(v);
+  if (!d) return "Unknown";
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
 
-  docCountLabel.textContent = `${filtered.length} Documents`;
-  docsList.innerHTML = filtered.map((doc) => `
-    <div class="doc-item">
-      <div class="doc-left">
-        <i class="fa fa-file-lines"></i>
-        <div>
-          <strong>${doc.name}</strong>
-          <div class="badges">
-            <span>${doc.category}</span>
-            <span>${doc.status}</span>
-            <span>${bytes(doc.sizeBytes)}</span>
-          </div>
-          <small>Uploaded on ${(doc.uploadedAt || "").slice(0, 10)}</small>
+function size(v) {
+  const n = Number(v || 0);
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function normalizedStatus(v) {
+  const s = String(v || "").toLowerCase();
+  if (["approved", "completed", "complete"].includes(s)) return "approved";
+  if (["pending", "in-review", "review"].includes(s)) return "pending";
+  if (["rejected", "request-fix"].includes(s)) return "rejected";
+  if (["processing"].includes(s)) return "processing";
+  return "other";
+}
+
+function badgeClass(status) {
+  const s = normalizedStatus(status);
+  if (s === "approved") return "badge success";
+  if (s === "pending" || s === "processing") return "badge warn";
+  if (s === "rejected") return "badge danger";
+  return "badge neutral";
+}
+
+function statusIcon(status) {
+  const s = normalizedStatus(status);
+  if (s === "approved") return "fa-check-circle";
+  if (s === "rejected") return "fa-xmark-circle";
+  return "fa-clock";
+}
+
+function inferCategory(doc) {
+  const c = String(doc.category || "").trim();
+  if (c) return c;
+  const n = String(doc.name || "").toLowerCase();
+  if (n.includes("invoice")) return "Invoices";
+  if (n.includes("bank")) return "Bank Statements";
+  if (n.includes("tax")) return "Tax Documents";
+  if (n.includes("contract")) return "Contracts";
+  return "General";
+}
+
+function categoryStats() {
+  const counts = new Map();
+  for (const d of docs) {
+    const c = inferCategory(d);
+    counts.set(c, (counts.get(c) || 0) + 1);
+  }
+  const out = [{ name: "All Documents", count: docs.length }];
+  for (const [name, count] of counts.entries()) out.push({ name, count });
+  return out.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function filteredDocs() {
+  const q = searchInput.value.toLowerCase().trim();
+  const s = statusSelect.value;
+  return docs.filter((d) => {
+    const catOk = category === "All Documents" || inferCategory(d) === category;
+    const statusOk = s === "all" || normalizedStatus(d.status) === s;
+    const text = `${d.name || ""} ${inferCategory(d)} ${d.status || ""}`.toLowerCase();
+    const qOk = !q || text.includes(q);
+    return catOk && statusOk && qOk;
+  }).sort((a, b) => {
+    const x = safeDate(a.uploadedAt)?.getTime() || 0;
+    const y = safeDate(b.uploadedAt)?.getTime() || 0;
+    return y - x;
+  });
+}
+
+function renderCategories() {
+  const cats = categoryStats();
+  catRow.innerHTML = cats.map((c) => `
+    <button class="cat-btn ${c.name === category ? "active" : ""}" data-cat="${c.name}">
+      ${c.name} <strong>(${c.count})</strong>
+    </button>
+  `).join("");
+}
+
+function renderList(items) {
+  if (!items.length) {
+    listView.innerHTML = '<p class="empty">No documents found.</p>';
+    return;
+  }
+  listView.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Category</th>
+          <th>Status</th>
+          <th>Size</th>
+          <th>Date</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        ${items.map((d) => `
+          <tr>
+            <td>
+              <div class="name-cell">
+                <div class="name-icon"><i class="fa fa-file-alt"></i></div>
+                <div>
+                  <div>${d.name || "Untitled"}</div>
+                  <div class="submeta">
+                    <span><i class="fa fa-lock"></i> Encrypted</span>
+                    <span><i class="fa fa-history"></i> v1</span>
+                  </div>
+                </div>
+              </div>
+            </td>
+            <td>${inferCategory(d)}</td>
+            <td><span class="${badgeClass(d.status)}"><i class="fa ${statusIcon(d.status)}"></i>${d.status || "unknown"}</span></td>
+            <td>${size(d.sizeBytes)}</td>
+            <td>${formatDate(d.uploadedAt)}</td>
+            <td><button class="action-btn" data-view="${d.id}" type="button"><i class="fa fa-eye"></i></button></td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+function renderGrid(items) {
+  if (!items.length) {
+    gridView.innerHTML = '<p class="empty">No documents found.</p>';
+    return;
+  }
+  gridView.innerHTML = `
+    <div class="grid-wrap">
+      ${items.map((d) => `
+        <div class="doc-card">
+          <h4>${d.name || "Untitled"}</h4>
+          <div class="meta">${inferCategory(d)} • ${size(d.sizeBytes)}</div>
+          <span class="${badgeClass(d.status)}"><i class="fa ${statusIcon(d.status)}"></i>${d.status || "unknown"}</span>
+          <div class="meta">${formatDate(d.uploadedAt)}</div>
         </div>
-      </div>
-      <div class="doc-actions">
-        <button data-view-id="${doc.id}"><i class="fa fa-eye"></i></button>
-        <button data-download-id="${doc.id}"><i class="fa fa-download"></i> Download</button>
-      </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderExpiry() {
+  const now = new Date();
+  const soon = requests
+    .map((r) => ({ ...r, due: safeDate(r.dueDate) }))
+    .filter((r) => r.due && String(r.status || "").toLowerCase() !== "completed")
+    .map((r) => ({ ...r, days: Math.ceil((r.due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) }))
+    .filter((r) => r.days >= 0 && r.days <= 30)
+    .sort((a, b) => a.days - b.days)
+    .slice(0, 6);
+
+  if (!soon.length) {
+    expiryWrap.innerHTML = '<p class="empty">No upcoming expiries.</p>';
+    return;
+  }
+
+  expiryWrap.innerHTML = soon.map((r) => `
+    <div class="side-item">
+      <h4>${r.title || "Request"}</h4>
+      <p>Due in ${r.days} day(s) • ${formatDate(r.dueDate)}</p>
     </div>
   `).join("");
 }
 
-async function loadDocs() {
-  const response = await fetch(`${API_BASE_URL}/documents`, { headers: authHeaders() });
-  if (!response.ok) return;
-  const data = await response.json();
-  docs = data.items || [];
-  renderDocs();
-}
-
-searchInput.addEventListener("input", renderDocs);
-tags.forEach((tag) => {
-  tag.addEventListener("click", () => {
-    tags.forEach((t) => t.classList.remove("active"));
-    tag.classList.add("active");
-    activeFilter = tag.dataset.filter;
-    renderDocs();
-  });
-});
-
-document.addEventListener("click", async (event) => {
-  const downloadBtn = event.target.closest("[data-download-id]");
-  if (downloadBtn) {
-    const id = downloadBtn.getAttribute("data-download-id");
-    const response = await fetch(`${API_BASE_URL}/documents/${encodeURIComponent(id)}/download-url`, { headers: authHeaders() });
-    if (response.ok) {
-      const data = await response.json();
-      if (data.signedUrl) window.open(data.signedUrl, "_blank");
-    }
+function renderAudit() {
+  if (!notifications.length) {
+    auditWrap.innerHTML = '<p class="empty">No recent activity.</p>';
     return;
   }
-  const viewBtn = event.target.closest("[data-view-id]");
-  if (viewBtn) {
-    window.location.href = `../../Accountant/documentview.html?id=${encodeURIComponent(viewBtn.getAttribute("data-view-id"))}`;
-  }
+  auditWrap.innerHTML = notifications.slice(0, 8).map((n) => `
+    <div class="side-item">
+      <h4>${n.title || "Activity"}</h4>
+      <p>${n.message || ""}</p>
+      <p>${formatDate(n.createdAt)}</p>
+    </div>
+  `).join("");
+}
+
+function render() {
+  renderCategories();
+  const items = filteredDocs();
+  renderList(items);
+  renderGrid(items);
+  listView.hidden = view !== "list";
+  gridView.hidden = view !== "grid";
+  renderExpiry();
+  renderAudit();
+}
+
+async function load() {
+  const [d, r, n] = await Promise.all([
+    fetch(`${API_BASE_URL}/documents`, { headers: authHeaders() }),
+    fetch(`${API_BASE_URL}/requests`, { headers: authHeaders() }),
+    fetch(`${API_BASE_URL}/notifications?limit=20`, { headers: authHeaders() })
+  ]);
+  if (!d.ok) throw new Error("Failed to load documents");
+  if (!r.ok) throw new Error("Failed to load requests");
+  if (!n.ok) throw new Error("Failed to load notifications");
+  docs = (await d.json()).items || [];
+  requests = (await r.json()).items || [];
+  notifications = (await n.json()).items || [];
+  render();
+}
+
+uploadZone.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  uploadZone.classList.add("drag");
+});
+uploadZone.addEventListener("dragleave", () => uploadZone.classList.remove("drag"));
+uploadZone.addEventListener("drop", (e) => {
+  e.preventDefault();
+  uploadZone.classList.remove("drag");
 });
 
-loadDocs();
-</script>
+catRow.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-cat]");
+  if (!btn) return;
+  category = btn.getAttribute("data-cat");
+  render();
+});
 
+searchInput.addEventListener("input", render);
+statusSelect.addEventListener("change", render);
+
+listBtn.addEventListener("click", () => {
+  view = "list";
+  listBtn.classList.add("active");
+  gridBtn.classList.remove("active");
+  render();
+});
+
+gridBtn.addEventListener("click", () => {
+  view = "grid";
+  gridBtn.classList.add("active");
+  listBtn.classList.remove("active");
+  render();
+});
+
+uploadBtn.addEventListener("click", () => window.location.href = "upload.html");
+
+logoutBtn.addEventListener("click", () => {
+  window.PortalAuth.clearSession();
+  window.location.href = "../Clientlogins/login.html";
+});
+
+listView.addEventListener("click", (e) => {
+  const viewBtn = e.target.closest("[data-view]");
+  if (!viewBtn) return;
+  const id = viewBtn.getAttribute("data-view");
+  window.location.href = `../../Accountant/documentview.html?id=${encodeURIComponent(id)}`;
+});
+
+load().catch((error) => {
+  console.error(error);
+  listView.innerHTML = `<p class="empty">${error.message || "Failed to load documents."}</p>`;
+  gridView.innerHTML = `<p class="empty">${error.message || "Failed to load documents."}</p>`;
+  expiryWrap.innerHTML = `<p class="empty">${error.message || "Failed to load."}</p>`;
+  auditWrap.innerHTML = `<p class="empty">${error.message || "Failed to load."}</p>`;
+});
+</script>
 </body>
 </html>
-
-
-
