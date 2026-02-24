@@ -1,35 +1,39 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Messages | Prospera Secure Client Portal</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Messages - Prospera</title>
 
-  <!-- Font Awesome Icons -->
+  <!-- Google Fonts: Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
   <style>
     :root {
-      --blue: #2563eb;
-      --bg: #f5f7fb;
-      --dark: #0f172a;
+      --navy: #0f172a;
+      --navy-light: #1e293b;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --border: #e2e8f0;
       --muted: #64748b;
-      --border: #e5e7eb;
       --success: #10b981;
-      --warning: #f59e0b;
-      --danger: #ef4444;
+      --blue: #3b82f6;
+      --light-blue: #eff6ff;
     }
 
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
+      font-family: 'Inter', sans-serif;
     }
 
     body {
-      font-family: "Segoe UI", Arial, sans-serif;
       background: var(--bg);
-      color: var(--dark);
+      color: var(--navy);
       height: 100vh;
       overflow: hidden;
     }
@@ -37,16 +41,17 @@
     .app-layout {
       display: flex;
       height: 100vh;
+      --sidebar-width: 260px;
     }
 
-    /* SIDEBAR – consistent with other pages */
+    /* ── Sidebar (exact match to other pages) ──────── */
     .sidebar {
-      width: 260px;
+      width: var(--sidebar-width);
+      flex: 0 0 var(--sidebar-width);
       background: linear-gradient(180deg, #0f172a, #020617);
       color: white;
       display: flex;
       flex-direction: column;
-      flex-shrink: 0;
     }
 
     .sidebar-header {
@@ -63,11 +68,13 @@
 
     .sidebar-header h1 {
       font-size: 16px;
+      margin: 0;
     }
 
     .sidebar-header p {
       font-size: 12px;
       color: #94a3b8;
+      margin: 0;
     }
 
     .nav {
@@ -91,7 +98,7 @@
     }
 
     .nav a.active {
-      background: var(--blue);
+      background: #2563eb;
       color: white;
     }
 
@@ -107,8 +114,8 @@
     }
 
     .user-box p {
-      font-size: 13px;
       margin: 2px 0;
+      font-size: 13px;
     }
 
     .role {
@@ -131,253 +138,461 @@
       background: #1e293b;
     }
 
-    /* MAIN CONTENT – updated for consistency */
-    .main-content {
-      flex: 1;
-      overflow-y: auto;
-      padding: 24px;
+    .sidebar-resizer {
+      width: 8px;
+      cursor: col-resize;
+      background: transparent;
+      flex: 0 0 8px;
+      transition: background 0.2s;
     }
 
-    .top-row {
+    .sidebar-resizer:hover {
+      background: rgba(148, 163, 184, 0.25);
+    }
+
+    .app-layout.resizing {
+      user-select: none;
+      cursor: col-resize;
+    }
+
+    .app-layout.sidebar-icons-only .sidebar-header {
+      justify-content: center;
+      padding: 20px 0;
+    }
+
+    .app-layout.sidebar-icons-only .sidebar-header > div {
+      display: none;
+    }
+
+    .app-layout.sidebar-icons-only .nav {
+      padding: 12px 10px;
+    }
+
+    .app-layout.sidebar-icons-only .nav a {
+      justify-content: center;
+      font-size: 0;
+      padding: 12px;
+    }
+
+    .app-layout.sidebar-icons-only .nav a i {
+      font-size: 18px;
+      margin: 0;
+    }
+
+    .app-layout.sidebar-icons-only .sidebar-footer {
+      padding: 12px 10px;
+    }
+
+    .app-layout.sidebar-icons-only .user-box {
+      display: none;
+    }
+
+    .app-layout.sidebar-icons-only .logout {
+      display: flex;
+      justify-content: center;
+      font-size: 0;
+      padding: 12px;
+    }
+
+    .app-layout.sidebar-icons-only .logout i {
+      font-size: 18px;
+      margin: 0;
+    }
+
+    /* ── Main Content ─────────────────────────────────── */
+    .main-content {
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg);
+    }
+
+    .page-header {
+      padding: 24px 32px;
+      border-bottom: 1px solid var(--border);
+      background: white;
+      flex-shrink: 0;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 20px;
+      min-height: 88px; /* matches sidebar header visual height */
     }
 
-    .top-row h2 {
-      font-size: 30px;
-      margin-bottom: 4px;
+    .page-header h1 {
+      font-size: 24px;
+      font-weight: 600;
+      margin: 0;
     }
 
-    .top-row p {
+    .page-header p {
+      font-size: 13px;
       color: var(--muted);
-      font-size: 14px;
+      margin: 4px 0 0;
     }
 
-    .grid {
-      display: grid;
-      grid-template-columns: 1fr 2fr;
-      gap: 20px;
-      height: calc(100vh - 120px);
+    .chat-container {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
     }
 
-    @media (max-width: 1000px) {
-      .grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    .panel {
+    /* Conversations Sidebar */
+    .conversations-sidebar {
+      width: 340px;
+      border-right: 1px solid var(--border);
       background: white;
-      border-radius: 12px;
-      border: 1px solid var(--border);
       display: flex;
       flex-direction: column;
+      flex-shrink: 0;
     }
 
-    .panel-header {
-      padding: 16px 20px;
+    .conversations-header {
+      padding: 16px;
       border-bottom: 1px solid var(--border);
+      background: white;
     }
 
-    .panel-header h3 {
+    .search-container {
+      position: relative;
+      margin-bottom: 16px;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 12px 12px 12px 40px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 14px;
+      background: #f8fafc;
+      transition: all 0.2s;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
       font-size: 16px;
     }
 
-    .panel-content {
-      padding: 16px;
-      flex: 1;
-      overflow-y: auto;
+    .filter-buttons {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
     }
 
-    .search-wrap {
-      position: relative;
-      margin-top: 12px;
-    }
-
-    .search-wrap input {
-      width: 100%;
-      padding: 10px 12px 10px 36px;
+    .filter-btn {
+      padding: 6px 14px;
       border-radius: 8px;
       border: 1px solid var(--border);
-      font-size: 13px;
+      background: white;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
     }
 
-    .search-wrap i {
-      position: absolute;
-      left: 12px;
-      top: 11px;
-      color: var(--muted);
+    .filter-btn.active {
+      background: var(--navy);
+      color: white;
+      border-color: var(--navy);
     }
 
-    /* Tabs – updated */
-    .tabs {
+    .filter-btn:hover:not(.active) {
+      background: #f1f5f9;
+      border-color: var(--border);
+    }
+
+    .conversation-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 0;
+    }
+
+    .conversation-item {
       display: flex;
-      gap: 16px;
-      margin-top: 16px;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 4px;
-    }
-
-    .tab-btn {
-      background: none;
-      border: none;
-      padding: 10px 0;
-      font-size: 14px;
-      font-weight: 500;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
       cursor: pointer;
-      color: var(--muted);
-      position: relative;
-      transition: color 0.2s;
+      transition: background 0.2s;
     }
 
-    .tab-btn:hover {
-      color: var(--blue);
+    .conversation-item:hover {
+      background: #f8fafc;
     }
 
-    .tab-btn.active {
-      color: var(--blue);
+    .conversation-item.active {
+      background: var(--light-blue);
+    }
+
+    .avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
       font-weight: 600;
-    }
-
-    .tab-btn.active::after {
-      content: "";
-      position: absolute;
-      bottom: -5px;
-      left: 0;
-      width: 100%;
-      height: 2px;
-      background: var(--blue);
-      border-radius: 2px;
-    }
-
-    /* Contact items */
-    .contact {
-      padding: 12px;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-
-    .contact:hover {
-      background: #f9fafb;
-    }
-
-    .contact.active {
-      background: #eff6ff;
-    }
-
-    .contact-name {
-      font-weight: 500;
-      font-size: 14px;
-    }
-
-    .contact-role {
-      font-size: 13px;
-      color: var(--muted);
-      margin-top: 2px;
+      color: var(--navy);
+      position: relative;
     }
 
     .status-dot {
-      width: 8px;
-      height: 8px;
+      position: absolute;
+      bottom: 4px;
+      right: 4px;
+      width: 12px;
+      height: 12px;
       border-radius: 50%;
-      display: inline-block;
-      margin-left: 8px;
+      border: 2px solid white;
     }
 
     .online { background: var(--success); }
     .offline { background: var(--muted); }
 
-    /* Messages */
-    .messages {
+    .conv-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .conv-name {
+      font-weight: 500;
+      font-size: 14px;
+      margin-bottom: 2px;
+    }
+
+    .conv-last-msg {
+      font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .conv-meta {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .unread-pill {
+      background: #dbeafe;
+      color: #1e3a8a;
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    /* Chat Area */
+    .chat-area {
+      flex: 1;
       display: flex;
       flex-direction: column;
-      gap: 18px;
-      padding-bottom: 20px;
     }
 
-    .message-row {
+    .chat-header {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+      background: white;
       display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+      min-height: 72px;
     }
 
-    .message-row.own {
-      justify-content: flex-end;
+    .chat-title-section {
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
 
-    .message-bubble {
+    .chat-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--navy);
+      position: relative;
+    }
+
+    .chat-title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .chat-status {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .chat-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .action-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 18px;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+
+    .action-btn:hover {
+      background: #f1f5f9;
+      color: var(--navy);
+    }
+
+    .messages-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 32px;
+      background: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .message {
+      display: flex;
+      flex-direction: column;
       max-width: 70%;
-      padding: 12px 16px;
-      border-radius: 14px;
-      font-size: 14px;
-      line-height: 1.5;
     }
 
-    .message-bubble.own {
-      background: var(--blue);
+    .message.sent {
+      align-self: flex-end;
+    }
+
+    .message.received {
+      align-self: flex-start;
+    }
+
+    .bubble {
+      padding: 12px 16px;
+      border-radius: 18px;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    .bubble.sent {
+      background: var(--navy);
       color: white;
       border-bottom-right-radius: 4px;
     }
 
-    .message-bubble.other {
-      background: #f1f5f9;
+    .bubble.received {
+      background: white;
+      border: 1px solid var(--border);
       border-bottom-left-radius: 4px;
     }
 
     .message-meta {
       font-size: 11px;
-      color: #64748b;
-      margin-top: 6px;
-      opacity: 0.8;
+      color: var(--muted);
+      margin-top: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .message-meta.sent {
+      justify-content: flex-end;
     }
 
     .input-area {
+      padding: 16px 24px;
       border-top: 1px solid var(--border);
-      padding: 14px 20px;
-      display: flex;
-      gap: 10px;
       background: white;
+      display: flex;
+      align-items: flex-end;
+      gap: 12px;
+      flex-shrink: 0;
     }
 
-    .input-area input {
+    .input-area textarea {
       flex: 1;
-      padding: 10px 16px;
-      border-radius: 10px;
+      padding: 12px 16px;
       border: 1px solid var(--border);
+      border-radius: 12px;
       font-size: 14px;
+      resize: none;
+      min-height: 44px;
+      max-height: 120px;
     }
 
     .send-btn {
-      background: var(--dark);
+      background: var(--navy);
       color: white;
       border: none;
-      padding: 10px 20px;
-      border-radius: 10px;
+      border-radius: 12px;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       cursor: pointer;
-      font-size: 14px;
-      font-weight: 600;
+      transition: background 0.2s;
     }
 
     .send-btn:hover {
-      background: #020617;
+      background: var(--navy-light);
+    }
+
+    .attach-btn {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 20px;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+
+    .attach-btn:hover {
+      background: #f1f5f9;
+      color: var(--navy);
     }
 
     .empty-state {
-      height: 100%;
+      flex: 1;
       display: flex;
       flex-direction: column;
-      justify-content: center;
       align-items: center;
+      justify-content: center;
       color: var(--muted);
       text-align: center;
       padding: 40px;
     }
 
     .empty-state i {
-      font-size: 48px;
+      font-size: 64px;
       margin-bottom: 16px;
-      color: #d1d5db;
+      opacity: 0.4;
     }
 
     .empty-state h3 {
@@ -389,17 +604,14 @@
       font-size: 14px;
     }
 
-    .hidden {
-      display: none !important;
-    }
+    .hidden { display: none !important; }
   </style>
 </head>
-
 <body>
 
 <div class="app-layout">
 
-  <!-- SIDEBAR -->
+  <!-- Sidebar -->
   <aside class="sidebar">
     <div class="sidebar-header">
       <i class="fa-solid fa-shield-halved"></i>
@@ -426,60 +638,77 @@
       <button class="logout" id="logoutBtn"><i class="fa fa-sign-out"></i> Logout</button>
     </div>
   </aside>
+  <div class="sidebar-resizer" id="sidebarResizer" role="separator" aria-label="Resize sidebar" aria-orientation="vertical"></div>
 
-  <!-- MAIN CONTENT -->
+  <!-- Main Content -->
   <main class="main-content">
-    <div class="top-row">
+    <div class="page-header">
       <div>
-        <h2>Messages</h2>
+        <h1>Messages</h1>
         <p>Secure communication with your accountant and support team</p>
       </div>
     </div>
 
-    <div class="grid">
-
-      <!-- CONVERSATIONS PANEL -->
-      <div class="panel">
-        <div class="panel-header">
-          <h3>Conversations</h3>
-          <div class="search-wrap">
-            <i class="fa fa-search"></i>
-            <input type="text" id="searchInput" placeholder="Search contacts or messages...">
+    <div class="chat-container">
+      <!-- Conversations Sidebar -->
+      <div class="conversations-sidebar">
+        <div class="conversations-header">
+          <div class="search-container">
+            <div class="search-wrapper">
+              <i class="fa fa-search search-icon"></i>
+              <input type="text" placeholder="Search conversations..." id="searchInput" class="search-input">
+            </div>
           </div>
 
-          <div class="tabs">
-            <button class="tab-btn active" data-tab="assigned">Assigned</button>
-            <button class="tab-btn" data-tab="support">Support</button>
-            <button class="tab-btn" data-tab="archived">Archived</button>
+          <div class="filter-buttons">
+            <button class="filter-btn active" data-filter="all">All</button>
+            <button class="filter-btn" data-filter="unread">Unread</button>
+            <button class="filter-btn" data-filter="pinned">Pinned</button>
           </div>
         </div>
 
-        <div class="panel-content" id="contactList">
-          <!-- Contacts will be loaded here -->
+        <div class="conversation-list" id="conversationList">
+          <div class="empty-state">
+            <i class="fa fa-comments"></i>
+            <h3>No conversations yet</h3>
+            <p>New messages will appear here</p>
+          </div>
         </div>
       </div>
 
-      <!-- MESSAGE VIEW PANEL -->
-      <div class="panel">
-        <div class="panel-header" id="messageHeader">
-          <h3>Select a conversation</h3>
-          <p>Choose a contact to start chatting</p>
+      <!-- Chat Area -->
+      <div class="chat-area">
+        <div class="chat-header">
+          <div class="chat-title-section">
+            <div class="chat-avatar" id="chatAvatar">
+              <i class="fa fa-user"></i>
+            </div>
+            <div>
+              <div class="chat-title" id="chatTitle">No conversation selected</div>
+              <div class="chat-status" id="chatStatus">—</div>
+            </div>
+          </div>
+          <div class="chat-actions">
+            <button class="action-btn"><i class="fa fa-phone"></i></button>
+            <button class="action-btn"><i class="fa fa-video"></i></button>
+            <button class="action-btn"><i class="fa fa-ellipsis-v"></i></button>
+          </div>
         </div>
 
-        <div class="panel-content" id="messageArea">
+        <div class="messages-container" id="messagesContainer">
           <div class="empty-state">
             <i class="fa fa-comments"></i>
             <h3>No conversation selected</h3>
-            <p>Your messages will appear here once you select a contact.</p>
+            <p>Choose a contact to start messaging</p>
           </div>
         </div>
 
         <div class="input-area hidden" id="inputArea">
-          <input id="messageInput" placeholder="Type your message..." />
-          <button class="send-btn" id="sendBtn">Send</button>
+          <button class="attach-btn"><i class="fa fa-paperclip"></i></button>
+          <textarea id="messageInput" placeholder="Type your message..." rows="1"></textarea>
+          <button class="send-btn" id="sendBtn"><i class="fa fa-paper-plane"></i></button>
         </div>
       </div>
-
     </div>
   </main>
 
@@ -488,136 +717,207 @@
 <script src="../../shared/portal-config.js"></script>
 <script src="../../shared/portal-auth.js"></script>
 <script>
-// ────────────────────────────────────────────────
-//   Auth & User Display (keeps user signed in)
-// ────────────────────────────────────────────────
 const session = window.PortalAuth.requireRole("client", "../Clientlogins/login.html");
 if (!session) throw new Error("Unauthorized");
 
-const { token, user } = session;
+const { user } = session;
 
-document.getElementById("sidebarName").textContent  = user.fullName || "Client";
+document.getElementById("sidebarName").textContent = user.fullName || "Client";
 document.getElementById("sidebarEmail").textContent = user.email || "client@example.com";
 
-const API_BASE_URL = window.PortalConfig?.API_BASE_URL || "http://127.0.0.1:4010/api";
+document.getElementById("logoutBtn").addEventListener("click", () => {
+  window.PortalAuth.clearSession();
+  window.location.href = "../Clientlogins/login.html";
+});
 
-function authHeaders() {
-  return window.PortalAuth.authHeaders(token);
+const searchInput = document.getElementById("searchInput");
+const filterButtons = document.querySelectorAll(".filter-btn");
+const conversationList = document.getElementById("conversationList");
+const chatTitle = document.getElementById("chatTitle");
+const chatStatus = document.getElementById("chatStatus");
+const messagesContainer = document.getElementById("messagesContainer");
+const inputArea = document.getElementById("inputArea");
+const sendBtn = document.getElementById("sendBtn");
+const messageInput = document.getElementById("messageInput");
+const appLayout = document.querySelector(".app-layout");
+const sidebarResizer = document.getElementById("sidebarResizer");
+
+let allConversations = Array.isArray(window.CLIENT_CONVERSATIONS) ? window.CLIENT_CONVERSATIONS : [];
+let activeConversationId = allConversations[0]?.id ?? null;
+const SIDEBAR_MIN_WIDTH = 82;
+const SIDEBAR_MAX_WIDTH = 380;
+const SIDEBAR_DEFAULT_WIDTH = 260;
+const SIDEBAR_STORAGE_KEY = "messagesSidebarWidth";
+
+function setSidebarWidth(width) {
+  const clamped = Math.max(SIDEBAR_MIN_WIDTH, Math.min(SIDEBAR_MAX_WIDTH, width));
+  appLayout.style.setProperty("--sidebar-width", `${clamped}px`);
+  appLayout.classList.toggle("sidebar-icons-only", clamped <= SIDEBAR_MIN_WIDTH + 4);
+  localStorage.setItem(SIDEBAR_STORAGE_KEY, String(clamped));
 }
 
-// ────────────────────────────────────────────────
-//   Global variables
-// ────────────────────────────────────────────────
-const contactListEl = document.getElementById("contactList");
-const messageAreaEl = document.getElementById("messageArea");
-const messageHeaderEl = document.getElementById("messageHeader");
-const inputAreaEl = document.getElementById("inputArea");
-const messageInputEl = document.getElementById("messageInput");
-const searchInputEl = document.getElementById("searchInput");
-let threads = [];
-let selectedThreadId = null;
-let currentPage = 1;
-const pageLimit = 20;
-let currentTab = "assigned";
+function initSidebarResize() {
+  const saved = Number(localStorage.getItem(SIDEBAR_STORAGE_KEY));
+  setSidebarWidth(Number.isFinite(saved) && saved > 0 ? saved : SIDEBAR_DEFAULT_WIDTH);
 
-// ────────────────────────────────────────────────
-//   Helpers
-// ────────────────────────────────────────────────
-function formatTime(iso) {
-  if (!iso) return "";
-  return new Date(iso).toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
+  let dragging = false;
+
+  sidebarResizer.addEventListener("pointerdown", event => {
+    dragging = true;
+    appLayout.classList.add("resizing");
+    sidebarResizer.setPointerCapture(event.pointerId);
+  });
+
+  sidebarResizer.addEventListener("pointermove", event => {
+    if (!dragging) return;
+    setSidebarWidth(event.clientX);
+  });
+
+  sidebarResizer.addEventListener("pointerup", event => {
+    dragging = false;
+    appLayout.classList.remove("resizing");
+    sidebarResizer.releasePointerCapture(event.pointerId);
+  });
+
+  sidebarResizer.addEventListener("dblclick", () => {
+    const current = parseInt(getComputedStyle(appLayout).getPropertyValue("--sidebar-width"), 10) || SIDEBAR_DEFAULT_WIDTH;
+    setSidebarWidth(current <= SIDEBAR_MIN_WIDTH + 4 ? SIDEBAR_DEFAULT_WIDTH : SIDEBAR_MIN_WIDTH);
   });
 }
 
-function getStatusDot(status) {
-  return status === "online" ? "online" : "offline";
+function getConversationName(conversation) {
+  return conversation.contactName || conversation.name || conversation.title || "Unknown";
 }
 
-// ────────────────────────────────────────────────
-//   Render single contact
-// ────────────────────────────────────────────────
-function renderContact(thread) {
-  return `
-    <div class="contact ${thread.id === selectedThreadId ? "active" : ""}" data-id="${thread.id}" data-tab="${thread.tab || "assigned"}">
-      <div class="contact-name">
-        ${thread.name}
-        <span class="status-dot ${getStatusDot(thread.status)}"></span>
-      </div>
-      <div class="contact-role">
-        ${thread.role} ${thread.unread ? `• ${thread.unread} unread` : ""}
-      </div>
-    </div>
-  `;
+function getConversationPreview(conversation) {
+  if (conversation.preview) return conversation.preview;
+  if (conversation.lastMessage?.text) return conversation.lastMessage.text;
+  const messages = Array.isArray(conversation.messages) ? conversation.messages : [];
+  if (!messages.length) return "No messages yet";
+  return messages[messages.length - 1]?.text || "No messages yet";
 }
 
-// ────────────────────────────────────────────────
-//   Render contacts list (with filter/search)
-// ────────────────────────────────────────────────
-function renderContacts() {
-  contactListEl.innerHTML = "";
-  const query = searchInputEl.value.toLowerCase().trim();
-  const filtered = threads.filter(t => t.tab === currentTab && t.name.toLowerCase().includes(query));
-  if (!filtered.length) {
-    contactListEl.innerHTML = '<div class="empty-state"><p>No contacts found.</p></div>';
-    return;
-  }
-  contactListEl.innerHTML = filtered.map(renderContact).join("");
+function getUnreadCount(conversation) {
+  return Number(conversation.unreadCount || conversation.unread || 0);
 }
 
-// ────────────────────────────────────────────────
-//   Load threads from backend
-// ────────────────────────────────────────────────
-async function loadThreads() {
-  try {
-    const res = await fetch(`${API_BASE_URL}/messages/threads`, { headers: authHeaders() });
-    if (!res.ok) throw new Error("Failed to load threads");
-    const data = await res.json();
-    threads = (data.items || []).map(thread => ({
-      id: thread.id,
-      name: thread.name || "Unknown",
-      role: thread.role || "Accountant",
-      status: thread.status || "online",
-      unread: thread.unreadCount || 0,
-      tab: thread.tab || "assigned"  // assume backend provides tab or default
-    }));
-    renderContacts();
-  } catch (err) {
-    console.error(err);
-    contactListEl.innerHTML = '<div class="empty-state"><p>Error loading conversations.</p></div>';
-  }
+function getStatusLabel(conversation) {
+  if (conversation.online) return "Online";
+  return conversation.statusLabel || "Offline";
 }
 
-// ────────────────────────────────────────────────
-//   Load messages for a thread
-// ────────────────────────────────────────────────
-async function loadMessages(threadId, page = 1) {
-  try {
-    const res = await fetch(`${API_BASE_URL}/messages/threads/${threadId}?page=${page}&limit=${pageLimit}`, { headers: authHeaders() });
-    if (!res.ok) throw new Error("Failed to load messages");
-    const data = await res.json();
-    return {
-      items: data.items || [],
-      hasMore: data.pagination?.hasMore || false
-    };
-  } catch (err) {
-    console.error(err);
-    return { items: [], hasMore: false };
-  }
+function getAvatarLabel(name) {
+  const parts = String(name).trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return "U";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
 }
 
-// ────────────────────────────────────────────────
-//   Render messages
-// ────────────────────────────────────────────────
-function renderMessages(threadName, messages, hasMore) {
-  messageAreaEl.innerHTML = "";
-  if (!messages.length) {
-    messageAreaEl.innerHTML = `
+function getActiveFilter() {
+  return document.querySelector(".filter-btn.active")?.dataset.filter || "all";
+}
+
+function getFilteredConversations() {
+  const term = searchInput.value.trim().toLowerCase();
+  const filter = getActiveFilter();
+
+  return allConversations.filter(conversation => {
+    const name = getConversationName(conversation).toLowerCase();
+    const preview = getConversationPreview(conversation).toLowerCase();
+    const unread = getUnreadCount(conversation);
+    const pinned = Boolean(conversation.pinned);
+    const searchMatch = !term || name.includes(term) || preview.includes(term);
+    const filterMatch =
+      filter === "all" ||
+      (filter === "unread" && unread > 0) ||
+      (filter === "pinned" && pinned);
+    return searchMatch && filterMatch;
+  });
+}
+
+function renderConversationList() {
+  const conversations = getFilteredConversations();
+  conversationList.innerHTML = "";
+
+  if (!conversations.length) {
+    const searchingOrFiltering = searchInput.value.trim().length > 0 || getActiveFilter() !== "all";
+    conversationList.innerHTML = `
       <div class="empty-state">
         <i class="fa fa-comments"></i>
+        <h3>${searchingOrFiltering ? "No matching conversations" : "No conversations yet"}</h3>
+        <p>${searchingOrFiltering ? "Try a different search or filter." : "New messages will appear here"}</p>
+      </div>
+    `;
+    return;
+  }
+
+  conversations.forEach(conversation => {
+    const name = getConversationName(conversation);
+    const unread = getUnreadCount(conversation);
+    const statusClass = conversation.online ? "online" : "offline";
+    const preview = getConversationPreview(conversation);
+    const isActive = conversation.id === activeConversationId;
+
+    const item = document.createElement("button");
+    item.type = "button";
+    item.className = `conversation-item${isActive ? " active" : ""}`;
+    item.style.width = "100%";
+    item.style.border = "none";
+    item.style.background = "transparent";
+    item.innerHTML = `
+      <div class="avatar">
+        ${getAvatarLabel(name)}
+        <span class="status-dot ${statusClass}"></span>
+      </div>
+      <div class="conv-info">
+        <div class="conv-name">${name}${conversation.pinned ? " <i class='fa fa-thumbtack' style='font-size:11px;color:#64748b'></i>" : ""}</div>
+        <div class="conv-last-msg">${preview}</div>
+        <div class="conv-meta">
+          <span>${getStatusLabel(conversation)}</span>
+          ${unread > 0 ? `<span class="unread-pill">${unread} unread</span>` : ""}
+        </div>
+      </div>
+    `;
+
+    item.addEventListener("click", () => {
+      activeConversationId = conversation.id;
+      renderConversationList();
+      renderActiveConversation();
+    });
+
+    conversationList.appendChild(item);
+  });
+}
+
+function renderEmptyChatState() {
+  chatTitle.textContent = "No conversation selected";
+  chatStatus.textContent = "-";
+  messagesContainer.innerHTML = `
+    <div class="empty-state">
+      <i class="fa fa-comments"></i>
+      <h3>No conversation selected</h3>
+      <p>Choose a contact to start messaging</p>
+    </div>
+  `;
+  inputArea.classList.add("hidden");
+}
+
+function renderActiveConversation() {
+  const conversation = allConversations.find(c => c.id === activeConversationId);
+  if (!conversation) {
+    renderEmptyChatState();
+    return;
+  }
+
+  chatTitle.textContent = getConversationName(conversation);
+  chatStatus.textContent = getStatusLabel(conversation);
+  inputArea.classList.remove("hidden");
+
+  const messages = Array.isArray(conversation.messages) ? conversation.messages : [];
+  if (!messages.length) {
+    messagesContainer.innerHTML = `
+      <div class="empty-state">
+        <i class="fa fa-message"></i>
         <h3>No messages yet</h3>
         <p>Start the conversation by sending a message.</p>
       </div>
@@ -625,134 +925,65 @@ function renderMessages(threadName, messages, hasMore) {
     return;
   }
 
-  const container = document.createElement("div");
-  container.className = "messages";
-
-  if (hasMore) {
-    const loadBtn = document.createElement("button");
-    loadBtn.className = "send-btn";
-    loadBtn.textContent = "Load older messages";
-    loadBtn.onclick = async () => {
-      currentPage++;
-      const { items, hasMore: more } = await loadMessages(selectedThreadId, currentPage);
-      renderMessageRows(container, items);
-      if (!more) loadBtn.remove();
-      messageAreaEl.scrollTop = 0;
-    };
-    container.appendChild(loadBtn);
-  }
-
-  renderMessageRows(container, messages);
-  messageAreaEl.appendChild(container);
-  messageAreaEl.scrollTop = messageAreaEl.scrollHeight;
-}
-
-// ────────────────────────────────────────────────
-//   Render message rows
-// ────────────────────────────────────────────────
-function renderMessageRows(container, messages) {
-  const currentUserId = user.id;  // assume user has id from session
+  messagesContainer.innerHTML = "";
   messages.forEach(msg => {
-    const own = msg.fromUserId === currentUserId;
+    const from = msg.from === "sent" ? "sent" : "received";
+    const timestamp = msg.time || msg.createdAt;
+    const renderedTime = timestamp ? new Date(timestamp).toLocaleString() : "";
+
     const row = document.createElement("div");
-    row.className = `message-row ${own ? "own" : ""}`;
+    row.className = `message ${from}`;
     row.innerHTML = `
-      <div class="message-bubble ${own ? "own" : "other"}">
-        ${msg.body}
-        <div class="message-meta">${formatTime(msg.createdAt)} • ${msg.status || "Sent"}</div>
+      <div class="bubble ${from}">${msg.text || ""}</div>
+      <div class="message-meta ${from}">
+        <span>${renderedTime}</span>
       </div>
     `;
-    container.appendChild(row);
+    messagesContainer.appendChild(row);
   });
+
+  messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
-// ────────────────────────────────────────────────
-//   Open thread
-// ────────────────────────────────────────────────
-async function openThread(threadId) {
-  selectedThreadId = threadId;
-  currentPage = 1;
-  document.querySelectorAll(".contact").forEach(el => el.classList.remove("active"));
-  document.querySelector(`.contact[data-id="${threadId}"]`)?.classList.add("active");
-
-  const thread = threads.find(t => t.id === threadId);
-  messageHeaderEl.innerHTML = `
-    <h3>${thread.name}</h3>
-    <p>${thread.role}</p>
-  `;
-  inputAreaEl.classList.remove("hidden");
-
-  const { items, hasMore } = await loadMessages(threadId, currentPage);
-  renderMessages(thread.name, items, hasMore);
-
-  // Mark as read
-  fetch(`${API_BASE_URL}/messages/threads/${threadId}/read`, {
-    method: "POST",
-    headers: authHeaders(),
-    body: JSON.stringify({})
-  }).then(() => loadThreads());
-}
-
-// ────────────────────────────────────────────────
-//   Send message
-// ────────────────────────────────────────────────
-async function sendMessage() {
-  if (!selectedThreadId) return;
-  const body = messageInputEl.value.trim();
-  if (!body) return;
-
-  try {
-    const res = await fetch(`${API_BASE_URL}/messages/threads/${selectedThreadId}`, {
-      method: "POST",
-      headers: { ...authHeaders(), "Content-Type": "application/json" },
-      body: JSON.stringify({ body })
-    });
-    if (!res.ok) throw new Error("Failed to send message");
-
-    messageInputEl.value = "";
-    const thread = threads.find(t => t.id === selectedThreadId);
-    openThread(selectedThreadId);  // reload messages
-  } catch (err) {
-    console.error(err);
-    alert("Failed to send message");
-  }
-}
-
-// ────────────────────────────────────────────────
-//   Event listeners
-// ────────────────────────────────────────────────
-document.getElementById("logoutBtn").addEventListener("click", () => {
-  window.PortalAuth.clearSession();
-  window.location.href = "../Clientlogins/login.html";
-});
-
-document.getElementById("sendBtn").addEventListener("click", sendMessage);
-
-messageInputEl.addEventListener("keydown", e => {
-  if (e.key === "Enter" && !e.shiftKey) {
-    e.preventDefault();
-    sendMessage();
-  }
-});
-
-searchInputEl.addEventListener("input", renderContacts);
-
-document.querySelectorAll(".tab-btn").forEach(btn => {
+filterButtons.forEach(btn => {
   btn.addEventListener("click", () => {
-    document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+    filterButtons.forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
-    currentTab = btn.dataset.tab;
-    renderContacts();
+    renderConversationList();
   });
 });
 
-contactListEl.addEventListener("click", e => {
-  const contactEl = e.target.closest(".contact");
-  if (contactEl) openThread(contactEl.dataset.id);
+searchInput.addEventListener("input", renderConversationList);
+
+sendBtn.addEventListener("click", () => {
+  const text = messageInput.value.trim();
+  if (!text) return;
+
+  const conversation = allConversations.find(c => c.id === activeConversationId);
+  if (!conversation) return;
+
+  if (!Array.isArray(conversation.messages)) conversation.messages = [];
+  const createdAt = new Date().toISOString();
+
+  conversation.messages.push({ from: "sent", text, createdAt });
+  conversation.lastMessage = { text, createdAt };
+  messageInput.value = "";
+
+  renderConversationList();
+  renderActiveConversation();
 });
 
-// Initial load
-loadThreads();
+messageInput.addEventListener("keydown", event => {
+  if (event.key === "Enter" && !event.shiftKey) {
+    event.preventDefault();
+    sendBtn.click();
+  }
+});
+
+renderConversationList();
+renderActiveConversation();
+initSidebarResize();
 </script>
 </body>
 </html>
+

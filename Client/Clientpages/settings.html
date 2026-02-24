@@ -26,16 +26,16 @@
       overflow: hidden;
     }
 
-    .app-layout { display: flex; height: 100vh; }
+    .app-layout { display: flex; height: 100vh; --sidebar-width: 260px; }
 
     /* Sidebar */
     .sidebar {
-      width: 260px;
+      width: var(--sidebar-width);
+      flex: 0 0 var(--sidebar-width);
       background: linear-gradient(180deg, #0f172a, #020617);
       color: white;
       display: flex;
       flex-direction: column;
-      flex-shrink: 0;
     }
 
     .sidebar-header {
@@ -93,6 +93,67 @@
     }
 
     .logout:hover { background: #1e293b; }
+
+    .sidebar-resizer {
+      width: 8px;
+      cursor: col-resize;
+      background: transparent;
+      flex: 0 0 8px;
+      transition: background .2s;
+    }
+
+    .sidebar-resizer:hover {
+      background: rgba(148, 163, 184, 0.25);
+    }
+
+    .app-layout.resizing {
+      user-select: none;
+      cursor: col-resize;
+    }
+
+    .app-layout.sidebar-icons-only .sidebar-header {
+      justify-content: center;
+      padding: 20px 0;
+    }
+
+    .app-layout.sidebar-icons-only .sidebar-header > div {
+      display: none;
+    }
+
+    .app-layout.sidebar-icons-only .nav {
+      padding: 12px 10px;
+    }
+
+    .app-layout.sidebar-icons-only .nav a {
+      justify-content: center;
+      font-size: 0;
+      padding: 12px;
+    }
+
+    .app-layout.sidebar-icons-only .nav a i {
+      font-size: 18px;
+      margin: 0;
+    }
+
+    .app-layout.sidebar-icons-only .sidebar-footer {
+      padding: 12px 10px;
+    }
+
+    .app-layout.sidebar-icons-only .user-box {
+      display: none;
+    }
+
+    .app-layout.sidebar-icons-only .logout {
+      display: flex;
+      justify-content: center;
+      font-size: 0;
+      padding: 12px;
+    }
+
+    .app-layout.sidebar-icons-only .logout i {
+      font-size: 18px;
+      margin: 0;
+    }
 
     /* Main content */
     .main-content {
@@ -331,6 +392,7 @@
       <button class="logout" id="logoutBtn"><i class="fa fa-sign-out"></i> Logout</button>
     </div>
   </aside>
+  <div class="sidebar-resizer" id="sidebarResizer" role="separator" aria-label="Resize sidebar" aria-orientation="vertical"></div>
 
   <!-- Main Content -->
   <main class="main-content">
@@ -475,6 +537,49 @@ const { token, user } = session;
 document.getElementById("sidebarName").textContent  = user.fullName || user.name || "Client";
 document.getElementById("sidebarEmail").textContent = user.email || "client@example.com";
 
+const appLayout = document.querySelector(".app-layout");
+const sidebarResizer = document.getElementById("sidebarResizer");
+const SIDEBAR_MIN_WIDTH = 82;
+const SIDEBAR_MAX_WIDTH = 380;
+const SIDEBAR_DEFAULT_WIDTH = 260;
+const SIDEBAR_STORAGE_KEY = "settingsSidebarWidth";
+
+function setSidebarWidth(width) {
+  const clamped = Math.max(SIDEBAR_MIN_WIDTH, Math.min(SIDEBAR_MAX_WIDTH, width));
+  appLayout.style.setProperty("--sidebar-width", `${clamped}px`);
+  appLayout.classList.toggle("sidebar-icons-only", clamped <= SIDEBAR_MIN_WIDTH + 4);
+  localStorage.setItem(SIDEBAR_STORAGE_KEY, String(clamped));
+}
+
+function initSidebarResize() {
+  const saved = Number(localStorage.getItem(SIDEBAR_STORAGE_KEY));
+  setSidebarWidth(Number.isFinite(saved) && saved > 0 ? saved : SIDEBAR_DEFAULT_WIDTH);
+
+  let dragging = false;
+
+  sidebarResizer.addEventListener("pointerdown", (event) => {
+    dragging = true;
+    appLayout.classList.add("resizing");
+    sidebarResizer.setPointerCapture(event.pointerId);
+  });
+
+  sidebarResizer.addEventListener("pointermove", (event) => {
+    if (!dragging) return;
+    setSidebarWidth(event.clientX);
+  });
+
+  sidebarResizer.addEventListener("pointerup", (event) => {
+    dragging = false;
+    appLayout.classList.remove("resizing");
+    sidebarResizer.releasePointerCapture(event.pointerId);
+  });
+
+  sidebarResizer.addEventListener("dblclick", () => {
+    const current = parseInt(getComputedStyle(appLayout).getPropertyValue("--sidebar-width"), 10) || SIDEBAR_DEFAULT_WIDTH;
+    setSidebarWidth(current <= SIDEBAR_MIN_WIDTH + 4 ? SIDEBAR_DEFAULT_WIDTH : SIDEBAR_MIN_WIDTH);
+  });
+}
+
 const API_BASE_URL = window.PortalConfig?.API_BASE_URL || "http://127.0.0.1:4010/api";
 
 function authHeaders() {
@@ -605,6 +710,7 @@ document.getElementById("generateCodesBtn")?.addEventListener("click", () => {
 });
 
 // Initial load
+initSidebarResize();
 loadProfile();
 loadSecurity();
 </script>

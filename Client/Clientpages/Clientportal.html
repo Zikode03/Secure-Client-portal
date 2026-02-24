@@ -32,15 +32,16 @@
     .layout {
       display: flex;
       height: 100vh;
+      --sidebar-width: 260px;
     }
 
     .sidebar {
-      width: 260px;
+      width: var(--sidebar-width);
+      flex: 0 0 var(--sidebar-width);
       background: linear-gradient(180deg, #0f172a, #020617);
       color: #fff;
       display: flex;
       flex-direction: column;
-      flex-shrink: 0;
     }
 
     .sidebar-header {
@@ -90,6 +91,48 @@
       cursor: pointer;
     }
     .logout:hover { background: #1e293b; }
+
+    .sidebar-resizer {
+      width: 8px;
+      cursor: col-resize;
+      background: transparent;
+      flex: 0 0 8px;
+      transition: background .2s;
+    }
+    .sidebar-resizer:hover { background: rgba(148, 163, 184, 0.25); }
+
+    .layout.resizing {
+      user-select: none;
+      cursor: col-resize;
+    }
+
+    .layout.sidebar-icons-only .sidebar-header {
+      justify-content: center;
+      padding: 20px 0;
+    }
+    .layout.sidebar-icons-only .sidebar-header > div { display: none; }
+    .layout.sidebar-icons-only .nav { padding: 12px 10px; }
+    .layout.sidebar-icons-only .nav a {
+      justify-content: center;
+      font-size: 0;
+      padding: 12px;
+    }
+    .layout.sidebar-icons-only .nav a i {
+      font-size: 18px;
+      margin: 0;
+    }
+    .layout.sidebar-icons-only .sidebar-footer { padding: 12px 10px; }
+    .layout.sidebar-icons-only .user-box { display: none; }
+    .layout.sidebar-icons-only .logout {
+      display: flex;
+      justify-content: center;
+      font-size: 0;
+      padding: 12px;
+    }
+    .layout.sidebar-icons-only .logout i {
+      font-size: 18px;
+      margin: 0;
+    }
 
     .main {
       flex: 1;
@@ -326,6 +369,7 @@
         <button class="logout" id="logout-btn"><i class="fa fa-sign-out"></i> Logout</button>
       </div>
     </aside>
+    <div class="sidebar-resizer" id="sidebarResizer" role="separator" aria-label="Resize sidebar" aria-orientation="vertical"></div>
 
     <main class="main">
       <header class="topbar">
@@ -410,6 +454,13 @@
     const sidebarUserName = document.getElementById("sidebar-user-name");
     const sidebarUserEmail = document.getElementById("sidebar-user-email");
     const welcomeLine = document.getElementById("welcome-line");
+    const appLayout = document.querySelector(".layout");
+    const sidebarResizer = document.getElementById("sidebarResizer");
+
+    const SIDEBAR_MIN_WIDTH = 82;
+    const SIDEBAR_MAX_WIDTH = 380;
+    const SIDEBAR_DEFAULT_WIDTH = 260;
+    const SIDEBAR_STORAGE_KEY = "clientportalSidebarWidth";
 
     const totalDocsEl = document.getElementById("kpi-total-docs");
     const pendingDocsEl = document.getElementById("kpi-pending-docs");
@@ -422,6 +473,42 @@
     const timelineWrap = document.getElementById("timeline-wrap");
     const recentDocumentsWrap = document.getElementById("recent-documents-wrap");
     const invoicesWrap = document.getElementById("invoices-wrap");
+
+    function setSidebarWidth(width) {
+      const clamped = Math.max(SIDEBAR_MIN_WIDTH, Math.min(SIDEBAR_MAX_WIDTH, width));
+      appLayout.style.setProperty("--sidebar-width", `${clamped}px`);
+      appLayout.classList.toggle("sidebar-icons-only", clamped <= SIDEBAR_MIN_WIDTH + 4);
+      localStorage.setItem(SIDEBAR_STORAGE_KEY, String(clamped));
+    }
+
+    function initSidebarResize() {
+      const saved = Number(localStorage.getItem(SIDEBAR_STORAGE_KEY));
+      setSidebarWidth(Number.isFinite(saved) && saved > 0 ? saved : SIDEBAR_DEFAULT_WIDTH);
+
+      let dragging = false;
+
+      sidebarResizer.addEventListener("pointerdown", (event) => {
+        dragging = true;
+        appLayout.classList.add("resizing");
+        sidebarResizer.setPointerCapture(event.pointerId);
+      });
+
+      sidebarResizer.addEventListener("pointermove", (event) => {
+        if (!dragging) return;
+        setSidebarWidth(event.clientX);
+      });
+
+      sidebarResizer.addEventListener("pointerup", (event) => {
+        dragging = false;
+        appLayout.classList.remove("resizing");
+        sidebarResizer.releasePointerCapture(event.pointerId);
+      });
+
+      sidebarResizer.addEventListener("dblclick", () => {
+        const current = parseInt(getComputedStyle(appLayout).getPropertyValue("--sidebar-width"), 10) || SIDEBAR_DEFAULT_WIDTH;
+        setSidebarWidth(current <= SIDEBAR_MIN_WIDTH + 4 ? SIDEBAR_DEFAULT_WIDTH : SIDEBAR_MIN_WIDTH);
+      });
+    }
 
     document.getElementById("upload-btn").addEventListener("click", () => {
       window.location.href = "upload.html";
@@ -634,6 +721,7 @@
       renderInvoices(sortedDocs);
     }
 
+    initSidebarResize();
     loadDashboard().catch((error) => {
       console.error(error);
       const message = error?.message || "Failed to load dashboard.";

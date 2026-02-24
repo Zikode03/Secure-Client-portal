@@ -1,328 +1,397 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Document Requests - Prospera</title>
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
-<style>
-:root {
-  --blue: #2563eb;
-  --bg: #f5f7fb;
-  --dark: #0f172a;
-  --muted: #64748b;
-  --border: #e5e7eb;
-  --success: #10b981;
-  --warning: #f59e0b;
-  --danger: #ef4444;
-}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Requests - Prospera</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    :root {
+      --navy: #0f172a;
+      --navy-light: #1e293b;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --border: #e2e8f0;
+      --muted: #64748b;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --purple: #8b5cf6;
+      --blue: #3b82f6;
+    }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Inter', sans-serif;
+    }
+    body {
+      background: var(--bg);
+      color: var(--navy);
+      height: 100vh;
+      overflow: hidden;
+    }
+    .app-layout {
+      display: flex;
+      height: 100vh;
+      --sidebar-width: 260px;
+    }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+    /* Sidebar – identical to other pages */
+    .sidebar {
+      width: var(--sidebar-width);
+      flex: 0 0 var(--sidebar-width);
+      background: linear-gradient(180deg, #0f172a, #020617);
+      color: white;
+      display: flex;
+      flex-direction: column;
+    }
 
-body {
-  font-family: "Segoe UI", Arial, sans-serif;
-  background: var(--bg);
-  height: 100vh;
-  overflow: hidden;
-  color: var(--dark);
-}
+    .sidebar-header {
+      padding: 22px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
 
-.app-layout { display: flex; height: 100vh; }
+    .sidebar-header i { font-size: 30px; color: #60a5fa; }
 
-/* Sidebar */
-.sidebar {
-  width: 260px;
-  background: linear-gradient(180deg, #0f172a, #020617);
-  color: white;
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-}
+    .sidebar-header h1 { font-size: 16px; margin: 0; }
+    .sidebar-header p { font-size: 12px; color: #94a3b8; margin: 0; }
 
-.sidebar-header {
-  padding: 22px;
-  display: flex;
-  gap: 12px;
-  align-items: center;
-}
+    .nav {
+      padding: 16px;
+      flex: 1;
+    }
 
-.sidebar-header i { font-size: 30px; color: #60a5fa; }
+    .nav a {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 14px;
+      border-radius: 10px;
+      color: #cbd5f5;
+      text-decoration: none;
+      margin-bottom: 6px;
+    }
 
-.sidebar-header h1 { font-size: 16px; margin: 0; }
-.sidebar-header p { font-size: 12px; color: #94a3b8; margin: 0; }
+    .nav a:hover { background: #1e293b; }
+    .nav a.active { background: #2563eb; color: white; }
 
-.nav {
-  padding: 16px;
-  flex: 1;
-}
+    .sidebar-footer { padding: 16px; }
 
-.nav a {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  padding: 12px 14px;
-  border-radius: 10px;
-  color: #cbd5f5;
-  text-decoration: none;
-  margin-bottom: 6px;
-}
+    .user-box {
+      background: #1e293b;
+      padding: 12px;
+      border-radius: 10px;
+      margin-bottom: 12px;
+    }
 
-.nav a.active { background: var(--blue); color: white; }
-.nav a:hover { background: #1e293b; }
+    .user-box p { margin: 2px 0; font-size: 13px; }
+    .role { color: #60a5fa; font-size: 12px; }
 
-.sidebar-footer { padding: 16px; }
+    .logout {
+      width: 100%;
+      background: none;
+      border: none;
+      color: #cbd5f5;
+      padding: 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      text-align: left;
+    }
 
-.user-box {
-  background: #1e293b;
-  padding: 12px;
-  border-radius: 10px;
-  margin-bottom: 12px;
-}
+    .logout:hover { background: #1e293b; }
 
-.user-box p { margin: 2px 0; font-size: 13px; }
-.role { color: #60a5fa; font-size: 12px; }
+    .sidebar-resizer {
+      width: 8px;
+      cursor: col-resize;
+      background: transparent;
+      flex: 0 0 8px;
+      transition: background .2s;
+    }
 
-.logout {
-  width: 100%;
-  background: none;
-  border: none;
-  color: #cbd5f5;
-  padding: 12px;
-  border-radius: 10px;
-  cursor: pointer;
-  text-align: left;
-}
+    .sidebar-resizer:hover {
+      background: rgba(148, 163, 184, 0.25);
+    }
 
-.logout:hover { background: #1e293b; }
+    .app-layout.resizing {
+      user-select: none;
+      cursor: col-resize;
+    }
 
-/* Main content */
-.main-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: 24px;
-}
+    .app-layout.sidebar-icons-only .sidebar-header {
+      justify-content: center;
+      padding: 20px 0;
+    }
 
-.top-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-}
+    .app-layout.sidebar-icons-only .sidebar-header > div {
+      display: none;
+    }
 
-.top-row h2 { font-size: 30px; margin-bottom: 4px; }
-.top-row p { color: var(--muted); font-size: 14px; }
+    .app-layout.sidebar-icons-only .nav {
+      padding: 12px 10px;
+    }
 
-.btn {
-  border: none;
-  border-radius: 10px;
-  font-weight: 600;
-  padding: 10px 16px;
-  cursor: pointer;
-  font-size: 14px;
-}
+    .app-layout.sidebar-icons-only .nav a {
+      justify-content: center;
+      font-size: 0;
+      padding: 12px;
+    }
 
-.btn-primary { background: var(--dark); color: white; }
-.btn-primary:hover { background: #020617; }
+    .app-layout.sidebar-icons-only .nav a i {
+      font-size: 18px;
+      margin: 0;
+    }
 
-/* Tabs */
-.tabs {
-  display: flex;
-  background: #f1f5f9;
-  border-radius: 999px;
-  padding: 4px;
-  width: fit-content;
-  margin-bottom: 20px;
-}
+    .app-layout.sidebar-icons-only .sidebar-footer {
+      padding: 12px 10px;
+    }
 
-.tab {
-  padding: 10px 20px;
-  border-radius: 999px;
-  cursor: pointer;
-  font-weight: 600;
-  color: var(--muted);
-}
+    .app-layout.sidebar-icons-only .user-box {
+      display: none;
+    }
 
-.tab.active {
-  background: white;
-  color: var(--dark);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
+    .app-layout.sidebar-icons-only .logout {
+      display: flex;
+      justify-content: center;
+      font-size: 0;
+      padding: 12px;
+    }
 
-/* Panels & Cards */
-.panel {
-  background: white;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 20px;
-}
+    .app-layout.sidebar-icons-only .logout i {
+      font-size: 18px;
+      margin: 0;
+    }
 
-.request-card {
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 16px;
-  margin-bottom: 16px;
-}
+    /* Main content */
+    .main-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 30px;
+    }
 
-.request-header {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-}
+    /* Header */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 25px;
+    }
+    .header h1 {
+      font-size: 24px;
+      font-weight: 600;
+    }
+    .primary-btn {
+      background: var(--navy);
+      color: #fff;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .primary-btn:hover {
+      background: var(--navy-light);
+    }
 
-.request-title h4 { margin: 0; font-size: 16px; }
-.request-title p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+    /* KPI */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+    .kpi-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
+    }
+    .kpi-card .top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .kpi-card i {
+      background: #e2e8f0;
+      color: var(--navy);
+      padding: 8px;
+      border-radius: 8px;
+    }
+    .kpi-card .value {
+      font-size: 22px;
+      font-weight: 600;
+    }
+    .kpi-card .label {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
 
-.badges { display: flex; gap: 8px; }
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+    .tab-btn {
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #fff;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .tab-btn.active {
+      background: var(--navy);
+      color: #fff;
+    }
 
-.badge {
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-}
+    /* Search + Filter */
+    .search-filter {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+    }
+    .search-filter input,
+    .search-filter select {
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      font-size: 14px;
+      min-width: 180px;
+    }
 
-.priority-high   { background: #fee2e2; color: #b91c1c; }
-.priority-medium { background: #fef3c7; color: #92400e; }
-.priority-low    { background: #e0f2fe; color: #0369a1; }
+    /* Requests list */
+    .requests-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .request-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px;
+      cursor: pointer;
+      transition: .2s;
+    }
+    .request-card:hover {
+      box-shadow: 0 4px 12px rgba(0,0,0,.05);
+    }
+    .request-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .request-title {
+      font-weight: 500;
+    }
+    .badge {
+      padding: 4px 8px;
+      font-size: 11px;
+      border-radius: 6px;
+      font-weight: 500;
+    }
+    .badge.pending     { background: #fef3c7; color: #92400e; }
+    .badge.completed   { background: #dcfce7; color: #065f46; }
+    .badge.overdue     { background: #fee2e2; color: #991b1b; }
+    .badge.in_progress { background: #dbeafe; color: #1e3a8a; }
 
-.status-pending   { background: #e0e7ff; color: #3730a3; }
-.status-fulfilled { background: #ecfdf5; color: #065f46; }
+    /* Priority badges */
+    .priority-low    { background: #d1fae5; color: #065f46; }
+    .priority-medium { background: #fef3c7; color: #92400e; }
+    .priority-high   { background: #fee2e2; color: #991b1b; font-weight: 600; }
 
-.meta {
-  margin-top: 12px;
-  color: var(--muted);
-  font-size: 13px;
-  display: flex;
-  gap: 16px;
-  flex-wrap: wrap;
-}
+    .meta {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 6px;
+    }
 
-.action-btn {
-  margin-top: 12px;
-  width: 100%;
-  padding: 12px;
-  background: var(--blue);
-  color: white;
-  border: none;
-  border-radius: 10px;
-  font-weight: 600;
-  cursor: pointer;
-}
+    /* Modal */
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.4);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    .modal.active {
+      display: flex;
+    }
+    .modal-content {
+      background: #fff;
+      width: 420px;
+      max-width: 90%;
+      padding: 24px;
+      border-radius: 12px;
+    }
+    .modal-content h3 {
+      margin-bottom: 16px;
+      font-size: 20px;
+    }
+    .modal-content input,
+    .modal-content textarea,
+    .modal-content select {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 16px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      font-size: 14px;
+    }
+    .modal-content select {
+      appearance: none;
+      background: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e") no-repeat right 12px center / 16px;
+    }
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      margin-top: 20px;
+    }
+    .close-btn {
+      background: #e2e8f0;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .primary-btn {
+      background: var(--navy);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .primary-btn:hover {
+      background: var(--navy-light);
+    }
 
-.action-btn:disabled { background: #94a3b8; cursor: not-allowed; }
-
-/* Modal */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background: white;
-  border-radius: 12px;
-  width: 100%;
-  max-width: 520px;
-  margin: 20px;
-}
-
-.modal-header {
-  padding: 20px 24px;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.modal-header h2 { margin: 0; font-size: 20px; }
-
-.close-modal {
-  background: none;
-  border: none;
-  font-size: 28px;
-  color: var(--muted);
-  cursor: pointer;
-}
-
-.modal-body { padding: 24px; }
-
-.form-group {
-  margin-bottom: 20px;
-}
-
-.form-group label {
-  display: block;
-  margin-bottom: 6px;
-  font-weight: 500;
-}
-
-.form-group input,
-.form-group textarea,
-.form-group select {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  font-size: 14px;
-}
-
-.form-row {
-  display: flex;
-  gap: 16px;
-}
-
-.form-row > div { flex: 1; }
-
-.modal-footer {
-  padding: 16px 24px;
-  border-top: 1px solid var(--border);
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-}
-
-.btn-secondary {
-  background: white;
-  border: 1px solid var(--border);
-  color: var(--dark);
-  padding: 10px 16px;
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-.status-message {
-  margin-top: 12px;
-  padding: 10px;
-  border-radius: 8px;
-}
-
-.success { background: #ecfdf5; color: #065f46; }
-.error   { background: #fef2f2; color: #991b1b; }
-
-/* Empty state styling */
-.empty {
-  color: var(--muted);
-  text-align: center;
-  padding: 60px 20px;
-  font-size: 15px;
-  line-height: 1.5;
-  background: #f8fafc;
-  border-radius: 10px;
-  border: 1px dashed var(--border);
-  margin: 20px 0;
-}
-
-.hidden { display: none !important; }
-
-@media (max-width: 768px) {
-  .main-content { padding: 16px; }
-  .form-row { flex-direction: column; gap: 0; }
-}
-</style>
+    .notice {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      padding: 12px 20px;
+      border-radius: 8px;
+      z-index: 2000;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .notice.success { background: #ecfdf5; color: #065f46; border: 1px solid #10b98166; }
+    .notice.error   { background: #fef2f2; color: #991b1b; border: 1px solid #ef444466; }
+  </style>
 </head>
 <body>
 
@@ -355,268 +424,404 @@ body {
       <button class="logout" id="logoutBtn"><i class="fa fa-sign-out"></i> Logout</button>
     </div>
   </aside>
+  <div class="sidebar-resizer" id="sidebarResizer" role="separator" aria-label="Resize sidebar" aria-orientation="vertical"></div>
 
-  <!-- Main content -->
+  <!-- Main Content -->
   <main class="main-content">
-
-    <div class="top-row">
+    <div class="header">
       <div>
-        <h2>Document Requests</h2>
-        <p>View and respond to document requests from your accountant</p>
+        <h1>Requests</h1>
+        <p style="font-size:13px;color:var(--muted)">Track and manage document requests</p>
       </div>
-      <button class="btn btn-primary" id="newRequestBtn">+ New Request</button>
+      <button class="primary-btn" id="newRequestBtn">
+        <i class="fa fa-plus"></i> New Request
+      </button>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="top">
+          <i class="fa fa-inbox"></i>
+          <span>Total</span>
+        </div>
+        <div class="value" id="kpiReceived">0</div>
+        <div class="label">Received</div>
+      </div>
+      <div class="kpi-card">
+        <div class="top">
+          <i class="fa fa-clock"></i>
+          <span>Pending</span>
+        </div>
+        <div class="value" id="kpiPending">0</div>
+        <div class="label">Action Needed</div>
+      </div>
+      <div class="kpi-card">
+        <div class="top">
+          <i class="fa fa-paper-plane"></i>
+          <span>Total</span>
+        </div>
+        <div class="value" id="kpiSent">0</div>
+        <div class="label">Sent</div>
+      </div>
+      <div class="kpi-card">
+        <div class="top">
+          <i class="fa fa-exclamation-triangle"></i>
+          <span>High Priority</span>
+        </div>
+        <div class="value" id="kpiHighPriority">0</div>
+        <div class="label">Urgent</div>
+      </div>
     </div>
 
     <div class="tabs">
-      <div class="tab active" id="tab-received">Received (0)</div>
-      <div class="tab" id="tab-sent">Sent (0)</div>
+      <button class="tab-btn active" data-tab="received">Received</button>
+      <button class="tab-btn" data-tab="sent">Sent</button>
     </div>
 
-    <!-- Received requests -->
-    <div class="panel" id="received-panel">
-      <h3>Requests You Received</h3>
-      <div id="received-list">
-        <div class="empty">No requests received yet.</div>
+    <div class="search-filter">
+      <input type="text" placeholder="Search requests..." id="searchInput" oninput="filterRequests()">
+      <select id="statusFilter" onchange="filterRequests()">
+        <option value="all">All Status</option>
+        <option value="pending">Pending</option>
+        <option value="in_progress">In Progress</option>
+        <option value="completed">Completed</option>
+        <option value="overdue">Overdue</option>
+      </select>
+      <select id="priorityFilter" onchange="filterRequests()">
+        <option value="all">All Priority</option>
+        <option value="low">Low</option>
+        <option value="medium">Medium</option>
+        <option value="high">High</option>
+      </select>
+    </div>
+
+    <div class="requests-list" id="requestsList"></div>
+
+    <!-- Detail Modal -->
+    <div class="modal" id="detailModal">
+      <div class="modal-content">
+        <h3 id="detailTitle"></h3>
+        <p id="detailDesc"></p>
+        <p><strong>Priority:</strong> <span id="detailPriority"></span></p>
+        <p><strong>Status:</strong> <span id="detailStatus"></span></p>
+        <div class="modal-footer">
+          <button class="close-btn" onclick="closeDetailModal()">Close</button>
+        </div>
       </div>
     </div>
 
-    <!-- Sent requests -->
-    <div class="panel hidden" id="sent-panel">
-      <h3>Requests You Sent</h3>
-      <div id="sent-list">
-        <div class="empty">No requests sent yet.</div>
+    <!-- Create Modal -->
+    <div class="modal" id="createModal">
+      <div class="modal-content">
+        <h3>Create Request</h3>
+        <input type="text" placeholder="Title" id="newTitle" required>
+        <textarea placeholder="Description" id="newDesc"></textarea>
+        <select id="newPriority">
+          <option value="low">Low</option>
+          <option value="medium" selected>Medium</option>
+          <option value="high">High</option>
+        </select>
+        <div class="modal-footer">
+          <button class="close-btn" onclick="closeCreateModal()">Cancel</button>
+          <button class="primary-btn" onclick="createRequest()">Create</button>
+        </div>
       </div>
     </div>
-
   </main>
-</div>
 
-<!-- Modal -->
-<div id="new-request-modal" class="modal-overlay hidden">
-  <div class="modal-content">
-    <div class="modal-header">
-      <h2>Create Document Request</h2>
-      <button class="close-modal" id="close-modal">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label for="req-title">Title / Document Type *</label>
-        <input type="text" id="req-title" placeholder="e.g. Latest Company Bank Statements" required>
-      </div>
-      <div class="form-group">
-        <label for="req-description">Description</label>
-        <textarea id="req-description" rows="4" placeholder="Please describe exactly what documents are needed..."></textarea>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label for="req-priority">Priority</label>
-          <select id="req-priority">
-            <option value="low">Low</option>
-            <option value="medium" selected>Medium</option>
-            <option value="high">High</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="req-due">Due Date *</label>
-          <input type="date" id="req-due" required>
-        </div>
-      </div>
-      <div id="modal-status" class="status-message hidden"></div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn-secondary" id="cancel-create">Cancel</button>
-      <button class="btn btn-primary" id="submit-create">Create Request</button>
-    </div>
-  </div>
 </div>
 
 <script src="../../shared/portal-config.js"></script>
 <script src="../../shared/portal-auth.js"></script>
 <script>
-// ────────────────────────────────────────────────
-//   Auth & setup
-// ────────────────────────────────────────────────
+const API_BASE_URL = window.PortalConfig?.API_BASE_URL || "http://127.0.0.1:4010/api";
+
 const session = window.PortalAuth.requireRole("client", "../Clientlogins/login.html");
 if (!session) throw new Error("Unauthorized");
 
 const { token, user } = session;
 
-document.getElementById("sidebarName").textContent  = user.fullName || user.name || "Client";
-document.getElementById("sidebarEmail").textContent = user.email || "client@example.com";
+document.getElementById("sidebarName").textContent = user.fullName || "Client";
+document.getElementById("sidebarEmail").textContent = user.email || "";
 
-const API_BASE = window.PortalConfig?.API_BASE_URL || "http://127.0.0.1:4010/api";
+const appLayout = document.querySelector(".app-layout");
+const sidebarResizer = document.getElementById("sidebarResizer");
+const SIDEBAR_MIN_WIDTH = 82;
+const SIDEBAR_MAX_WIDTH = 380;
+const SIDEBAR_DEFAULT_WIDTH = 260;
+const SIDEBAR_STORAGE_KEY = "requestsSidebarWidth";
+
+function setSidebarWidth(width) {
+  const clamped = Math.max(SIDEBAR_MIN_WIDTH, Math.min(SIDEBAR_MAX_WIDTH, width));
+  appLayout.style.setProperty("--sidebar-width", `${clamped}px`);
+  appLayout.classList.toggle("sidebar-icons-only", clamped <= SIDEBAR_MIN_WIDTH + 4);
+  localStorage.setItem(SIDEBAR_STORAGE_KEY, String(clamped));
+}
+
+function initSidebarResize() {
+  const saved = Number(localStorage.getItem(SIDEBAR_STORAGE_KEY));
+  setSidebarWidth(Number.isFinite(saved) && saved > 0 ? saved : SIDEBAR_DEFAULT_WIDTH);
+
+  let dragging = false;
+
+  sidebarResizer.addEventListener("pointerdown", (event) => {
+    dragging = true;
+    appLayout.classList.add("resizing");
+    sidebarResizer.setPointerCapture(event.pointerId);
+  });
+
+  sidebarResizer.addEventListener("pointermove", (event) => {
+    if (!dragging) return;
+    setSidebarWidth(event.clientX);
+  });
+
+  sidebarResizer.addEventListener("pointerup", (event) => {
+    dragging = false;
+    appLayout.classList.remove("resizing");
+    sidebarResizer.releasePointerCapture(event.pointerId);
+  });
+
+  sidebarResizer.addEventListener("dblclick", () => {
+    const current = parseInt(getComputedStyle(appLayout).getPropertyValue("--sidebar-width"), 10) || SIDEBAR_DEFAULT_WIDTH;
+    setSidebarWidth(current <= SIDEBAR_MIN_WIDTH + 4 ? SIDEBAR_DEFAULT_WIDTH : SIDEBAR_MIN_WIDTH);
+  });
+}
 
 function authHeaders() {
   return window.PortalAuth.authHeaders(token);
 }
 
-// ────────────────────────────────────────────────
-//   Helpers
-// ────────────────────────────────────────────────
-function formatDate(str) {
-  if (!str) return "—";
-  return new Date(str).toLocaleDateString("en-ZA", {
-    day: "numeric", month: "short", year: "numeric"
+let receivedRequests = [];
+let sentRequests = [];
+let activeTab = "received";
+
+function getPriorityBadge(priority) {
+  const p = (priority || "medium").toLowerCase();
+  if (p === "high")   return `<span class="badge priority-high">HIGH</span>`;
+  if (p === "medium") return `<span class="badge priority-medium">MEDIUM</span>`;
+  return `<span class="badge priority-low">LOW</span>`;
+}
+
+function renderRequests(list, items) {
+  list.innerHTML = "";
+  const search   = document.getElementById("searchInput").value.toLowerCase().trim();
+  const status   = document.getElementById("statusFilter").value;
+  const priority = document.getElementById("priorityFilter").value;
+
+  const filtered = items.filter(r => {
+    const titleOk    = r.title.toLowerCase().includes(search);
+    const statusOk   = status === "all" || r.status === status;
+    const priorityOk = priority === "all" || r.priority === priority;
+    return titleOk && statusOk && priorityOk;
   });
-}
 
-// ────────────────────────────────────────────────
-//   Render card
-// ────────────────────────────────────────────────
-function renderCard(request, isReceived) {
-  const done = ["fulfilled","completed"].includes((request.status||"").toLowerCase());
-  const btn = isReceived
-    ? `<button class="action-btn" data-id="${request.id}" ${done?"disabled":""}>${done?"Already Fulfilled":"Mark as Fulfilled"}</button>`
-    : `<button class="action-btn" disabled>Sent Request</button>`;
-
-  return `
-    <div class="request-card">
-      <div class="request-header">
-        <div class="request-title">
-          <i class="fa-solid fa-file-alt" style="font-size:24px;color:var(--blue);margin-right:12px;"></i>
-          <div>
-            <h4>${request.title || "Untitled Request"}</h4>
-            <p>${request.description || "No description"}</p>
-          </div>
-        </div>
-        <div class="badges">
-          <span class="badge priority-${(request.priority||"medium").toLowerCase()}">${(request.priority||"Medium").toUpperCase()}</span>
-          <span class="badge status-${done?"fulfilled":"pending"}">${done?"FULFILLED":"PENDING"}</span>
-        </div>
-      </div>
-      <div class="meta">
-        <span><i class="fa fa-calendar"></i> Due: ${formatDate(request.dueDate)}</span>
-        <span><i class="fa fa-clock"></i> Requested: ${formatDate(request.createdAt)}</span>
-      </div>
-      ${btn}
-    </div>
-  `;
-}
-
-// ────────────────────────────────────────────────
-//   Load requests
-// ────────────────────────────────────────────────
-async function load() {
-  try {
-    const [r1, r2] = await Promise.all([
-      fetch(`${API_BASE}/requests?role=received`, { headers: authHeaders() }),
-      fetch(`${API_BASE}/requests?role=sent`,     { headers: authHeaders() })
-    ]);
-
-    const received = (await r1.json()).items || [];
-    const sent     = (await r2.json()).items || [];
-
-    document.getElementById("tab-received").textContent = `Received (${received.length})`;
-    document.getElementById("tab-sent").textContent     = `Sent (${sent.length})`;
-
-    document.getElementById("received-list").innerHTML = received.length
-      ? received.map(r => renderCard(r, true)).join("")
-      : '<div class="empty">No requests received yet.</div>';
-
-    document.getElementById("sent-list").innerHTML = sent.length
-      ? sent.map(r => renderCard(r, false)).join("")
-      : '<div class="empty">No requests sent yet.</div>';
-
-  } catch (e) {
-    console.error(e);
-    document.getElementById("received-list").innerHTML =
-    document.getElementById("sent-list").innerHTML = '<div class="empty">Error loading requests</div>';
-  }
-}
-
-// ────────────────────────────────────────────────
-//   Create request
-// ────────────────────────────────────────────────
-async function create() {
-  const title = document.getElementById("req-title").value.trim();
-  const desc  = document.getElementById("req-description").value.trim();
-  const pri   = document.getElementById("req-priority").value;
-  const due   = document.getElementById("req-due").value;
-  const stat  = document.getElementById("modal-status");
-
-  stat.classList.add("hidden");
-
-  if (!title || !due) {
-    stat.textContent = "Title and due date are required";
-    stat.className = "status-message error";
-    stat.classList.remove("hidden");
+  if (!filtered.length) {
+    list.innerHTML = '<p style="text-align:center;color:var(--muted);padding:40px 0;">No requests found.</p>';
     return;
   }
 
+  filtered.forEach(r => {
+    const card = document.createElement("div");
+    card.className = "request-card";
+    card.innerHTML = `
+      <div class="request-top">
+        <div class="request-title">${r.title}</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          ${getPriorityBadge(r.priority)}
+          <span class="badge ${r.status}">${r.status.replace("_", " ").toUpperCase()}</span>
+        </div>
+      </div>
+      <div class="meta">
+        ${r.id || "No ID"} • Due: ${r.dueDate ? new Date(r.dueDate).toLocaleDateString() : "—"} • Created: ${r.createdAt ? new Date(r.createdAt).toLocaleDateString() : "—"}
+      </div>
+    `;
+    card.onclick = () => openDetailModal(r);
+
+    if (activeTab === "received" && r.status !== "completed") {
+      const fulfillBtn = document.createElement("button");
+      fulfillBtn.className = "primary-btn";
+      fulfillBtn.style.marginTop = "12px";
+      fulfillBtn.textContent = "Mark as Fulfilled";
+      fulfillBtn.onclick = (e) => {
+        e.stopPropagation();
+        fulfillRequest(r.id);
+      };
+      card.appendChild(fulfillBtn);
+    }
+
+    list.appendChild(card);
+  });
+}
+
+function updateKPI() {
+  const all = [...receivedRequests, ...sentRequests];
+  document.getElementById("kpiReceived").textContent   = receivedRequests.length;
+  document.getElementById("kpiSent").textContent       = sentRequests.length;
+  document.getElementById("kpiPending").textContent    = all.filter(r => r.status === "pending" || r.status === "in_progress").length;
+  document.getElementById("kpiHighPriority").textContent = all.filter(r => r.priority === "high").length;
+}
+
+async function loadRequests() {
   try {
-    const res = await fetch(`${API_BASE}/requests`, {
+    const [recRes, sentRes] = await Promise.all([
+      fetch(`${API_BASE_URL}/requests?role=received`, { headers: authHeaders() }),
+      fetch(`${API_BASE_URL}/requests?role=sent`, { headers: authHeaders() })
+    ]);
+
+    if (!recRes.ok || !sentRes.ok) throw new Error("Failed to load requests");
+
+    receivedRequests = (await recRes.json()).items || [];
+    sentRequests     = (await sentRes.json()).items || [];
+
+    switchTab(activeTab);
+    updateKPI();
+  } catch (err) {
+    console.error(err);
+    showNotice("Failed to load requests", "error");
+  }
+}
+
+function switchTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll(".tab-btn").forEach(btn => btn.classList.remove("active"));
+  document.querySelector(`.tab-btn[data-tab="${tab}"]`).classList.add("active");
+  const list = document.getElementById("requestsList");
+  const items = tab === "received" ? receivedRequests : sentRequests;
+  renderRequests(list, items);
+}
+
+function filterRequests() {
+  switchTab(activeTab);
+}
+
+function openDetailModal(r) {
+  document.getElementById("detailTitle").textContent = r.title;
+  document.getElementById("detailDesc").textContent = r.description || "No description provided.";
+  document.getElementById("detailPriority").textContent = (r.priority || "Medium").toUpperCase();
+  document.getElementById("detailStatus").textContent = r.status.replace("_", " ").toUpperCase();
+  document.getElementById("detailModal").classList.add("active");
+}
+
+function closeDetailModal() {
+  document.getElementById("detailModal").classList.remove("active");
+}
+
+function openCreateModal() {
+  document.getElementById("newTitle").value = "";
+  document.getElementById("newDesc").value = "";
+  document.getElementById("newPriority").value = "medium";
+  document.getElementById("createModal").classList.add("active");
+}
+
+function closeCreateModal() {
+  document.getElementById("createModal").classList.remove("active");
+}
+
+async function createRequest() {
+  const title    = document.getElementById("newTitle").value.trim();
+  const desc     = document.getElementById("newDesc").value.trim();
+  const priority = document.getElementById("newPriority").value;
+
+  if (!title) return showNotice("Title is required", "error");
+
+  const payload = {
+    title,
+    description: desc || undefined,
+    priority,
+    status: "pending"
+  };
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/requests`, {
       method: "POST",
       headers: { ...authHeaders(), "Content-Type": "application/json" },
-      body: JSON.stringify({ title, description: desc || undefined, priority: pri, dueDate: due })
+      body: JSON.stringify(payload)
     });
 
-    if (!res.ok) throw new Error("Failed to create request");
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || "Failed to create request");
+    }
 
-    stat.textContent = "Request created successfully";
-    stat.className = "status-message success";
-    stat.classList.remove("hidden");
-
-    setTimeout(() => {
-      document.getElementById("new-request-modal").classList.add("hidden");
-      document.getElementById("req-title").value = "";
-      document.getElementById("req-description").value = "";
-      document.getElementById("req-due").value = "";
-      load();
-    }, 1400);
-
+    closeCreateModal();
+    loadRequests();
+    showNotice("Request created successfully", "success");
   } catch (err) {
-    stat.textContent = err.message;
-    stat.className = "status-message error";
-    stat.classList.remove("hidden");
+    console.error(err);
+    showNotice(err.message || "Failed to create request", "error");
   }
+}
+
+async function fulfillRequest(id) {
+  if (!confirm("Mark this request as fulfilled?")) return;
+
+  try {
+    const res = await fetch(`${API_BASE_URL}/requests/${id}/status`, {
+      method: "PATCH",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "completed" })
+    });
+
+    if (!res.ok) throw new Error("Failed to update request");
+    loadRequests();
+    showNotice("Request marked as fulfilled", "success");
+  } catch (err) {
+    console.error(err);
+    showNotice("Failed to fulfill request", "error");
+  }
+}
+
+// ────────────────────────────────────────────────
+//   Notification helper
+// ────────────────────────────────────────────────
+function showNotice(message, type = "success") {
+  let notice = document.getElementById("notice");
+  if (!notice) {
+    notice = document.createElement("div");
+    notice.id = "notice";
+    notice.style.position = "fixed";
+    notice.style.bottom = "20px";
+    notice.style.right = "20px";
+    notice.style.padding = "12px 20px";
+    notice.style.borderRadius = "8px";
+    notice.style.zIndex = "1000";
+    notice.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
+    document.body.appendChild(notice);
+  }
+  notice.textContent = message;
+  notice.style.background = type === "success" ? "#ecfdf5" : "#fef2f2";
+  notice.style.color = type === "success" ? "#065f46" : "#991b1b";
+  notice.style.border = type === "success" ? "1px solid #10b98166" : "1px solid #ef444466";
+  notice.style.display = "block";
+  setTimeout(() => notice.style.display = "none", 3500);
 }
 
 // ────────────────────────────────────────────────
 //   Event listeners
 // ────────────────────────────────────────────────
-document.getElementById("newRequestBtn").onclick = () =>
-  document.getElementById("new-request-modal").classList.remove("hidden");
+document.getElementById("newRequestBtn").addEventListener("click", openCreateModal);
 
-document.getElementById("close-modal").onclick =
-document.getElementById("cancel-create").onclick = () =>
-  document.getElementById("new-request-modal").classList.add("hidden");
+document.querySelectorAll(".tab-btn").forEach(btn => {
+  btn.addEventListener("click", () => switchTab(btn.dataset.tab));
+});
 
-document.getElementById("submit-create").onclick = create;
+document.getElementById("logoutBtn").addEventListener("click", () => {
+  window.PortalAuth.clearSession();
+  window.location.href = "../Clientlogins/login.html";
+});
 
-document.getElementById("tab-received").onclick = () => {
-  document.getElementById("received-panel").classList.remove("hidden");
-  document.getElementById("sent-panel").classList.add("hidden");
-  document.getElementById("tab-received").classList.add("active");
-  document.getElementById("tab-sent").classList.remove("active");
-};
-
-document.getElementById("tab-sent").onclick = () => {
-  document.getElementById("sent-panel").classList.remove("hidden");
-  document.getElementById("received-panel").classList.add("hidden");
-  document.getElementById("tab-sent").classList.add("active");
-  document.getElementById("tab-received").classList.remove("active");
-};
-
-document.addEventListener("click", e => {
-  if (e.target.matches("[data-id]")) {
-    const id = e.target.dataset.id;
-    if (confirm("Mark request as fulfilled?")) {
-      fetch(`${API_BASE}/requests/${id}/status`, {
-        method: "PATCH",
-        headers: { ...authHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "fulfilled" })
-      }).then(r => { if (r.ok) load(); });
-    }
+document.getElementById("requestsList").addEventListener("click", e => {
+  const btn = e.target.closest(".primary-btn");
+  if (btn && btn.textContent.includes("Fulfilled")) {
+    const card = btn.closest(".request-card");
+    const id = card.querySelector(".meta").textContent.split(" • ")[0].trim(); // extract ID
+    fulfillRequest(id);
   }
 });
 
-document.getElementById("logoutBtn").onclick = () => {
-  window.PortalAuth.clearSession();
-  window.location.href = "../Clientlogins/login.html";
-};
-
 // Initial load
-load();
+loadRequests();
+initSidebarResize();
 </script>
 </body>
 </html>
