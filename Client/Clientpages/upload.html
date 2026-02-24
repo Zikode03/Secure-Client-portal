@@ -382,6 +382,28 @@ function authHeaders() {
   return window.PortalAuth.authHeaders(token);
 }
 
+async function resolveClientId() {
+  const localIds = Array.isArray(user.clientIds) ? user.clientIds : [];
+  if (localIds.length) return localIds[0];
+
+  const meRes = await fetch(`${API_BASE_URL}/auth/me`, { headers: authHeaders() });
+  const meData = await meRes.json().catch(() => ({}));
+  if (!meRes.ok) {
+    throw new Error(meData.error || "Unable to resolve client profile.");
+  }
+
+  const freshUser = meData.user || {};
+  const freshIds = Array.isArray(freshUser.clientIds) ? freshUser.clientIds : [];
+  if (!freshIds.length) return "";
+
+  try {
+    localStorage.setItem("authUser", JSON.stringify(freshUser));
+  } catch (_error) {
+    // ignore storage write errors
+  }
+  return freshIds[0];
+}
+
 // ────────────────────────────────────────────────
 //   Upload logic
 // ────────────────────────────────────────────────
@@ -482,21 +504,26 @@ uploadBtn.addEventListener("click", async () => {
   uploadBtn.disabled = true;
   showStatus("Uploading... Please wait", "success");
 
-  const formData = new FormData();
-  formData.append("file", selectedFile);
-  if (categoryEl.value)   formData.append("category", categoryEl.value);
-  if (notesEl.value.trim()) formData.append("notes", notesEl.value.trim());
-
   try {
-    const res = await fetch(`${API_BASE_URL}/documents/upload`, {
+    const clientId = await resolveClientId();
+
+    const payload = {
+      name: selectedFile.name,
+      category: categoryEl.value || "General",
+      sizeBytes: selectedFile.size,
+      status: "pending",
+    };
+    if (clientId) payload.clientId = clientId;
+
+    const res = await fetch(`${API_BASE_URL}/documents`, {
       method: "POST",
-      headers: authHeaders(),   // note: do NOT set Content-Type manually with FormData
-      body: formData
+      headers: authHeaders(),
+      body: JSON.stringify(payload)
     });
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.message || `Upload failed (${res.status})`);
+      throw new Error(err.error || err.message || `Upload failed (${res.status})`);
     }
 
     showStatus("File uploaded successfully!", "success");

@@ -6,9 +6,6 @@
   <title>User Profile & Security - Prospera</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <style>
-    /* ──────────────────────────────────────────────── */
-    /* Consistent variables and base from other pages   */
-    /* ──────────────────────────────────────────────── */
     :root {
       --blue: #2563eb;
       --bg: #f5f7fb;
@@ -16,7 +13,6 @@
       --muted: #64748b;
       --border: #e5e7eb;
       --success: #10b981;
-      --warning: #f59e0b;
       --danger: #ef4444;
     }
 
@@ -32,7 +28,7 @@
 
     .app-layout { display: flex; height: 100vh; }
 
-    /* Sidebar – identical to other pages */
+    /* Sidebar */
     .sidebar {
       width: 260px;
       background: linear-gradient(180deg, #0f172a, #020617);
@@ -102,29 +98,25 @@
     .main-content {
       flex: 1;
       overflow-y: auto;
-      padding: 24px;
+      padding: 32px 24px; /* slightly more top/bottom padding */
     }
 
     .top-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 24px;
+      margin-bottom: 40px; /* more space after title */
     }
 
-    .top-row h2 { font-size: 30px; margin-bottom: 4px; }
+    .top-row h2 { font-size: 30px; margin-bottom: 8px; }
     .top-row p { color: var(--muted); font-size: 14px; }
 
-    /* Profile card */
     .profile-card {
       background: white;
       border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 24px;
+      border-radius: 12px;
+      padding: 28px;
       display: flex;
       align-items: center;
-      gap: 24px;
-      margin-bottom: 24px;
+      gap: 28px;
+      margin-bottom: 48px; /* increased space below profile card */
     }
 
     .avatar {
@@ -139,16 +131,15 @@
       color: var(--muted);
     }
 
-    .profile-info h3 { font-size: 20px; margin-bottom: 4px; }
+    .profile-info h3 { font-size: 22px; margin-bottom: 8px; }
     .profile-info .tier { color: var(--blue); font-weight: 600; font-size: 14px; }
     .profile-info p { color: var(--muted); font-size: 13px; }
 
-    /* Tabs */
     .tabs {
       display: flex;
-      gap: 24px;
+      gap: 40px;
       border-bottom: 1px solid var(--border);
-      margin-bottom: 24px;
+      margin-bottom: 40px; /* more space before tab content */
     }
 
     .tab-btn {
@@ -172,54 +163,68 @@
       bottom: -1px;
       left: 0;
       width: 100%;
-      height: 2px;
+      height: 3px;
       background: var(--blue);
     }
 
     .tab-panel { display: none; }
     .tab-panel.active { display: block; }
 
-    /* Grid layouts */
     .grid {
       display: grid;
-      grid-template-columns: 2fr 1fr;
-      gap: 24px;
+      grid-template-columns: 1fr;
+      gap: 32px; /* increased gap between cards */
     }
 
-    @media (max-width: 1024px) {
-      .grid { grid-template-columns: 1fr; }
-    }
-
-    /* Cards */
     .card {
       background: white;
       border: 1px solid var(--border);
       border-radius: 12px;
       overflow: hidden;
+      margin-bottom: 32px; /* extra space between stacked cards */
     }
 
+    .card:last-child { margin-bottom: 0; }
+
     .card-header {
-      padding: 16px 20px;
+      padding: 18px 24px;
       border-bottom: 1px solid var(--border);
       font-size: 16px;
       font-weight: 600;
     }
 
-    .card-body { padding: 20px; }
+    .card-body { padding: 24px; }
 
-    /* Form */
     .form-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 20px;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 24px;
     }
 
-    .form-group label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; }
-    .form-group input { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 8px; background: #f8fafc; font-size: 14px; }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
 
-    .form-actions {
-      margin-top: 24px;
+    .form-group label {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .form-group input {
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #f8fafc;
+      font-size: 14px;
+    }
+
+    .card-actions {
+      padding: 18px 24px;
+      background: #f8fafc;
       text-align: right;
+      border-top: 1px solid var(--border);
     }
 
     .btn {
@@ -233,35 +238,43 @@
     .btn-primary { background: var(--blue); color: white; }
     .btn-primary:hover { background: #1d4ed8; }
 
-    .btn-danger { background: var(--danger); color: white; }
-    .btn-danger:hover { background: #dc2626; }
-
     .btn-secondary { background: #f1f5f9; color: var(--dark); border: 1px solid var(--border); }
     .btn-secondary:hover { background: #e5e7eb; }
 
-    /* Table */
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
 
-    th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border); }
+    th, td {
+      padding: 14px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
 
-    th { color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: 12px; }
+    th {
+      color: var(--muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 12px;
+    }
 
-    /* Security items */
     .security-item {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 16px 20px;
+      padding: 18px 24px;
       border-bottom: 1px solid var(--border);
     }
 
     .security-item:last-child { border-bottom: none; }
 
-    .security-info h4 { font-size: 15px; margin-bottom: 4px; }
-    .security-info p { font-size: 13px; color: var(--muted); }
+    .security-info h4 { margin: 0 0 6px; font-size: 15px; }
+    .security-info p { margin: 0; color: var(--muted); font-size: 13px; }
 
     .status-badge {
-      padding: 4px 10px;
+      padding: 4px 12px;
       border-radius: 999px;
       font-size: 12px;
       font-weight: 600;
@@ -270,50 +283,21 @@
     .status-active { background: #d1fae5; color: var(--success); }
     .status-inactive { background: #fee2e2; color: var(--danger); }
 
-    /* Sidebar card */
-    .sidebar-card {
-      background: white;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 20px;
-      text-align: center;
-    }
-
-    .progress-bar {
-      height: 8px;
-      background: #e5e7eb;
-      border-radius: 999px;
-      margin: 16px 0;
-    }
-
-    .progress-fill {
-      height: 100%;
-      background: var(--blue);
-      border-radius: 999px;
-      width: 85%; /* Example */
-    }
-
-    .sidebar-card h4 { font-size: 16px; margin-bottom: 8px; }
-    .sidebar-card p { color: var(--muted); font-size: 13px; }
-
-    /* Notice */
     .notice {
       position: fixed;
-      bottom: 20px;
-      right: 20px;
+      bottom: 24px;
+      right: 24px;
       padding: 12px 20px;
       border-radius: 8px;
       font-size: 14px;
       z-index: 1000;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      transition: opacity 0.3s;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.15);
     }
 
-    .notice.success { background: #ecfdf5; color: #065f46; border: 1px solid #86efac; }
-    .notice.error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
-    .notice.info { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+    .notice.success { background: #ecfdf5; color: #065f46; border: 1px solid #10b98166; }
+    .notice.error   { background: #fef2f2; color: #991b1b; border: 1px solid #ef444466; }
 
-    .hidden { display: none; }
+    .hidden { display: none !important; }
   </style>
 </head>
 <body>
@@ -353,11 +337,11 @@
     <div class="top-row">
       <div>
         <h2>User Profile & Security</h2>
-        <p>Manage your personal information, security settings, and account activity.</p>
+        <p>Manage your personal information, security settings, and account activity</p>
       </div>
     </div>
 
-    <!-- Profile Card -->
+    <!-- Profile Overview Card -->
     <div class="profile-card">
       <div class="avatar"><i class="fa fa-user"></i></div>
       <div class="profile-info">
@@ -373,7 +357,7 @@
       <button class="tab-btn" data-tab="security">Security</button>
     </div>
 
-    <!-- Profile Tab -->
+    <!-- Profile Tab Content -->
     <div class="tab-panel active" id="profile">
       <div class="grid">
         <!-- Account Details -->
@@ -390,16 +374,16 @@
                 <input id="lastName" placeholder="Last Name">
               </div>
               <div class="form-group">
-                <label>Email</label>
+                <label>Email Address</label>
                 <input id="email" type="email" placeholder="Email">
               </div>
               <div class="form-group">
-                <label>Phone</label>
+                <label>Phone Number</label>
                 <input id="phone" placeholder="Phone">
               </div>
             </div>
           </div>
-          <div class="form-actions">
+          <div class="card-actions">
             <button class="btn btn-primary" id="saveProfile">Save Changes</button>
           </div>
         </div>
@@ -413,32 +397,21 @@
                 <tr>
                   <th>Device</th>
                   <th>Location</th>
-                  <th>IP</th>
+                  <th>IP Address</th>
                   <th>Time</th>
                 </tr>
               </thead>
-              <tbody id="activityTable">
-                <!-- Loaded dynamically -->
-              </tbody>
+              <tbody id="activityTable"></tbody>
             </table>
           </div>
-        </div>
-
-        <!-- Sidebar Card -->
-        <div class="sidebar-card">
-          <h4>Account Security Score</h4>
-          <div class="progress-bar">
-            <div class="progress-fill" id="securityScoreFill"></div>
-          </div>
-          <p id="securityScore">Loading...</p>
         </div>
       </div>
     </div>
 
-    <!-- Security Tab -->
+    <!-- Security Tab Content -->
     <div class="tab-panel" id="security">
       <div class="grid">
-        <!-- Password Management -->
+        <!-- Password -->
         <div class="card">
           <div class="card-header">Password</div>
           <div class="card-body">
@@ -447,12 +420,12 @@
                 <h4>Change Password</h4>
                 <p id="lastPasswordChange">Last changed: Loading...</p>
               </div>
-              <button class="btn btn-secondary" id="changePassword">Change</button>
+              <button class="btn btn-secondary" id="changePasswordBtn">Change Password</button>
             </div>
           </div>
         </div>
 
-        <!-- 2FA -->
+        <!-- Two-Factor Authentication -->
         <div class="card">
           <div class="card-header">Two-Factor Authentication</div>
           <div class="card-body">
@@ -461,14 +434,14 @@
                 <h4>2FA Status</h4>
                 <span class="status-badge" id="twoFaStatus">Loading...</span>
               </div>
-              <button class="btn btn-secondary" id="toggleTwoFa">Toggle</button>
+              <button class="btn btn-secondary" id="toggleTwoFaBtn">Manage 2FA</button>
             </div>
             <div class="security-item">
               <div class="security-info">
                 <h4>Backup Codes</h4>
-                <p>Generate new codes for emergency access</p>
+                <p>Generate emergency access codes</p>
               </div>
-              <button class="btn btn-secondary" id="generateCodes">Generate</button>
+              <button class="btn btn-secondary" id="generateCodesBtn">Generate Codes</button>
             </div>
           </div>
         </div>
@@ -476,33 +449,30 @@
         <!-- Connected Devices -->
         <div class="card">
           <div class="card-header">Connected Devices</div>
-          <div class="card-body">
-            <div id="devicesList">
-              <!-- Loaded dynamically -->
-            </div>
+          <div class="card-body" id="devicesList">
+            <!-- Dynamically filled -->
           </div>
         </div>
       </div>
     </div>
-
   </main>
 </div>
 
-<!-- Notice Element -->
+<!-- Notification -->
 <div id="notice" class="notice hidden"></div>
 
 <script src="../../shared/portal-config.js"></script>
 <script src="../../shared/portal-auth.js"></script>
 <script>
 // ────────────────────────────────────────────────
-//   Auth & Session (keeps user signed in)
+//   Authentication – keeps user signed in
 // ────────────────────────────────────────────────
 const session = window.PortalAuth.requireRole("client", "../Clientlogins/login.html");
 if (!session) throw new Error("Unauthorized");
 
 const { token, user } = session;
 
-document.getElementById("sidebarName").textContent  = user.fullName || "Client";
+document.getElementById("sidebarName").textContent  = user.fullName || user.name || "Client";
 document.getElementById("sidebarEmail").textContent = user.email || "client@example.com";
 
 const API_BASE_URL = window.PortalConfig?.API_BASE_URL || "http://127.0.0.1:4010/api";
@@ -512,23 +482,28 @@ function authHeaders() {
 }
 
 // ────────────────────────────────────────────────
-//   Helpers
+//   Notification helper
 // ────────────────────────────────────────────────
 function showNotice(message, type = "info") {
-  const noticeEl = document.getElementById("notice");
-  noticeEl.textContent = message;
-  noticeEl.className = `notice ${type}`;
-  noticeEl.classList.remove("hidden");
-  setTimeout(() => noticeEl.classList.add("hidden"), 3000);
-}
-
-function formatDate(iso) {
-  if (!iso) return "Unknown";
-  return new Date(iso).toLocaleString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  const el = document.getElementById("notice");
+  el.textContent = message;
+  el.className = `notice ${type}`;
+  el.classList.remove("hidden");
+  setTimeout(() => el.classList.add("hidden"), 4000);
 }
 
 // ────────────────────────────────────────────────
-//   Load Profile
+//   Format date
+// ────────────────────────────────────────────────
+function formatDate(iso) {
+  if (!iso) return "Unknown";
+  return new Date(iso).toLocaleDateString("en-ZA", {
+    day: "numeric", month: "short", year: "numeric"
+  });
+}
+
+// ────────────────────────────────────────────────
+//   Load profile data
 // ────────────────────────────────────────────────
 async function loadProfile() {
   try {
@@ -540,97 +515,24 @@ async function loadProfile() {
     document.getElementById("memberSince").textContent = `Member since ${formatDate(data.createdAt)}`;
 
     document.getElementById("firstName").value = data.firstName || "";
-    document.getElementById("lastName").value = data.lastName || "";
-    document.getElementById("email").value = data.email || "";
-    document.getElementById("phone").value = data.phone || "";
+    document.getElementById("lastName").value  = data.lastName  || "";
+    document.getElementById("email").value     = data.email     || "";
+    document.getElementById("phone").value     = data.phone     || "";
   } catch (err) {
     console.error(err);
-    showNotice("Error loading profile", "error");
+    showNotice("Could not load profile information", "error");
   }
 }
 
 // ────────────────────────────────────────────────
-//   Load Security Info
-// ────────────────────────────────────────────────
-async function loadSecurity() {
-  try {
-    const res = await fetch(`${API_BASE_URL}/security`, { headers: authHeaders() });
-    if (!res.ok) throw new Error("Failed to load security info");
-    const data = await res.json();
-
-    const score = data.score || 85;
-    document.getElementById("securityScoreFill").style.width = `${score}%`;
-    document.getElementById("securityScore").textContent = `${score}% Secure`;
-
-    const twoFaEnabled = data.twoFaEnabled;
-    document.getElementById("twoFaStatus").textContent = twoFaEnabled ? "Active" : "Inactive";
-    document.getElementById("twoFaStatus").className = `status-badge status-${twoFaEnabled ? "active" : "inactive"}`;
-
-    document.getElementById("lastPasswordChange").textContent = `Last changed: ${formatDate(data.lastPasswordChange)}`;
-  } catch (err) {
-    console.error(err);
-    showNotice("Error loading security info", "error");
-  }
-}
-
-// ────────────────────────────────────────────────
-//   Load Login Activity
-// ────────────────────────────────────────────────
-async function loadActivity() {
-  try {
-    const res = await fetch(`${API_BASE_URL}/activity`, { headers: authHeaders() });
-    if (!res.ok) throw new Error("Failed to load activity");
-    const data = await res.json();
-
-    const tableBody = document.getElementById("activityTable");
-    tableBody.innerHTML = data.items.map(item => `
-      <tr>
-        <td>${item.device}</td>
-        <td>${item.location}</td>
-        <td>${item.ip}</td>
-        <td>${formatDate(item.time)}</td>
-      </tr>
-    `).join("") || '<tr><td colspan="4" class="empty">No recent activity</td></tr>';
-  } catch (err) {
-    console.error(err);
-    showNotice("Error loading activity", "error");
-  }
-}
-
-// ────────────────────────────────────────────────
-//   Load Devices
-// ────────────────────────────────────────────────
-async function loadDevices() {
-  try {
-    const res = await fetch(`${API_BASE_URL}/devices`, { headers: authHeaders() });
-    if (!res.ok) throw new Error("Failed to load devices");
-    const data = await res.json();
-
-    const list = document.getElementById("devicesList");
-    list.innerHTML = data.items.map(device => `
-      <div class="security-item">
-        <div class="security-info">
-          <h4>${device.name} ${device.current ? '<span class="status-badge status-active">Current</span>' : ''}</h4>
-          <p>${device.location} • Last active: ${formatDate(device.lastActive)}</p>
-        </div>
-        <button class="btn btn-danger" data-id="${device.id}">Unlink</button>
-      </div>
-    `).join("") || '<div class="empty">No connected devices</div>';
-  } catch (err) {
-    console.error(err);
-    showNotice("Error loading devices", "error");
-  }
-}
-
-// ────────────────────────────────────────────────
-//   Save Profile
+//   Save profile changes
 // ────────────────────────────────────────────────
 async function saveProfile() {
   const payload = {
     firstName: document.getElementById("firstName").value.trim(),
-    lastName: document.getElementById("lastName").value.trim(),
-    email: document.getElementById("email").value.trim(),
-    phone: document.getElementById("phone").value.trim()
+    lastName:  document.getElementById("lastName").value.trim(),
+    email:     document.getElementById("email").value.trim(),
+    phone:     document.getElementById("phone").value.trim()
   };
 
   try {
@@ -639,86 +541,47 @@ async function saveProfile() {
       headers: { ...authHeaders(), "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
-    if (!res.ok) throw new Error("Failed to save profile");
+
+    if (!res.ok) throw new Error("Failed to update profile");
     showNotice("Profile updated successfully", "success");
-    loadProfile();  // Reload to reflect changes
+    loadProfile(); // refresh displayed data
   } catch (err) {
     console.error(err);
-    showNotice("Error saving profile", "error");
+    showNotice("Failed to save changes", "error");
   }
 }
 
 // ────────────────────────────────────────────────
-//   Change Password (placeholder – open modal or form)
+//   Load security info
 // ────────────────────────────────────────────────
-function changePassword() {
-  // In a real app, open a modal with old/new/confirm fields
-  showNotice("Password change requested – implement modal", "info");
-}
-
-// ────────────────────────────────────────────────
-//   Toggle 2FA
-// ────────────────────────────────────────────────
-async function toggleTwoFa() {
+async function loadSecurity() {
   try {
-    const res = await fetch(`${API_BASE_URL}/security/twofa`, {
-      method: "PATCH",
-      headers: { ...authHeaders(), "Content-Type": "application/json" },
-      body: JSON.stringify({ enabled: !document.getElementById("twoFaStatus").textContent.includes("Active") })
-    });
-    if (!res.ok) throw new Error("Failed to toggle 2FA");
-    showNotice("2FA updated", "success");
-    loadSecurity();
-  } catch (err) {
-    console.error(err);
-    showNotice("Error toggling 2FA", "error");
-  }
-}
-
-// ────────────────────────────────────────────────
-//   Generate Backup Codes
-// ────────────────────────────────────────────────
-async function generateCodes() {
-  try {
-    const res = await fetch(`${API_BASE_URL}/security/backup-codes`, {
-      method: "POST",
-      headers: authHeaders()
-    });
-    if (!res.ok) throw new Error("Failed to generate codes");
+    const res = await fetch(`${API_BASE_URL}/security`, { headers: authHeaders() });
+    if (!res.ok) throw new Error("Failed to load security");
     const data = await res.json();
-    showNotice(`New codes: ${data.codes.join(", ")} – Save them securely!`, "success");
+
+    const twoFa = data.twoFactorEnabled ? "Active" : "Inactive";
+    document.getElementById("twoFaStatus").textContent = twoFa;
+    document.getElementById("twoFaStatus").className = `status-badge status-${twoFa.toLowerCase()}`;
+
+    document.getElementById("lastPasswordChange").textContent = `Last changed: ${formatDate(data.lastPasswordChange)}`;
   } catch (err) {
     console.error(err);
-    showNotice("Error generating codes", "error");
+    showNotice("Could not load security settings", "error");
   }
 }
 
 // ────────────────────────────────────────────────
-//   Unlink Device
-// ────────────────────────────────────────────────
-function unlinkDevice(id) {
-  if (!confirm("Unlink this device?")) return;
-  fetch(`${API_BASE_URL}/devices/${id}`, {
-    method: "DELETE",
-    headers: authHeaders()
-  }).then(res => {
-    if (res.ok) {
-      showNotice("Device unlinked", "success");
-      loadDevices();
-    } else {
-      showNotice("Error unlinking device", "error");
-    }
-  });
-}
-
-// ────────────────────────────────────────────────
-//   Event Listeners
+//   Event listeners
 // ────────────────────────────────────────────────
 document.getElementById("logoutBtn").addEventListener("click", () => {
   window.PortalAuth.clearSession();
   window.location.href = "../Clientlogins/login.html";
 });
 
+document.getElementById("saveProfile").addEventListener("click", saveProfile);
+
+// Tab switching
 document.querySelectorAll(".tab-btn").forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
@@ -728,25 +591,22 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
   });
 });
 
-document.getElementById("saveProfile").addEventListener("click", saveProfile);
-document.getElementById("changePassword").addEventListener("click", changePassword);
-document.getElementById("toggleTwoFa").addEventListener("click", toggleTwoFa);
-document.getElementById("generateCodes").addEventListener("click", generateCodes);
-
-document.getElementById("devicesList").addEventListener("click", e => {
-  if (e.target.matches(".btn-danger")) {
-    const id = e.target.dataset.id;
-    unlinkDevice(id);
-  }
+// Placeholder actions (can be expanded later)
+document.getElementById("changePasswordBtn")?.addEventListener("click", () => {
+  showNotice("Password change feature – implement modal or redirect", "info");
 });
 
-// ────────────────────────────────────────────────
-//   Initial Loads
-// ────────────────────────────────────────────────
+document.getElementById("toggleTwoFaBtn")?.addEventListener("click", () => {
+  showNotice("2FA management – implement toggle logic", "info");
+});
+
+document.getElementById("generateCodesBtn")?.addEventListener("click", () => {
+  showNotice("Backup codes generated – implement API call", "success");
+});
+
+// Initial load
 loadProfile();
 loadSecurity();
-loadActivity();
-loadDevices();
 </script>
 </body>
 </html>

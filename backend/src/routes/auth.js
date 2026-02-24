@@ -27,6 +27,62 @@ router.post("/login", async (req, res) => {
   if (!user) {
     return res.status(401).json({ error: "Invalid credentials" });
   }
+
+  // Auto-link legacy client users that were created without clientIds.
+  if (db && user.role === "client") {
+    const currentIds = Array.isArray(user.clientIds) ? user.clientIds : [];
+    if (!currentIds.length) {
+      const linkedClient = await db.client.findFirst({
+        where: { email: user.email },
+        select: { id: true },
+      });
+      if (linkedClient?.id) {
+        user = await db.user.update({
+          where: { id: user.id },
+          data: { clientIds: [linkedClient.id] },
+        });
+      } else {
+        const newClient = await db.client.create({
+          data: {
+            id: utils.makeId("c"),
+            name: user.fullName || user.email,
+            entityType: "Individual",
+            status: "active",
+            complianceHealth: 100,
+            assignedAccountantId: user.id,
+            primaryContact: user.fullName || user.email,
+            email: user.email,
+            createdAt: new Date(),
+          },
+        });
+        user = await db.user.update({
+          where: { id: user.id },
+          data: { clientIds: [newClient.id] },
+        });
+      }
+    }
+  }
+  if (!db && user.role === "client" && (!Array.isArray(user.clientIds) || !user.clientIds.length)) {
+    const linkedClient = store.clients.find((client) => client.email.toLowerCase() === user.email.toLowerCase());
+    if (linkedClient) {
+      user.clientIds = [linkedClient.id];
+    } else {
+      const newClient = {
+        id: utils.makeId("c"),
+        name: user.fullName || user.email,
+        entityType: "Individual",
+        status: "active",
+        complianceHealth: 100,
+        assignedAccountantId: user.id,
+        primaryContact: user.fullName || user.email,
+        email: user.email,
+        createdAt: utils.nowIso(),
+      };
+      store.clients.push(newClient);
+      user.clientIds = [newClient.id];
+    }
+  }
+
   if (!db && !store.users.some((candidate) => candidate.id === user.id)) {
     store.users.push({
       ...user,
