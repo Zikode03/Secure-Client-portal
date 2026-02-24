@@ -54,7 +54,7 @@ Notes:
 npm run dev
 ```
 
-Server default: `http://localhost:4000`
+Server default: `http://localhost:4010`
 
 ## Demo Credentials
 

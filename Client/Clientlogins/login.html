@@ -261,7 +261,7 @@
 const API_BASE_URL =
   window.PortalConfig && window.PortalConfig.API_BASE_URL
     ? window.PortalConfig.API_BASE_URL
-    : "http://localhost:4000/api";
+    : "http://127.0.0.1:4010/api";
 
   document.getElementById('toggle').addEventListener('click', e => {
     const input = document.getElementById('password');
@@ -319,7 +319,7 @@ const API_BASE_URL =
     } catch (error) {
       messageEl.style.color = "#b91c1c";
       if (error instanceof TypeError) {
-        messageEl.textContent = "Unable to reach backend API. Confirm backend is running on http://localhost:4000.";
+        messageEl.textContent = "Unable to reach backend API. Confirm backend is running on http://127.0.0.1:4010.";
       } else {
         messageEl.textContent = error.message || "Login failed.";
       }
