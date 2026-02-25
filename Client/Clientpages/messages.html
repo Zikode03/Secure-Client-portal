@@ -725,7 +725,12 @@
 const session = window.PortalAuth.requireRole("client", "../Clientlogins/login.html");
 if (!session) throw new Error("Unauthorized");
 
-const { user } = session;
+const { token, user } = session;
+const API_BASE_URL = window.PortalConfig?.API_BASE_URL || "http://127.0.0.1:4010/api";
+
+function authHeaders() {
+  return window.PortalAuth.authHeaders(token);
+}
 
 document.getElementById("sidebarName").textContent = user.fullName || "Client";
 document.getElementById("sidebarEmail").textContent = user.email || "client@example.com";
@@ -792,6 +797,21 @@ function initSidebarResize() {
 
 function getConversationName(conversation) {
   return conversation.contactName || conversation.name || conversation.title || "Unknown";
+}
+
+function normalizeThread(thread) {
+  return {
+    id: thread.id,
+    contactName: thread.name || thread.contactName || "Unknown",
+    title: thread.subject || "",
+    online: Boolean(thread.online),
+    statusLabel: thread.online ? "Online" : "Offline",
+    unreadCount: Number(thread.unreadCount || 0),
+    pinned: Boolean(thread.pinned),
+    preview: thread.preview || thread.lastMessage || "No messages yet",
+    remote: true,
+    messages: [],
+  };
 }
 
 function getConversationPreview(conversation) {
@@ -884,8 +904,9 @@ function renderConversationList() {
       </div>
     `;
 
-    item.addEventListener("click", () => {
+    item.addEventListener("click", async () => {
       activeConversationId = conversation.id;
+      await loadRemoteMessages(conversation);
       renderConversationList();
       renderActiveConversation();
     });
@@ -950,6 +971,39 @@ function renderActiveConversation() {
   messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
 
+async function loadRemoteThreads() {
+  try {
+    const res = await fetch(`${API_BASE_URL}/messages/threads`, { headers: authHeaders() });
+    if (!res.ok) throw new Error("Failed to load conversations");
+    const payload = await res.json();
+    const items = Array.isArray(payload.items) ? payload.items.map(normalizeThread) : [];
+    if (items.length) {
+      allConversations = items;
+      if (!activeConversationId) activeConversationId = items[0].id;
+    }
+  } catch (error) {
+    if (window.ClientUI) window.ClientUI.toast(error.message || "Using local conversations", "info");
+  }
+}
+
+async function loadRemoteMessages(conversation) {
+  if (!conversation || !conversation.remote) return;
+  try {
+    const res = await fetch(`${API_BASE_URL}/messages/threads/${encodeURIComponent(conversation.id)}?page=1&limit=50`, { headers: authHeaders() });
+    if (!res.ok) throw new Error("Failed to load messages");
+    const payload = await res.json();
+    const items = Array.isArray(payload.items) ? payload.items : [];
+    conversation.messages = items.map((m) => ({
+      from: m.fromUserId === user.id ? "sent" : "received",
+      text: m.body || "",
+      createdAt: m.createdAt,
+      time: m.createdAt,
+    }));
+  } catch (error) {
+    if (window.ClientUI) window.ClientUI.toast(error.message || "Could not sync messages", "error");
+  }
+}
+
 filterButtons.forEach(btn => {
   btn.addEventListener("click", () => {
     filterButtons.forEach(b => b.classList.remove("active"));
@@ -960,22 +1014,36 @@ filterButtons.forEach(btn => {
 
 searchInput.addEventListener("input", renderConversationList);
 
-sendBtn.addEventListener("click", () => {
+sendBtn.addEventListener("click", async () => {
   const text = messageInput.value.trim();
   if (!text) return;
 
   const conversation = allConversations.find(c => c.id === activeConversationId);
   if (!conversation) return;
 
+  const sendButton = sendBtn;
+  if (window.ClientUI) window.ClientUI.setLoading(sendButton, true, "");
   if (!Array.isArray(conversation.messages)) conversation.messages = [];
   const createdAt = new Date().toISOString();
-
-  conversation.messages.push({ from: "sent", text, createdAt });
-  conversation.lastMessage = { text, createdAt };
-  messageInput.value = "";
-
-  renderConversationList();
-  renderActiveConversation();
+  try {
+    if (conversation.remote) {
+      const res = await fetch(`${API_BASE_URL}/messages/threads/${encodeURIComponent(conversation.id)}`, {
+        method: "POST",
+        headers: { ...authHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ body: text }),
+      });
+      if (!res.ok) throw new Error("Failed to send message");
+    }
+    conversation.messages.push({ from: "sent", text, createdAt });
+    conversation.lastMessage = { text, createdAt };
+    messageInput.value = "";
+    renderConversationList();
+    renderActiveConversation();
+  } catch (error) {
+    if (window.ClientUI) window.ClientUI.toast(error.message || "Message send failed", "error");
+  } finally {
+    if (window.ClientUI) window.ClientUI.setLoading(sendButton, false);
+  }
 });
 
 messageInput.addEventListener("keydown", event => {
@@ -985,9 +1053,14 @@ messageInput.addEventListener("keydown", event => {
   }
 });
 
-renderConversationList();
-renderActiveConversation();
-initSidebarResize();
+(async () => {
+  await loadRemoteThreads();
+  const activeConversation = allConversations.find((c) => c.id === activeConversationId);
+  await loadRemoteMessages(activeConversation);
+  renderConversationList();
+  renderActiveConversation();
+  initSidebarResize();
+})();
 </script>
 </body>
 </html>

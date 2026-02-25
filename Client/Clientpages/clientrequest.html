@@ -527,7 +527,7 @@
         </select>
         <div class="modal-footer">
           <button class="close-btn" onclick="closeCreateModal()">Cancel</button>
-          <button class="primary-btn" onclick="createRequest()">Create</button>
+          <button class="primary-btn" id="createRequestConfirm" onclick="createRequest()">Create</button>
         </div>
       </div>
     </div>
@@ -622,7 +622,7 @@ function renderRequests(list, items) {
   });
 
   if (!filtered.length) {
-    list.innerHTML = '<p style="text-align:center;color:var(--muted);padding:40px 0;">No requests found.</p>';
+    list.innerHTML = '<div class="ui-empty">No requests found.</div>';
     return;
   }
 
@@ -724,11 +724,13 @@ function closeCreateModal() {
 }
 
 async function createRequest() {
+  const createButton = document.getElementById("createRequestConfirm");
   const title    = document.getElementById("newTitle").value.trim();
   const desc     = document.getElementById("newDesc").value.trim();
   const priority = document.getElementById("newPriority").value;
 
   if (!title) return showNotice("Title is required", "error");
+  if (window.ClientUI) window.ClientUI.setLoading(createButton, true, "Creating...");
 
   const payload = {
     title,
@@ -755,6 +757,8 @@ async function createRequest() {
   } catch (err) {
     console.error(err);
     showNotice(err.message || "Failed to create request", "error");
+  } finally {
+    if (window.ClientUI) window.ClientUI.setLoading(createButton, false);
   }
 }
 

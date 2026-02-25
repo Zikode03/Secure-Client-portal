@@ -531,6 +531,10 @@ const notesEl    = document.getElementById("notes");
 let selectedFile = null;
 
 function showStatus(text, type = "success") {
+  if (window.ClientUI) {
+    window.ClientUI.inlineMessage(statusMsg, text, type === "error" ? "error" : "success");
+    return;
+  }
   statusMsg.textContent = text;
   statusMsg.className = `status-message ${type}`;
   statusMsg.classList.remove("hidden");
@@ -614,7 +618,8 @@ dropZone.addEventListener("click", () => {
 uploadBtn.addEventListener("click", async () => {
   if (!selectedFile) return;
 
-  uploadBtn.disabled = true;
+  if (window.ClientUI) window.ClientUI.setLoading(uploadBtn, true, "Uploading...");
+  else uploadBtn.disabled = true;
   showStatus("Uploading... Please wait", "success");
 
   try {
@@ -640,6 +645,7 @@ uploadBtn.addEventListener("click", async () => {
     }
 
     showStatus("File uploaded successfully!", "success");
+    if (window.ClientUI) window.ClientUI.toast("Upload successful", "success");
 
     // Optional: redirect back after short delay
     setTimeout(() => {
@@ -648,8 +654,15 @@ uploadBtn.addEventListener("click", async () => {
 
   } catch (err) {
     showStatus(`Error: ${err.message}`, "error");
-    uploadBtn.disabled = false;
+    if (window.ClientUI) {
+      window.ClientUI.toast(err.message || "Upload failed", "error");
+      window.ClientUI.setLoading(uploadBtn, false);
+    } else {
+      uploadBtn.disabled = false;
+    }
+    return;
   }
+  if (window.ClientUI) window.ClientUI.setLoading(uploadBtn, false);
 });
 
 cancelBtn.addEventListener("click", () => {

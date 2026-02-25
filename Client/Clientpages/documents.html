@@ -903,6 +903,8 @@ let requests = [];
 let notifications = [];
 let category = "All Documents";
 let view = "list";
+let sortKey = "uploadedAt";
+let sortDirection = "desc";
 
 function safeDate(v) {
   const d = new Date(v);
@@ -971,16 +973,20 @@ function categoryStats() {
 function filteredDocs() {
   const q = searchInput.value.toLowerCase().trim();
   const s = statusSelect.value;
-  return docs.filter((d) => {
+  const filtered = docs.filter((d) => {
     const catOk = category === "All Documents" || inferCategory(d) === category;
     const statusOk = s === "all" || normalizedStatus(d.status) === s;
     const text = `${d.name || ""} ${inferCategory(d)} ${d.status || ""}`.toLowerCase();
     const qOk = !q || text.includes(q);
     return catOk && statusOk && qOk;
-  }).sort((a, b) => {
+  });
+  if (sortKey === "name") {
+    return window.ClientUI ? window.ClientUI.withSorting(filtered, "name", sortDirection) : filtered;
+  }
+  return filtered.sort((a, b) => {
     const x = safeDate(a.uploadedAt)?.getTime() || 0;
     const y = safeDate(b.uploadedAt)?.getTime() || 0;
-    return y - x;
+    return sortDirection === "asc" ? x - y : y - x;
   });
 }
 
@@ -1002,11 +1008,11 @@ function renderList(items) {
     <table>
       <thead>
         <tr>
-          <th>Name</th>
+          <th><button class="action-btn" data-sort="name" type="button">Name <i class="fa fa-arrow-up-down"></i></button></th>
           <th>Category</th>
           <th>Status</th>
           <th>Size</th>
-          <th>Date</th>
+          <th><button class="action-btn" data-sort="uploadedAt" type="button">Date <i class="fa fa-arrow-up-down"></i></button></th>
           <th></th>
         </tr>
       </thead>
@@ -1128,6 +1134,20 @@ async function load() {
   }
 }
 
+function showSkeleton() {
+  listView.innerHTML = `
+    <div class="ui-skeleton" style="height:42px;margin-bottom:8px;"></div>
+    <div class="ui-skeleton" style="height:42px;margin-bottom:8px;"></div>
+    <div class="ui-skeleton" style="height:42px;"></div>
+  `;
+  gridView.innerHTML = `
+    <div class="ui-skeleton" style="height:80px;margin-bottom:8px;"></div>
+    <div class="ui-skeleton" style="height:80px;margin-bottom:8px;"></div>
+  `;
+  expiryWrap.innerHTML = `<div class="ui-skeleton" style="height:88px;"></div>`;
+  auditWrap.innerHTML = `<div class="ui-skeleton" style="height:88px;"></div>`;
+}
+
 // ────────────────────────────────────────────────
 //   Event listeners (documents features)
 // ────────────────────────────────────────────────
@@ -1156,6 +1176,17 @@ gridBtn.addEventListener("click", () => {
 });
 
 listView.addEventListener("click", (e) => {
+  const sortBtn = e.target.closest("[data-sort]");
+  if (sortBtn) {
+    const next = sortBtn.getAttribute("data-sort");
+    if (sortKey === next) sortDirection = sortDirection === "asc" ? "desc" : "asc";
+    else {
+      sortKey = next;
+      sortDirection = next === "name" ? "asc" : "desc";
+    }
+    render();
+    return;
+  }
   const viewBtn = e.target.closest("[data-view]");
   if (!viewBtn) return;
   const id = viewBtn.getAttribute("data-view");
@@ -1169,6 +1200,7 @@ document.getElementById("logoutBtn").addEventListener("click", () => {
 
 // Initial load
 initSidebarResize();
+showSkeleton();
 load();
 </script>
 </body>

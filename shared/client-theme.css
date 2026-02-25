@@ -69,6 +69,27 @@ a { color: inherit; }
   box-shadow: var(--ui-shadow-md);
 }
 
+.panel,
+.profile-card,
+.request-card,
+.kpi-card,
+.doc-card {
+  background: var(--ui-surface);
+  border: 1px solid var(--ui-border);
+  border-radius: var(--ui-radius-md);
+  box-shadow: var(--ui-shadow-sm);
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+
+.panel:hover,
+.profile-card:hover,
+.request-card:hover,
+.kpi-card:hover,
+.doc-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--ui-shadow-md);
+}
+
 .btn {
   border: 1px solid transparent;
   border-radius: 11px;
@@ -180,6 +201,15 @@ th {
   text-align: center;
   padding: 30px 14px;
   font-size: 13px;
+}
+
+.empty-state {
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: var(--ui-muted);
+  text-align: center;
+  padding: 26px 14px;
 }
 
 .ui-skeleton {
