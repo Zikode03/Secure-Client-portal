@@ -123,10 +123,18 @@ Server default: `http://localhost:4010`
 ### Profile
 - `GET /api/profile/me`
 - `PATCH /api/profile/me`
+- `GET /api/profile` (client settings shape)
+- `PATCH /api/profile` (client settings shape)
 - `GET /api/profile/security`
 - `PATCH /api/profile/security`
 - `POST /api/profile/security/generate-backup-codes`
 - `GET /api/profile/login-activity`
+- `GET /api/security` (client settings shape)
+- `PATCH /api/security`
+- `POST /api/security/change-password`
+- `POST /api/security/generate-backup-codes`
+- `GET /api/security/login-activity`
+- `GET /api/security/connected-devices`
 
 ### Dashboard + Review
 - `GET /api/dashboard/summary` (accountant)

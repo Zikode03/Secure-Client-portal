@@ -17,6 +17,7 @@ import dashboardRoutes from "./routes/dashboard.js";
 import reviewRoutes from "./routes/reviews.js";
 import requestRoutes from "./routes/requests.js";
 import profileRoutes from "./routes/profile.js";
+import settingsRoutes from "./routes/settings.js";
 
 const app = express();
 
@@ -37,6 +38,7 @@ app.use("/api/dashboard", authRequired, dashboardRoutes);
 app.use("/api/reviews", authRequired, reviewRoutes);
 app.use("/api/requests", authRequired, requestRoutes);
 app.use("/api/profile", authRequired, profileRoutes);
+app.use("/api", authRequired, settingsRoutes);
 app.use("/api/notifications", authRequired, notificationRoutes);
 app.use("/api/audits", authRequired, auditRoutes);
 app.use("/api/uploads", authRequired, uploadRoutes);
