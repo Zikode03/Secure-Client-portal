@@ -5,8 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Messages - Prospera</title>
 
-  <!-- Google Fonts: Inter -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Public+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
   <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
@@ -606,8 +607,10 @@
 
     .hidden { display: none !important; }
   </style>
+  <link rel="stylesheet" href="../../shared/client-theme.css">
+  <link rel="stylesheet" href="../../shared/client-shell.css">
 </head>
-<body>
+<body data-client-nav="messages">
 
 <div class="app-layout">
 
@@ -622,11 +625,11 @@
     </div>
 
     <nav class="nav">
-      <a href="Clientportal.html"><i class="fa fa-chart-line"></i> Dashboard</a>
-      <a href="documents.html"><i class="fa fa-file"></i> Documents</a>
-      <a href="clientrequest.html"><i class="fa fa-file-alt"></i> Requests</a>
-      <a href="messages.html" class="active"><i class="fa fa-message"></i> Messages</a>
-      <a href="settings.html"><i class="fa fa-gear"></i> Settings</a>
+      <a href="Clientportal.html" data-nav="dashboard"><i class="fa fa-chart-line"></i> Dashboard</a>
+      <a href="documents.html" data-nav="documents"><i class="fa fa-file"></i> Documents</a>
+      <a href="clientrequest.html" data-nav="requests"><i class="fa fa-file-alt"></i> Requests</a>
+      <a href="messages.html" class="active" data-nav="messages"><i class="fa fa-message"></i> Messages</a>
+      <a href="settings.html" data-nav="settings"><i class="fa fa-gear"></i> Settings</a>
     </nav>
 
     <div class="sidebar-footer">
@@ -716,6 +719,8 @@
 
 <script src="../../shared/portal-config.js"></script>
 <script src="../../shared/portal-auth.js"></script>
+<script src="../../shared/client-ui.js"></script>
+<script src="../../shared/client-shell.js"></script>
 <script>
 const session = window.PortalAuth.requireRole("client", "../Clientlogins/login.html");
 if (!session) throw new Error("Unauthorized");
