@@ -285,6 +285,98 @@
       grid-template-columns: 2fr 1fr;
     }
 
+    .compliance-card {
+      padding: 18px;
+    }
+
+    .compliance-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .compliance-sub {
+      font-size: 13px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .compliance-score {
+      min-width: 78px;
+      text-align: right;
+      font-size: 26px;
+      font-weight: 800;
+      color: #0f172a;
+      line-height: 1;
+    }
+
+    .compliance-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .compliance-row {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      background: #fcfdff;
+    }
+
+    .compliance-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      gap: 10px;
+    }
+
+    .compliance-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .compliance-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    .mini-badge {
+      border-radius: 999px;
+      padding: 3px 8px;
+      font-size: 11px;
+      border: 1px solid transparent;
+      font-weight: 700;
+    }
+
+    .mini-badge.good {
+      color: #065f46;
+      background: #ecfdf5;
+      border-color: #10b98133;
+    }
+
+    .mini-badge.warn {
+      color: #92400e;
+      background: #fffbeb;
+      border-color: #f59e0b33;
+    }
+
+    .mini-badge.risk {
+      color: #991b1b;
+      background: #fef2f2;
+      border-color: #ef444433;
+    }
+
+    .bar.compliance > span.good { background: #10b981; }
+    .bar.compliance > span.warn { background: #f59e0b; }
+    .bar.compliance > span.risk { background: #ef4444; }
+
     table {
       width: 100%;
       border-collapse: collapse;
@@ -411,6 +503,17 @@
           </div>
         </div>
 
+        <div class="card compliance-card">
+          <div class="compliance-head">
+            <div>
+              <h3 class="section-title">Framework Compliance</h3>
+              <p class="compliance-sub">Current progress against required controls</p>
+            </div>
+            <div class="compliance-score" id="compliance-overall">0%</div>
+          </div>
+          <div class="compliance-list" id="compliance-wrap"></div>
+        </div>
+
         <div class="grid-3">
           <div class="card">
             <h3 class="section-title">Document Status</h3>
@@ -473,6 +576,8 @@
     const timelineWrap = document.getElementById("timeline-wrap");
     const recentDocumentsWrap = document.getElementById("recent-documents-wrap");
     const invoicesWrap = document.getElementById("invoices-wrap");
+    const complianceOverall = document.getElementById("compliance-overall");
+    const complianceWrap = document.getElementById("compliance-wrap");
 
     function setSidebarWidth(width) {
       const clamped = Math.max(SIDEBAR_MIN_WIDTH, Math.min(SIDEBAR_MAX_WIDTH, width));
@@ -600,6 +705,110 @@
       `).join("");
     }
 
+    function complianceStatus(percent) {
+      if (percent >= 85) return { tone: "good", label: "Compliant" };
+      if (percent >= 60) return { tone: "warn", label: "In Progress" };
+      return { tone: "risk", label: "Needs Attention" };
+    }
+
+    function clampPercent(value) {
+      return Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+    }
+
+    function normalizeFrameworkItem(item) {
+      const name = item?.name || item?.framework || item?.title || "Framework";
+      const required = Number(item?.requiredControls ?? item?.required ?? item?.total ?? 0);
+      const completed = Number(item?.completedControls ?? item?.completed ?? item?.met ?? 0);
+      const explicitPercent = item?.percent ?? item?.score ?? item?.compliancePercent ?? item?.completion;
+      let percent = clampPercent(explicitPercent);
+      if (!Number.isFinite(Number(explicitPercent)) && required > 0) {
+        percent = clampPercent((completed / required) * 100);
+      }
+      return {
+        name: String(name),
+        percent,
+        completed: required > 0 ? Math.min(required, Math.max(0, completed)) : 0,
+        required: required > 0 ? required : 0,
+      };
+    }
+
+    function deriveComplianceFallback(documents, requests) {
+      const docsText = documents.map((doc) => `${doc.name || ""} ${doc.category || ""}`.toLowerCase());
+      const doneRequests = requests
+        .filter((request) => ["completed", "approved", "done"].includes(String(request.status || "").toLowerCase()))
+        .map((request) => `${request.title || ""} ${request.description || ""}`.toLowerCase());
+      const evidence = [...docsText, ...doneRequests];
+
+      const approvedDocs = documents.filter((doc) => normalizeStatus(doc.status) === "approved").length;
+      const baseBoost = Math.round((approvedDocs / Math.max(1, documents.length)) * 2);
+
+      function controlsFromKeywords(keywords, required) {
+        const hits = keywords.reduce((count, keyword) => {
+          const matched = evidence.some((text) => text.includes(keyword));
+          return count + (matched ? 1 : 0);
+        }, 0);
+        return Math.min(required, hits + baseBoost);
+      }
+
+      const frameworks = [
+        {
+          name: "FICA / KYC",
+          required: 4,
+          completed: controlsFromKeywords(["id", "passport", "proof of address", "bank statement", "kyc"], 4),
+        },
+        {
+          name: "POPIA",
+          required: 4,
+          completed: controlsFromKeywords(["popia", "privacy", "consent", "data processing", "agreement"], 4),
+        },
+        {
+          name: "Tax (SARS)",
+          required: 5,
+          completed: controlsFromKeywords(["tax", "sars", "vat", "invoice", "itr12", "it34"], 5),
+        },
+      ];
+
+      return frameworks.map((item) => ({
+        ...item,
+        percent: clampPercent((item.completed / item.required) * 100),
+      }));
+    }
+
+    function renderCompliance(frameworks) {
+      if (!frameworks.length) {
+        complianceOverall.textContent = "-";
+        complianceWrap.innerHTML = '<p class="empty">No compliance data available yet.</p>';
+        return;
+      }
+
+      const safeItems = frameworks.slice(0, 3).map(normalizeFrameworkItem);
+      const overall = Math.round(
+        safeItems.reduce((sum, item) => sum + item.percent, 0) / Math.max(1, safeItems.length)
+      );
+
+      complianceOverall.textContent = `${overall}%`;
+      complianceWrap.innerHTML = safeItems.map((item) => {
+        const state = complianceStatus(item.percent);
+        const controlsText = item.required > 0
+          ? `${item.completed}/${item.required} controls`
+          : `${item.percent}% complete`;
+        return `
+          <div class="compliance-row">
+            <div class="compliance-top">
+              <div class="compliance-name">${item.name}</div>
+              <span class="mini-badge ${state.tone}">${state.label}</span>
+            </div>
+            <div class="bar compliance"><span class="${state.tone}" style="width:${item.percent}%"></span></div>
+            <div class="compliance-meta">
+              <span>${item.percent}%</span>
+              <span>-</span>
+              <span>${controlsText}</span>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
     function renderRecentDocuments(documents) {
       if (!documents.length) {
         recentDocumentsWrap.innerHTML = '<p class="empty">No documents uploaded yet.</p>';
@@ -668,10 +877,11 @@
 
       const headers = window.PortalAuth.authHeaders(token);
 
-      const [documentsRes, requestsRes, notificationsRes] = await Promise.all([
+      const [documentsRes, requestsRes, notificationsRes, complianceRes] = await Promise.all([
         fetch(`${API_BASE_URL}/documents`, { headers }),
         fetch(`${API_BASE_URL}/requests`, { headers }),
         fetch(`${API_BASE_URL}/notifications?limit=20`, { headers }),
+        fetch(`${API_BASE_URL}/compliance/frameworks`, { headers }).catch(() => null),
       ]);
 
       if (!documentsRes.ok) throw new Error("Failed to load documents.");
@@ -681,6 +891,9 @@
       const documents = (await documentsRes.json()).items || [];
       const requests = (await requestsRes.json()).items || [];
       const notifications = (await notificationsRes.json()).items || [];
+      const complianceData = complianceRes && complianceRes.ok
+        ? await complianceRes.json().catch(() => null)
+        : null;
 
       const sortedDocs = [...documents].sort((a, b) => {
         const left = safeDate(a.uploadedAt)?.getTime() || 0;
@@ -719,6 +932,14 @@
       renderTimeline(notifications);
       renderRecentDocuments(sortedDocs);
       renderInvoices(sortedDocs);
+
+      const apiFrameworks = Array.isArray(complianceData?.items)
+        ? complianceData.items
+        : Array.isArray(complianceData?.frameworks)
+          ? complianceData.frameworks
+          : [];
+      const fallbackFrameworks = deriveComplianceFallback(sortedDocs, requests);
+      renderCompliance(apiFrameworks.length ? apiFrameworks : fallbackFrameworks);
     }
 
     initSidebarResize();
@@ -730,6 +951,8 @@
       invoicesWrap.innerHTML = `<p class="empty">${message}</p>`;
       statusWrap.innerHTML = `<p class="empty">${message}</p>`;
       chartWrap.innerHTML = `<p class="empty">${message}</p>`;
+      complianceWrap.innerHTML = `<p class="empty">${message}</p>`;
+      complianceOverall.textContent = "-";
     });
   </script>
 </body>
