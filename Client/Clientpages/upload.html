@@ -346,6 +346,49 @@ select, input[type="text"] {
 
 .hidden { display: none; }
 
+.actions-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 32px;
+}
+
+.progress-wrap {
+  margin-top: 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  background: #f8fafc;
+}
+
+.progress-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: #334155;
+  margin-bottom: 8px;
+}
+
+.progress-track {
+  height: 10px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #2563eb, #1d4ed8);
+  transition: width 0.2s ease;
+}
+
+.phase-row {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
 @media (max-width: 768px) {
   .main-content { padding: 16px; }
   .panel { padding: 20px; }
@@ -389,7 +432,7 @@ select, input[type="text"] {
     <div class="top-row">
       <div>
         <h2>Upload Document</h2>
-        <p>Securely upload files to your account — max 25 MB per file</p>
+        <p>Securely upload large files with chunking, resume, and processing status</p>
       </div>
     </div>
 
@@ -398,10 +441,20 @@ select, input[type="text"] {
         <i class="fa-solid fa-cloud-arrow-up"></i>
         <div class="title">Drag & drop your file here</div>
         <div class="subtitle">or click to browse</div>
-        <div class="note">PDF, DOCX, XLSX, JPG, PNG — up to 25 MB</div>
+        <div class="note">PDF, DOCX, XLSX, JPG, PNG — large files supported with resume</div>
       </div>
 
       <div id="fileList" class="file-list hidden"></div>
+      <div id="progressWrap" class="progress-wrap hidden" aria-live="polite">
+        <div class="progress-label">
+          <span id="progressText">Waiting to start upload</span>
+          <strong id="progressPercent">0%</strong>
+        </div>
+        <div class="progress-track">
+          <div id="progressFill" class="progress-fill"></div>
+        </div>
+        <div id="phaseText" class="phase-row">Server phase: waiting</div>
+      </div>
 
       <div class="form-group">
         <label for="category">Category (optional)</label>
@@ -420,7 +473,7 @@ select, input[type="text"] {
         <input type="text" id="notes" placeholder="e.g. Q4 2025 Invoice Batch">
       </div>
 
-      <div style="display: flex; gap: 12px; margin-top: 32px;">
+      <div class="actions-row">
         <button class="btn btn-primary" id="uploadBtn" disabled>Upload File</button>
         <button class="btn btn-secondary" id="cancelBtn">Cancel</button>
       </div>
@@ -435,15 +488,12 @@ select, input[type="text"] {
 <script src="../../shared/client-ui.js"></script>
 <script src="../../shared/client-shell.js"></script>
 <script>
-// ────────────────────────────────────────────────
-//   Authentication & Session (same as documents.html)
-// ────────────────────────────────────────────────
 const session = window.PortalAuth.requireRole("client", "../Clientlogins/login.html");
 if (!session) throw new Error("Unauthorized");
 
 const { token, user } = session;
 
-document.getElementById("sidebarName").textContent  = user.fullName || "Client";
+document.getElementById("sidebarName").textContent = user.fullName || "Client";
 document.getElementById("sidebarEmail").textContent = user.email || "";
 
 const appLayout = document.querySelector(".app-layout");
@@ -465,24 +515,20 @@ function initSidebarResize() {
   setSidebarWidth(Number.isFinite(saved) && saved > 0 ? saved : SIDEBAR_DEFAULT_WIDTH);
 
   let dragging = false;
-
   sidebarResizer.addEventListener("pointerdown", (event) => {
     dragging = true;
     appLayout.classList.add("resizing");
     sidebarResizer.setPointerCapture(event.pointerId);
   });
-
   sidebarResizer.addEventListener("pointermove", (event) => {
     if (!dragging) return;
     setSidebarWidth(event.clientX);
   });
-
   sidebarResizer.addEventListener("pointerup", (event) => {
     dragging = false;
     appLayout.classList.remove("resizing");
     sidebarResizer.releasePointerCapture(event.pointerId);
   });
-
   sidebarResizer.addEventListener("dblclick", () => {
     const current = parseInt(getComputedStyle(appLayout).getPropertyValue("--sidebar-width"), 10) || SIDEBAR_DEFAULT_WIDTH;
     setSidebarWidth(current <= SIDEBAR_MIN_WIDTH + 4 ? SIDEBAR_DEFAULT_WIDTH : SIDEBAR_MIN_WIDTH);
@@ -490,45 +536,30 @@ function initSidebarResize() {
 }
 
 const API_BASE_URL = window.PortalConfig?.API_BASE_URL || "http://127.0.0.1:4010/api";
+const CHUNK_SIZE_BYTES = 5 * 1024 * 1024;
+const MAX_FILE_BYTES = 10 * 1024 * 1024 * 1024;
+const MAX_CHUNK_RETRIES = 3;
+const RESUME_KEY_PREFIX = "uploadSession:";
+
+const dropZone = document.getElementById("dropZone");
+const fileListEl = document.getElementById("fileList");
+const uploadBtn = document.getElementById("uploadBtn");
+const cancelBtn = document.getElementById("cancelBtn");
+const statusMsg = document.getElementById("statusMessage");
+const categoryEl = document.getElementById("category");
+const notesEl = document.getElementById("notes");
+const progressWrap = document.getElementById("progressWrap");
+const progressFill = document.getElementById("progressFill");
+const progressText = document.getElementById("progressText");
+const progressPercent = document.getElementById("progressPercent");
+const phaseText = document.getElementById("phaseText");
+
+let selectedFile = null;
+let uploading = false;
 
 function authHeaders() {
   return window.PortalAuth.authHeaders(token);
 }
-
-async function resolveClientId() {
-  const localIds = Array.isArray(user.clientIds) ? user.clientIds : [];
-  if (localIds.length) return localIds[0];
-
-  const meRes = await fetch(`${API_BASE_URL}/auth/me`, { headers: authHeaders() });
-  const meData = await meRes.json().catch(() => ({}));
-  if (!meRes.ok) {
-    throw new Error(meData.error || "Unable to resolve client profile.");
-  }
-
-  const freshUser = meData.user || {};
-  const freshIds = Array.isArray(freshUser.clientIds) ? freshUser.clientIds : [];
-  if (!freshIds.length) return "";
-
-  try {
-    localStorage.setItem("authUser", JSON.stringify(freshUser));
-  } catch (_error) {
-    // ignore storage write errors
-  }
-  return freshIds[0];
-}
-
-// ────────────────────────────────────────────────
-//   Upload logic
-// ────────────────────────────────────────────────
-const dropZone   = document.getElementById("dropZone");
-const fileListEl = document.getElementById("fileList");
-const uploadBtn  = document.getElementById("uploadBtn");
-const cancelBtn  = document.getElementById("cancelBtn");
-const statusMsg  = document.getElementById("statusMessage");
-const categoryEl = document.getElementById("category");
-const notesEl    = document.getElementById("notes");
-
-let selectedFile = null;
 
 function showStatus(text, type = "success") {
   if (window.ClientUI) {
@@ -544,9 +575,26 @@ function hideStatus() {
   statusMsg.classList.add("hidden");
 }
 
+function updateProgress(overallPercent, text, phase) {
+  progressWrap.classList.remove("hidden");
+  progressFill.style.width = `${Math.max(0, Math.min(100, overallPercent || 0))}%`;
+  progressPercent.textContent = `${Math.round(overallPercent || 0)}%`;
+  progressText.textContent = text || "Uploading...";
+  phaseText.textContent = `Server phase: ${phase || "uploading"}`;
+}
+
+function resetProgress() {
+  progressFill.style.width = "0%";
+  progressPercent.textContent = "0%";
+  progressText.textContent = "Waiting to start upload";
+  phaseText.textContent = "Server phase: waiting";
+  progressWrap.classList.add("hidden");
+}
+
 function displayFile(file) {
   selectedFile = file;
   uploadBtn.disabled = false;
+  resetProgress();
 
   const size = file.size < 1024 * 1024
     ? `${(file.size / 1024).toFixed(1)} KB`
@@ -569,12 +617,156 @@ function clearFile() {
   uploadBtn.disabled = true;
   fileListEl.classList.add("hidden");
   fileListEl.innerHTML = "";
+  resetProgress();
   hideStatus();
 }
 
-// ── Drag & Drop ───────────────────────────────────
-dropZone.addEventListener("dragover", e => {
-  e.preventDefault();
+async function resolveClientId() {
+  const localIds = Array.isArray(user.clientIds) ? user.clientIds : [];
+  if (localIds.length) return localIds[0];
+
+  const meRes = await fetch(`${API_BASE_URL}/auth/me`, { headers: authHeaders() });
+  const meData = await meRes.json().catch(() => ({}));
+  if (!meRes.ok) {
+    throw new Error(meData.error || "Unable to resolve client profile.");
+  }
+
+  const freshUser = meData.user || {};
+  const freshIds = Array.isArray(freshUser.clientIds) ? freshUser.clientIds : [];
+  if (!freshIds.length) return "";
+  try {
+    localStorage.setItem("authUser", JSON.stringify(freshUser));
+  } catch {
+    // no-op
+  }
+  return freshIds[0];
+}
+
+async function fingerprintForFile(file) {
+  const source = `${file.name}|${file.size}|${file.lastModified}|${file.type}`;
+  const bytes = new TextEncoder().encode(source);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function resumeKey(fingerprint) {
+  return `${RESUME_KEY_PREFIX}${fingerprint}`;
+}
+
+function getResumeSession(fingerprint) {
+  try {
+    const raw = localStorage.getItem(resumeKey(fingerprint));
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function setResumeSession(fingerprint, value) {
+  try {
+    localStorage.setItem(resumeKey(fingerprint), JSON.stringify(value));
+  } catch {
+    // no-op
+  }
+}
+
+function clearResumeSession(fingerprint) {
+  try {
+    localStorage.removeItem(resumeKey(fingerprint));
+  } catch {
+    // no-op
+  }
+}
+
+async function callUploadStatus(uploadId) {
+  const response = await fetch(`${API_BASE_URL}/uploads/${uploadId}/status`, {
+    method: "GET",
+    headers: authHeaders(),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || `Status check failed (${response.status})`);
+  }
+  return data;
+}
+
+function uploadedSetFromStatus(status) {
+  const list = Array.isArray(status?.chunks?.uploadedIndexes) ? status.chunks.uploadedIndexes : [];
+  return new Set(list.map((index) => Number(index)));
+}
+
+async function initUploadSession(file, fingerprint) {
+  const existing = getResumeSession(fingerprint);
+  if (existing?.uploadId) {
+    try {
+      const status = await callUploadStatus(existing.uploadId);
+      if (status.phase !== "available") {
+        return { uploadId: existing.uploadId, status };
+      }
+      clearResumeSession(fingerprint);
+    } catch {
+      clearResumeSession(fingerprint);
+    }
+  }
+
+  const clientId = await resolveClientId();
+  const payload = {
+    fileName: file.name,
+    fileSize: file.size,
+    mimeType: file.type || "application/octet-stream",
+    category: categoryEl.value || "General",
+    notes: notesEl.value.trim(),
+    fileFingerprint: fingerprint,
+  };
+  if (clientId) payload.clientId = clientId;
+
+  const response = await fetch(`${API_BASE_URL}/uploads/init`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.error || `Failed to initialize upload (${response.status})`);
+  }
+
+  setResumeSession(fingerprint, { uploadId: data.uploadId });
+  return { uploadId: data.uploadId, status: data };
+}
+
+async function uploadChunk(uploadId, file, chunkIndex, totalChunks) {
+  const start = chunkIndex * CHUNK_SIZE_BYTES;
+  const end = Math.min(file.size, start + CHUNK_SIZE_BYTES);
+  const chunk = file.slice(start, end);
+
+  let lastError = null;
+  for (let attempt = 1; attempt <= MAX_CHUNK_RETRIES; attempt += 1) {
+    try {
+      const response = await fetch(`${API_BASE_URL}/uploads/${uploadId}/chunks/${chunkIndex}`, {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/octet-stream",
+        },
+        body: chunk,
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error || `Chunk ${chunkIndex + 1}/${totalChunks} failed`);
+      }
+      return data;
+    } catch (error) {
+      lastError = error;
+      if (attempt < MAX_CHUNK_RETRIES) {
+        await new Promise((resolve) => setTimeout(resolve, 300 * attempt));
+      }
+    }
+  }
+  throw lastError || new Error(`Chunk ${chunkIndex + 1}/${totalChunks} failed`);
+}
+
+dropZone.addEventListener("dragover", (event) => {
+  event.preventDefault();
   dropZone.classList.add("drag");
 });
 
@@ -582,31 +774,27 @@ dropZone.addEventListener("dragleave", () => {
   dropZone.classList.remove("drag");
 });
 
-dropZone.addEventListener("drop", e => {
-  e.preventDefault();
+dropZone.addEventListener("drop", (event) => {
+  event.preventDefault();
   dropZone.classList.remove("drag");
-
-  const file = e.dataTransfer.files[0];
+  const file = event.dataTransfer.files[0];
   if (!file) return;
-
-  if (file.size > 25 * 1024 * 1024) {
-    showStatus("File is too large (max 25 MB)", "error");
+  if (file.size > MAX_FILE_BYTES) {
+    showStatus("File is too large (max 10 GB)", "error");
     return;
   }
-
   displayFile(file);
 });
 
-// ── Click to browse ───────────────────────────────
 dropZone.addEventListener("click", () => {
   const input = document.createElement("input");
   input.type = "file";
   input.accept = ".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png";
-  input.onchange = e => {
-    const file = e.target.files[0];
+  input.onchange = (event) => {
+    const file = event.target.files[0];
     if (!file) return;
-    if (file.size > 25 * 1024 * 1024) {
-      showStatus("File is too large (max 25 MB)", "error");
+    if (file.size > MAX_FILE_BYTES) {
+      showStatus("File is too large (max 10 GB)", "error");
       return;
     }
     displayFile(file);
@@ -614,55 +802,64 @@ dropZone.addEventListener("click", () => {
   input.click();
 });
 
-// ── Upload ────────────────────────────────────────
 uploadBtn.addEventListener("click", async () => {
-  if (!selectedFile) return;
-
+  if (!selectedFile || uploading) return;
+  uploading = true;
   if (window.ClientUI) window.ClientUI.setLoading(uploadBtn, true, "Uploading...");
   else uploadBtn.disabled = true;
-  showStatus("Uploading... Please wait", "success");
+  showStatus("Preparing upload session...", "success");
 
   try {
-    const clientId = await resolveClientId();
+    const fingerprint = await fingerprintForFile(selectedFile);
+    const { uploadId, status: initialStatus } = await initUploadSession(selectedFile, fingerprint);
+    const totalChunks = Number(initialStatus?.chunks?.total) || Math.max(1, Math.ceil(selectedFile.size / CHUNK_SIZE_BYTES));
+    const uploadedSet = uploadedSetFromStatus(initialStatus);
 
-    const payload = {
-      name: selectedFile.name,
-      category: categoryEl.value || "General",
-      sizeBytes: selectedFile.size,
-      status: "pending",
-    };
-    if (clientId) payload.clientId = clientId;
+    for (let index = 0; index < totalChunks; index += 1) {
+      if (uploadedSet.has(index)) {
+        updateProgress(Math.round((uploadedSet.size / totalChunks) * 70), `Resuming... ${uploadedSet.size}/${totalChunks} chunks`, "uploading");
+        continue;
+      }
+      updateProgress(Math.round((uploadedSet.size / totalChunks) * 70), `Uploading chunk ${index + 1} of ${totalChunks}`, "uploading");
+      const chunkResponse = await uploadChunk(uploadId, selectedFile, index, totalChunks);
+      uploadedSetFromStatus(chunkResponse).forEach((item) => uploadedSet.add(item));
+      if (!uploadedSet.has(index)) uploadedSet.add(index);
+      updateProgress(Math.round((uploadedSet.size / totalChunks) * 70), `Uploaded ${uploadedSet.size}/${totalChunks} chunks`, "uploading");
+    }
 
-    const res = await fetch(`${API_BASE_URL}/documents`, {
+    updateProgress(75, "Finalizing upload...", "scanning");
+    const completeResponse = await fetch(`${API_BASE_URL}/uploads/${uploadId}/complete`, {
       method: "POST",
       headers: authHeaders(),
-      body: JSON.stringify(payload)
+      body: JSON.stringify({}),
     });
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || err.message || `Upload failed (${res.status})`);
+    const completeData = await completeResponse.json().catch(() => ({}));
+    if (!completeResponse.ok) {
+      throw new Error(completeData.error || `Complete failed (${completeResponse.status})`);
     }
 
-    showStatus("File uploaded successfully!", "success");
-    if (window.ClientUI) window.ClientUI.toast("Upload successful", "success");
+    let status = completeData;
+    while (status.phase !== "available") {
+      updateProgress(Number(status?.progress?.overallPercent || 80), `Server ${status.phase || "processing"}...`, status.phase || "processing");
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      status = await callUploadStatus(uploadId);
+    }
 
-    // Optional: redirect back after short delay
+    updateProgress(100, "Upload complete", "available");
+    showStatus("File uploaded and processed successfully.", "success");
+    if (window.ClientUI) window.ClientUI.toast("Upload successful", "success");
+    clearResumeSession(fingerprint);
     setTimeout(() => {
       window.location.href = "documents.html";
-    }, 1800);
-
-  } catch (err) {
-    showStatus(`Error: ${err.message}`, "error");
-    if (window.ClientUI) {
-      window.ClientUI.toast(err.message || "Upload failed", "error");
-      window.ClientUI.setLoading(uploadBtn, false);
-    } else {
-      uploadBtn.disabled = false;
-    }
-    return;
+    }, 1400);
+  } catch (error) {
+    showStatus(`Error: ${error.message}`, "error");
+    if (window.ClientUI) window.ClientUI.toast(error.message || "Upload failed", "error");
+  } finally {
+    if (window.ClientUI) window.ClientUI.setLoading(uploadBtn, false);
+    else uploadBtn.disabled = false;
+    uploading = false;
   }
-  if (window.ClientUI) window.ClientUI.setLoading(uploadBtn, false);
 });
 
 cancelBtn.addEventListener("click", () => {
