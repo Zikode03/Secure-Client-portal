@@ -4,24 +4,26 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>User Profile & Security - Prospera</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <style>
     :root {
-      --blue: #2563eb;
-      --bg: #f5f7fb;
-      --dark: #0f172a;
+      --navy: #0f172a;
+      --navy-light: #1e293b;
+      --blue: #3b82f6;
+      --bg: #f8fafc;
+      --card: #ffffff;
       --muted: #64748b;
-      --border: #e5e7eb;
+      --border: #e2e8f0;
       --success: #10b981;
       --danger: #ef4444;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
 
     body {
-      font-family: "Segoe UI", Arial, sans-serif;
       background: var(--bg);
-      color: var(--dark);
+      color: var(--navy);
       height: 100vh;
       overflow: hidden;
     }
@@ -159,73 +161,105 @@
     .main-content {
       flex: 1;
       overflow-y: auto;
-      padding: 32px 24px; /* slightly more top/bottom padding */
+      padding: 28px;
+    }
+
+    .settings-shell {
+      max-width: 1080px;
+      margin: 0 auto;
+      display: grid;
+      gap: 20px;
     }
 
     .top-row {
-      margin-bottom: 40px; /* more space after title */
+      padding: 24px 26px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
     }
 
-    .top-row h2 { font-size: 30px; margin-bottom: 8px; }
-    .top-row p { color: var(--muted); font-size: 14px; }
+    .top-row h2 {
+      font-size: 26px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: var(--navy);
+    }
+
+    .top-row p {
+      color: var(--muted);
+      font-size: 14px;
+      max-width: 640px;
+    }
+
+    .header-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      color: #dbeafe;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 8px 12px;
+      white-space: nowrap;
+    }
 
     .profile-card {
-      background: white;
+      background: var(--card);
       border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 28px;
+      border-radius: 16px;
+      padding: 24px;
       display: flex;
       align-items: center;
-      gap: 28px;
-      margin-bottom: 48px; /* increased space below profile card */
+      gap: 22px;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
     }
 
     .avatar {
-      width: 96px;
-      height: 96px;
+      width: 88px;
+      height: 88px;
       border-radius: 50%;
-      background: #f1f5f9;
+      background: linear-gradient(160deg, #dbeafe, #eff6ff);
+      border: 1px solid #bfdbfe;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 40px;
-      color: var(--muted);
+      font-size: 34px;
+      color: #1d4ed8;
+      flex-shrink: 0;
     }
 
-    .profile-info h3 { font-size: 22px; margin-bottom: 8px; }
-    .profile-info .tier { color: var(--blue); font-weight: 600; font-size: 14px; }
+    .profile-info h3 { font-size: 22px; margin-bottom: 7px; color: var(--navy); }
+    .profile-info .tier { color: #1d4ed8; font-weight: 600; font-size: 13px; display: inline-block; margin-bottom: 6px; }
     .profile-info p { color: var(--muted); font-size: 13px; }
 
     .tabs {
-      display: flex;
-      gap: 40px;
-      border-bottom: 1px solid var(--border);
-      margin-bottom: 40px; /* more space before tab content */
+      display: inline-flex;
+      gap: 8px;
+      padding: 6px;
+      border: 1px solid var(--border);
+      background: #f1f5f9;
+      border-radius: 12px;
+      width: fit-content;
     }
 
     .tab-btn {
-      background: none;
+      background: transparent;
       border: none;
-      padding: 12px 0;
-      font-size: 16px;
+      border-radius: 9px;
+      padding: 9px 18px;
+      font-size: 14px;
       font-weight: 600;
       color: var(--muted);
       cursor: pointer;
-      position: relative;
     }
 
     .tab-btn.active {
-      color: var(--dark);
-    }
-
-    .tab-btn.active::after {
-      content: "";
-      position: absolute;
-      bottom: -1px;
-      left: 0;
-      width: 100%;
-      height: 3px;
-      background: var(--blue);
+      color: var(--navy);
+      background: #ffffff;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
     }
 
     .tab-panel { display: none; }
@@ -234,32 +268,33 @@
     .grid {
       display: grid;
       grid-template-columns: 1fr;
-      gap: 32px; /* increased gap between cards */
+      gap: 16px;
+      margin-top: 2px;
     }
 
     .card {
-      background: white;
+      background: var(--card);
       border: 1px solid var(--border);
-      border-radius: 12px;
+      border-radius: 14px;
       overflow: hidden;
-      margin-bottom: 32px; /* extra space between stacked cards */
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
     }
-
-    .card:last-child { margin-bottom: 0; }
 
     .card-header {
-      padding: 18px 24px;
+      padding: 16px 22px;
       border-bottom: 1px solid var(--border);
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 600;
+      color: #334155;
+      background: #fcfdff;
     }
 
-    .card-body { padding: 24px; }
+    .card-body { padding: 22px; }
 
     .form-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 24px;
+      gap: 18px;
     }
 
     .form-group {
@@ -268,21 +303,26 @@
     }
 
     .form-group label {
-      font-size: 13px;
+      font-size: 12px;
+      letter-spacing: .02em;
+      text-transform: uppercase;
+      color: #64748b;
       font-weight: 600;
       margin-bottom: 8px;
     }
 
     .form-group input {
-      padding: 10px 12px;
+      padding: 11px 12px;
       border: 1px solid var(--border);
-      border-radius: 8px;
+      border-radius: 9px;
       background: #f8fafc;
       font-size: 14px;
+      transition: border-color .2s, box-shadow .2s;
+      color: #0f172a;
     }
 
     .card-actions {
-      padding: 18px 24px;
+      padding: 16px 22px;
       background: #f8fafc;
       text-align: right;
       border-top: 1px solid var(--border);
@@ -296,10 +336,10 @@
       border: none;
     }
 
-    .btn-primary { background: var(--blue); color: white; }
-    .btn-primary:hover { background: #1d4ed8; }
+    .btn-primary { background: var(--navy); color: white; }
+    .btn-primary:hover { background: var(--navy-light); }
 
-    .btn-secondary { background: #f1f5f9; color: var(--dark); border: 1px solid var(--border); }
+    .btn-secondary { background: #f1f5f9; color: var(--navy); border: 1px solid var(--border); }
     .btn-secondary:hover { background: #e5e7eb; }
 
     table {
@@ -325,7 +365,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 18px 24px;
+      padding: 16px 0;
       border-bottom: 1px solid var(--border);
     }
 
@@ -358,7 +398,48 @@
     .notice.success { background: #ecfdf5; color: #065f46; border: 1px solid #10b98166; }
     .notice.error   { background: #fef2f2; color: #991b1b; border: 1px solid #ef444466; }
 
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+    }
+
     .hidden { display: none !important; }
+
+    @media (max-width: 760px) {
+      .main-content {
+        padding: 18px;
+      }
+
+      .top-row {
+        padding: 20px;
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .top-row h2 {
+        font-size: 22px;
+      }
+
+      .profile-card {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .tabs {
+        width: 100%;
+      }
+
+      .tab-btn {
+        flex: 1;
+      }
+
+      .security-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -396,123 +477,126 @@
 
   <!-- Main Content -->
   <main class="main-content">
-    <div class="top-row">
-      <div>
-        <h2>User Profile & Security</h2>
-        <p>Manage your personal information, security settings, and account activity</p>
-      </div>
-    </div>
-
-    <!-- Profile Overview Card -->
-    <div class="profile-card">
-      <div class="avatar"><i class="fa fa-user"></i></div>
-      <div class="profile-info">
-        <h3 id="profileName">Loading...</h3>
-        <span class="tier">Client Account</span>
-        <p id="memberSince">Member since...</p>
-      </div>
-    </div>
-
-    <!-- Tabs -->
-    <div class="tabs">
-      <button class="tab-btn active" data-tab="profile">Profile</button>
-      <button class="tab-btn" data-tab="security">Security</button>
-    </div>
-
-    <!-- Profile Tab Content -->
-    <div class="tab-panel active" id="profile">
-      <div class="grid">
-        <!-- Account Details -->
-        <div class="card">
-          <div class="card-header">Account Details</div>
-          <div class="card-body">
-            <div class="form-grid">
-              <div class="form-group">
-                <label>First Name</label>
-                <input id="firstName" placeholder="First Name">
-              </div>
-              <div class="form-group">
-                <label>Last Name</label>
-                <input id="lastName" placeholder="Last Name">
-              </div>
-              <div class="form-group">
-                <label>Email Address</label>
-                <input id="email" type="email" placeholder="Email">
-              </div>
-              <div class="form-group">
-                <label>Phone Number</label>
-                <input id="phone" placeholder="Phone">
-              </div>
-            </div>
-          </div>
-          <div class="card-actions">
-            <button class="btn btn-primary" id="saveProfile">Save Changes</button>
-          </div>
+    <div class="settings-shell">
+      <div class="top-row">
+        <div>
+          <h2>User Profile & Security</h2>
+          <p>Manage your personal information, security settings, and account activity from one place.</p>
         </div>
+        
+      </div>
 
-        <!-- Login Activity -->
-        <div class="card">
-          <div class="card-header">Recent Login Activity</div>
-          <div class="card-body">
-            <table>
-              <thead>
-                <tr>
-                  <th>Device</th>
-                  <th>Location</th>
-                  <th>IP Address</th>
-                  <th>Time</th>
-                </tr>
-              </thead>
-              <tbody id="activityTable"></tbody>
-            </table>
-          </div>
+      <!-- Profile Overview Card -->
+      <div class="profile-card">
+        <div class="avatar"><i class="fa fa-user"></i></div>
+        <div class="profile-info">
+          <h3 id="profileName">Loading...</h3>
+          <span class="tier">Client Account</span>
+          <p id="memberSince">Member since...</p>
         </div>
       </div>
-    </div>
 
-    <!-- Security Tab Content -->
-    <div class="tab-panel" id="security">
-      <div class="grid">
-        <!-- Password -->
-        <div class="card">
-          <div class="card-header">Password</div>
-          <div class="card-body">
-            <div class="security-item">
-              <div class="security-info">
-                <h4>Change Password</h4>
-                <p id="lastPasswordChange">Last changed: Loading...</p>
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab-btn active" data-tab="profile">Profile</button>
+        <button class="tab-btn" data-tab="security">Security</button>
+      </div>
+
+      <!-- Profile Tab Content -->
+      <div class="tab-panel active" id="profile">
+        <div class="grid">
+          <!-- Account Details -->
+          <div class="card">
+            <div class="card-header">Account Details</div>
+            <div class="card-body">
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>First Name</label>
+                  <input id="firstName" placeholder="First Name">
+                </div>
+                <div class="form-group">
+                  <label>Last Name</label>
+                  <input id="lastName" placeholder="Last Name">
+                </div>
+                <div class="form-group">
+                  <label>Email Address</label>
+                  <input id="email" type="email" placeholder="Email">
+                </div>
+                <div class="form-group">
+                  <label>Phone Number</label>
+                  <input id="phone" placeholder="Phone">
+                </div>
               </div>
-              <button class="btn btn-secondary" id="changePasswordBtn">Change Password</button>
+            </div>
+            <div class="card-actions">
+              <button class="btn btn-primary" id="saveProfile">Save Changes</button>
+            </div>
+          </div>
+
+          <!-- Login Activity -->
+          <div class="card">
+            <div class="card-header">Recent Login Activity</div>
+            <div class="card-body">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Device</th>
+                    <th>Location</th>
+                    <th>IP Address</th>
+                    <th>Time</th>
+                  </tr>
+                </thead>
+                <tbody id="activityTable"></tbody>
+              </table>
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- Two-Factor Authentication -->
-        <div class="card">
-          <div class="card-header">Two-Factor Authentication</div>
-          <div class="card-body">
-            <div class="security-item">
-              <div class="security-info">
-                <h4>2FA Status</h4>
-                <span class="status-badge" id="twoFaStatus">Loading...</span>
+      <!-- Security Tab Content -->
+      <div class="tab-panel" id="security">
+        <div class="grid">
+          <!-- Password -->
+          <div class="card">
+            <div class="card-header">Password</div>
+            <div class="card-body">
+              <div class="security-item">
+                <div class="security-info">
+                  <h4>Change Password</h4>
+                  <p id="lastPasswordChange">Last changed: Loading...</p>
+                </div>
+                <button class="btn btn-secondary" id="changePasswordBtn">Change Password</button>
               </div>
-              <button class="btn btn-secondary" id="toggleTwoFaBtn">Manage 2FA</button>
-            </div>
-            <div class="security-item">
-              <div class="security-info">
-                <h4>Backup Codes</h4>
-                <p>Generate emergency access codes</p>
-              </div>
-              <button class="btn btn-secondary" id="generateCodesBtn">Generate Codes</button>
             </div>
           </div>
-        </div>
 
-        <!-- Connected Devices -->
-        <div class="card">
-          <div class="card-header">Connected Devices</div>
-          <div class="card-body" id="devicesList">
-            <!-- Dynamically filled -->
+          <!-- Two-Factor Authentication -->
+          <div class="card">
+            <div class="card-header">Two-Factor Authentication</div>
+            <div class="card-body">
+              <div class="security-item">
+                <div class="security-info">
+                  <h4>2FA Status</h4>
+                  <span class="status-badge" id="twoFaStatus">Loading...</span>
+                </div>
+                <button class="btn btn-secondary" id="toggleTwoFaBtn">Manage 2FA</button>
+              </div>
+              <div class="security-item">
+                <div class="security-info">
+                  <h4>Backup Codes</h4>
+                  <p>Generate emergency access codes</p>
+                </div>
+                <button class="btn btn-secondary" id="generateCodesBtn">Generate Codes</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Connected Devices -->
+          <div class="card">
+            <div class="card-header">Connected Devices</div>
+            <div class="card-body" id="devicesList">
+              <!-- Dynamically filled -->
+            </div>
           </div>
         </div>
       </div>
