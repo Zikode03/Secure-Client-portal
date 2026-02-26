@@ -13,6 +13,8 @@
     body { margin: 0; font-family: system-ui, sans-serif; background: #f8f9fa; min-height: 100vh; display: flex; flex-direction: column; }
     main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 2rem 1rem; }
     .card { background: #fff; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); padding: 3rem 2.5rem; width: 100%; max-width: 520px; text-align: center; }
+    .top-back { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 1rem; color: #0d6efd; text-decoration: none; font-size: 0.9rem; font-weight: 600; }
+    .top-back:hover { text-decoration: underline; }
     .icon-wrap { width: 80px; height: 80px; border-radius: 50%; background: rgba(13,110,253,0.12); display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; }
     .icon-wrap i { font-size: 36px; color: #0d6efd; }
     h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.75rem; color: #212529; }
@@ -31,6 +33,9 @@
 <body>
 <main>
   <div class="card">
+    <a class="top-back" href="login.html" aria-label="Back to login">
+      <i class="fas fa-arrow-left"></i> Back to Login
+    </a>
     <div class="icon-wrap"><i class="fas fa-lock"></i></div>
     <h1>You have been safely signed out</h1>
     <p>Thank you for using our portal. Your session has ended securely, and your financial data remains protected.</p>

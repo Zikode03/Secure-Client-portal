@@ -613,6 +613,7 @@
 
 <script src="../../shared/portal-config.js"></script>
 <script src="../../shared/portal-auth.js"></script>
+<script src="../../shared/portal-api.js"></script>
 <script src="../../shared/client-ui.js"></script>
 <script src="../../shared/client-shell.js"></script>
 <script>
@@ -688,6 +689,23 @@ function authHeaders() {
   return window.PortalAuth.authHeaders(token);
 }
 
+async function apiJson(path, options = {}) {
+  if (window.PortalApi?.requestJson) {
+    return window.PortalApi.requestJson(path, options);
+  }
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: options.method || "GET",
+    headers: options.body
+      ? { ...authHeaders(), "Content-Type": "application/json", ...(options.headers || {}) }
+      : { ...authHeaders(), ...(options.headers || {}) },
+    body: options.body ? JSON.stringify(options.body) : undefined,
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || data.message || "Request failed");
+  return data;
+}
+
 // ────────────────────────────────────────────────
 //   Notification helper
 // ────────────────────────────────────────────────
@@ -714,9 +732,7 @@ function formatDate(iso) {
 // ────────────────────────────────────────────────
 async function loadProfile() {
   try {
-    const res = await fetch(`${API_BASE_URL}/profile`, { headers: authHeaders() });
-    if (!res.ok) throw new Error("Failed to load profile");
-    const data = await res.json();
+    const data = await apiJson("/profile");
     const profile = data.profile || data;
     const fallbackNameParts = splitNameParts(profile.fullName || user.fullName || user.name || "");
 
@@ -745,13 +761,7 @@ async function saveProfile() {
   };
 
   try {
-    const res = await fetch(`${API_BASE_URL}/profile`, {
-      method: "PATCH",
-      headers: { ...authHeaders(), "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
-
-    if (!res.ok) throw new Error("Failed to update profile");
+    await apiJson("/profile", { method: "PATCH", body: payload });
     showNotice("Profile updated successfully", "success");
     loadProfile(); // refresh displayed data
   } catch (err) {
@@ -765,9 +775,7 @@ async function saveProfile() {
 // ────────────────────────────────────────────────
 async function loadSecurity() {
   try {
-    const res = await fetch(`${API_BASE_URL}/security`, { headers: authHeaders() });
-    if (!res.ok) throw new Error("Failed to load security");
-    const data = await res.json();
+    const data = await apiJson("/security");
 
     const security = data.security || data;
     const twoFa = security.twoFactorEnabled ? "Active" : "Inactive";
@@ -783,9 +791,7 @@ async function loadSecurity() {
 
 async function loadLoginActivity() {
   try {
-    const res = await fetch(`${API_BASE_URL}/security/login-activity?limit=8`, { headers: authHeaders() });
-    if (!res.ok) throw new Error("Failed to load login activity");
-    const data = await res.json();
+    const data = await apiJson("/security/login-activity?limit=8");
     const rows = Array.isArray(data.items) ? data.items : [];
     const table = document.getElementById("activityTable");
 
@@ -814,9 +820,7 @@ async function loadLoginActivity() {
 
 async function loadConnectedDevices() {
   try {
-    const res = await fetch(`${API_BASE_URL}/security/connected-devices`, { headers: authHeaders() });
-    if (!res.ok) throw new Error("Failed to load connected devices");
-    const data = await res.json();
+    const data = await apiJson("/security/connected-devices");
     const items = Array.isArray(data.items) ? data.items : [];
     const list = document.getElementById("devicesList");
 
@@ -861,42 +865,16 @@ document.querySelectorAll(".tab-btn").forEach(btn => {
 });
 
 document.getElementById("changePasswordBtn")?.addEventListener("click", () => {
-  const currentPassword = prompt("Enter your current password:");
-  if (!currentPassword) return;
-  const newPassword = prompt("Enter your new password (min 8 characters):");
-  if (!newPassword) return;
-
-  fetch(`${API_BASE_URL}/security/change-password`, {
-    method: "POST",
-    headers: { ...authHeaders(), "Content-Type": "application/json" },
-    body: JSON.stringify({ currentPassword, newPassword })
-  })
-    .then(async (res) => {
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "Failed to change password");
-      }
-      showNotice("Password changed successfully", "success");
-      loadSecurity();
-    })
-    .catch((err) => {
-      console.error(err);
-      showNotice(err.message || "Failed to change password", "error");
-    });
+  window.location.href = "change-password.html";
 });
 
 document.getElementById("toggleTwoFaBtn")?.addEventListener("click", () => {
   const current = document.getElementById("twoFaStatus").textContent.trim().toLowerCase() === "active";
-  fetch(`${API_BASE_URL}/security`, {
+  apiJson("/security", {
     method: "PATCH",
-    headers: { ...authHeaders(), "Content-Type": "application/json" },
-    body: JSON.stringify({ twoFactorEnabled: !current })
+    body: { twoFactorEnabled: !current }
   })
-    .then(async (res) => {
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "Failed to update 2FA");
-      }
+    .then(() => {
       showNotice(`2FA ${!current ? "enabled" : "disabled"} successfully`, "success");
       loadSecurity();
     })
@@ -907,16 +885,10 @@ document.getElementById("toggleTwoFaBtn")?.addEventListener("click", () => {
 });
 
 document.getElementById("generateCodesBtn")?.addEventListener("click", () => {
-  fetch(`${API_BASE_URL}/security/generate-backup-codes`, {
-    method: "POST",
-    headers: authHeaders()
+  apiJson("/security/generate-backup-codes", {
+    method: "POST"
   })
-    .then(async (res) => {
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "Failed to generate backup codes");
-      }
-      const payload = await res.json();
+    .then((payload) => {
       const totalCodes = Array.isArray(payload.codes) ? payload.codes.length : 0;
       showNotice(`Generated ${totalCodes} backup codes`, "success");
       loadSecurity();

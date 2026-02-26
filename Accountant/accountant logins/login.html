@@ -67,6 +67,17 @@ main::before {
   box-shadow: 0 10px 30px rgba(0,0,0,0.08);
   border: 1px solid #f0f0f0;
 }
+.top-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  color: var(--primary);
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: bold;
+}
+.top-back:hover { text-decoration: underline; }
 
 .lock-icon {
   width: 55px;
@@ -269,6 +280,9 @@ footer a:hover {
 <main>
   <div class="login-container">
     <div class="login-card">
+      <a class="top-back" href="../../Client/Clientlogins/login.html" id="loginBackLink" aria-label="Go back">
+        <i class="fas fa-arrow-left"></i> Back
+      </a>
 
       <div class="lock-icon">
         <i class="fas fa-lock"></i>
@@ -337,6 +351,13 @@ const API_BASE_URL =
   window.PortalConfig && window.PortalConfig.API_BASE_URL
     ? window.PortalConfig.API_BASE_URL
     : "http://127.0.0.1:4010/api";
+
+document.getElementById("loginBackLink")?.addEventListener("click", (event) => {
+  if (window.history.length > 1) {
+    event.preventDefault();
+    window.history.back();
+  }
+});
 
 function togglePassword() {
   const password = document.getElementById("password");
