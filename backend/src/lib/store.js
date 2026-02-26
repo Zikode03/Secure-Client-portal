@@ -20,6 +20,12 @@ export const store = {
   loginActivities: [],
   audits: [],
   uploadSessions: new Map(),
+  complianceAccounts: [],
+  complianceObligations: [],
+  complianceSnapshots: [],
+  complianceEvents: [],
+  complianceAlerts: [],
+  complianceAuditLogs: [],
 };
 
 export const utils = {

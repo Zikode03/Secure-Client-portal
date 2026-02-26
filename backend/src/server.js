@@ -18,6 +18,8 @@ import reviewRoutes from "./routes/reviews.js";
 import requestRoutes from "./routes/requests.js";
 import profileRoutes from "./routes/profile.js";
 import settingsRoutes from "./routes/settings.js";
+import complianceRoutes from "./routes/compliance.js";
+import { startComplianceScheduler } from "./lib/compliance/scheduler.js";
 
 const app = express();
 
@@ -42,6 +44,7 @@ app.use("/api", authRequired, settingsRoutes);
 app.use("/api/notifications", authRequired, notificationRoutes);
 app.use("/api/audits", authRequired, auditRoutes);
 app.use("/api/uploads", authRequired, uploadRoutes);
+app.use("/api/compliance", authRequired, complianceRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: "Not found" });
@@ -54,6 +57,7 @@ app.use((error, _req, res, _next) => {
 
 async function startServer() {
   await initDb();
+  startComplianceScheduler();
 
   app.listen(config.port, () => {
     console.log(`Backend running at http://localhost:${config.port}`);

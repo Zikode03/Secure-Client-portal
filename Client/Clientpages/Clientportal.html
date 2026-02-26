@@ -288,6 +288,32 @@
       grid-template-columns: 2fr 1fr;
     }
 
+    .compliance-overview-grid {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .health-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      border: 1px solid transparent;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .health-pill.green { color: #166534; background: #dcfce7; border-color: #86efac; }
+    .health-pill.amber { color: #92400e; background: #fef3c7; border-color: #fcd34d; }
+    .health-pill.red { color: #991b1b; background: #fee2e2; border-color: #fca5a5; }
+    .health-list { list-style: none; display: grid; gap: 8px; margin-top: 10px; }
+    .health-list li { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; }
+    .deadline-list { list-style: none; display: grid; gap: 8px; margin-top: 10px; }
+    .deadline-list li { border: 1px solid var(--border); border-radius: 10px; padding: 10px; font-size: 13px; background: #fcfdff; }
+
     .compliance-card {
       padding: 18px;
     }
@@ -519,6 +545,17 @@
           <div class="compliance-list" id="compliance-wrap"></div>
         </div>
 
+        <div class="compliance-overview-grid">
+          <div class="card">
+            <h3 class="section-title">SARS / CIPC Live Status</h3>
+            <div id="compliance-health-wrap" class="empty">Loading compliance overview...</div>
+          </div>
+          <div class="card">
+            <h3 class="section-title">Deadlines & Alerts</h3>
+            <div id="compliance-deadlines-wrap" class="empty">Loading deadlines...</div>
+          </div>
+        </div>
+
         <div class="grid-3">
           <div class="card">
             <h3 class="section-title">Document Status</h3>
@@ -585,6 +622,8 @@
     const invoicesWrap = document.getElementById("invoices-wrap");
     const complianceOverall = document.getElementById("compliance-overall");
     const complianceWrap = document.getElementById("compliance-wrap");
+    const complianceHealthWrap = document.getElementById("compliance-health-wrap");
+    const complianceDeadlinesWrap = document.getElementById("compliance-deadlines-wrap");
 
     function setSidebarWidth(width) {
       const clamped = Math.max(SIDEBAR_MIN_WIDTH, Math.min(SIDEBAR_MAX_WIDTH, width));
@@ -816,6 +855,62 @@
       }).join("");
     }
 
+    function renderComplianceOverview(overview) {
+      if (!overview) {
+        complianceHealthWrap.innerHTML = '<p class="empty">No compliance overview available.</p>';
+        complianceDeadlinesWrap.innerHTML = '<p class="empty">No deadline data available.</p>';
+        return;
+      }
+
+      const status = String(overview.status || "amber").toLowerCase();
+      const statusClass = status === "green" ? "green" : status === "red" ? "red" : "amber";
+      const sarsClass = String(overview.sarsStatus || "").toLowerCase() === "green" ? "green" : "red";
+      const cipcClass = String(overview.cipcStatus || "").toLowerCase() === "green" ? "green" : "red";
+
+      complianceHealthWrap.innerHTML = `
+        <div class="health-pill ${statusClass}">Overall ${status.toUpperCase()}</div>
+        <ul class="health-list">
+          <li><span>SARS TCS / Filing</span><span class="health-pill ${sarsClass}">${String(overview.sarsStatus || "unknown").toUpperCase()}</span></li>
+          <li><span>CIPC AR / BO</span><span class="health-pill ${cipcClass}">${String(overview.cipcStatus || "unknown").toUpperCase()}</span></li>
+          <li><span>Overdue</span><strong>${overview?.counts?.overdue || 0}</strong></li>
+          <li><span>Due Soon</span><strong>${overview?.counts?.dueSoon || 0}</strong></li>
+          <li><span>Last Sync</span><strong>${formatDate(overview.lastUpdatedAt)}</strong></li>
+        </ul>
+      `;
+
+      const obligations = Array.isArray(overview.obligations) ? overview.obligations : [];
+      const priority = obligations
+        .filter((item) => ["overdue", "due_soon"].includes(String(item.status || "").toLowerCase()))
+        .sort((left, right) => {
+          const l = safeDate(left.dueDate)?.getTime() || Number.MAX_SAFE_INTEGER;
+          const r = safeDate(right.dueDate)?.getTime() || Number.MAX_SAFE_INTEGER;
+          return l - r;
+        })
+        .slice(0, 6);
+
+      if (!priority.length) {
+        complianceDeadlinesWrap.innerHTML = '<p class="empty">No current overdue or due-soon obligations.</p>';
+        return;
+      }
+
+      complianceDeadlinesWrap.innerHTML = `
+        <ul class="deadline-list">
+          ${priority.map((item) => {
+            const statusTone = String(item.status || "").toLowerCase() === "overdue" ? "red" : "amber";
+            return `
+              <li>
+                <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;">
+                  <strong>${item.source} - ${item.obligationType}</strong>
+                  <span class="health-pill ${statusTone}">${String(item.status || "").replace("_", " ")}</span>
+                </div>
+                <div style="margin-top:6px;color:var(--muted);">Due: ${formatDate(item.dueDate)}</div>
+              </li>
+            `;
+          }).join("")}
+        </ul>
+      `;
+    }
+
     function renderRecentDocuments(documents) {
       if (!documents.length) {
         recentDocumentsWrap.innerHTML = '<p class="empty">No documents uploaded yet.</p>';
@@ -884,11 +979,12 @@
 
       const headers = window.PortalAuth.authHeaders(token);
 
-      const [documentsRes, requestsRes, notificationsRes, complianceRes] = await Promise.all([
+      const [documentsRes, requestsRes, notificationsRes, complianceRes, complianceOverviewRes] = await Promise.all([
         fetch(`${API_BASE_URL}/documents`, { headers }),
         fetch(`${API_BASE_URL}/requests`, { headers }),
         fetch(`${API_BASE_URL}/notifications?limit=20`, { headers }),
         fetch(`${API_BASE_URL}/compliance/frameworks`, { headers }).catch(() => null),
+        fetch(`${API_BASE_URL}/compliance/overview`, { headers }).catch(() => null),
       ]);
 
       if (!documentsRes.ok) throw new Error("Failed to load documents.");
@@ -900,6 +996,9 @@
       const notifications = (await notificationsRes.json()).items || [];
       const complianceData = complianceRes && complianceRes.ok
         ? await complianceRes.json().catch(() => null)
+        : null;
+      const complianceOverview = complianceOverviewRes && complianceOverviewRes.ok
+        ? await complianceOverviewRes.json().catch(() => null)
         : null;
 
       const sortedDocs = [...documents].sort((a, b) => {
@@ -947,6 +1046,7 @@
           : [];
       const fallbackFrameworks = deriveComplianceFallback(sortedDocs, requests);
       renderCompliance(apiFrameworks.length ? apiFrameworks : fallbackFrameworks);
+      renderComplianceOverview(complianceOverview);
     }
 
     initSidebarResize();
@@ -960,6 +1060,8 @@
       statusWrap.innerHTML = `<p class="empty">${message}</p>`;
       chartWrap.innerHTML = `<p class="empty">${message}</p>`;
       complianceWrap.innerHTML = `<p class="empty">${message}</p>`;
+      complianceHealthWrap.innerHTML = `<p class="empty">${message}</p>`;
+      complianceDeadlinesWrap.innerHTML = `<p class="empty">${message}</p>`;
       complianceOverall.textContent = "-";
     });
   </script>

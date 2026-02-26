@@ -48,6 +48,12 @@ model Client {
   tasks              Task[]
   requests           Request[]
   messages           Message[]
+  complianceAccounts ComplianceAccount[]
+  complianceObligations ComplianceObligation[]
+  complianceSnapshots ComplianceStatusSnapshot[]
+  complianceEvents   ComplianceEvent[]
+  complianceAlerts   ComplianceAlert[]
+  complianceAuditLogs ComplianceAuditLog[]
 }
 
 model Message {
@@ -136,3 +142,104 @@ model Audit {
   createdAt   DateTime @default(now())
 }
 
+model ComplianceAccount {
+  id               String   @id
+  clientId         String
+  client           Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  source           String
+  reference        String
+  status           String
+  lastSyncedAt     DateTime?
+  lastError        String?
+  credentialsMeta  Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([clientId, source])
+}
+
+model ComplianceObligation {
+  id             String   @id
+  clientId       String
+  client         Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  source         String
+  obligationType String
+  periodLabel    String?
+  dueDate        DateTime?
+  submittedAt    DateTime?
+  paidAt         DateTime?
+  status         String
+  amountDue      Float?
+  metadata       Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([clientId, source, obligationType])
+  @@index([clientId, status])
+}
+
+model ComplianceStatusSnapshot {
+  id               String   @id
+  clientId         String
+  client           Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  overallStatus    String
+  score            Int
+  sarsStatus       String
+  cipcStatus       String
+  compliantCount   Int
+  nonCompliantCount Int
+  overdueCount     Int
+  dueSoonCount     Int
+  sourceTimestamp  DateTime
+  createdAt        DateTime @default(now())
+
+  @@index([clientId, createdAt(sort: Desc)])
+}
+
+model ComplianceEvent {
+  id            String   @id
+  clientId      String
+  client        Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  source        String
+  eventType     String
+  severity      String
+  title         String
+  description   String
+  obligationRef String?
+  payload       Json?
+  occurredAt    DateTime
+  createdAt     DateTime @default(now())
+
+  @@index([clientId, occurredAt(sort: Desc)])
+}
+
+model ComplianceAlert {
+  id               String   @id
+  clientId         String
+  client           Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  severity         String
+  status           String
+  title            String
+  message          String
+  source           String
+  obligationType   String?
+  assignedUserId   String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  resolvedAt       DateTime?
+  readAt           DateTime?
+
+  @@index([clientId, status, createdAt(sort: Desc)])
+}
+
+model ComplianceAuditLog {
+  id           String   @id
+  clientId     String
+  client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  actorUserId  String?
+  action       String
+  details      Json?
+  createdAt    DateTime @default(now())
+
+  @@index([clientId, createdAt(sort: Desc)])
+}
