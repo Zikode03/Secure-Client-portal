@@ -556,6 +556,8 @@ const phaseText = document.getElementById("phaseText");
 
 let selectedFile = null;
 let uploading = false;
+let currentUploadId = null;
+let uploadAbortController = null;
 
 function authHeaders() {
   return window.PortalAuth.authHeaders(token);
@@ -682,6 +684,7 @@ async function callUploadStatus(uploadId) {
   const response = await fetch(`${API_BASE_URL}/uploads/${uploadId}/status`, {
     method: "GET",
     headers: authHeaders(),
+    signal: uploadAbortController?.signal,
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -724,6 +727,7 @@ async function initUploadSession(file, fingerprint) {
     method: "POST",
     headers: authHeaders(),
     body: JSON.stringify(payload),
+    signal: uploadAbortController?.signal,
   });
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
@@ -749,6 +753,7 @@ async function uploadChunk(uploadId, file, chunkIndex, totalChunks) {
           "Content-Type": "application/octet-stream",
         },
         body: chunk,
+        signal: uploadAbortController?.signal,
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) {
@@ -805,6 +810,8 @@ dropZone.addEventListener("click", () => {
 uploadBtn.addEventListener("click", async () => {
   if (!selectedFile || uploading) return;
   uploading = true;
+  uploadAbortController = new AbortController();
+  currentUploadId = null;
   if (window.ClientUI) window.ClientUI.setLoading(uploadBtn, true, "Uploading...");
   else uploadBtn.disabled = true;
   showStatus("Preparing upload session...", "success");
@@ -812,6 +819,7 @@ uploadBtn.addEventListener("click", async () => {
   try {
     const fingerprint = await fingerprintForFile(selectedFile);
     const { uploadId, status: initialStatus } = await initUploadSession(selectedFile, fingerprint);
+    currentUploadId = uploadId;
     const totalChunks = Number(initialStatus?.chunks?.total) || Math.max(1, Math.ceil(selectedFile.size / CHUNK_SIZE_BYTES));
     const uploadedSet = uploadedSetFromStatus(initialStatus);
 
@@ -832,6 +840,7 @@ uploadBtn.addEventListener("click", async () => {
       method: "POST",
       headers: authHeaders(),
       body: JSON.stringify({}),
+      signal: uploadAbortController?.signal,
     });
     const completeData = await completeResponse.json().catch(() => ({}));
     if (!completeResponse.ok) {
@@ -853,17 +862,45 @@ uploadBtn.addEventListener("click", async () => {
       window.location.href = "documents.html";
     }, 1400);
   } catch (error) {
-    showStatus(`Error: ${error.message}`, "error");
-    if (window.ClientUI) window.ClientUI.toast(error.message || "Upload failed", "error");
+    if (error?.name === "AbortError") {
+      showStatus("Upload canceled.", "error");
+      if (window.ClientUI) window.ClientUI.toast("Upload canceled", "info");
+    } else {
+      showStatus(`Error: ${error.message}`, "error");
+      if (window.ClientUI) window.ClientUI.toast(error.message || "Upload failed", "error");
+    }
   } finally {
     if (window.ClientUI) window.ClientUI.setLoading(uploadBtn, false);
     else uploadBtn.disabled = false;
     uploading = false;
+    currentUploadId = null;
+    uploadAbortController = null;
   }
 });
 
-cancelBtn.addEventListener("click", () => {
-  window.location.href = "documents.html";
+cancelBtn.addEventListener("click", async () => {
+  if (!uploading) {
+    window.location.href = "documents.html";
+    return;
+  }
+
+  if (uploadAbortController) {
+    uploadAbortController.abort();
+  }
+  if (currentUploadId) {
+    try {
+      await fetch(`${API_BASE_URL}/uploads/${currentUploadId}`, {
+        method: "DELETE",
+        headers: authHeaders(),
+      });
+    } catch {
+      // best effort
+    }
+  }
+  currentUploadId = null;
+  uploading = false;
+  if (window.ClientUI) window.ClientUI.setLoading(uploadBtn, false);
+  showStatus("Upload canceled.", "error");
 });
 
 document.getElementById("logoutBtn").addEventListener("click", () => {

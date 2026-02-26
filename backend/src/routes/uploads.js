@@ -28,8 +28,11 @@ const UPLOAD_SESSION_DIR = path.join(UPLOAD_ROOT_DIR, "sessions");
 const UPLOAD_CHUNK_DIR = path.join(UPLOAD_ROOT_DIR, "chunks");
 const UPLOAD_FILE_DIR = path.join(UPLOAD_ROOT_DIR, "files");
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
+const CLEANUP_INTERVAL_MS = 15 * 60 * 1000;
+const COMPLETED_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
 
 let ensureDirsPromise = null;
+let cleanupTimerStarted = false;
 
 function safeName(name) {
   return String(name || "upload.bin").replace(/[^a-zA-Z0-9._-]+/g, "_");
@@ -60,6 +63,7 @@ async function ensureDirs() {
     })();
   }
   await ensureDirsPromise;
+  startCleanupTimer();
 }
 
 async function fileExists(filePath) {
@@ -112,6 +116,60 @@ function computePhase(session) {
   if (elapsed < 3000) return "scanning";
   if (elapsed < 9000) return "processing";
   return "available";
+}
+
+function shouldRemoveSession(session, nowMs) {
+  const updatedAtMs = new Date(session.updatedAt || session.createdAt || 0).getTime();
+  if (!Number.isFinite(updatedAtMs)) return true;
+  const ageMs = nowMs - updatedAtMs;
+
+  if (session.completedAt) {
+    return ageMs > COMPLETED_RETENTION_MS;
+  }
+  return ageMs > SESSION_TTL_MS;
+}
+
+async function removeSessionArtifacts(session) {
+  await rm(chunkDir(session.uploadId), { recursive: true, force: true });
+  await rm(sessionFile(session.uploadId), { force: true });
+  store.uploadSessions.delete(session.uploadId);
+}
+
+async function cleanupStaleSessions() {
+  await ensureDirs();
+  const nowMs = Date.now();
+  const files = await readdir(UPLOAD_SESSION_DIR);
+  for (const fileName of files) {
+    if (!fileName.endsWith(".json")) continue;
+    const absolutePath = path.join(UPLOAD_SESSION_DIR, fileName);
+    let session = null;
+    try {
+      const raw = await readFile(absolutePath, "utf8");
+      session = JSON.parse(raw);
+    } catch {
+      await rm(absolutePath, { force: true });
+      continue;
+    }
+    if (!session?.uploadId) {
+      await rm(absolutePath, { force: true });
+      continue;
+    }
+    if (shouldRemoveSession(session, nowMs)) {
+      await removeSessionArtifacts(session);
+    } else {
+      store.uploadSessions.set(session.uploadId, session);
+    }
+  }
+}
+
+function startCleanupTimer() {
+  if (cleanupTimerStarted) return;
+  cleanupTimerStarted = true;
+  setInterval(() => {
+    cleanupStaleSessions().catch((error) => {
+      console.error("[uploads] cleanup failed:", error.message);
+    });
+  }, CLEANUP_INTERVAL_MS).unref();
 }
 
 async function syncDocumentStatus(session, phase) {
@@ -286,6 +344,7 @@ async function findReusableSession(userId, fileFingerprint) {
 router.post("/init", async (req, res, next) => {
   try {
     await ensureDirs();
+    await cleanupStaleSessions();
     const { fileName, fileSize, mimeType, category, notes, clientId, fileFingerprint } = req.body || {};
     const normalizedName = String(fileName || "").trim();
     const normalizedSize = Number(fileSize || 0);
@@ -374,6 +433,23 @@ router.put("/:uploadId/chunks/:chunkIndex", express.raw({ type: "application/oct
       chunkIndex,
       ...statusPayload(session, uploadedIndexes),
     });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.delete("/:uploadId", async (req, res, next) => {
+  try {
+    const uploadId = String(req.params.uploadId || "");
+    const session = await readSession(uploadId).catch(() => null);
+    if (!session) return res.status(404).json({ error: "Upload session not found" });
+    if (!assertSessionOwnership(req, session)) return res.status(403).json({ error: "Access denied" });
+    if (session.completedAt) {
+      return res.status(409).json({ error: "Upload already completed and cannot be canceled" });
+    }
+
+    await removeSessionArtifacts(session);
+    return res.json({ ok: true, canceled: true, uploadId });
   } catch (error) {
     return next(error);
   }
