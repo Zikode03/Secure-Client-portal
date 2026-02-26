@@ -156,6 +156,24 @@
 
     .title h2 { font-size: 28px; margin-bottom: 4px; }
     .title p { color: var(--muted); font-size: 14px; }
+    .title-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .overall-pill {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      border: 1px solid transparent;
+    }
+    .overall-pill.green { color: #166534; background: #dcfce7; border-color: #86efac; }
+    .overall-pill.amber { color: #92400e; background: #fef3c7; border-color: #fcd34d; }
+    .overall-pill.red { color: #991b1b; background: #fee2e2; border-color: #fca5a5; }
 
     .top-actions {
       display: flex;
@@ -178,7 +196,7 @@
     .content {
       padding: 24px 28px 32px;
       display: grid;
-      gap: 16px;
+      gap: 20px;
     }
 
     .kpis {
@@ -288,10 +306,66 @@
       grid-template-columns: 2fr 1fr;
     }
 
-    .compliance-overview-grid {
+    .compliance-split {
+      display: grid;
+      gap: 28px;
+      grid-template-columns: 1fr 1fr;
+      align-items: start;
+    }
+
+    .hero-card {
+      padding: 18px;
+      border-radius: 16px;
+      border: 1px solid #dbe4f0;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
+    }
+
+    .action-center-card {
+      padding: 18px;
+      border-radius: 16px;
+      border: 1px solid #dbe4f0;
+      background: #ffffff;
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
+    }
+
+    .insights-panel {
+      border-radius: 16px;
+      border: 1px solid #dbe4f0;
+      background: #ffffff;
+      padding: 14px 16px;
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
+    }
+
+    .insights-panel > summary {
+      cursor: pointer;
+      font-weight: 700;
+      color: #0f172a;
+      list-style: none;
+      font-size: 15px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .insights-panel > summary::-webkit-details-marker { display: none; }
+    .insights-panel > summary::before {
+      content: "+";
+      width: 18px;
+      height: 18px;
+      border-radius: 999px;
+      background: #eff6ff;
+      color: #1d4ed8;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .insights-panel[open] > summary::before { content: "-"; }
+    .insights-body {
+      margin-top: 14px;
       display: grid;
       gap: 12px;
-      grid-template-columns: 1fr 1fr;
     }
 
     .health-pill {
@@ -316,6 +390,12 @@
 
     .action-list, .timeline-list { list-style: none; display: grid; gap: 10px; margin-top: 10px; }
     .action-list li, .timeline-list li { border: 1px solid var(--border); border-radius: 10px; background: #fcfdff; padding: 10px; font-size: 13px; }
+    .history-panel summary {
+      cursor: pointer;
+      font-weight: 700;
+      color: #0f172a;
+      margin-bottom: 8px;
+    }
 
     .compliance-card {
       padding: 18px;
@@ -500,7 +580,10 @@
     <main class="main">
       <header class="topbar">
         <div class="title">
-          <h2>Dashboard</h2>
+          <div class="title-row">
+            <h2>Dashboard</h2>
+            <span id="overall-status-pill" class="overall-pill amber">Attention Required</span>
+          </div>
           <p id="welcome-line">Welcome back. Here is your latest overview.</p>
         </div>
         <div class="top-actions">
@@ -537,53 +620,57 @@
           </div>
         </div>
 
-        <div class="compliance-overview-grid">
-          <div class="card">
+        <div class="compliance-split">
+          <div class="hero-card">
             <h3 class="section-title">SARS / CIPC Live Status</h3>
             <div id="compliance-health-wrap" class="empty">Loading compliance overview...</div>
           </div>
-          <div class="card">
+          <div class="hero-card">
             <h3 class="section-title">Deadlines & Alerts</h3>
             <div id="compliance-deadlines-wrap" class="empty">Loading deadlines...</div>
           </div>
         </div>
 
-        <div class="compliance-overview-grid">
-          <div class="card">
-            <h3 class="section-title">Action Center</h3>
-            <div id="action-center-wrap" class="empty">Loading actions...</div>
-          </div>
-          <div class="card">
-            <h3 class="section-title">Compliance Timeline</h3>
-            <div id="timeline-center-wrap" class="empty">Loading timeline...</div>
-          </div>
+        <div class="action-center-card">
+          <h3 class="section-title">Action Center</h3>
+          <div id="action-center-wrap" class="empty">Loading actions...</div>
         </div>
 
-        <div class="grid-3">
-          <div class="card">
-            <h3 class="section-title">Document Status</h3>
-            <div id="status-wrap"></div>
-          </div>
-          <div class="card">
-            <h3 class="section-title">Upload Activity</h3>
-            <div class="chart-wrap" id="upload-chart"></div>
-          </div>
-          <div class="card">
-            <h3 class="section-title">Activity Timeline</h3>
-            <div id="timeline-wrap"></div>
-          </div>
-        </div>
+        <details class="insights-panel">
+          <summary>More Insights</summary>
+          <div class="insights-body">
+            <div class="grid-3">
+              <div class="card">
+                <h3 class="section-title">Document Status</h3>
+                <div id="status-wrap"></div>
+              </div>
+              <div class="card">
+                <h3 class="section-title">Upload Activity</h3>
+                <div class="chart-wrap" id="upload-chart"></div>
+              </div>
+              <div class="card">
+                <h3 class="section-title">Activity Timeline</h3>
+                <div id="timeline-wrap"></div>
+              </div>
+            </div>
 
-        <div class="two-col">
-          <div class="card">
-            <h3 class="section-title">Recent Documents</h3>
-            <div id="recent-documents-wrap"></div>
+            <div class="two-col">
+              <div class="card">
+                <h3 class="section-title">Recent Documents</h3>
+                <div id="recent-documents-wrap"></div>
+              </div>
+              <div class="card">
+                <h3 class="section-title">Invoices</h3>
+                <div id="invoices-wrap"></div>
+              </div>
+            </div>
           </div>
-          <div class="card">
-            <h3 class="section-title">Invoices</h3>
-            <div id="invoices-wrap"></div>
-          </div>
-        </div>
+        </details>
+
+        <details class="card history-panel">
+          <summary>Compliance History</summary>
+          <div id="timeline-center-wrap" class="empty">Loading timeline...</div>
+        </details>
       </section>
     </main>
   </div>
@@ -627,6 +714,7 @@
     const complianceDeadlinesWrap = document.getElementById("compliance-deadlines-wrap");
     const actionCenterWrap = document.getElementById("action-center-wrap");
     const timelineCenterWrap = document.getElementById("timeline-center-wrap");
+    const overallStatusPill = document.getElementById("overall-status-pill");
 
     function setSidebarWidth(width) {
       const clamped = Math.max(SIDEBAR_MIN_WIDTH, Math.min(SIDEBAR_MAX_WIDTH, width));
@@ -756,6 +844,8 @@
 
     function renderComplianceOverview(overview) {
       if (!overview) {
+        overallStatusPill.textContent = "Status Unknown";
+        overallStatusPill.className = "overall-pill amber";
         complianceHealthWrap.innerHTML = '<p class="empty">No compliance overview available.</p>';
         complianceDeadlinesWrap.innerHTML = '<p class="empty">No deadline data available.</p>';
         return;
@@ -763,11 +853,14 @@
 
       const status = String(overview.status || "amber").toLowerCase();
       const statusClass = status === "green" ? "green" : status === "red" ? "red" : "amber";
+      const statusLabel = status === "green" ? "Compliant" : status === "red" ? "Attention Required" : "Review Soon";
+      overallStatusPill.textContent = statusLabel;
+      overallStatusPill.className = `overall-pill ${statusClass}`;
       const sarsClass = String(overview.sarsStatus || "").toLowerCase() === "green" ? "green" : "red";
       const cipcClass = String(overview.cipcStatus || "").toLowerCase() === "green" ? "green" : "red";
 
       complianceHealthWrap.innerHTML = `
-        <div class="health-pill ${statusClass}">Overall ${status.toUpperCase()}</div>
+        <div class="health-pill ${statusClass}">Overall ${statusLabel}</div>
         <ul class="health-list">
           <li><span>SARS TCS / Filing</span><span class="health-pill ${sarsClass}">${String(overview.sarsStatus || "unknown").toUpperCase()}</span></li>
           <li><span>CIPC AR / BO</span><span class="health-pill ${cipcClass}">${String(overview.cipcStatus || "unknown").toUpperCase()}</span></li>
@@ -1004,6 +1097,8 @@
       complianceDeadlinesWrap.innerHTML = `<p class="empty">${message}</p>`;
       actionCenterWrap.innerHTML = `<p class="empty">${message}</p>`;
       timelineCenterWrap.innerHTML = `<p class="empty">${message}</p>`;
+      overallStatusPill.textContent = "Status Unknown";
+      overallStatusPill.className = "overall-pill amber";
     });
   </script>
 </body>
