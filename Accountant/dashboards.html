@@ -470,6 +470,17 @@ tbody tr {
   gap: 20px;
   margin-bottom: 28px;
 }
+.heatmap-grid {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+.heatmap-row {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  padding: 10px;
+}
 
 .compliance-list {
   display: grid;
@@ -617,6 +628,14 @@ tbody tr {
     </div>
     <div class="card-body" id="firmComplianceAlerts" style="padding:16px;">
       <p>Loading alerts...</p>
+    </div>
+  </div>
+  <div class="table-card">
+    <div class="table-head">
+      <h3>Portfolio Heatmap</h3>
+    </div>
+    <div class="card-body" id="firmHeatmapWrap" style="padding:16px;">
+      <p>Loading heatmap...</p>
     </div>
   </div>
 </div>
@@ -795,13 +814,16 @@ function compliancePill(status) {
 }
 
 async function loadFirmCompliance() {
-  const [overviewRes, alertsRes] = await Promise.all([
+  const [overviewRes, alertsRes, heatmapRes, diagnosticsRes] = await Promise.all([
     fetch(`${API_BASE_URL}/compliance/firm/overview`, { headers: authHeaders() }),
     fetch(`${API_BASE_URL}/compliance/firm/alerts`, { headers: authHeaders() }),
+    fetch(`${API_BASE_URL}/compliance/firm/heatmap`, { headers: authHeaders() }),
+    fetch(`${API_BASE_URL}/compliance/diagnostics/sync`, { headers: authHeaders() }),
   ]);
 
   const complianceWrap = document.getElementById("firmComplianceWrap");
   const alertsWrap = document.getElementById("firmComplianceAlerts");
+  const heatmapWrap = document.getElementById("firmHeatmapWrap");
 
   if (!overviewRes.ok) {
     complianceWrap.innerHTML = "<p>Unable to load firm compliance overview.</p>";
@@ -853,6 +875,49 @@ async function loadFirmCompliance() {
       <span class="${compliancePill(item.severity === "high" ? "red" : item.severity === "medium" ? "amber" : "green")}">${String(item.severity || "low").toUpperCase()}</span>
     </div>
   `).join("");
+
+  if (!heatmapRes.ok) {
+    heatmapWrap.innerHTML = "<p>Unable to load heatmap.</p>";
+  } else {
+    const payload = await heatmapRes.json();
+    const rows = Array.isArray(payload.items) ? payload.items : [];
+    if (!rows.length) {
+      heatmapWrap.innerHTML = "<p>No heatmap data available.</p>";
+    } else {
+      heatmapWrap.innerHTML = `
+        <div class="heatmap-grid">
+          ${rows.slice(-6).map((row) => `
+            <div class="heatmap-row">
+              <div style="font-weight:700;margin-bottom:6px;">${row.month}</div>
+              ${Object.entries(row.services || {}).map(([service, counts]) => `
+                <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
+                  <span>${service}</span>
+                  <span>G:${counts.green || 0} A:${counts.amber || 0} R:${counts.red || 0}</span>
+                </div>
+              `).join("")}
+            </div>
+          `).join("")}
+        </div>
+      `;
+    }
+  }
+
+  if (diagnosticsRes.ok) {
+    const diagPayload = await diagnosticsRes.json();
+    const items = Array.isArray(diagPayload.items) ? diagPayload.items : [];
+    const failed = items.filter((item) => item.lastError).length;
+    if (failed > 0) {
+      alertsWrap.innerHTML = `
+        <div class="compliance-item">
+          <div>
+            <div style="font-weight:700;">Connector Diagnostics</div>
+            <div style="font-size:12px;color:#64748b;">${failed} source connection(s) reporting errors.</div>
+          </div>
+          <span class="pill red">ERROR</span>
+        </div>
+      ` + alertsWrap.innerHTML;
+    }
+  }
 }
 
 document.addEventListener("click", async (event) => {

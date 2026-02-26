@@ -314,6 +314,9 @@
     .deadline-list { list-style: none; display: grid; gap: 8px; margin-top: 10px; }
     .deadline-list li { border: 1px solid var(--border); border-radius: 10px; padding: 10px; font-size: 13px; background: #fcfdff; }
 
+    .action-list, .timeline-list { list-style: none; display: grid; gap: 10px; margin-top: 10px; }
+    .action-list li, .timeline-list li { border: 1px solid var(--border); border-radius: 10px; background: #fcfdff; padding: 10px; font-size: 13px; }
+
     .compliance-card {
       padding: 18px;
     }
@@ -545,6 +548,17 @@
           </div>
         </div>
 
+        <div class="compliance-overview-grid">
+          <div class="card">
+            <h3 class="section-title">Action Center</h3>
+            <div id="action-center-wrap" class="empty">Loading actions...</div>
+          </div>
+          <div class="card">
+            <h3 class="section-title">Compliance Timeline</h3>
+            <div id="timeline-center-wrap" class="empty">Loading timeline...</div>
+          </div>
+        </div>
+
         <div class="grid-3">
           <div class="card">
             <h3 class="section-title">Document Status</h3>
@@ -611,6 +625,8 @@
     const invoicesWrap = document.getElementById("invoices-wrap");
     const complianceHealthWrap = document.getElementById("compliance-health-wrap");
     const complianceDeadlinesWrap = document.getElementById("compliance-deadlines-wrap");
+    const actionCenterWrap = document.getElementById("action-center-wrap");
+    const timelineCenterWrap = document.getElementById("timeline-center-wrap");
 
     function setSidebarWidth(width) {
       const clamped = Math.max(SIDEBAR_MIN_WIDTH, Math.min(SIDEBAR_MAX_WIDTH, width));
@@ -794,6 +810,49 @@
       `;
     }
 
+    function renderActionCenter(payload) {
+      const items = Array.isArray(payload?.items) ? payload.items : [];
+      if (!items.length) {
+        actionCenterWrap.innerHTML = '<p class="empty">No urgent actions right now.</p>';
+        return;
+      }
+      actionCenterWrap.innerHTML = `
+        <ul class="action-list">
+          ${items.map((item) => `
+            <li>
+              <div style="display:flex;justify-content:space-between;gap:8px;">
+                <strong>${item.title || "Action"}</strong>
+                <span class="mini-badge ${item.type === "alert" ? "risk" : "warn"}">${item.type || "item"}</span>
+              </div>
+              <div style="margin-top:6px;color:var(--muted);">${item.source || ""}</div>
+              <div style="margin-top:8px;"><a href="${item.directLink || "#"}">Open</a></div>
+            </li>
+          `).join("")}
+        </ul>
+      `;
+    }
+
+    function renderTimelineCenter(items) {
+      const rows = Array.isArray(items) ? items : [];
+      if (!rows.length) {
+        timelineCenterWrap.innerHTML = '<p class="empty">No timeline events yet.</p>';
+        return;
+      }
+      timelineCenterWrap.innerHTML = `
+        <ul class="timeline-list">
+          ${rows.slice(0, 5).map((item) => `
+            <li>
+              <div style="display:flex;justify-content:space-between;gap:8px;">
+                <strong>${item.title || item.eventType || "Event"}</strong>
+                <span style="color:var(--muted);font-size:12px;">${formatDate(item.occurredAt || item.createdAt)}</span>
+              </div>
+              <div style="margin-top:6px;color:var(--muted);">${item.description || ""}</div>
+            </li>
+          `).join("")}
+        </ul>
+      `;
+    }
+
     function renderRecentDocuments(documents) {
       if (!documents.length) {
         recentDocumentsWrap.innerHTML = '<p class="empty">No documents uploaded yet.</p>';
@@ -862,11 +921,13 @@
 
       const headers = window.PortalAuth.authHeaders(token);
 
-      const [documentsRes, requestsRes, notificationsRes, complianceOverviewRes] = await Promise.all([
+      const [documentsRes, requestsRes, notificationsRes, complianceOverviewRes, actionCenterRes, timelineRes] = await Promise.all([
         fetch(`${API_BASE_URL}/documents`, { headers }),
         fetch(`${API_BASE_URL}/requests`, { headers }),
         fetch(`${API_BASE_URL}/notifications?limit=20`, { headers }),
         fetch(`${API_BASE_URL}/compliance/overview`, { headers }).catch(() => null),
+        fetch(`${API_BASE_URL}/compliance/client/${encodeURIComponent(user.clientIds?.[0] || "")}/actions`, { headers }).catch(() => null),
+        fetch(`${API_BASE_URL}/compliance/client/${encodeURIComponent(user.clientIds?.[0] || "")}/events?limit=25`, { headers }).catch(() => null),
       ]);
 
       if (!documentsRes.ok) throw new Error("Failed to load documents.");
@@ -878,6 +939,12 @@
       const notifications = (await notificationsRes.json()).items || [];
       const complianceOverview = complianceOverviewRes && complianceOverviewRes.ok
         ? await complianceOverviewRes.json().catch(() => null)
+        : null;
+      const actionCenter = actionCenterRes && actionCenterRes.ok
+        ? await actionCenterRes.json().catch(() => null)
+        : null;
+      const timelineCenter = timelineRes && timelineRes.ok
+        ? await timelineRes.json().catch(() => null)
         : null;
 
       const sortedDocs = [...documents].sort((a, b) => {
@@ -919,6 +986,8 @@
       renderInvoices(sortedDocs);
 
       renderComplianceOverview(complianceOverview);
+      renderActionCenter(actionCenter);
+      renderTimelineCenter(timelineCenter?.items || []);
     }
 
     initSidebarResize();
@@ -933,6 +1002,8 @@
       chartWrap.innerHTML = `<p class="empty">${message}</p>`;
       complianceHealthWrap.innerHTML = `<p class="empty">${message}</p>`;
       complianceDeadlinesWrap.innerHTML = `<p class="empty">${message}</p>`;
+      actionCenterWrap.innerHTML = `<p class="empty">${message}</p>`;
+      timelineCenterWrap.innerHTML = `<p class="empty">${message}</p>`;
     });
   </script>
 </body>

@@ -1,12 +1,24 @@
 import express from "express";
 import { canAccessClient } from "../lib/auth.js";
 import {
+  acknowledgeAlert,
+  assignObligation,
+  attachObligationEvidence,
+  getClientActionCenter,
   getClientComplianceOverview,
+  getClientComplianceReport,
+  getClientTimeline,
+  getFirmComplianceReportCsv,
+  getFirmHeatmap,
   getFirmComplianceOverview,
   getFrameworkComplianceItems,
+  getSyncDiagnostics,
   listFirmAlerts,
   markAlertAsRead,
+  runEscalationRules,
+  runReminderRules,
   syncClientCompliance,
+  updateAlertLifecycle,
 } from "../lib/compliance/service.js";
 
 const router = express.Router();
@@ -53,8 +65,23 @@ router.get("/client/:clientId/overview", async (req, res, next) => {
 router.get("/client/:clientId/events", async (req, res, next) => {
   try {
     const clientId = String(req.params.clientId || "");
-    const overview = await getClientComplianceOverview(req.user, clientId);
-    return res.json({ items: overview.events });
+    const items = await getClientTimeline(req.user, clientId, {
+      source: String(req.query.source || ""),
+      obligationType: String(req.query.obligationType || ""),
+      eventType: String(req.query.eventType || ""),
+      limit: Number(req.query.limit || 200),
+    });
+    return res.json({ items });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.get("/client/:clientId/actions", async (req, res, next) => {
+  try {
+    const clientId = String(req.params.clientId || "");
+    const payload = await getClientActionCenter(req.user, clientId);
+    return res.json(payload);
   } catch (error) {
     return next(error);
   }
@@ -79,6 +106,24 @@ router.get("/firm/alerts", async (req, res, next) => {
   }
 });
 
+router.get("/firm/heatmap", async (req, res, next) => {
+  try {
+    const payload = await getFirmHeatmap(req.user);
+    return res.json(payload);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.get("/diagnostics/sync", async (req, res, next) => {
+  try {
+    const payload = await getSyncDiagnostics(req.user);
+    return res.json(payload);
+  } catch (error) {
+    return next(error);
+  }
+});
+
 router.post("/sync/:clientId", async (req, res, next) => {
   try {
     const clientId = String(req.params.clientId || "");
@@ -97,6 +142,85 @@ router.post("/alerts/:alertId/read", async (req, res, next) => {
     const alertId = String(req.params.alertId || "");
     const item = await markAlertAsRead(req.user, alertId);
     return res.json({ ok: true, item });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post("/alerts/:alertId/lifecycle", async (req, res, next) => {
+  try {
+    const alertId = String(req.params.alertId || "");
+    const item = await updateAlertLifecycle(req.user, alertId, req.body || {});
+    return res.json({ ok: true, item });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post("/alerts/:alertId/acknowledge", async (req, res, next) => {
+  try {
+    const alertId = String(req.params.alertId || "");
+    const item = await acknowledgeAlert(req.user, alertId, String(req.body?.note || ""));
+    return res.json({ ok: true, item });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post("/obligations/:obligationId/assign", async (req, res, next) => {
+  try {
+    const obligationId = String(req.params.obligationId || "");
+    const item = await assignObligation(req.user, obligationId, req.body || {});
+    return res.json({ ok: true, item });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post("/obligations/:obligationId/evidence", async (req, res, next) => {
+  try {
+    const obligationId = String(req.params.obligationId || "");
+    const item = await attachObligationEvidence(req.user, obligationId, req.body || {});
+    return res.json({ ok: true, item });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post("/rules/escalations/run", async (req, res, next) => {
+  try {
+    const payload = await runEscalationRules();
+    return res.json({ ok: true, ...payload });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post("/rules/reminders/run", async (req, res, next) => {
+  try {
+    const payload = await runReminderRules();
+    return res.json({ ok: true, ...payload });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.get("/reports/client/:clientId", async (req, res, next) => {
+  try {
+    const clientId = String(req.params.clientId || "");
+    const report = await getClientComplianceReport(req.user, clientId);
+    return res.json(report);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.get("/reports/firm.csv", async (req, res, next) => {
+  try {
+    const csv = await getFirmComplianceReportCsv(req.user);
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", 'attachment; filename="firm-compliance-report.csv"');
+    return res.send(csv);
   } catch (error) {
     return next(error);
   }
