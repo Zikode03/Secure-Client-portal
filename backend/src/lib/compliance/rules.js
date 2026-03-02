@@ -15,10 +15,11 @@ function countByStatus(obligations) {
   return counts;
 }
 
-export function deriveSnapshot({ sarsState, cipcState }) {
+export function deriveSnapshot({ sarsState, cipcState, csdState }) {
   const obligations = [
     ...(Array.isArray(sarsState?.obligations) ? sarsState.obligations : []),
     ...(Array.isArray(cipcState?.obligations) ? cipcState.obligations : []),
+    ...(Array.isArray(csdState?.obligations) ? csdState.obligations : []),
   ];
   const counts = countByStatus(obligations);
   const total = obligations.length || 1;
@@ -39,6 +40,7 @@ export function deriveSnapshot({ sarsState, cipcState }) {
     score,
     sarsStatus: String(sarsState?.tcsStatus || "green"),
     cipcStatus: String(cipcState?.status || "green"),
+    csdStatus: String(csdState?.status || "green"),
     compliantCount: counts.compliant,
     nonCompliantCount: counts.non_compliant,
     overdueCount: counts.overdue,

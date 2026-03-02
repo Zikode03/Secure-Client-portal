@@ -5,6 +5,7 @@ import { canAccessClient } from "../auth.js";
 import { addAudit } from "../audit.js";
 import { pullSarsState } from "./connector-sars.js";
 import { pullCipcState } from "./connector-cipc.js";
+import { pullCsdState } from "./connector-csd.js";
 import { deriveSnapshot, buildEvents } from "./rules.js";
 
 const db = config.databaseUrl ? getDb() : null;
@@ -70,10 +71,11 @@ async function alertsByClient(clientId, includeResolved = true) {
     .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
 }
 
-async function upsertAccounts(clientId, sars, cipc) {
+async function upsertAccounts(clientId, sars, cipc, csd) {
   const rows = [
     { source: "SARS", reference: `SARS-${clientId}`, status: sars.tcsStatus === "red" ? "attention" : "active", lastError: null, credentialsMeta: { tcsStatus: sars.tcsStatus, retryCount: 0, nextRetryAt: null, syncLatencyMs: 100 }, lastSyncedAt: toDate(sars.fetchedAt) || new Date() },
     { source: "CIPC", reference: `CIPC-${clientId}`, status: cipc.status === "red" ? "attention" : "active", lastError: null, credentialsMeta: { status: cipc.status, retryCount: 0, nextRetryAt: null, syncLatencyMs: 100 }, lastSyncedAt: toDate(cipc.fetchedAt) || new Date() },
+    { source: "CSD", reference: `CSD-${clientId}`, status: csd.status === "red" ? "attention" : "active", lastError: null, credentialsMeta: { status: csd.status, retryCount: 0, nextRetryAt: null, syncLatencyMs: 100 }, lastSyncedAt: toDate(csd.fetchedAt) || new Date() },
   ];
   if (db) {
     for (const row of rows) {
@@ -88,6 +90,14 @@ async function upsertAccounts(clientId, sars, cipc) {
       else store.complianceAccounts.push({ id: utils.makeId("ca"), clientId, ...row, createdAt: nowIso(), updatedAt: nowIso() });
     }
   }
+}
+
+function statusFromObligations(obligations, source) {
+  const subset = obligations.filter((item) => String(item.source || "").toUpperCase() === source.toUpperCase());
+  if (!subset.length) return "unknown";
+  if (subset.some((item) => normStatus(item.status) === "overdue")) return "red";
+  if (subset.some((item) => normStatus(item.status) === "due_soon")) return "amber";
+  return "green";
 }
 
 async function replaceObligations(clientId, obligations) {
@@ -147,11 +157,11 @@ function trend(snaps, windows = [7, 30, 90]) {
 export async function syncClientCompliance(clientId, actorUserId = null) {
   const client = await getClient(clientId);
   if (!client) throw new Error("Client not found");
-  const [sars, cipc] = await Promise.all([pullSarsState(client), pullCipcState(client)]);
-  const snap = deriveSnapshot({ sarsState: sars, cipcState: cipc });
+  const [sars, cipc, csd] = await Promise.all([pullSarsState(client), pullCipcState(client), pullCsdState(client)]);
+  const snap = deriveSnapshot({ sarsState: sars, cipcState: cipc, csdState: csd });
   const obligations = snap.obligations.map((o) => ({ id: utils.makeId("obl"), clientId, source: String(o.source || "Unknown"), obligationType: String(o.obligationType || "Obligation"), periodLabel: o.periodLabel ? String(o.periodLabel) : null, dueDate: toDate(o.dueDate), submittedAt: toDate(o.submittedAt), paidAt: toDate(o.paidAt), status: String(o.status || "compliant"), amountDue: o.amountDue == null ? null : Number(o.amountDue), metadata: o.metadata || {} }));
   snap.score = scoreV2(obligations).complianceScore;
-  await upsertAccounts(clientId, sars, cipc);
+  await upsertAccounts(clientId, sars, cipc, csd);
   await replaceObligations(clientId, obligations);
   await addSnapshot(clientId, snap);
   await addEventsAndAlerts(client, buildEvents({ client, obligations }));
@@ -177,7 +187,8 @@ export async function getClientComplianceOverview(reqUser, clientId) {
   const alerts = await alertsByClient(clientId, true);
   const events = await eventsByClient(clientId, { limit: 50 });
   const risk = scoreV2(obligations);
-  return { clientId, status: snap.overallStatus, score: snap.score, scoreV2: risk.complianceScore, riskPercentV2: risk.riskPercent, sarsStatus: snap.sarsStatus, cipcStatus: snap.cipcStatus, counts: { compliant: snap.compliantCount, nonCompliant: snap.nonCompliantCount, overdue: snap.overdueCount, dueSoon: snap.dueSoonCount }, obligations, alerts, events, trends: trend(await snapshotsWindow(clientId, 90)), lastUpdatedAt: snap.createdAt || snap.sourceTimestamp };
+  const csdStatus = statusFromObligations(obligations, "CSD");
+  return { clientId, status: snap.overallStatus, score: snap.score, scoreV2: risk.complianceScore, riskPercentV2: risk.riskPercent, sarsStatus: snap.sarsStatus, cipcStatus: snap.cipcStatus, csdStatus, counts: { compliant: snap.compliantCount, nonCompliant: snap.nonCompliantCount, overdue: snap.overdueCount, dueSoon: snap.dueSoonCount }, obligations, alerts, events, trends: trend(await snapshotsWindow(clientId, 90)), lastUpdatedAt: snap.createdAt || snap.sourceTimestamp };
 }
 
 export async function getFrameworkComplianceItems(reqUser) {
@@ -185,7 +196,7 @@ export async function getFrameworkComplianceItems(reqUser) {
   if (!clientId) return [];
   const o = await getClientComplianceOverview(reqUser, clientId);
   const mk = (src) => { const l = o.obligations.filter((x) => x.source === src); const c = l.filter((x) => normStatus(x.status) === "compliant").length; return { name: src, requiredControls: l.length, completedControls: c, percent: l.length ? Math.round((c / l.length) * 100) : 0 }; };
-  return [mk("SARS"), mk("CIPC"), { name: "Overall", requiredControls: o.obligations.length, completedControls: o.obligations.filter((x) => normStatus(x.status) === "compliant").length, percent: o.scoreV2 }];
+  return [mk("SARS"), mk("CIPC"), mk("CSD"), { name: "Overall", requiredControls: o.obligations.length, completedControls: o.obligations.filter((x) => normStatus(x.status) === "compliant").length, percent: o.scoreV2 }];
 }
 
 export async function getClientTimeline(reqUser, clientId, filters = {}) {
@@ -211,7 +222,7 @@ export async function getFirmComplianceOverview(reqUser) {
   const items = [];
   for (const c of clients) {
     const o = await getClientComplianceOverview(reqUser, c.id);
-    items.push({ clientId: c.id, clientName: c.name, status: o.status, score: o.score, scoreV2: o.scoreV2, riskPercentV2: o.riskPercentV2, overdueCount: o.counts.overdue, dueSoonCount: o.counts.dueSoon, nonCompliantCount: o.counts.nonCompliant, lastUpdatedAt: o.lastUpdatedAt, sarsStatus: o.sarsStatus, cipcStatus: o.cipcStatus, serviceLine: c.entityType || "General", industry: j(c.profile || {}, {}).industry || "General" });
+    items.push({ clientId: c.id, clientName: c.name, status: o.status, score: o.score, scoreV2: o.scoreV2, riskPercentV2: o.riskPercentV2, overdueCount: o.counts.overdue, dueSoonCount: o.counts.dueSoon, nonCompliantCount: o.counts.nonCompliant, lastUpdatedAt: o.lastUpdatedAt, sarsStatus: o.sarsStatus, cipcStatus: o.cipcStatus, csdStatus: o.csdStatus, serviceLine: c.entityType || "General", industry: j(c.profile || {}, {}).industry || "General" });
   }
   return { totalClients: items.length, green: items.filter((x) => x.status === "green").length, amber: items.filter((x) => x.status === "amber").length, red: items.filter((x) => x.status === "red").length, items };
 }
@@ -350,5 +361,5 @@ export async function getClientComplianceReport(reqUser, clientId) {
 
 export async function getFirmComplianceReportCsv(reqUser) {
   const f = await getFirmComplianceOverview(reqUser);
-  return csv(f.items.map((x) => ({ clientId: x.clientId, clientName: x.clientName, status: x.status, score: x.score, scoreV2: x.scoreV2, riskPercentV2: x.riskPercentV2, overdueCount: x.overdueCount, dueSoonCount: x.dueSoonCount, nonCompliantCount: x.nonCompliantCount, sarsStatus: x.sarsStatus, cipcStatus: x.cipcStatus, lastUpdatedAt: x.lastUpdatedAt })));
+  return csv(f.items.map((x) => ({ clientId: x.clientId, clientName: x.clientName, status: x.status, score: x.score, scoreV2: x.scoreV2, riskPercentV2: x.riskPercentV2, overdueCount: x.overdueCount, dueSoonCount: x.dueSoonCount, nonCompliantCount: x.nonCompliantCount, sarsStatus: x.sarsStatus, cipcStatus: x.cipcStatus, csdStatus: x.csdStatus, lastUpdatedAt: x.lastUpdatedAt })));
 }

@@ -390,6 +390,27 @@
 
     .action-list, .timeline-list { list-style: none; display: grid; gap: 10px; margin-top: 10px; }
     .action-list li, .timeline-list li { border: 1px solid var(--border); border-radius: 10px; background: #fcfdff; padding: 10px; font-size: 13px; }
+    .inline-actions {
+      margin-top: 8px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .tiny-btn {
+      border: 1px solid var(--border);
+      background: #fff;
+      color: #0f172a;
+      border-radius: 8px;
+      padding: 6px 9px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .tiny-btn.primary {
+      background: #0f172a;
+      border-color: #0f172a;
+      color: #fff;
+    }
     .history-panel summary {
       cursor: pointer;
       font-weight: 700;
@@ -622,7 +643,7 @@
 
         <div class="compliance-split">
           <div class="hero-card">
-            <h3 class="section-title">SARS / CIPC Live Status</h3>
+            <h3 class="section-title">SARS / CIPC / CSD Live Status</h3>
             <div id="compliance-health-wrap" class="empty">Loading compliance overview...</div>
           </div>
           <div class="hero-card">
@@ -715,6 +736,9 @@
     const actionCenterWrap = document.getElementById("action-center-wrap");
     const timelineCenterWrap = document.getElementById("timeline-center-wrap");
     const overallStatusPill = document.getElementById("overall-status-pill");
+    const activeClientId = Array.isArray(session.user?.clientIds) && session.user.clientIds.length
+      ? session.user.clientIds[0]
+      : "";
 
     function setSidebarWidth(width) {
       const clamped = Math.max(SIDEBAR_MIN_WIDTH, Math.min(SIDEBAR_MAX_WIDTH, width));
@@ -858,12 +882,15 @@
       overallStatusPill.className = `overall-pill ${statusClass}`;
       const sarsClass = String(overview.sarsStatus || "").toLowerCase() === "green" ? "green" : "red";
       const cipcClass = String(overview.cipcStatus || "").toLowerCase() === "green" ? "green" : "red";
+      const csdNormalized = String(overview.csdStatus || "").toLowerCase();
+      const csdClass = csdNormalized === "green" ? "green" : csdNormalized === "amber" ? "amber" : "red";
 
       complianceHealthWrap.innerHTML = `
         <div class="health-pill ${statusClass}">Overall ${statusLabel}</div>
         <ul class="health-list">
           <li><span>SARS TCS / Filing</span><span class="health-pill ${sarsClass}">${String(overview.sarsStatus || "unknown").toUpperCase()}</span></li>
           <li><span>CIPC AR / BO</span><span class="health-pill ${cipcClass}">${String(overview.cipcStatus || "unknown").toUpperCase()}</span></li>
+          <li><span>CSD Supplier Status</span><span class="health-pill ${csdClass}">${String(overview.csdStatus || "unknown").toUpperCase()}</span></li>
           <li><span>Overdue</span><strong>${overview?.counts?.overdue || 0}</strong></li>
           <li><span>Due Soon</span><strong>${overview?.counts?.dueSoon || 0}</strong></li>
           <li><span>Last Sync</span><strong>${formatDate(overview.lastUpdatedAt)}</strong></li>
@@ -896,6 +923,9 @@
                   <span class="health-pill ${statusTone}">${String(item.status || "").replace("_", " ")}</span>
                 </div>
                 <div style="margin-top:6px;color:var(--muted);">Due: ${formatDate(item.dueDate)}</div>
+                <div class="inline-actions">
+                  <button class="tiny-btn primary" type="button" data-evidence-id="${item.id}">Mark Evidence Complete</button>
+                </div>
               </li>
             `;
           }).join("")}
@@ -918,11 +948,49 @@
                 <span class="mini-badge ${item.type === "alert" ? "risk" : "warn"}">${item.type || "item"}</span>
               </div>
               <div style="margin-top:6px;color:var(--muted);">${item.source || ""}</div>
-              <div style="margin-top:8px;"><a href="${item.directLink || "#"}">Open</a></div>
+              <div class="inline-actions">
+                <a class="tiny-btn" href="${item.directLink || "#"}">Open</a>
+                ${item.alertId ? `<button class="tiny-btn primary" type="button" data-ack-alert="${item.alertId}">Acknowledge</button>` : ""}
+                ${item.obligationId ? `<button class="tiny-btn primary" type="button" data-evidence-id="${item.obligationId}">Mark Evidence Complete</button>` : ""}
+              </div>
             </li>
           `).join("")}
         </ul>
       `;
+    }
+
+    async function apiPost(path, payload) {
+      const headers = window.PortalAuth.authHeaders(session.token);
+      const response = await fetch(`${API_BASE_URL}${path}`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(payload || {}),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(data.error || `Request failed (${response.status})`);
+      }
+      return data;
+    }
+
+    async function acknowledgeAlert(alertId) {
+      if (!alertId) return;
+      await apiPost(`/compliance/alerts/${encodeURIComponent(alertId)}/acknowledge`, {
+        note: "Client acknowledged from dashboard.",
+      });
+      if (window.ClientUI) window.ClientUI.toast("Alert acknowledged", "success");
+    }
+
+    async function markEvidenceComplete(obligationId) {
+      if (!obligationId) return;
+      const notes = window.prompt("Add a short evidence note (optional):", "Evidence submitted by client dashboard") || "";
+      await apiPost(`/compliance/obligations/${encodeURIComponent(obligationId)}/evidence`, {
+        documentId: null,
+        fileName: "Client Evidence Note",
+        notes,
+        complete: true,
+      });
+      if (window.ClientUI) window.ClientUI.toast("Evidence marked complete", "success");
     }
 
     function renderTimelineCenter(items) {
@@ -1019,8 +1087,8 @@
         fetch(`${API_BASE_URL}/requests`, { headers }),
         fetch(`${API_BASE_URL}/notifications?limit=20`, { headers }),
         fetch(`${API_BASE_URL}/compliance/overview`, { headers }).catch(() => null),
-        fetch(`${API_BASE_URL}/compliance/client/${encodeURIComponent(user.clientIds?.[0] || "")}/actions`, { headers }).catch(() => null),
-        fetch(`${API_BASE_URL}/compliance/client/${encodeURIComponent(user.clientIds?.[0] || "")}/events?limit=25`, { headers }).catch(() => null),
+        fetch(`${API_BASE_URL}/compliance/client/${encodeURIComponent(activeClientId)}/actions`, { headers }).catch(() => null),
+        fetch(`${API_BASE_URL}/compliance/client/${encodeURIComponent(activeClientId)}/events?limit=25`, { headers }).catch(() => null),
       ]);
 
       if (!documentsRes.ok) throw new Error("Failed to load documents.");
@@ -1084,6 +1152,28 @@
     }
 
     initSidebarResize();
+    document.addEventListener("click", async (event) => {
+      const ackBtn = event.target.closest("[data-ack-alert]");
+      if (ackBtn) {
+        try {
+          await acknowledgeAlert(ackBtn.getAttribute("data-ack-alert"));
+          await loadDashboard();
+        } catch (error) {
+          if (window.ClientUI) window.ClientUI.toast(error.message || "Failed to acknowledge alert", "error");
+        }
+        return;
+      }
+
+      const evidenceBtn = event.target.closest("[data-evidence-id]");
+      if (evidenceBtn) {
+        try {
+          await markEvidenceComplete(evidenceBtn.getAttribute("data-evidence-id"));
+          await loadDashboard();
+        } catch (error) {
+          if (window.ClientUI) window.ClientUI.toast(error.message || "Failed to attach evidence", "error");
+        }
+      }
+    });
     loadDashboard().catch((error) => {
       console.error(error);
       if (window.ClientUI) window.ClientUI.toast(error?.message || "Failed to load dashboard.", "error");
