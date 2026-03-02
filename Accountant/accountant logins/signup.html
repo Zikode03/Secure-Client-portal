@@ -314,41 +314,103 @@ button:hover {
 
 </div>
 
+<script src="../../shared/portal-config.js"></script>
+<script src="../../shared/portal-auth.js"></script>
 <script>
+const API_BASE_URL =
+  window.PortalConfig && window.PortalConfig.API_BASE_URL
+    ? window.PortalConfig.API_BASE_URL
+    : "http://127.0.0.1:4010/api";
+
 // Show / Hide Password
 function togglePassword() {
-    const password = document.getElementById("password");
-    password.type = password.type === "password" ? "text" : "password";
+  const password = document.getElementById("password");
+  password.type = password.type === "password" ? "text" : "password";
 }
 
 // Password Strength Checker
 document.getElementById("password").addEventListener("input", function () {
-    let value = this.value;
-    let strength = 0;
+  const value = this.value;
+  let strength = 0;
 
-    if (value.length >= 6) strength++;
-    if (value.match(/[A-Z]/)) strength++;
-    if (value.match(/[0-9]/)) strength++;
-    if (value.match(/[^A-Za-z0-9]/)) strength++;
+  if (value.length >= 8) strength++;
+  if (/[A-Z]/.test(value)) strength++;
+  if (/[0-9]/.test(value)) strength++;
+  if (/[^A-Za-z0-9]/.test(value)) strength++;
 
-    for (let i = 1; i <= 4; i++) {
-        document.getElementById("b" + i).classList.remove("active");
-    }
+  for (let i = 1; i <= 4; i++) {
+    document.getElementById("b" + i).classList.remove("active");
+  }
 
-    for (let i = 1; i <= strength; i++) {
-        document.getElementById("b" + i).classList.add("active");
-    }
+  for (let i = 1; i <= strength; i++) {
+    document.getElementById("b" + i).classList.add("active");
+  }
 
-    const text = ["Weak", "Fair", "Good", "Strong"];
-    document.getElementById("strengthText").innerText = strength ? text[strength - 1] : "";
+  const text = ["Weak", "Fair", "Good", "Strong"];
+  document.getElementById("strengthText").innerText = strength ? text[strength - 1] : "";
 });
 
-// Form Submit
-document.getElementById("signupForm").addEventListener("submit", function (e) {
-    e.preventDefault();
-    alert("Account Created Successfully!");
+const signupForm = document.getElementById("signupForm");
+const submitBtn = signupForm.querySelector("button[type='submit']");
+const messageEl = document.createElement("p");
+messageEl.id = "signupMessage";
+messageEl.style.marginTop = "10px";
+messageEl.style.fontSize = "14px";
+signupForm.appendChild(messageEl);
+
+signupForm.addEventListener("submit", async function (e) {
+  e.preventDefault();
+
+  const fullName = document.getElementById("fullName").value.trim();
+  const email = document.getElementById("professionalEmail").value.trim().toLowerCase();
+  const password = document.getElementById("password").value;
+
+  if (!fullName || !email || !password) {
+    messageEl.style.color = "#b91c1c";
+    messageEl.textContent = "Please fill in full name, email, and password.";
+    return;
+  }
+
+  submitBtn.disabled = true;
+  messageEl.style.color = "#334155";
+  messageEl.textContent = "Creating account...";
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/signup`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fullName,
+        email,
+        password,
+        role: "accountant"
+      })
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(data.error || "Signup failed");
+    }
+
+    messageEl.style.color = "#166534";
+    messageEl.textContent = "Account created. Redirecting to login...";
+
+    setTimeout(() => {
+      window.location.href = "login.html";
+    }, 800);
+  } catch (error) {
+    messageEl.style.color = "#b91c1c";
+    if (error instanceof TypeError) {
+      messageEl.textContent = "Unable to reach backend API. Confirm backend is running on http://127.0.0.1:4010.";
+    } else {
+      messageEl.textContent = error.message || "Signup failed.";
+    }
+  } finally {
+    submitBtn.disabled = false;
+  }
 });
 </script>
 
 </body>
 </html>
+

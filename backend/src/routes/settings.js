@@ -22,6 +22,8 @@ function buildProfileResponse(user) {
     lastName: user.profile?.lastName || "",
     email: user.email || "",
     phone: user.profile?.phone || "",
+    professionalTitle: user.profile?.professionalTitle || "",
+    certification: user.profile?.certification || "",
     role: user.role,
     clientIds: Array.isArray(user.clientIds) ? user.clientIds : [],
     createdAt: user.createdAt,
@@ -60,12 +62,14 @@ router.patch("/profile", async (req, res) => {
   const user = await getUser(req.user.id);
   if (!user) return res.status(404).json({ error: "User not found" });
 
-  const { firstName, lastName, phone, email } = req.body || {};
+  const { firstName, lastName, phone, email, professionalTitle, certification } = req.body || {};
   const profile = user.profile || {};
 
   if (firstName !== undefined) profile.firstName = String(firstName).trim();
   if (lastName !== undefined) profile.lastName = String(lastName).trim();
   if (phone !== undefined) profile.phone = String(phone).trim();
+  if (professionalTitle !== undefined) profile.professionalTitle = String(professionalTitle).trim();
+  if (certification !== undefined) profile.certification = String(certification).trim();
 
   const nextEmail = email !== undefined ? String(email).trim().toLowerCase() : user.email;
   const nextFullName = `${profile.firstName || ""} ${profile.lastName || ""}`.trim() || user.fullName;

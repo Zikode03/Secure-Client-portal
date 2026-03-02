@@ -616,7 +616,10 @@ tbody tr {
   <div class="table-card">
     <div class="table-head">
       <h3>Firm Compliance Risk Monitor</h3>
-      <button id="complianceRefreshBtn"><i class="fa-solid fa-rotate"></i> Refresh</button>
+      <div style="display:flex;gap:8px;">
+        <button id="complianceRefreshBtn"><i class="fa-solid fa-rotate"></i> Refresh</button>
+        <button id="complianceExportBtn"><i class="fa-solid fa-download"></i> Export CSV</button>
+      </div>
     </div>
     <div class="card-body" id="firmComplianceWrap" style="padding:16px;">
       <p>Loading compliance statuses...</p>
@@ -741,10 +744,17 @@ function statusBadgeClass(status) {
 }
 
 async function runReviewAction(documentId, action) {
+  let note = "";
+  if (action === "reject" || action === "request_fix") {
+    note = window.prompt("Add a review note (required for this action):", "") || "";
+    if (!note.trim()) {
+      throw new Error("Review note is required for reject/request-fix actions.");
+    }
+  }
   const response = await fetch(`${API_BASE_URL}/reviews/${encodeURIComponent(documentId)}/action`, {
     method: "POST",
     headers: authHeaders(),
-    body: JSON.stringify({ action })
+    body: JSON.stringify({ action, note })
   });
   if (!response.ok) throw new Error("Review action failed");
 }
@@ -813,6 +823,15 @@ function compliancePill(status) {
   return "pill amber";
 }
 
+async function updateComplianceAlertLifecycle(alertId, status, ownerUserId = "", completionNotes = "") {
+  const response = await fetch(`${API_BASE_URL}/compliance/alerts/${encodeURIComponent(alertId)}/lifecycle`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ status, ownerUserId: ownerUserId || null, completionNotes }),
+  });
+  if (!response.ok) throw new Error("Failed to update compliance alert");
+}
+
 async function loadFirmCompliance() {
   const [overviewRes, alertsRes, heatmapRes, diagnosticsRes] = await Promise.all([
     fetch(`${API_BASE_URL}/compliance/firm/overview`, { headers: authHeaders() }),
@@ -871,6 +890,12 @@ async function loadFirmCompliance() {
       <div>
         <div style="font-weight:700;">${item.title}</div>
         <div style="font-size:12px;color:#64748b;">${item.message || ""}</div>
+        <div style="font-size:12px;color:#64748b;margin-top:6px;">${item.clientId || "-"} - ${item.source || "-"}</div>
+        <div style="display:flex;gap:6px;margin-top:8px;">
+          <button class="icon-btn" data-alert-lifecycle="${item.id}" data-status="in_progress" title="Mark In Progress"><i class="fa-solid fa-person-running"></i></button>
+          <button class="icon-btn" data-alert-lifecycle="${item.id}" data-status="resolved" title="Resolve"><i class="fa-solid fa-circle-check"></i></button>
+          <button class="icon-btn red" data-alert-lifecycle="${item.id}" data-status="dismissed" title="Dismiss"><i class="fa-solid fa-ban"></i></button>
+        </div>
       </div>
       <span class="${compliancePill(item.severity === "high" ? "red" : item.severity === "medium" ? "amber" : "green")}">${String(item.severity || "low").toUpperCase()}</span>
     </div>
@@ -936,12 +961,30 @@ document.addEventListener("click", async (event) => {
   const viewBtn = event.target.closest("[data-view-id]");
   if (viewBtn) {
     window.location.href = `documentview.html?id=${encodeURIComponent(viewBtn.getAttribute("data-view-id"))}`;
+    return;
+  }
+
+  const lifecycleBtn = event.target.closest("[data-alert-lifecycle][data-status]");
+  if (lifecycleBtn) {
+    try {
+      await updateComplianceAlertLifecycle(
+        lifecycleBtn.getAttribute("data-alert-lifecycle"),
+        lifecycleBtn.getAttribute("data-status"),
+      );
+      await loadFirmCompliance();
+      await loadAudits();
+    } catch (error) {
+      console.error(error);
+    }
   }
 });
 
 document.getElementById("auditEntityFilter").addEventListener("change", loadAudits);
 document.getElementById("complianceRefreshBtn")?.addEventListener("click", () => {
   loadFirmCompliance().catch((error) => console.error(error));
+});
+document.getElementById("complianceExportBtn")?.addEventListener("click", () => {
+  window.location.href = `${API_BASE_URL}/compliance/reports/firm.csv`;
 });
 
 loadDashboard().then(loadAudits).catch((error) => {

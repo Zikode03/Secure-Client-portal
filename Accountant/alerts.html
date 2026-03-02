@@ -213,6 +213,58 @@ button {
   color: #64748b;
 }
 
+.notif-panel {
+  margin-top: 24px;
+}
+
+.notif-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.notif-item {
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  margin-bottom: 8px;
+}
+
+.notif-item.unread {
+  background: #eff6ff;
+}
+
+.notif-item h4 {
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.notif-item p {
+  margin-bottom: 4px;
+}
+
+.pref-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+
+.pref-row label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: #fff;
+  font-size: 12px;
+}
+
 </style>
 </head>
 <body>
@@ -258,107 +310,354 @@ button {
   <div class="tabs">
     <div class="tab-buttons">
       <button class="tab-btn active" data-tab="all">All</button>
-      <button class="tab-btn" data-tab="missing">Missing</button>
-      <button class="tab-btn" data-tab="expiring">Expiring</button>
-      <button class="tab-btn" data-tab="overdue">Overdue</button>
-      <button class="tab-btn" data-tab="security">Security</button>
+      <button class="tab-btn" data-tab="open">Open</button>
+      <button class="tab-btn" data-tab="escalated">Escalated</button>
+      <button class="tab-btn" data-tab="resolved">Resolved</button>
+      <button class="tab-btn" data-tab="high">High Severity</button>
     </div>
 
     <div id="alertsContainer"></div>
   </div>
 
+  <div class="card notif-panel">
+    <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px;">
+      <h3>Account Notifications</h3>
+      <div class="notif-actions">
+        <button class="btn-outline" id="notifReloadBtn" type="button">Reload</button>
+        <button class="btn-outline" id="notifMarkSelectedBtn" type="button">Mark Selected Read</button>
+        <button class="btn-outline" id="notifMarkAllBtn" type="button">Mark All Read</button>
+      </div>
+    </div>
+    <div id="notificationsContainer"></div>
+    <div class="pref-row">
+      <label><input type="checkbox" id="prefInApp"> In-app</label>
+      <label><input type="checkbox" id="prefEmail"> Email</label>
+      <label><input type="checkbox" id="prefSms"> SMS</label>
+      <label><input type="checkbox" value="30" class="prefDay">30d</label>
+      <label><input type="checkbox" value="14" class="prefDay">14d</label>
+      <label><input type="checkbox" value="7" class="prefDay">7d</label>
+      <label><input type="checkbox" value="3" class="prefDay">3d</label>
+      <label><input type="checkbox" value="1" class="prefDay">1d</label>
+      <button class="btn-outline" id="savePrefsBtn" type="button">Save Preferences</button>
+    </div>
+  </div>
+
 </div>
 
+<script src="../shared/portal-config.js"></script>
+<script src="../shared/portal-auth.js"></script>
+<script src="accountant-nav.js"></script>
 <script>
-
-const alerts = [
-  {id:"1", type:"missing", title:"Missing bank statement", desc:"December 2025 statement not uploaded", client:"Delta Systems", time:"5 hours ago", severity:"critical"},
-  {id:"2", type:"expiring", title:"Contract expiring soon", desc:"NDA expires in 15 days", client:"BlueOcean Ltd", time:"1 day ago", severity:"warning"},
-  {id:"3", type:"rejected", title:"Invoice rejected", desc:"INV-1039 requires corrections", client:"Delta Systems", time:"2 days ago", severity:"critical"},
-  {id:"4", type:"security", title:"Failed login attempts", desc:"3 failed attempts detected", client:"System", time:"6 hours ago", severity:"info"}
-];
-
-let dismissed = new Set();
+const API_BASE_URL = window.PortalConfig?.API_BASE_URL || "http://127.0.0.1:4010/api";
+const session = window.PortalAuth.requireRole("accountant", "accountant logins/login.html");
+if (!session) throw new Error("Unauthorized");
+const { token } = session;
+let alerts = [];
 let activeTab = "all";
+let notifications = [];
+const selectedNotificationIds = new Set();
+
+function authHeaders() {
+  return window.PortalAuth.authHeaders(token);
+}
+
+function severityClass(value) {
+  const s = String(value || "").toLowerCase();
+  if (s === "high" || s === "critical") return "critical";
+  if (s === "medium" || s === "warning") return "warning";
+  return "info";
+}
+
+function statusFromTab(alert) {
+  const status = String(alert.status || "open").toLowerCase();
+  const sev = String(alert.severity || "low").toLowerCase();
+  if (activeTab === "all") return true;
+  if (activeTab === "high") return sev === "high" || sev === "critical";
+  return status === activeTab;
+}
+
+function shortTime(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleString();
+}
+
+function updateCounts() {
+  const openItems = alerts.filter((item) => {
+    const s = String(item.status || "").toLowerCase();
+    return s === "open" || s === "acknowledged" || s === "in_progress" || s === "escalated";
+  });
+  document.getElementById("criticalCount").textContent = openItems.filter((item) => ["high", "critical"].includes(String(item.severity || "").toLowerCase())).length;
+  document.getElementById("warningCount").textContent = openItems.filter((item) => String(item.severity || "").toLowerCase() === "medium").length;
+  document.getElementById("resolvedCount").textContent = alerts.filter((item) => String(item.status || "").toLowerCase() === "resolved").length;
+}
 
 function renderAlerts() {
   const container = document.getElementById("alertsContainer");
-  container.innerHTML = "";
-
-  const filtered = alerts.filter(a => !dismissed.has(a.id))
-                         .filter(a => activeTab === "all" || a.type === activeTab);
-
-  if(filtered.length === 0){
+  const filtered = alerts.filter(statusFromTab);
+  updateCounts();
+  if (!filtered.length) {
     container.innerHTML = `
       <div class="card empty-state">
         <i class="fa-solid fa-circle-check fa-2x"></i>
-        <p>All clear. No alerts here.</p>
+        <p>No alerts for this filter.</p>
       </div>`;
-    updateCounts();
     return;
   }
-
-  filtered.forEach(alert => {
-    const div = document.createElement("div");
-    div.className = "alert-card";
-
-    div.innerHTML = `
-      <div class="alert-icon ${alert.severity}-icon">
-        <i class="fa-solid fa-exclamation"></i>
-      </div>
-      <div class="alert-content">
-        <div class="alert-title">
-          ${alert.title}
-          <span class="badge badge-${alert.severity}">${alert.severity}</span>
+  container.innerHTML = filtered.map((alert) => {
+    const sev = severityClass(alert.severity);
+    const lifecycle = String(alert.status || "open").toLowerCase();
+    return `
+      <div class="alert-card">
+        <div class="alert-icon ${sev}-icon"><i class="fa-solid fa-exclamation"></i></div>
+        <div class="alert-content">
+          <div class="alert-title">
+            ${alert.title || "Alert"}
+            <span class="badge badge-${sev}">${String(alert.severity || "low").toUpperCase()}</span>
+            <span class="badge badge-${lifecycle === "resolved" ? "info" : "warning"}">${lifecycle.replace("_", " ")}</span>
+          </div>
+          <div>${alert.message || ""}</div>
+          <div class="alert-meta">
+            <span><i class="fa-solid fa-building"></i> ${alert.clientId || "-"}</span>
+            <span><i class="fa-solid fa-diagram-project"></i> ${alert.source || "-"}</span>
+            <span><i class="fa-solid fa-clock"></i> ${shortTime(alert.createdAt || alert.updatedAt)}</span>
+          </div>
         </div>
-        <div>${alert.desc}</div>
-        <div class="alert-meta">
-          <span><i class="fa-solid fa-building"></i> ${alert.client}</span>
-          <span><i class="fa-solid fa-clock"></i> ${alert.time}</span>
+        <div class="alert-actions">
+          <button class="btn-outline" data-lifecycle-id="${alert.id}">Lifecycle</button>
+          <button class="btn-outline" data-assign-id="${alert.id}">Assign</button>
+          <button class="btn-ghost" data-resolve-id="${alert.id}">Resolve</button>
         </div>
-      </div>
-      <div class="alert-actions">
-        <button class="btn-outline">Take Action</button>
-        <button class="btn-ghost" onclick="dismiss('${alert.id}')">Dismiss</button>
       </div>
     `;
-    container.appendChild(div);
-  });
-
-  updateCounts();
+  }).join("");
 }
 
-function dismiss(id){
-  dismissed.add(id);
+function renderNotifications() {
+  const container = document.getElementById("notificationsContainer");
+  if (!notifications.length) {
+    container.innerHTML = `<div class="empty-state"><p>No notifications available.</p></div>`;
+    return;
+  }
+  container.innerHTML = notifications.map((item) => `
+    <div class="notif-item ${item.read ? "" : "unread"}">
+      <input type="checkbox" data-notification-select="${item.id}" ${selectedNotificationIds.has(item.id) ? "checked" : ""}>
+      <div style="flex:1;">
+        <h4>${item.title || "Notification"}</h4>
+        <p>${item.message || ""}</p>
+        <small>${shortTime(item.createdAt)} - ${item.type || "update"}</small>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn-ghost" data-notification-read="${item.id}" type="button">${item.read ? "Read" : "Mark read"}</button>
+        <button class="btn-ghost" data-notification-dismiss="${item.id}" type="button">Dismiss</button>
+        <button class="btn-ghost" data-notification-snooze="${item.id}" data-hours="24" type="button">Snooze 24h</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+async function loadNotifications() {
+  const response = await fetch(`${API_BASE_URL}/notifications?limit=50`, { headers: authHeaders() });
+  if (!response.ok) throw new Error("Failed to load notifications");
+  const payload = await response.json();
+  notifications = Array.isArray(payload.items) ? payload.items : [];
+  renderNotifications();
+}
+
+async function loadNotificationPreferences() {
+  const response = await fetch(`${API_BASE_URL}/notifications/preferences`, { headers: authHeaders() });
+  if (!response.ok) return;
+  const payload = await response.json().catch(() => ({}));
+  const prefs = payload.preferences || {};
+  const channels = prefs.channels || {};
+  const days = Array.isArray(prefs.reminderDays) ? prefs.reminderDays : [30, 14, 7, 3, 1];
+  document.getElementById("prefInApp").checked = channels.inApp !== false;
+  document.getElementById("prefEmail").checked = channels.email !== false;
+  document.getElementById("prefSms").checked = channels.sms === true;
+  document.querySelectorAll(".prefDay").forEach((cb) => { cb.checked = days.includes(Number(cb.value)); });
+}
+
+async function saveNotificationPreferences() {
+  const reminderDays = Array.from(document.querySelectorAll(".prefDay:checked")).map((cb) => Number(cb.value)).sort((a, b) => b - a);
+  const response = await fetch(`${API_BASE_URL}/notifications/preferences`, {
+    method: "PATCH",
+    headers: authHeaders(),
+    body: JSON.stringify({
+      channels: {
+        inApp: document.getElementById("prefInApp").checked,
+        email: document.getElementById("prefEmail").checked,
+        sms: document.getElementById("prefSms").checked,
+      },
+      reminderDays,
+    }),
+  });
+  if (!response.ok) throw new Error("Failed to save preferences");
+}
+
+async function loadAlerts(includeResolved = true) {
+  const response = await fetch(`${API_BASE_URL}/compliance/firm/alerts?includeResolved=${includeResolved ? "true" : "false"}`, {
+    headers: authHeaders(),
+  });
+  if (!response.ok) throw new Error("Failed to load alerts");
+  const payload = await response.json();
+  alerts = Array.isArray(payload.items) ? payload.items : [];
   renderAlerts();
 }
 
-function updateCounts(){
-  const active = alerts.filter(a => !dismissed.has(a.id));
-  document.getElementById("criticalCount").textContent =
-    active.filter(a => a.severity === "critical").length;
-  document.getElementById("warningCount").textContent =
-    active.filter(a => a.severity === "warning").length;
-  document.getElementById("resolvedCount").textContent =
-    dismissed.size;
+async function updateLifecycle(alertId, status, ownerUserId = "", completionNotes = "") {
+  const response = await fetch(`${API_BASE_URL}/compliance/alerts/${encodeURIComponent(alertId)}/lifecycle`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ status, ownerUserId: ownerUserId || null, completionNotes }),
+  });
+  if (!response.ok) throw new Error("Failed to update lifecycle");
 }
 
-document.querySelectorAll(".tab-btn").forEach(btn=>{
-  btn.addEventListener("click", ()=>{
-    document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+async function assignFromAlert(alertId) {
+  const alert = alerts.find((item) => item.id === alertId);
+  if (!alert) return;
+  const ownerUserId = window.prompt("Assign owner user ID (optional):", alert.assignedUserId || "") || "";
+  const dueDate = window.prompt("Owner due date (YYYY-MM-DD, optional):", "") || "";
+  const completionNotes = window.prompt("Assignment notes (optional):", "") || "";
+
+  if (alert.obligationType && alert.clientId) {
+    const overviewRes = await fetch(`${API_BASE_URL}/compliance/client/${encodeURIComponent(alert.clientId)}/overview`, { headers: authHeaders() });
+    if (overviewRes.ok) {
+      const overview = await overviewRes.json().catch(() => ({}));
+      const obligations = Array.isArray(overview.obligations) ? overview.obligations : [];
+      const obligation = obligations.find((item) => String(item.obligationType || "").toLowerCase() === String(alert.obligationType || "").toLowerCase());
+      if (obligation) {
+        await fetch(`${API_BASE_URL}/compliance/obligations/${encodeURIComponent(obligation.id)}/assign`, {
+          method: "POST",
+          headers: authHeaders(),
+          body: JSON.stringify({ ownerUserId: ownerUserId || null, dueDate: dueDate || null, completionNotes }),
+        });
+      }
+    }
+  }
+
+  await updateLifecycle(alertId, "in_progress", ownerUserId, completionNotes || `Assigned ${ownerUserId || "owner"} with due ${dueDate || "n/a"}`);
+}
+
+document.querySelectorAll(".tab-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tab-btn").forEach((item) => item.classList.remove("active"));
     btn.classList.add("active");
     activeTab = btn.dataset.tab;
     renderAlerts();
   });
 });
 
-document.getElementById("dismissAll").addEventListener("click", ()=>{
-  alerts.forEach(a => dismissed.add(a.id));
-  renderAlerts();
+document.getElementById("dismissAll").addEventListener("click", async () => {
+  const openItems = alerts.filter((item) => {
+    const s = String(item.status || "").toLowerCase();
+    return s === "open" || s === "acknowledged" || s === "in_progress" || s === "escalated";
+  });
+  for (const item of openItems) {
+    await updateLifecycle(item.id, "dismissed", "", "Bulk dismissed from alerts page");
+  }
+  await loadAlerts(true);
 });
 
-renderAlerts();
+document.getElementById("notifReloadBtn").addEventListener("click", () => {
+  loadNotifications().catch(() => {});
+});
 
+document.getElementById("notifMarkAllBtn").addEventListener("click", async () => {
+  await fetch(`${API_BASE_URL}/notifications/read-all`, { method: "POST", headers: authHeaders(), body: "{}" });
+  selectedNotificationIds.clear();
+  await loadNotifications();
+});
+
+document.getElementById("notifMarkSelectedBtn").addEventListener("click", async () => {
+  const ids = Array.from(selectedNotificationIds);
+  if (!ids.length) return;
+  await fetch(`${API_BASE_URL}/notifications/read-bulk`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ ids }),
+  });
+  selectedNotificationIds.clear();
+  await loadNotifications();
+});
+
+document.getElementById("savePrefsBtn").addEventListener("click", async () => {
+  try {
+    await saveNotificationPreferences();
+  } catch (_error) {
+    // ignore
+  }
+});
+
+document.addEventListener("click", async (event) => {
+  const selectCb = event.target.closest("[data-notification-select]");
+  if (selectCb) {
+    const id = selectCb.getAttribute("data-notification-select");
+    if (selectCb.checked) selectedNotificationIds.add(id);
+    else selectedNotificationIds.delete(id);
+    return;
+  }
+
+  const readBtn = event.target.closest("[data-notification-read]");
+  if (readBtn) {
+    const id = readBtn.getAttribute("data-notification-read");
+    await fetch(`${API_BASE_URL}/notifications/${encodeURIComponent(id)}/read`, { method: "POST", headers: authHeaders(), body: "{}" });
+    await loadNotifications();
+    return;
+  }
+
+  const dismissNotifBtn = event.target.closest("[data-notification-dismiss]");
+  if (dismissNotifBtn) {
+    const id = dismissNotifBtn.getAttribute("data-notification-dismiss");
+    await fetch(`${API_BASE_URL}/notifications/${encodeURIComponent(id)}/dismiss`, { method: "POST", headers: authHeaders(), body: "{}" });
+    await loadNotifications();
+    return;
+  }
+
+  const snoozeNotifBtn = event.target.closest("[data-notification-snooze]");
+  if (snoozeNotifBtn) {
+    const id = snoozeNotifBtn.getAttribute("data-notification-snooze");
+    const hours = Number(snoozeNotifBtn.getAttribute("data-hours") || 24);
+    await fetch(`${API_BASE_URL}/notifications/${encodeURIComponent(id)}/snooze`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ hours }),
+    });
+    await loadNotifications();
+    return;
+  }
+
+  const lifecycleBtn = event.target.closest("[data-lifecycle-id]");
+  if (lifecycleBtn) {
+    const alertId = lifecycleBtn.getAttribute("data-lifecycle-id");
+    const status = window.prompt("Set status: open, acknowledged, in_progress, escalated, resolved, dismissed", "in_progress");
+    if (!status) return;
+    const owner = window.prompt("Owner user ID (optional):", "") || "";
+    const note = window.prompt("Completion note (optional):", "") || "";
+    await updateLifecycle(alertId, status, owner, note);
+    await loadAlerts(true);
+    return;
+  }
+
+  const assignBtn = event.target.closest("[data-assign-id]");
+  if (assignBtn) {
+    await assignFromAlert(assignBtn.getAttribute("data-assign-id"));
+    await loadAlerts(true);
+    return;
+  }
+
+  const resolveBtn = event.target.closest("[data-resolve-id]");
+  if (resolveBtn) {
+    await updateLifecycle(resolveBtn.getAttribute("data-resolve-id"), "resolved", "", "Resolved from alerts page");
+    await loadAlerts(true);
+  }
+});
+
+loadAlerts(true).catch((error) => {
+  document.getElementById("alertsContainer").innerHTML = `<div class="card empty-state"><p>${error.message || "Failed to load alerts."}</p></div>`;
+});
+loadNotifications().catch(() => {});
+loadNotificationPreferences().catch(() => {});
 </script>
 
 </body>

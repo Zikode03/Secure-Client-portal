@@ -336,22 +336,22 @@ body{
     <div class="form-grid">
       <div class="form-group">
         <label>Full Name</label>
-        <input type="text" value="Alex Rivers">
+        <input id="fullNameInput" type="text" value="Alex Rivers">
       </div>
 
       <div class="form-group">
         <label>Professional Title</label>
-        <input type="text" value="Senior Tax Accountant">
+        <input id="professionalTitleInput" type="text" value="Senior Tax Accountant">
       </div>
 
       <div class="form-group">
         <label>Email Address</label>
-        <input type="email" value="alex.rivers@standardaccounting.com">
+        <input id="emailInput" type="email" value="alex.rivers@standardaccounting.com">
       </div>
 
       <div class="form-group">
         <label>Certification</label>
-        <select>
+        <select id="certificationSelect">
           <option>CPA</option>
           <option>ACCA</option>
           <option>CFA</option>
@@ -360,8 +360,9 @@ body{
     </div>
 
     <br>
-    <button class="btn btn-outline">Cancel</button>
-    <button class="btn btn-primary">Save Changes</button>
+    <button class="btn btn-outline" id="profileCancelBtn" type="button">Cancel</button>
+    <button class="btn btn-primary" id="profileSaveBtn" type="button">Save Changes</button>
+    <div id="profileMessage" class="page-sub" style="margin-top:10px;margin-bottom:0;"></div>
   </div>
 
   <!-- SECURITY + CONNECTED -->
@@ -371,14 +372,17 @@ body{
       <h3>Security Settings <span class="badge-secure">Highly Secure</span></h3>
 
       <p><strong>Two-Factor Authentication</strong></p>
-      <small>Enabled</small>
+      <small id="twoFactorStatus">Enabled</small>
       <br><br>
 
       <p><strong>Password Management</strong></p>
-      <small>Last changed 45 days ago</small>
+      <small id="passwordStatus">Last changed -</small>
       <br><br>
 
-      <button class="btn btn-outline">Update Password</button>
+      <button class="btn btn-outline" id="securityToggleBtn" type="button">Toggle 2FA</button>
+      <button class="btn btn-outline" id="securitySmsBtn" type="button">Toggle SMS 2FA</button>
+      <button class="btn btn-outline" id="updatePasswordBtn" type="button">Update Password</button>
+      <div id="securityMessage" class="page-sub" style="margin-top:10px;margin-bottom:0;"></div>
     </div>
 
     <div class="card">
@@ -405,6 +409,144 @@ body{
 
 </div>
 </div>
+<script src="../shared/portal-config.js"></script>
+<script src="../shared/portal-auth.js"></script>
+<script src="../shared/client-ui.js"></script>
+<script>
+const API_BASE_URL = window.PortalConfig?.API_BASE_URL || "http://127.0.0.1:4010/api";
+const session = window.PortalAuth.requireRole("accountant", "accountant logins/login.html");
+if (!session) throw new Error("Unauthorized");
+
+function authHeaders() {
+  return window.PortalAuth.authHeaders(session.token);
+}
+
+function splitName(fullName) {
+  const raw = String(fullName || "").trim();
+  if (!raw) return { firstName: "", lastName: "" };
+  const parts = raw.split(/\s+/);
+  return { firstName: parts[0], lastName: parts.slice(1).join(" ") };
+}
+
+function setMessage(id, message, kind = "info") {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = message || "";
+  el.style.color = kind === "error" ? "#b91c1c" : kind === "success" ? "#166534" : "#64748b";
+}
+
+let loadedProfile = null;
+let loadedSecurity = null;
+
+async function loadSettings() {
+  const [profileRes, securityRes] = await Promise.all([
+    fetch(`${API_BASE_URL}/settings/profile`, { headers: authHeaders() }),
+    fetch(`${API_BASE_URL}/settings/security`, { headers: authHeaders() }),
+  ]);
+  if (!profileRes.ok || !securityRes.ok) throw new Error("Failed to load settings");
+  loadedProfile = await profileRes.json();
+  loadedSecurity = await securityRes.json();
+
+  const fullName = loadedProfile.fullName || `${loadedProfile.firstName || ""} ${loadedProfile.lastName || ""}`.trim();
+  document.getElementById("fullNameInput").value = fullName || "";
+  document.getElementById("emailInput").value = loadedProfile.email || "";
+  document.getElementById("professionalTitleInput").value = loadedProfile.professionalTitle || "";
+  const cert = loadedProfile.certification || "CPA";
+  const certSelect = document.getElementById("certificationSelect");
+  if (![...certSelect.options].some((opt) => opt.value === cert)) {
+    const option = document.createElement("option");
+    option.value = cert;
+    option.textContent = cert;
+    certSelect.appendChild(option);
+  }
+  certSelect.value = cert;
+
+  document.getElementById("twoFactorStatus").textContent = loadedSecurity.twoFactorEnabled ? "Enabled" : "Disabled";
+  document.getElementById("passwordStatus").textContent = `Last changed ${loadedSecurity.lastPasswordChange ? new Date(loadedSecurity.lastPasswordChange).toLocaleDateString() : "-"}`;
+}
+
+async function saveProfile() {
+  const fullName = document.getElementById("fullNameInput").value.trim();
+  const email = document.getElementById("emailInput").value.trim();
+  const professionalTitle = document.getElementById("professionalTitleInput").value.trim();
+  const certification = document.getElementById("certificationSelect").value;
+  const split = splitName(fullName);
+
+  const response = await fetch(`${API_BASE_URL}/settings/profile`, {
+    method: "PATCH",
+    headers: authHeaders(),
+    body: JSON.stringify({
+      firstName: split.firstName,
+      lastName: split.lastName,
+      email,
+      professionalTitle,
+      certification,
+    }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || "Failed to save profile");
+  setMessage("profileMessage", "Profile saved successfully.", "success");
+  await loadSettings();
+}
+
+async function toggleSecurityField(field) {
+  const payload = {};
+  payload[field] = !Boolean(loadedSecurity && loadedSecurity[field]);
+  const response = await fetch(`${API_BASE_URL}/settings/security`, {
+    method: "PATCH",
+    headers: authHeaders(),
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || "Failed to update security setting");
+  setMessage("securityMessage", "Security setting updated.", "success");
+  await loadSettings();
+}
+
+async function updatePassword() {
+  const currentPassword = window.prompt("Current password:");
+  if (!currentPassword) return;
+  const newPassword = window.prompt("New password (min 8 chars):");
+  if (!newPassword) return;
+  const response = await fetch(`${API_BASE_URL}/settings/security/change-password`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || "Failed to update password");
+  setMessage("securityMessage", "Password updated successfully.", "success");
+  await loadSettings();
+}
+
+document.getElementById("profileSaveBtn").addEventListener("click", async () => {
+  try { await saveProfile(); } catch (error) { setMessage("profileMessage", error.message || "Save failed.", "error"); }
+});
+document.getElementById("profileCancelBtn").addEventListener("click", () => {
+  if (loadedProfile) {
+    const fullName = loadedProfile.fullName || `${loadedProfile.firstName || ""} ${loadedProfile.lastName || ""}`.trim();
+    document.getElementById("fullNameInput").value = fullName || "";
+    document.getElementById("emailInput").value = loadedProfile.email || "";
+    document.getElementById("professionalTitleInput").value = loadedProfile.professionalTitle || "";
+    document.getElementById("certificationSelect").value = loadedProfile.certification || "CPA";
+    setMessage("profileMessage", "Changes reverted.", "info");
+  }
+});
+document.getElementById("securityToggleBtn").addEventListener("click", async () => {
+  try { await toggleSecurityField("twoFactorEnabled"); } catch (error) { setMessage("securityMessage", error.message || "Update failed.", "error"); }
+});
+document.getElementById("securitySmsBtn").addEventListener("click", async () => {
+  try { await toggleSecurityField("smsEnabled"); } catch (error) { setMessage("securityMessage", error.message || "Update failed.", "error"); }
+});
+document.getElementById("updatePasswordBtn").addEventListener("click", async () => {
+  try { await updatePassword(); } catch (error) { setMessage("securityMessage", error.message || "Password update failed.", "error"); }
+});
+
+loadSettings().catch((error) => {
+  setMessage("profileMessage", error.message || "Failed to load settings.", "error");
+  setMessage("securityMessage", error.message || "Failed to load settings.", "error");
+});
+</script>
 
 </body>
 </html>

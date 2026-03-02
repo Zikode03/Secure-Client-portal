@@ -390,10 +390,17 @@ function humanSize(bytes) {
 }
 
 async function runReviewAction(documentId, action) {
+  let note = "";
+  if (action === "reject" || action === "request_fix") {
+    note = window.prompt("Add a review note (required for this action):", "") || "";
+    if (!note.trim()) {
+      throw new Error("Review note is required for reject/request-fix actions.");
+    }
+  }
   const response = await fetch(`${API_BASE_URL}/reviews/${encodeURIComponent(documentId)}/action`, {
     method: "POST",
     headers: authHeaders(),
-    body: JSON.stringify({ action })
+    body: JSON.stringify({ action, note })
   });
   if (!response.ok) throw new Error("Review action failed");
 }

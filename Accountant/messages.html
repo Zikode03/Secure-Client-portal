@@ -290,6 +290,10 @@ body{
       <button type="button" class="thread-filter" data-tab="support">Internal Support</button>
       <button type="button" class="thread-filter" data-tab="archived">Archived</button>
     </div>
+    <div style="margin-top:10px;">
+      <label class="sr-only" for="clientSearchInput">Search clients</label>
+      <input id="clientSearchInput" placeholder="Search clients..." style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;">
+    </div>
   </div>
 
   <div class="card-content" id="clientList"></div>
@@ -322,135 +326,276 @@ body{
 </main>
 </div>
 
+<script src="../shared/portal-config.js"></script>
+<script src="../shared/portal-auth.js"></script>
+<script src="../shared/client-ui.js"></script>
+<script src="accountant-nav.js"></script>
 <script>
+const API_BASE_URL = window.PortalConfig?.API_BASE_URL || "http://127.0.0.1:4010/api";
+const session = window.PortalAuth.requireRole("accountant", "accountant logins/login.html");
+if (!session) throw new Error("Unauthorized");
+const { token } = session;
 
-/* Simulated backend response:
-   Only clients assigned to THIS accountant appear
-*/
-const clients = [
-{
-  id:1,
-  name:"John Doe",
-  company:"Doe Investments Ltd",
-  section:"assigned",
-  unread:2,
-  messages:[
-    {from:"other",text:"Hi Sarah, I've uploaded Q4 statements.",time:"09:10"},
-    {from:"own",text:"Received, reviewing now.",time:"09:45"}
-  ]
-},
-{
-  id:2,
-  name:"Emily Brown",
-  company:"Brown Consulting",
-  section:"assigned",
-  unread:0,
-  messages:[]
-},
-{
-  id:3,
-  name:"Prospera Legal",
-  company:"Internal Team",
-  section:"support",
-  unread:1,
-  messages:[
-    {from:"other",text:"Please review compliance update.",time:"11:20"}
-  ]
-},
-{
-  id:4,
-  name:"Archived Client",
-  company:"Old Account",
-  section:"archived",
-  unread:0,
-  messages:[]
+const clientList = document.getElementById("clientList");
+const chatArea = document.getElementById("chatArea");
+const chatHeader = document.getElementById("chatHeader");
+const inputArea = document.getElementById("inputArea");
+const sendBtn = document.getElementById("sendBtn");
+const messageInput = document.getElementById("messageInput");
+
+let threads = [];
+let activeClientId = "";
+let threadFilter = "assigned";
+let pollTimer = null;
+const threadState = new Map();
+
+function authHeaders() {
+  return window.PortalAuth.authHeaders(token);
 }
-];
 
-const clientList=document.getElementById("clientList");
-const chatArea=document.getElementById("chatArea");
-const chatHeader=document.getElementById("chatHeader");
-const inputArea=document.getElementById("inputArea");
+function shortTime(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleString();
+}
 
-function renderClients(){
-  clientList.innerHTML="";
-  clients.forEach(client=>{
-    const div=document.createElement("div");
-    div.className=`client ${client.section}`;
-    div.dataset.id=client.id;
-    div.innerHTML=`
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function mapThread(item) {
+  const last = item.lastMessage || null;
+  const section = "assigned";
+  return {
+    id: item.clientId,
+    name: item.clientName || item.clientId || "Client",
+    company: `Client ID: ${item.clientId}`,
+    section,
+    unread: Number(item.unreadCount || 0),
+    count: Number(item.count || 0),
+    lastMessageAt: last?.createdAt || null,
+    messages: [],
+  };
+}
+
+function renderClients() {
+  const q = String(document.getElementById("clientSearchInput")?.value || "").trim().toLowerCase();
+  clientList.innerHTML = "";
+  const filtered = threads.filter((thread) => {
+    if (threadFilter !== "all" && thread.section !== threadFilter) return false;
+    if (!q) return true;
+    return thread.name.toLowerCase().includes(q) || thread.company.toLowerCase().includes(q);
+  });
+
+  if (!filtered.length) {
+    clientList.innerHTML = `<div class="empty"><h3>No conversations</h3></div>`;
+    return;
+  }
+
+  filtered.forEach((thread) => {
+    const div = document.createElement("div");
+    div.className = `client ${thread.section}${thread.id === activeClientId ? " active" : ""}`;
+    div.dataset.id = thread.id;
+    div.innerHTML = `
       <div class="client-name">
-        ${client.name}
-        ${client.unread>0?`<span class="badge">${client.unread}</span>`:""}
+        ${escapeHtml(thread.name)}
+        ${thread.unread > 0 ? `<span class="badge">${thread.unread}</span>` : ""}
       </div>
-      <div class="client-meta">${client.company}</div>
+      <div class="client-meta">${escapeHtml(thread.company)}</div>
     `;
-    div.addEventListener("click",()=>openChat(client,div));
+    div.addEventListener("click", async () => {
+      activeClientId = thread.id;
+      await loadMessages(thread.id, { reset: true });
+      renderClients();
+      renderActiveThread();
+    });
     clientList.appendChild(div);
   });
 }
 
-function filterClients(tab){
-  document.querySelectorAll(".client").forEach(el=>{
-    if(el.classList.contains(tab)){
-      el.classList.remove("hidden");
-    }else{
-      el.classList.add("hidden");
-    }
-  });
-}
-
-function openChat(client,clickedEl){
-  document.querySelectorAll(".client").forEach(el=>el.classList.remove("active"));
-  clickedEl.classList.add("active");
-
-  chatHeader.innerHTML=`
-    <h3>${client.name}</h3>
-    <p>${client.company}</p>
-  `;
-
-  chatArea.innerHTML="";
-  inputArea.style.display="flex";
-
-  if(!client.messages || client.messages.length===0){
-    chatArea.innerHTML=`
-      <div class="empty">
-        <h3>No messages yet</h3>
-        <p>Start the conversation with this client.</p>
-      </div>
-    `;
+function renderActiveThread() {
+  const thread = threads.find((item) => item.id === activeClientId);
+  if (!thread) {
+    chatHeader.innerHTML = `<h3>Select a client</h3><p>Choose a client to view conversation</p>`;
+    chatArea.innerHTML = `<div class="empty"><i class="fa fa-comments"></i><h3>No conversation selected</h3></div>`;
+    inputArea.style.display = "none";
     return;
   }
 
-  const container=document.createElement("div");
-  container.className="messages";
+  chatHeader.innerHTML = `
+    <h3>${escapeHtml(thread.name)}</h3>
+    <p>${escapeHtml(thread.company)} • ${thread.count} message(s)</p>
+  `;
+  inputArea.style.display = "flex";
 
-  client.messages.forEach(msg=>{
-    const row=document.createElement("div");
-    row.className=`message-row ${msg.from}`;
-    row.innerHTML=`
+  const state = threadState.get(thread.id) || { hasMore: false, loadingOlder: false };
+  if (!thread.messages.length) {
+    chatArea.innerHTML = `<div class="empty"><h3>No messages yet</h3><p>Start the conversation with this client.</p></div>`;
+    return;
+  }
+
+  chatArea.innerHTML = "";
+  const container = document.createElement("div");
+  container.className = "messages";
+  if (state.hasMore) {
+    const olderBtn = document.createElement("button");
+    olderBtn.className = "btn-outline";
+    olderBtn.type = "button";
+    olderBtn.textContent = state.loadingOlder ? "Loading..." : "Load older messages";
+    olderBtn.disabled = state.loadingOlder;
+    olderBtn.addEventListener("click", () => loadOlderMessages(thread.id));
+    container.appendChild(olderBtn);
+  }
+
+  thread.messages.forEach((msg) => {
+    const row = document.createElement("div");
+    row.className = `message-row ${msg.from}`;
+    row.innerHTML = `
       <div class="message-bubble ${msg.from}">
-        ${msg.text}
-        <div class="meta">${msg.from==="own"?"You":client.name}  ${msg.time}</div>
+        ${escapeHtml(msg.text)}
+        <div class="meta">${msg.from === "own" ? "You" : escapeHtml(thread.name)} • ${shortTime(msg.createdAt)} • ${escapeHtml(msg.deliveryStatus || "sent")}</div>
       </div>
     `;
     container.appendChild(row);
   });
-
   chatArea.appendChild(container);
+  chatArea.scrollTop = chatArea.scrollHeight;
 }
 
-document.querySelectorAll(".thread-filter").forEach(btn=>{
-  btn.addEventListener("click",()=>{
-    document.querySelectorAll(".thread-filter").forEach(b=>b.classList.remove("active"));
+async function loadThreads() {
+  const response = await fetch(`${API_BASE_URL}/messages/threads`, { headers: authHeaders() });
+  if (!response.ok) throw new Error("Failed to load message threads");
+  const payload = await response.json();
+  threads = Array.isArray(payload.items) ? payload.items.map(mapThread) : [];
+  if (!activeClientId && threads.length) activeClientId = threads[0].id;
+}
+
+async function loadMessages(clientId, { reset = true } = {}) {
+  const thread = threads.find((item) => item.id === clientId);
+  if (!thread) return;
+  const state = threadState.get(clientId) || { page: 1, hasMore: false, loadingOlder: false };
+  const page = reset ? 1 : Math.max(1, state.page);
+  const response = await fetch(`${API_BASE_URL}/messages/threads/${encodeURIComponent(clientId)}?page=${page}&limit=25`, { headers: authHeaders() });
+  if (!response.ok) throw new Error("Failed to load messages");
+  const payload = await response.json();
+  const items = Array.isArray(payload.items) ? payload.items : [];
+  const mapped = items.map((item) => ({
+    id: item.id,
+    from: item.fromUserId === session.user.id ? "own" : "other",
+    text: item.body || "",
+    createdAt: item.createdAt,
+    deliveryStatus: item.deliveryStatus || "sent",
+  }));
+  if (reset) {
+    thread.messages = mapped;
+  } else {
+    thread.messages = mapped.concat(thread.messages || []);
+  }
+  thread.count = Number(payload.pagination?.total || thread.messages.length);
+  thread.unread = 0;
+  threadState.set(clientId, { page, hasMore: Boolean(payload.pagination?.hasMore), loadingOlder: false });
+
+  await fetch(`${API_BASE_URL}/messages/threads/${encodeURIComponent(clientId)}/read`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: "{}",
+  }).catch(() => null);
+}
+
+async function loadOlderMessages(clientId) {
+  const state = threadState.get(clientId);
+  if (!state || !state.hasMore || state.loadingOlder) return;
+  threadState.set(clientId, { ...state, loadingOlder: true, page: state.page + 1 });
+  renderActiveThread();
+  await loadMessages(clientId, { reset: false });
+  renderActiveThread();
+}
+
+async function sendMessage() {
+  const thread = threads.find((item) => item.id === activeClientId);
+  if (!thread) return;
+  const text = messageInput.value.trim();
+  if (!text) return;
+  const response = await fetch(`${API_BASE_URL}/messages/threads/${encodeURIComponent(thread.id)}`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ body: text }),
+  });
+  if (!response.ok) throw new Error("Failed to send message");
+  const payload = await response.json().catch(() => ({}));
+  const message = payload.message || null;
+  if (message) {
+    thread.messages.push({
+      id: message.id,
+      from: "own",
+      text: message.body || text,
+      createdAt: message.createdAt || new Date().toISOString(),
+      deliveryStatus: message.deliveryStatus || "sent",
+    });
+  } else {
+    thread.messages.push({ id: `temp_${Date.now()}`, from: "own", text, createdAt: new Date().toISOString(), deliveryStatus: "sent" });
+  }
+  messageInput.value = "";
+  renderActiveThread();
+  renderClients();
+}
+
+async function pollActiveThread() {
+  if (!activeClientId) return;
+  const thread = threads.find((item) => item.id === activeClientId);
+  if (!thread) return;
+  const response = await fetch(`${API_BASE_URL}/messages/threads/${encodeURIComponent(activeClientId)}?page=1&limit=25`, { headers: authHeaders() });
+  if (!response.ok) return;
+  const payload = await response.json().catch(() => ({}));
+  const items = Array.isArray(payload.items) ? payload.items : [];
+  thread.messages = items.map((item) => ({
+    id: item.id,
+    from: item.fromUserId === session.user.id ? "own" : "other",
+    text: item.body || "",
+    createdAt: item.createdAt,
+    deliveryStatus: item.deliveryStatus || "sent",
+  }));
+  thread.count = Number(payload.pagination?.total || thread.messages.length);
+  renderActiveThread();
+  renderClients();
+}
+
+document.querySelectorAll(".thread-filter").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".thread-filter").forEach((item) => item.classList.remove("active"));
     btn.classList.add("active");
-    filterClients(btn.dataset.tab);
+    threadFilter = btn.dataset.tab === "all" ? "all" : btn.dataset.tab;
+    renderClients();
   });
 });
+document.getElementById("clientSearchInput").addEventListener("input", renderClients);
+sendBtn.addEventListener("click", async () => {
+  try { await sendMessage(); } catch (error) { if (window.ClientUI) window.ClientUI.toast(error.message || "Send failed", "error"); }
+});
+messageInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    sendBtn.click();
+  }
+});
 
-renderClients();
-filterClients("assigned");
-
+(async () => {
+  try {
+    await loadThreads();
+    if (activeClientId) await loadMessages(activeClientId, { reset: true });
+    renderClients();
+    renderActiveThread();
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = setInterval(() => { pollActiveThread().catch(() => {}); }, 15000);
+  } catch (error) {
+    chatArea.innerHTML = `<div class="empty"><h3>Failed to load messages</h3><p>${escapeHtml(error.message || "Try again later.")}</p></div>`;
+  }
+})();
 </script>
 
 </body>
