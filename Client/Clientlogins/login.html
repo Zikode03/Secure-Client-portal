@@ -127,6 +127,31 @@
     .remember input {
       margin: 0;
     }
+    .check-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.6rem;
+      margin: 0.9rem 0;
+      font-size: 0.92rem;
+      color: #495057;
+      line-height: 1.35;
+      cursor: pointer;
+    }
+    .check-row input[type="checkbox"] {
+      margin-top: 2px;
+      width: 16px;
+      height: 16px;
+      accent-color: #0d6efd;
+      flex: 0 0 auto;
+    }
+    .check-row a {
+      color: #0d6efd;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .check-row a:hover {
+      text-decoration: underline;
+    }
 
     .btn {
       width: 100%;
@@ -231,9 +256,19 @@
         </div>
       </div>
 
-      <label class="remember" for="rememberDevice">
-        <input id="rememberDevice" type="checkbox" aria-label="Remember this device">
-        Remember this device
+      <label class="check-row" for="rememberDevice">
+        <input id="rememberDevice" type="checkbox">
+        <span>Remember me on this device</span>
+      </label>
+
+      <label class="check-row" for="popiaConsent">
+        <input id="popiaConsent" type="checkbox" required aria-required="true">
+        <span>
+          I consent to processing of my personal information in line with
+          <a href="#" aria-label="Read POPIA notice">POPIA</a>,
+          <a href="#" aria-label="Read privacy policy">Privacy Policy</a>,
+          and <a href="#" aria-label="Read terms of service">Terms of Service</a>.
+        </span>
       </label>
 
       <button class="btn" id="signinBtn" type="submit">Sign In</button>
