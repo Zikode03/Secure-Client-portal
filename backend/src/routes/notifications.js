@@ -40,17 +40,49 @@ async function updateUserSecurity(user, nextSecurity) {
   user.security = nextSecurity;
 }
 
+function getSnoozedMap(user) {
+  const security = user?.security && typeof user.security === "object" ? user.security : {};
+  const snoozed = security.notificationSnoozed;
+  return snoozed && typeof snoozed === "object" ? { ...snoozed } : {};
+}
+
+function lifecycleForNotification(notification, snoozedUntil) {
+  const now = Date.now();
+  const snoozeAt = snoozedUntil ? new Date(snoozedUntil).getTime() : 0;
+  if (!Number.isNaN(snoozeAt) && snoozeAt > now) return "snoozed";
+  if (notification.read) return "dismissed";
+  return "open";
+}
+
 router.get("/", async (req, res) => {
   const page = Math.max(1, Number(req.query.page || 1));
   const limit = Math.min(100, Math.max(1, Number(req.query.limit || 20)));
   const unreadOnly = String(req.query.unread || "") === "true";
   const type = String(req.query.type || "").toLowerCase();
+  const includeSnoozed = String(req.query.includeSnoozed || "") === "true";
+  const user = await getUserById(req.user.id);
+  const snoozedMap = getSnoozedMap(user);
+  const nowTs = Date.now();
 
   const sourceNotifications = db
     ? await db.notification.findMany({ where: { userId: req.user.id } })
     : store.notifications;
-  const all = sourceNotifications
+  const enriched = sourceNotifications
     .filter((notification) => notification.userId === req.user.id)
+    .map((notification) => {
+      const snoozedUntil = snoozedMap[notification.id] || null;
+      return {
+        ...notification,
+        snoozedUntil,
+        lifecycleStatus: lifecycleForNotification(notification, snoozedUntil),
+      };
+    });
+  const all = enriched
+    .filter((notification) => {
+      if (includeSnoozed) return true;
+      const snoozedUntil = notification.snoozedUntil ? new Date(notification.snoozedUntil).getTime() : 0;
+      return Number.isNaN(snoozedUntil) || snoozedUntil <= nowTs;
+    })
     .filter((notification) => !unreadOnly || !notification.read)
     .filter((notification) => !type || notification.type.toLowerCase() === type)
     .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
@@ -67,6 +99,63 @@ router.get("/", async (req, res) => {
       hasMore: end < all.length,
     },
   });
+});
+
+router.post("/:notificationId/dismiss", async (req, res) => {
+  const notification = db
+    ? await db.notification.findFirst({
+        where: { id: req.params.notificationId, userId: req.user.id },
+      })
+    : store.notifications.find((item) => item.id === req.params.notificationId && item.userId === req.user.id);
+  if (!notification) return res.status(404).json({ error: "Notification not found" });
+
+  if (db) {
+    await db.notification.update({
+      where: { id: notification.id },
+      data: { read: true },
+    });
+    notification.read = true;
+  } else {
+    notification.read = true;
+  }
+
+  addAudit({
+    actorUserId: req.user.id,
+    action: "notification.dismiss",
+    entityType: "notification",
+    entityId: notification.id,
+  });
+  return res.json({ ok: true, notification });
+});
+
+router.post("/:notificationId/snooze", async (req, res) => {
+  const notification = db
+    ? await db.notification.findFirst({
+        where: { id: req.params.notificationId, userId: req.user.id },
+      })
+    : store.notifications.find((item) => item.id === req.params.notificationId && item.userId === req.user.id);
+  if (!notification) return res.status(404).json({ error: "Notification not found" });
+
+  const hours = Math.max(1, Math.min(24 * 30, Number(req.body?.hours || 24)));
+  const until = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+  const user = await getUserById(req.user.id);
+  if (!user) return res.status(404).json({ error: "User not found" });
+
+  const security = user.security && typeof user.security === "object" ? user.security : {};
+  const snoozed = getSnoozedMap(user);
+  snoozed[notification.id] = until;
+  security.notificationSnoozed = snoozed;
+  await updateUserSecurity(user, security);
+
+  addAudit({
+    actorUserId: req.user.id,
+    action: "notification.snooze",
+    entityType: "notification",
+    entityId: notification.id,
+    metadata: { hours, until },
+  });
+
+  return res.json({ ok: true, notificationId: notification.id, until });
 });
 
 router.post("/read-bulk", async (req, res) => {

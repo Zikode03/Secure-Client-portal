@@ -354,6 +354,25 @@ main {
   gap: 6px;
 }
 
+.days-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.days-grid label {
+  font-size: 12px;
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: #fff;
+}
+
 .focus-alert {
   margin: 0 24px 12px;
   border: 1px solid #bfdbfe;
@@ -436,6 +455,13 @@ main {
         <label><input type="checkbox" id="prefEmail"> Email</label>
         <label><input type="checkbox" id="prefSms"> SMS</label>
       </div>
+      <div class="days-grid" id="reminderDaysGrid">
+        <label><input type="checkbox" value="30">30d</label>
+        <label><input type="checkbox" value="14">14d</label>
+        <label><input type="checkbox" value="7">7d</label>
+        <label><input type="checkbox" value="3">3d</label>
+        <label><input type="checkbox" value="1">1d</label>
+      </div>
       <div class="secondary" id="savePrefsBtn">Save preferences</div>
     </div>
 
@@ -492,6 +518,14 @@ function iconForType(type) {
   return "notifications";
 }
 
+function deriveOpenLink(notification) {
+  const type = String(notification.type || "").toLowerCase();
+  if (type.includes("message")) return "messages.html";
+  if (type.includes("request")) return "clientrequest.html";
+  if (type.includes("compliance")) return "Clientportal.html";
+  return "Clientportal.html";
+}
+
 function renderItems(items, append = false) {
   const list = document.getElementById("notificationList");
   const focusedNotificationId = pageParams.get("notificationId");
@@ -513,7 +547,10 @@ function renderItems(items, append = false) {
         </div>
         <p>${escapeHtml(n.message)}</p>
         <div class="actions">
+          <a class="link" href="${deriveOpenLink(n)}">Open</a>
           <span class="link" data-read-id="${n.id}">${n.read ? "Read" : "Mark as read"}</span>
+          <span class="link" data-dismiss-id="${n.id}">Dismiss</span>
+          <span class="link" data-snooze-id="${n.id}" data-snooze-hours="24">Snooze 24h</span>
         </div>
       </div>
     `;
@@ -595,18 +632,27 @@ async function loadPreferences() {
   const data = await response.json().catch(() => ({}));
   const prefs = data.preferences || {};
   const channels = prefs.channels || {};
+  const reminderDays = Array.isArray(prefs.reminderDays) ? prefs.reminderDays.map((value) => Number(value)) : [30, 14, 7, 3, 1];
   document.getElementById("prefInApp").checked = channels.inApp !== false;
   document.getElementById("prefEmail").checked = channels.email !== false;
   document.getElementById("prefSms").checked = channels.sms === true;
+  document.querySelectorAll("#reminderDaysGrid input[type='checkbox']").forEach((input) => {
+    input.checked = reminderDays.includes(Number(input.value));
+  });
 }
 
 async function savePreferences() {
+  const reminderDays = Array.from(document.querySelectorAll("#reminderDaysGrid input[type='checkbox']:checked"))
+    .map((input) => Number(input.value))
+    .filter((value) => Number.isInteger(value) && value >= 0)
+    .sort((a, b) => b - a);
   const payload = {
     channels: {
       inApp: document.getElementById("prefInApp").checked,
       email: document.getElementById("prefEmail").checked,
       sms: document.getElementById("prefSms").checked,
     },
+    reminderDays,
   };
   const response = await fetch(`${API_BASE_URL}/notifications/preferences`, {
     method: "PATCH",
@@ -698,17 +744,53 @@ document.addEventListener("click", async (event) => {
   }
 
   const readBtn = event.target.closest("[data-read-id]");
-  if (!readBtn) return;
-  const id = readBtn.getAttribute("data-read-id");
-  const response = await fetch(`${API_BASE_URL}/notifications/${encodeURIComponent(id)}/read`, {
-    method: "POST",
-    headers: authHeaders(),
-    body: "{}",
-  });
-  if (response.ok) {
-    page = 1;
-    loadNotifications(false);
-    if (window.ClientUI) window.ClientUI.toast("Notification marked as read", "info");
+  if (readBtn) {
+    const id = readBtn.getAttribute("data-read-id");
+    const response = await fetch(`${API_BASE_URL}/notifications/${encodeURIComponent(id)}/read`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: "{}",
+    });
+    if (response.ok) {
+      page = 1;
+      loadNotifications(false);
+      if (window.ClientUI) window.ClientUI.toast("Notification marked as read", "info");
+    }
+    return;
+  }
+
+  const dismissBtn = event.target.closest("[data-dismiss-id]");
+  if (dismissBtn) {
+    const id = dismissBtn.getAttribute("data-dismiss-id");
+    const response = await fetch(`${API_BASE_URL}/notifications/${encodeURIComponent(id)}/dismiss`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: "{}",
+    });
+    if (response.ok) {
+      selectedIds.delete(id);
+      page = 1;
+      loadNotifications(false);
+      if (window.ClientUI) window.ClientUI.toast("Notification dismissed", "success");
+    }
+    return;
+  }
+
+  const snoozeBtn = event.target.closest("[data-snooze-id]");
+  if (snoozeBtn) {
+    const id = snoozeBtn.getAttribute("data-snooze-id");
+    const hours = Number(snoozeBtn.getAttribute("data-snooze-hours") || 24);
+    const response = await fetch(`${API_BASE_URL}/notifications/${encodeURIComponent(id)}/snooze`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ hours }),
+    });
+    if (response.ok) {
+      selectedIds.delete(id);
+      page = 1;
+      loadNotifications(false);
+      if (window.ClientUI) window.ClientUI.toast(`Notification snoozed for ${hours}h`, "info");
+    }
   }
 });
 

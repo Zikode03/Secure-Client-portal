@@ -286,6 +286,11 @@
     .request-card:hover {
       box-shadow: 0 4px 12px rgba(0,0,0,.05);
     }
+    .request-card.focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 2px #bfdbfe;
+      background: #eff6ff;
+    }
     .request-top {
       display: flex;
       justify-content: space-between;
@@ -600,6 +605,8 @@ function authHeaders() {
 let receivedRequests = [];
 let sentRequests = [];
 let activeTab = "received";
+const requestPageParams = new URLSearchParams(window.location.search);
+let focusRequestId = requestPageParams.get("requestId") || "";
 
 function getPriorityBadge(priority) {
   const p = (priority || "medium").toLowerCase();
@@ -629,6 +636,9 @@ function renderRequests(list, items) {
   filtered.forEach(r => {
     const card = document.createElement("div");
     card.className = "request-card";
+    if (focusRequestId && r.id === focusRequestId) {
+      card.classList.add("focus");
+    }
     card.innerHTML = `
       <div class="request-top">
         <div class="request-title">${r.title}</div>
@@ -657,6 +667,12 @@ function renderRequests(list, items) {
 
     list.appendChild(card);
   });
+  if (focusRequestId) {
+    const focusEl = list.querySelector(".request-card.focus");
+    if (focusEl) {
+      focusEl.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }
 }
 
 function updateKPI() {

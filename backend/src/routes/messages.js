@@ -8,6 +8,41 @@ import { config } from "../lib/config.js";
 const router = express.Router();
 const db = config.databaseUrl ? getDb() : null;
 
+function encodeMessageBody(bodyText, attachment) {
+  if (!attachment) return String(bodyText || "");
+  return `__ATTACHMENT__:${JSON.stringify(attachment)}\n${String(bodyText || "")}`;
+}
+
+function decodeMessageBody(value) {
+  const raw = String(value || "");
+  if (!raw.startsWith("__ATTACHMENT__:")) {
+    return { text: raw, attachment: null };
+  }
+  const nl = raw.indexOf("\n");
+  if (nl < 0) return { text: raw, attachment: null };
+  const metaRaw = raw.slice("__ATTACHMENT__:".length, nl).trim();
+  const text = raw.slice(nl + 1);
+  try {
+    const attachment = JSON.parse(metaRaw);
+    return { text, attachment };
+  } catch (_error) {
+    return { text: raw, attachment: null };
+  }
+}
+
+function decorateMessageForUser(message, userId) {
+  const decoded = decodeMessageBody(message.body);
+  const readBy = Array.isArray(message.readBy) ? message.readBy : [];
+  return {
+    ...message,
+    body: decoded.text,
+    attachment: decoded.attachment,
+    readByCount: readBy.length,
+    isReadByCurrentUser: readBy.includes(userId),
+    isReadByRecipient: readBy.length > 1,
+  };
+}
+
 router.get("/threads", async (req, res) => {
   const visibleClientIds = req.user.clientIds;
   const sourceClients = db ? await db.client.findMany({ where: { id: { in: visibleClientIds } } }) : store.clients;
@@ -19,7 +54,7 @@ router.get("/threads", async (req, res) => {
     const messages = sourceMessages
       .filter((msg) => msg.clientId === clientId)
       .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
-    const lastMessage = messages[0] || null;
+    const lastMessage = messages[0] ? decorateMessageForUser(messages[0], req.user.id) : null;
     return {
       clientId,
       clientName: client?.name || "Unknown Client",
@@ -35,18 +70,25 @@ router.get("/threads/:clientId", async (req, res) => {
   const { clientId } = req.params;
   const page = Math.max(1, Number(req.query.page || 1));
   const limit = Math.min(100, Math.max(1, Number(req.query.limit || 30)));
+  const since = String(req.query.since || "");
   if (!canAccessClient(req.user, clientId)) {
     return res.status(403).json({ error: "Access denied" });
   }
   const sourceMessages = db
     ? await db.message.findMany({ where: { clientId } })
     : store.messages;
-  const all = sourceMessages
+  let all = sourceMessages
     .filter((msg) => msg.clientId === clientId)
-    .sort((a, b) => (a.createdAt > b.createdAt ? 1 : -1));
+    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  if (since) {
+    const sinceTs = new Date(since).getTime();
+    if (!Number.isNaN(sinceTs)) {
+      all = all.filter((item) => new Date(item.createdAt).getTime() > sinceTs);
+    }
+  }
   const start = (page - 1) * limit;
   const end = start + limit;
-  const items = all.slice(start, end);
+  const items = all.slice(start, end).map((message) => decorateMessageForUser(message, req.user.id));
   res.json({
     items,
     pagination: {
@@ -60,19 +102,19 @@ router.get("/threads/:clientId", async (req, res) => {
 
 router.post("/threads/:clientId", async (req, res) => {
   const { clientId } = req.params;
-  const { body } = req.body || {};
+  const { body, attachment } = req.body || {};
   if (!canAccessClient(req.user, clientId)) {
     return res.status(403).json({ error: "Access denied" });
   }
-  if (!body) return res.status(400).json({ error: "body is required" });
+  if (!body && !attachment) return res.status(400).json({ error: "body or attachment is required" });
 
   const message = {
     id: utils.makeId("m"),
     clientId,
     fromUserId: req.user.id,
     toRole: req.user.role === "accountant" ? "client" : "accountant",
-    body: String(body),
-    deliveryStatus: "delivered",
+    body: encodeMessageBody(body, attachment || null),
+    deliveryStatus: "sent",
     readBy: [req.user.id],
     createdAt: utils.nowIso(),
   };
@@ -116,7 +158,7 @@ router.post("/threads/:clientId", async (req, res) => {
     }
   }
 
-  res.status(201).json({ message });
+  res.status(201).json({ message: decorateMessageForUser(message, req.user.id) });
 });
 
 router.post("/threads/:clientId/read", async (req, res) => {
@@ -157,6 +199,42 @@ router.post("/threads/:clientId/read", async (req, res) => {
     metadata: { updated },
   });
   res.json({ ok: true, updated });
+});
+
+router.post("/threads/:clientId/:messageId/read", async (req, res) => {
+  const { clientId, messageId } = req.params;
+  if (!canAccessClient(req.user, clientId)) {
+    return res.status(403).json({ error: "Access denied" });
+  }
+
+  const message = db
+    ? await db.message.findFirst({ where: { id: messageId, clientId } })
+    : store.messages.find((item) => item.id === messageId && item.clientId === clientId);
+  if (!message) return res.status(404).json({ error: "Message not found" });
+
+  const readBy = Array.isArray(message.readBy) ? message.readBy : [];
+  if (!readBy.includes(req.user.id)) readBy.push(req.user.id);
+  const deliveryStatus = readBy.length > 1 ? "read" : "delivered";
+
+  if (db) {
+    await db.message.update({
+      where: { id: message.id },
+      data: { readBy, deliveryStatus },
+    });
+  } else {
+    message.readBy = readBy;
+    message.deliveryStatus = deliveryStatus;
+  }
+
+  addAudit({
+    actorUserId: req.user.id,
+    action: "message.read_one",
+    entityType: "message",
+    entityId: message.id,
+    metadata: { clientId },
+  });
+
+  return res.json({ ok: true, message: decorateMessageForUser({ ...message, readBy, deliveryStatus }, req.user.id) });
 });
 
 export default router;

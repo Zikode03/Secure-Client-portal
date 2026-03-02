@@ -887,6 +887,15 @@
         .replace(/'/g, "&#39;");
     }
 
+    function buildObligationLink(obligation) {
+      if (!obligation) return "compliance-obligation.html";
+      const params = new URLSearchParams();
+      params.set("obligationId", String(obligation.id || ""));
+      params.set("obligation", String(obligation.obligationType || ""));
+      params.set("source", String(obligation.source || ""));
+      return `compliance-obligation.html?${params.toString()}`;
+    }
+
     function buildDocumentsLink(obligation) {
       if (!obligation) return "documents.html";
       const params = new URLSearchParams();
@@ -903,7 +912,7 @@
       }
       if (item.obligationId) {
         const obligation = dashboardObligations.find((entry) => entry.id === item.obligationId);
-        return buildDocumentsLink(obligation || {
+        return buildObligationLink(obligation || {
           id: item.obligationId,
           obligationType: item.title || "Obligation",
           source: item.source || "",
@@ -976,6 +985,7 @@
         </div>
         <div class="inline-actions">
           <a class="tiny-btn" href="${buildDocumentsLink(obligation)}">Open in Documents</a>
+          <a class="tiny-btn" href="${buildObligationLink(obligation)}">Open Full Details</a>
           <button class="tiny-btn primary" type="button" data-evidence-id="${escapeHtml(obligation.id)}">Mark Evidence Complete</button>
         </div>
       `;
@@ -1111,7 +1121,7 @@
                 </div>
                 <div style="margin-top:6px;color:var(--muted);">Due: ${formatDate(item.dueDate)}</div>
                 <div class="inline-actions">
-                  <a class="tiny-btn" href="${buildDocumentsLink(item)}">Open</a>
+                  <a class="tiny-btn" href="${buildObligationLink(item)}">Open</a>
                   <button class="tiny-btn" type="button" data-open-obligation="${item.id}">Details</button>
                   <button class="tiny-btn primary" type="button" data-evidence-id="${item.id}">Mark Evidence Complete</button>
                 </div>

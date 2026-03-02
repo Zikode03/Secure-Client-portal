@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Obligation Details - Prospera</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    :root { --bg:#f4f6fb; --card:#fff; --text:#0f172a; --muted:#64748b; --border:#e2e8f0; --primary:#1754cf; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:"Public Sans",Arial,sans-serif; background:var(--bg); color:var(--text); }
+    .layout { display:flex; min-height:100vh; --sidebar-width:260px; }
+    .sidebar { width:var(--sidebar-width); flex:0 0 var(--sidebar-width); background:linear-gradient(180deg,#0f172a,#020617); color:#fff; display:flex; flex-direction:column; }
+    .sidebar-header { padding:22px; display:flex; gap:12px; align-items:center; }
+    .sidebar-header i { font-size:30px; color:#60a5fa; }
+    .sidebar-header h1 { font-size:16px; }
+    .sidebar-header p { font-size:12px; color:#94a3b8; }
+    .nav { padding:16px; flex:1; }
+    .nav a { display:flex; align-items:center; gap:12px; text-decoration:none; color:#cbd5f5; border-radius:10px; padding:12px 14px; margin-bottom:6px; }
+    .nav a.active { background:#2563eb; color:#fff; }
+    .nav a:hover { background:#1e293b; }
+    .sidebar-footer { padding:16px; }
+    .user-box { background:#1e293b; border-radius:10px; padding:12px; margin-bottom:12px; font-size:13px; }
+    .role { color:#60a5fa; font-size:12px; }
+    .logout { width:100%; border:0; border-radius:10px; background:transparent; color:#cbd5f5; text-align:left; padding:12px; cursor:pointer; }
+    .logout:hover { background:#1e293b; }
+    .main { flex:1; padding:24px 28px 36px; }
+    .top { display:flex; justify-content:space-between; align-items:center; gap:14px; margin-bottom:16px; }
+    .back-btn { border:1px solid var(--border); border-radius:10px; padding:8px 12px; background:#fff; color:#0f172a; text-decoration:none; font-size:13px; font-weight:700; }
+    .title h1 { font-size:26px; margin-bottom:4px; }
+    .title p { color:var(--muted); font-size:13px; }
+    .grid { display:grid; gap:14px; grid-template-columns:1.2fr 1fr; }
+    .card { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px; }
+    .section-title { font-size:15px; font-weight:700; margin-bottom:10px; }
+    .meta-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .meta-cell strong { display:block; font-size:12px; color:var(--muted); margin-bottom:4px; }
+    .meta-cell span { font-size:13px; }
+    .controls { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:10px; }
+    .controls input, .controls select { border:1px solid var(--border); border-radius:10px; padding:8px 10px; font-size:13px; background:#fff; }
+    .list { list-style:none; display:grid; gap:8px; }
+    .list li { border:1px solid var(--border); border-radius:10px; background:#fcfdff; padding:10px; font-size:13px; }
+    .badge { display:inline-flex; border-radius:999px; padding:3px 8px; font-size:11px; font-weight:700; border:1px solid transparent; }
+    .badge.open { color:#9a3412; background:#ffedd5; border-color:#fdba74; }
+    .badge.resolved { color:#166534; background:#dcfce7; border-color:#86efac; }
+    .badge.high { color:#991b1b; background:#fee2e2; border-color:#fca5a5; }
+    .actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+    .btn { border:1px solid var(--border); border-radius:10px; padding:8px 10px; font-size:12px; font-weight:700; cursor:pointer; background:#fff; }
+    .btn.primary { background:#0f172a; color:#fff; border-color:#0f172a; }
+    .empty { color:var(--muted); font-size:13px; padding:8px 0; }
+    @media (max-width:1000px){ .grid { grid-template-columns:1fr; } }
+  </style>
+  <link rel="stylesheet" href="../../shared/client-theme.css">
+  <link rel="stylesheet" href="../../shared/client-shell.css">
+</head>
+<body data-client-nav="dashboard">
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <i class="fa-solid fa-shield-halved"></i>
+        <div><h1>Prospera</h1><p>Secure Client Portal</p></div>
+      </div>
+      <nav class="nav">
+        <a href="Clientportal.html" data-nav="dashboard"><i class="fa fa-chart-line"></i> Dashboard</a>
+        <a href="documents.html" data-nav="documents"><i class="fa fa-file"></i> Documents</a>
+        <a href="clientrequest.html" data-nav="requests"><i class="fa fa-file-alt"></i> Requests</a>
+        <a href="messages.html" data-nav="messages"><i class="fa fa-message"></i> Messages</a>
+        <a href="settings.html" data-nav="settings"><i class="fa fa-gear"></i> Settings</a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-box">
+          <p><strong id="sidebarName">Client</strong></p>
+          <p id="sidebarEmail">client@example.com</p>
+          <p class="role">Client</p>
+        </div>
+        <button class="logout" id="logoutBtn"><i class="fa fa-sign-out"></i> Logout</button>
+      </div>
+    </aside>
+    <main class="main">
+      <div class="top">
+        <div class="title">
+          <h1 id="pageTitle">Obligation Details</h1>
+          <p id="pageSub">Loading obligation data...</p>
+        </div>
+        <a class="back-btn" href="Clientportal.html"><i class="fa fa-arrow-left"></i> Back to Dashboard</a>
+      </div>
+      <div class="grid">
+        <section class="card">
+          <h2 class="section-title">Summary</h2>
+          <div class="meta-grid" id="summaryGrid"></div>
+          <div class="actions">
+            <button class="btn primary" id="evidenceBtn" type="button">Mark Evidence Complete</button>
+            <a class="btn" id="openDocsLink" href="documents.html">Open Documents</a>
+          </div>
+        </section>
+        <section class="card">
+          <h2 class="section-title">Related Alerts</h2>
+          <ul class="list" id="alertsList"></ul>
+        </section>
+      </div>
+      <section class="card" style="margin-top:14px;">
+        <h2 class="section-title">Event Timeline</h2>
+        <div class="controls">
+          <input id="eventSearch" placeholder="Search events...">
+          <select id="eventTypeFilter">
+            <option value="">All event types</option>
+          </select>
+          <select id="sourceFilter">
+            <option value="">All sources</option>
+          </select>
+        </div>
+        <ul class="list" id="eventsList"></ul>
+      </section>
+    </main>
+  </div>
+  <script src="../../shared/portal-config.js"></script>
+  <script src="../../shared/portal-auth.js"></script>
+  <script src="../../shared/client-ui.js"></script>
+  <script>
+    const session = window.PortalAuth.requireRole("client", "../Clientlogins/login.html");
+    if (!session) throw new Error("Unauthorized");
+    const API_BASE_URL = window.PortalConfig?.API_BASE_URL || "http://127.0.0.1:4010/api";
+    const params = new URLSearchParams(window.location.search);
+    const obligationId = params.get("obligationId") || "";
+    const obligationTypeParam = params.get("obligation") || "";
+    const sourceParam = params.get("source") || "";
+    const clientId = Array.isArray(session.user?.clientIds) && session.user.clientIds.length ? session.user.clientIds[0] : "";
+
+    let obligation = null;
+    let events = [];
+    let alerts = [];
+
+    document.getElementById("sidebarName").textContent = session.user.fullName || "Client";
+    document.getElementById("sidebarEmail").textContent = session.user.email || "";
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+      window.PortalAuth.clearSession();
+      window.location.href = "../Clientlogins/login.html";
+    });
+
+    function authHeaders() {
+      return window.PortalAuth.authHeaders(session.token);
+    }
+
+    function formatDate(value) {
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return "Unknown";
+      return date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+    }
+
+    function renderSummary() {
+      if (!obligation) {
+        document.getElementById("summaryGrid").innerHTML = '<p class="empty">Obligation not found.</p>';
+        return;
+      }
+      const metadata = obligation.metadata && typeof obligation.metadata === "object" ? obligation.metadata : {};
+      const assignment = metadata.assignment && typeof metadata.assignment === "object" ? metadata.assignment : {};
+      document.getElementById("pageTitle").textContent = `${obligation.source} - ${obligation.obligationType}`;
+      document.getElementById("pageSub").textContent = `Due ${formatDate(obligation.dueDate)} | Status: ${String(obligation.status || "").replace("_", " ")}`;
+      document.getElementById("summaryGrid").innerHTML = `
+        <div class="meta-cell"><strong>Status</strong><span>${String(obligation.status || "").replace("_", " ")}</span></div>
+        <div class="meta-cell"><strong>Due Date</strong><span>${formatDate(obligation.dueDate)}</span></div>
+        <div class="meta-cell"><strong>Owner</strong><span>${assignment.ownerUserId || "Unassigned"}</span></div>
+        <div class="meta-cell"><strong>Owner Due</strong><span>${formatDate(assignment.dueDate)}</span></div>
+        <div class="meta-cell"><strong>Evidence Status</strong><span>${metadata.evidenceStatus || "pending"}</span></div>
+        <div class="meta-cell"><strong>Evidence Count</strong><span>${Array.isArray(metadata.evidence) ? metadata.evidence.length : 0}</span></div>
+      `;
+      document.getElementById("openDocsLink").href = `documents.html?obligationId=${encodeURIComponent(obligation.id)}&obligation=${encodeURIComponent(obligation.obligationType)}&source=${encodeURIComponent(obligation.source)}`;
+    }
+
+    function renderAlerts() {
+      const list = document.getElementById("alertsList");
+      if (!alerts.length) {
+        list.innerHTML = '<p class="empty">No related alerts.</p>';
+        return;
+      }
+      list.innerHTML = alerts.map((item) => `
+        <li>
+          <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;">
+            <strong>${item.title || "Alert"}</strong>
+            <span class="badge ${item.status === "resolved" ? "resolved" : "open"}">${item.status || "open"}</span>
+          </div>
+          <div style="margin-top:6px;color:var(--muted);">${item.message || ""}</div>
+        </li>
+      `).join("");
+    }
+
+    function renderEventFilters() {
+      const eventTypes = Array.from(new Set(events.map((item) => item.eventType).filter(Boolean)));
+      const sources = Array.from(new Set(events.map((item) => item.source).filter(Boolean)));
+      document.getElementById("eventTypeFilter").innerHTML = `<option value="">All event types</option>${eventTypes.map((item) => `<option value="${item}">${item}</option>`).join("")}`;
+      document.getElementById("sourceFilter").innerHTML = `<option value="">All sources</option>${sources.map((item) => `<option value="${item}">${item}</option>`).join("")}`;
+    }
+
+    function renderEvents() {
+      const q = document.getElementById("eventSearch").value.trim().toLowerCase();
+      const eventType = document.getElementById("eventTypeFilter").value;
+      const source = document.getElementById("sourceFilter").value;
+      const list = document.getElementById("eventsList");
+      const filtered = events.filter((item) => {
+        const hay = `${item.title || ""} ${item.description || ""} ${item.eventType || ""}`.toLowerCase();
+        return (!q || hay.includes(q)) && (!eventType || item.eventType === eventType) && (!source || item.source === source);
+      });
+      if (!filtered.length) {
+        list.innerHTML = '<p class="empty">No events match your filters.</p>';
+        return;
+      }
+      list.innerHTML = filtered.map((item) => `
+        <li>
+          <div style="display:flex;justify-content:space-between;gap:8px;">
+            <strong>${item.title || item.eventType || "Event"}</strong>
+            <span>${formatDate(item.occurredAt || item.createdAt)}</span>
+          </div>
+          <div style="margin-top:6px;color:var(--muted);">${item.description || ""}</div>
+          <div style="margin-top:6px;color:var(--muted);font-size:12px;">${item.source || "-"} | ${item.eventType || "-"}</div>
+        </li>
+      `).join("");
+    }
+
+    async function markEvidenceComplete() {
+      if (!obligation) return;
+      const notes = window.prompt("Add evidence note", "Evidence submitted from obligation page") || "";
+      const response = await fetch(`${API_BASE_URL}/compliance/obligations/${encodeURIComponent(obligation.id)}/evidence`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: JSON.stringify({ documentId: null, fileName: "Client Evidence Note", notes, complete: true }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to mark evidence complete");
+      }
+      if (window.ClientUI) window.ClientUI.toast("Evidence marked complete", "success");
+      await load();
+    }
+
+    async function load() {
+      if (!clientId) throw new Error("Client profile not linked");
+      const headers = authHeaders();
+      const [overviewRes, eventsRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/compliance/overview`, { headers }),
+        fetch(`${API_BASE_URL}/compliance/client/${encodeURIComponent(clientId)}/events?obligationType=${encodeURIComponent(obligationTypeParam)}&source=${encodeURIComponent(sourceParam)}&limit=300`, { headers }),
+      ]);
+      if (!overviewRes.ok) throw new Error("Failed to load compliance overview");
+      if (!eventsRes.ok) throw new Error("Failed to load compliance events");
+      const overview = await overviewRes.json().catch(() => ({}));
+      const eventsPayload = await eventsRes.json().catch(() => ({}));
+      const obligations = Array.isArray(overview.obligations) ? overview.obligations : [];
+      obligation = obligations.find((item) => item.id === obligationId)
+        || obligations.find((item) => String(item.obligationType || "").toLowerCase() === String(obligationTypeParam || "").toLowerCase() && String(item.source || "").toLowerCase() === String(sourceParam || "").toLowerCase())
+        || null;
+      events = Array.isArray(eventsPayload.items) ? eventsPayload.items : [];
+      alerts = Array.isArray(overview.alerts)
+        ? overview.alerts.filter((item) => !obligation || String(item.obligationType || "").toLowerCase() === String(obligation.obligationType || "").toLowerCase())
+        : [];
+      renderSummary();
+      renderAlerts();
+      renderEventFilters();
+      renderEvents();
+    }
+
+    document.getElementById("eventSearch").addEventListener("input", renderEvents);
+    document.getElementById("eventTypeFilter").addEventListener("change", renderEvents);
+    document.getElementById("sourceFilter").addEventListener("change", renderEvents);
+    document.getElementById("evidenceBtn").addEventListener("click", async () => {
+      try { await markEvidenceComplete(); } catch (error) {
+        if (window.ClientUI) window.ClientUI.toast(error.message || "Failed to update evidence", "error");
+      }
+    });
+
+    load().catch((error) => {
+      if (window.ClientUI) window.ClientUI.toast(error.message || "Failed to load obligation details", "error");
+      document.getElementById("summaryGrid").innerHTML = `<p class="empty">${error.message || "Failed to load obligation details."}</p>`;
+      document.getElementById("alertsList").innerHTML = `<p class="empty">${error.message || "Failed to load alerts."}</p>`;
+      document.getElementById("eventsList").innerHTML = `<p class="empty">${error.message || "Failed to load events."}</p>`;
+    });
+  </script>
+</body>
+</html>

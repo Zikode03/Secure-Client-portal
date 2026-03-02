@@ -1,4 +1,4 @@
-import { utils } from "./store.js";
+import { store, utils } from "./store.js";
 import { getDb } from "./db.js";
 import { config } from "./config.js";
 
@@ -36,6 +36,7 @@ export function addNotification({ userId, type, title, message }) {
     read: false,
     createdAt: utils.nowIso(),
   };
+  store.notifications.unshift(notification);
   if (!db) return notification;
   db.notification
     .create({ data: notification })

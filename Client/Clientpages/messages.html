@@ -524,6 +524,50 @@
       justify-content: flex-end;
     }
 
+    .delivery-pill {
+      border-radius: 999px;
+      padding: 2px 8px;
+      font-size: 10px;
+      font-weight: 700;
+      border: 1px solid transparent;
+    }
+    .delivery-pill.sent { color: #475569; background: #f1f5f9; border-color: #cbd5e1; }
+    .delivery-pill.delivered { color: #1e3a8a; background: #dbeafe; border-color: #93c5fd; }
+    .delivery-pill.read { color: #166534; background: #dcfce7; border-color: #86efac; }
+
+    .attachment-chip {
+      margin-top: 8px;
+      border: 1px dashed #cbd5e1;
+      border-radius: 10px;
+      padding: 8px 10px;
+      font-size: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #f8fafc;
+      color: #334155;
+    }
+
+    .composer-attachment {
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .load-older {
+      align-self: center;
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--muted);
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
     .input-area {
       padding: 16px 24px;
       border-top: 1px solid var(--border);
@@ -707,8 +751,10 @@
         </div>
 
         <div class="input-area hidden" id="inputArea">
-          <button class="attach-btn"><i class="fa fa-paperclip"></i></button>
+          <button class="attach-btn" id="attachBtn" type="button"><i class="fa fa-paperclip"></i></button>
+          <input id="attachmentInput" type="file" class="hidden" aria-label="Attach file">
           <textarea id="messageInput" placeholder="Type your message..." rows="1"></textarea>
+          <div id="composerAttachment" class="composer-attachment hidden"></div>
           <button class="send-btn" id="sendBtn"><i class="fa fa-paper-plane"></i></button>
         </div>
       </div>
@@ -749,11 +795,19 @@ const messagesContainer = document.getElementById("messagesContainer");
 const inputArea = document.getElementById("inputArea");
 const sendBtn = document.getElementById("sendBtn");
 const messageInput = document.getElementById("messageInput");
+const attachBtn = document.getElementById("attachBtn");
+const attachmentInput = document.getElementById("attachmentInput");
+const composerAttachment = document.getElementById("composerAttachment");
 const appLayout = document.querySelector(".app-layout");
 const sidebarResizer = document.getElementById("sidebarResizer");
+const pageParams = new URLSearchParams(window.location.search);
 
 let allConversations = Array.isArray(window.CLIENT_CONVERSATIONS) ? window.CLIENT_CONVERSATIONS : [];
 let activeConversationId = allConversations[0]?.id ?? null;
+let selectedAttachment = null;
+let pollTimer = null;
+let realtimeConnected = true;
+const threadState = new Map();
 const SIDEBAR_MIN_WIDTH = 82;
 const SIDEBAR_MAX_WIDTH = 380;
 const SIDEBAR_DEFAULT_WIDTH = 260;
@@ -800,17 +854,20 @@ function getConversationName(conversation) {
 }
 
 function normalizeThread(thread) {
+  const id = thread.clientId || thread.id;
+  const lastMessage = thread.lastMessage || null;
   return {
-    id: thread.id,
-    contactName: thread.name || thread.contactName || "Unknown",
-    title: thread.subject || "",
+    id,
+    contactName: thread.clientName || thread.name || thread.contactName || "Unknown",
+    title: "",
     online: Boolean(thread.online),
     statusLabel: thread.online ? "Online" : "Offline",
     unreadCount: Number(thread.unreadCount || 0),
     pinned: Boolean(thread.pinned),
-    preview: thread.preview || thread.lastMessage || "No messages yet",
+    preview: (lastMessage && (lastMessage.body || lastMessage.text)) || thread.preview || "No messages yet",
     remote: true,
     messages: [],
+    lastSeenAt: lastMessage?.createdAt || null,
   };
 }
 
@@ -952,23 +1009,75 @@ function renderActiveConversation() {
   }
 
   messagesContainer.innerHTML = "";
+  const state = threadState.get(conversation.id);
+  if (state?.hasMore) {
+    const loadOlderBtn = document.createElement("button");
+    loadOlderBtn.type = "button";
+    loadOlderBtn.className = "load-older";
+    loadOlderBtn.textContent = state.loadingOlder ? "Loading..." : "Load older messages";
+    loadOlderBtn.disabled = state.loadingOlder;
+    loadOlderBtn.addEventListener("click", () => loadOlderMessages(conversation.id));
+    messagesContainer.appendChild(loadOlderBtn);
+  }
   messages.forEach(msg => {
     const from = msg.from === "sent" ? "sent" : "received";
     const timestamp = msg.time || msg.createdAt;
     const renderedTime = timestamp ? new Date(timestamp).toLocaleString() : "";
+    const delivery = String(msg.deliveryStatus || (from === "sent" ? "sent" : "read")).toLowerCase();
+    const deliveryClass = delivery === "read" ? "read" : delivery === "delivered" ? "delivered" : "sent";
+    const attachmentHtml = msg.attachment
+      ? `<div class="attachment-chip"><i class="fa fa-paperclip"></i> ${msg.attachment.name || "Attachment"}${msg.attachment.size ? ` (${formatFileSize(msg.attachment.size)})` : ""}</div>`
+      : "";
 
     const row = document.createElement("div");
     row.className = `message ${from}`;
     row.innerHTML = `
-      <div class="bubble ${from}">${msg.text || ""}</div>
+      <div class="bubble ${from}">${escapeHtml(msg.text || "")}${attachmentHtml}</div>
       <div class="message-meta ${from}">
         <span>${renderedTime}</span>
+        ${from === "sent" ? `<span class="delivery-pill ${deliveryClass}">${deliveryClass}</span>` : ""}
       </div>
     `;
     messagesContainer.appendChild(row);
   });
 
   messagesContainer.scrollTop = messagesContainer.scrollHeight;
+}
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function formatFileSize(bytes) {
+  const value = Number(bytes || 0);
+  if (value < 1024) return `${value} B`;
+  if (value < 1024 * 1024) return `${(value / 1024).toFixed(1)} KB`;
+  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function mapRemoteMessage(message) {
+  return {
+    id: message.id,
+    from: message.fromUserId === user.id ? "sent" : "received",
+    text: message.body || "",
+    createdAt: message.createdAt,
+    time: message.createdAt,
+    deliveryStatus: message.deliveryStatus || "sent",
+    attachment: message.attachment || null,
+  };
+}
+
+function setRealtimeStatus(isConnected) {
+  realtimeConnected = Boolean(isConnected);
+  const active = allConversations.find((item) => item.id === activeConversationId);
+  if (!active) return;
+  const base = getStatusLabel(active);
+  chatStatus.textContent = realtimeConnected ? base : `${base} • reconnecting...`;
 }
 
 async function loadRemoteThreads() {
@@ -979,28 +1088,114 @@ async function loadRemoteThreads() {
     const items = Array.isArray(payload.items) ? payload.items.map(normalizeThread) : [];
     if (items.length) {
       allConversations = items;
-      if (!activeConversationId) activeConversationId = items[0].id;
+      const queryClientId = pageParams.get("clientId");
+      if (!activeConversationId) activeConversationId = queryClientId || items[0].id;
+      if (queryClientId && items.some((item) => item.id === queryClientId)) {
+        activeConversationId = queryClientId;
+      }
     }
+    setRealtimeStatus(true);
   } catch (error) {
+    setRealtimeStatus(false);
     if (window.ClientUI) window.ClientUI.toast(error.message || "Using local conversations", "info");
   }
 }
 
-async function loadRemoteMessages(conversation) {
+async function loadRemoteMessages(conversation, { reset = true } = {}) {
   if (!conversation || !conversation.remote) return;
+  const state = threadState.get(conversation.id) || { page: 1, hasMore: false, loadingOlder: false };
+  const targetPage = reset ? 1 : Math.max(1, state.page);
   try {
-    const res = await fetch(`${API_BASE_URL}/messages/threads/${encodeURIComponent(conversation.id)}?page=1&limit=50`, { headers: authHeaders() });
+    const res = await fetch(`${API_BASE_URL}/messages/threads/${encodeURIComponent(conversation.id)}?page=${targetPage}&limit=30`, { headers: authHeaders() });
     if (!res.ok) throw new Error("Failed to load messages");
     const payload = await res.json();
     const items = Array.isArray(payload.items) ? payload.items : [];
-    conversation.messages = items.map((m) => ({
-      from: m.fromUserId === user.id ? "sent" : "received",
-      text: m.body || "",
-      createdAt: m.createdAt,
-      time: m.createdAt,
-    }));
+    const mapped = items.slice().reverse().map(mapRemoteMessage);
+    if (reset) {
+      conversation.messages = mapped;
+    } else {
+      conversation.messages = mapped.concat(Array.isArray(conversation.messages) ? conversation.messages : []);
+    }
+    threadState.set(conversation.id, {
+      page: targetPage,
+      hasMore: Boolean(payload.pagination?.hasMore),
+      loadingOlder: false,
+    });
+    conversation.unreadCount = 0;
+    await fetch(`${API_BASE_URL}/messages/threads/${encodeURIComponent(conversation.id)}/read`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: "{}",
+    }).catch(() => null);
+    setRealtimeStatus(true);
   } catch (error) {
+    setRealtimeStatus(false);
     if (window.ClientUI) window.ClientUI.toast(error.message || "Could not sync messages", "error");
+  }
+}
+
+async function loadOlderMessages(conversationId) {
+  const conversation = allConversations.find((item) => item.id === conversationId);
+  if (!conversation) return;
+  const state = threadState.get(conversationId);
+  if (!state || !state.hasMore || state.loadingOlder) return;
+  threadState.set(conversationId, { ...state, loadingOlder: true });
+  renderActiveConversation();
+  threadState.set(conversationId, { ...state, loadingOlder: true, page: state.page + 1 });
+  await loadRemoteMessages(conversation, { reset: false });
+  renderActiveConversation();
+}
+
+async function pollActiveConversation() {
+  const conversation = allConversations.find((item) => item.id === activeConversationId);
+  if (!conversation || !conversation.remote) return;
+  try {
+    const res = await fetch(`${API_BASE_URL}/messages/threads/${encodeURIComponent(conversation.id)}?limit=30&page=1`, {
+      headers: authHeaders(),
+    });
+    if (!res.ok) throw new Error("Realtime sync failed");
+    const payload = await res.json();
+    const freshItems = Array.isArray(payload.items) ? payload.items.slice().reverse().map(mapRemoteMessage) : [];
+    if (freshItems.length) {
+      const existing = Array.isArray(conversation.messages) ? conversation.messages : [];
+      const byId = new Map(existing.map((item) => [item.id, item]));
+      for (const item of freshItems) {
+        byId.set(item.id, { ...(byId.get(item.id) || {}), ...item });
+      }
+      const merged = Array.from(byId.values()).sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      conversation.messages = merged;
+      renderConversationList();
+      renderActiveConversation();
+      await fetch(`${API_BASE_URL}/messages/threads/${encodeURIComponent(conversation.id)}/read`, {
+        method: "POST",
+        headers: authHeaders(),
+        body: "{}",
+      }).catch(() => null);
+    }
+    setRealtimeStatus(true);
+  } catch (_error) {
+    setRealtimeStatus(false);
+  }
+}
+
+function setComposerAttachment(file) {
+  selectedAttachment = file || null;
+  if (!selectedAttachment) {
+    composerAttachment.classList.add("hidden");
+    composerAttachment.innerHTML = "";
+    return;
+  }
+  composerAttachment.classList.remove("hidden");
+  composerAttachment.innerHTML = `
+    <span class="attachment-chip"><i class="fa fa-paperclip"></i> ${escapeHtml(selectedAttachment.name)} (${formatFileSize(selectedAttachment.size)})</span>
+    <button type="button" class="action-btn" id="removeAttachmentBtn" aria-label="Remove attachment"><i class="fa fa-xmark"></i></button>
+  `;
+  const removeBtn = document.getElementById("removeAttachmentBtn");
+  if (removeBtn) {
+    removeBtn.addEventListener("click", () => {
+      setComposerAttachment(null);
+      attachmentInput.value = "";
+    });
   }
 }
 
@@ -1016,7 +1211,8 @@ searchInput.addEventListener("input", renderConversationList);
 
 sendBtn.addEventListener("click", async () => {
   const text = messageInput.value.trim();
-  if (!text) return;
+  const hasAttachment = Boolean(selectedAttachment);
+  if (!text && !hasAttachment) return;
 
   const conversation = allConversations.find(c => c.id === activeConversationId);
   if (!conversation) return;
@@ -1026,17 +1222,31 @@ sendBtn.addEventListener("click", async () => {
   if (!Array.isArray(conversation.messages)) conversation.messages = [];
   const createdAt = new Date().toISOString();
   try {
+    const attachmentPayload = selectedAttachment
+      ? { name: selectedAttachment.name, size: selectedAttachment.size, type: selectedAttachment.type || "application/octet-stream" }
+      : null;
     if (conversation.remote) {
       const res = await fetch(`${API_BASE_URL}/messages/threads/${encodeURIComponent(conversation.id)}`, {
         method: "POST",
         headers: { ...authHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({ body: text }),
+        body: JSON.stringify({ body: text, attachment: attachmentPayload }),
       });
       if (!res.ok) throw new Error("Failed to send message");
+      const payload = await res.json().catch(() => ({}));
+      const remoteMessage = payload.message ? mapRemoteMessage(payload.message) : null;
+      if (remoteMessage) {
+        conversation.messages.push(remoteMessage);
+        conversation.lastMessage = { text: remoteMessage.text, createdAt: remoteMessage.createdAt };
+      } else {
+        conversation.messages.push({ id: `tmp_${Date.now()}`, from: "sent", text, createdAt, deliveryStatus: "sent", attachment: attachmentPayload });
+      }
+    } else {
+      conversation.messages.push({ id: `tmp_${Date.now()}`, from: "sent", text, createdAt, deliveryStatus: "sent", attachment: attachmentPayload });
     }
-    conversation.messages.push({ from: "sent", text, createdAt });
-    conversation.lastMessage = { text, createdAt };
+    conversation.lastMessage = { text: text || (attachmentPayload ? `[Attachment] ${attachmentPayload.name}` : ""), createdAt };
     messageInput.value = "";
+    setComposerAttachment(null);
+    attachmentInput.value = "";
     renderConversationList();
     renderActiveConversation();
   } catch (error) {
@@ -1053,13 +1263,28 @@ messageInput.addEventListener("keydown", event => {
   }
 });
 
+attachBtn.addEventListener("click", () => attachmentInput.click());
+attachmentInput.addEventListener("change", (event) => {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  setComposerAttachment(file);
+});
+
+messagesContainer.addEventListener("scroll", () => {
+  if (messagesContainer.scrollTop <= 2) {
+    loadOlderMessages(activeConversationId).catch(() => {});
+  }
+});
+
 (async () => {
   await loadRemoteThreads();
   const activeConversation = allConversations.find((c) => c.id === activeConversationId);
-  await loadRemoteMessages(activeConversation);
+  await loadRemoteMessages(activeConversation, { reset: true });
   renderConversationList();
   renderActiveConversation();
   initSidebarResize();
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(() => { pollActiveConversation(); }, 15000);
 })();
 </script>
 </body>

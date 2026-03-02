@@ -2,7 +2,7 @@ import { config } from "../config.js";
 import { getDb } from "../db.js";
 import { store, utils } from "../store.js";
 import { canAccessClient } from "../auth.js";
-import { addAudit } from "../audit.js";
+import { addAudit, addNotification } from "../audit.js";
 import { pullSarsState } from "./connector-sars.js";
 import { pullCipcState } from "./connector-cipc.js";
 import { pullCsdState } from "./connector-csd.js";
@@ -28,12 +28,36 @@ const normStatus = (s) => (["overdue", "non_compliant"].includes(String(s || "")
 const weight = (s) => (normStatus(s) === "overdue" ? 1 : normStatus(s) === "due_soon" ? 0.4 : 0);
 const sev = (s) => (String(s || "").toLowerCase() === "high" ? 3 : String(s || "").toLowerCase() === "medium" ? 2 : 1);
 const j = (v, f = {}) => (v && typeof v === "object" ? v : f);
+const defaultPref = { channels: { inApp: true, email: true, sms: false }, reminderDays: REMINDER_DAYS };
 
 async function getClient(clientId) {
   return db ? db.client.findUnique({ where: { id: clientId } }) : store.clients.find((x) => x.id === clientId) || null;
 }
 async function listClients() {
   return db ? db.client.findMany() : store.clients;
+}
+async function usersByClient(clientId) {
+  if (db) {
+    const users = await db.user.findMany();
+    return users.filter((user) => Array.isArray(user.clientIds) && user.clientIds.includes(clientId));
+  }
+  return store.users.filter((user) => Array.isArray(user.clientIds) && user.clientIds.includes(clientId));
+}
+function prefForUser(user) {
+  const security = j(user?.security, {});
+  const raw = j(security.notificationPreferences, {});
+  const channels = j(raw.channels, {});
+  const reminderDays = Array.isArray(raw.reminderDays)
+    ? raw.reminderDays.map((n) => Number(n)).filter((n) => Number.isInteger(n) && n >= 0)
+    : defaultPref.reminderDays;
+  return {
+    channels: {
+      inApp: channels.inApp !== false,
+      email: channels.email !== false,
+      sms: channels.sms === true,
+    },
+    reminderDays: reminderDays.length ? reminderDays : defaultPref.reminderDays,
+  };
 }
 async function obligationsByClient(clientId) {
   return db
@@ -322,19 +346,47 @@ export async function runEscalationRules() {
 export async function runReminderRules() {
   const obligations = db ? await db.complianceObligation.findMany() : store.complianceObligations;
   const now = new Date(); let remindersCreated = 0;
+  const usersByClientCache = new Map();
   for (const o of obligations) {
     if (normStatus(o.status) === "overdue") continue;
     const due = toDate(o.dueDate); if (!due) continue;
     const days = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
     if (!REMINDER_DAYS.includes(days)) continue;
+
+    if (!usersByClientCache.has(o.clientId)) {
+      usersByClientCache.set(o.clientId, await usersByClient(o.clientId));
+    }
+    const linkedUsers = usersByClientCache.get(o.clientId) || [];
+    const recipients = linkedUsers
+      .map((user) => ({ user, pref: prefForUser(user) }))
+      .filter((entry) => entry.pref.reminderDays.includes(days));
+    if (!recipients.length) continue;
+
     const marker = `${o.source}:${o.obligationType}:${days}`;
     const dup = db
       ? await db.complianceEvent.findFirst({ where: { clientId: o.clientId, eventType: "reminder.due", obligationRef: o.obligationType, payload: { path: ["marker"], equals: marker } } })
       : store.complianceEvents.find((x) => x.clientId === o.clientId && x.eventType === "reminder.due" && x.obligationRef === o.obligationType && j(x.payload, {}).marker === marker);
     if (dup) continue;
-    const e = { id: utils.makeId("ce"), clientId: o.clientId, source: o.source, eventType: "reminder.due", severity: days <= 3 ? "high" : "medium", title: `${o.obligationType} due in ${days} day${days === 1 ? "" : "s"}`, description: `Reminder for ${o.source} ${o.obligationType}`, obligationRef: o.obligationType, payload: { marker, channel: ["in_app", "email"], dueDate: due.toISOString(), daysUntilDue: days }, occurredAt: new Date() };
+    const channelUnion = Array.from(new Set(recipients.flatMap((entry) => {
+      const channels = [];
+      if (entry.pref.channels.inApp) channels.push("in_app");
+      if (entry.pref.channels.email) channels.push("email");
+      if (entry.pref.channels.sms) channels.push("sms");
+      return channels;
+    })));
+    const e = { id: utils.makeId("ce"), clientId: o.clientId, source: o.source, eventType: "reminder.due", severity: days <= 3 ? "high" : "medium", title: `${o.obligationType} due in ${days} day${days === 1 ? "" : "s"}`, description: `Reminder for ${o.source} ${o.obligationType}`, obligationRef: o.obligationType, payload: { marker, channel: channelUnion, dueDate: due.toISOString(), daysUntilDue: days }, occurredAt: new Date() };
     if (db) await db.complianceEvent.create({ data: e });
     else store.complianceEvents.unshift({ ...e, occurredAt: e.occurredAt.toISOString(), createdAt: nowIso() });
+
+    for (const recipient of recipients) {
+      if (!recipient.pref.channels.inApp) continue;
+      addNotification({
+        userId: recipient.user.id,
+        type: "compliance_reminder",
+        title: `${o.source} reminder`,
+        message: `${o.obligationType} is due in ${days} day${days === 1 ? "" : "s"}.`,
+      });
+    }
     remindersCreated += 1;
   }
   return { remindersCreated };
