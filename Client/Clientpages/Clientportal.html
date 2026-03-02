@@ -417,6 +417,71 @@
       color: #0f172a;
       margin-bottom: 8px;
     }
+    .obligation-drawer-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.4);
+      display: none;
+      align-items: stretch;
+      justify-content: flex-end;
+      z-index: 40;
+    }
+    .obligation-drawer-overlay.open { display: flex; }
+    .obligation-drawer {
+      width: min(540px, 100%);
+      background: #fff;
+      border-left: 1px solid var(--border);
+      box-shadow: -16px 0 36px rgba(15, 23, 42, 0.18);
+      padding: 16px;
+      overflow-y: auto;
+      animation: slide-in .2s ease-out;
+    }
+    @keyframes slide-in {
+      from { transform: translateX(16px); opacity: .3; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    .drawer-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .drawer-close {
+      border: 1px solid var(--border);
+      background: #fff;
+      border-radius: 8px;
+      padding: 6px 8px;
+      cursor: pointer;
+    }
+    .drawer-section {
+      margin-top: 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      background: #fcfdff;
+    }
+    .drawer-grid {
+      display: grid;
+      gap: 8px;
+      grid-template-columns: 1fr 1fr;
+      font-size: 13px;
+    }
+    .drawer-grid strong { display: block; color: #0f172a; }
+    .drawer-grid span { color: var(--muted); }
+    .drawer-list {
+      list-style: none;
+      display: grid;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .drawer-list li {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px;
+      background: #fff;
+      font-size: 12px;
+    }
 
     .compliance-card {
       padding: 18px;
@@ -695,6 +760,17 @@
       </section>
     </main>
   </div>
+  <div class="obligation-drawer-overlay" id="obligationDrawerOverlay">
+    <aside class="obligation-drawer" role="dialog" aria-modal="true" aria-labelledby="obligationDrawerTitle">
+      <div class="drawer-head">
+        <h3 id="obligationDrawerTitle">Obligation Details</h3>
+        <button class="drawer-close" type="button" id="obligationDrawerClose" aria-label="Close obligation details">
+          <i class="fa fa-times"></i>
+        </button>
+      </div>
+      <div id="obligationDrawerContent" class="empty">Select an obligation to view details.</div>
+    </aside>
+  </div>
 
   <script src="../../shared/portal-config.js"></script>
   <script src="../../shared/portal-auth.js"></script>
@@ -736,9 +812,15 @@
     const actionCenterWrap = document.getElementById("action-center-wrap");
     const timelineCenterWrap = document.getElementById("timeline-center-wrap");
     const overallStatusPill = document.getElementById("overall-status-pill");
+    const obligationDrawerOverlay = document.getElementById("obligationDrawerOverlay");
+    const obligationDrawerContent = document.getElementById("obligationDrawerContent");
+    const obligationDrawerClose = document.getElementById("obligationDrawerClose");
     const activeClientId = Array.isArray(session.user?.clientIds) && session.user.clientIds.length
       ? session.user.clientIds[0]
       : "";
+    const pageParams = new URLSearchParams(window.location.search);
+    let dashboardObligations = [];
+    let dashboardTimelineItems = [];
 
     function setSidebarWidth(width) {
       const clamped = Math.max(SIDEBAR_MIN_WIDTH, Math.min(SIDEBAR_MAX_WIDTH, width));
@@ -794,6 +876,110 @@
       const date = safeDate(value);
       if (!date) return "Unknown";
       return date.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+    }
+
+    function escapeHtml(value) {
+      return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function buildDocumentsLink(obligation) {
+      if (!obligation) return "documents.html";
+      const params = new URLSearchParams();
+      params.set("obligationId", String(obligation.id || ""));
+      params.set("obligation", String(obligation.obligationType || ""));
+      params.set("source", String(obligation.source || ""));
+      return `documents.html?${params.toString()}`;
+    }
+
+    function buildActionOpenLink(item) {
+      if (!item) return "#";
+      if (item.alertId) {
+        return `notifications.html?alertId=${encodeURIComponent(String(item.alertId))}&focus=1`;
+      }
+      if (item.obligationId) {
+        const obligation = dashboardObligations.find((entry) => entry.id === item.obligationId);
+        return buildDocumentsLink(obligation || {
+          id: item.obligationId,
+          obligationType: item.title || "Obligation",
+          source: item.source || "",
+        });
+      }
+      const directLink = String(item.directLink || "").trim();
+      if (!directLink) return "#";
+      return directLink.replace(/^\/Client\/Clientpages\//, "");
+    }
+
+    function closeObligationDrawer() {
+      obligationDrawerOverlay.classList.remove("open");
+    }
+
+    function openObligationDrawer(obligationId) {
+      if (!obligationId) return;
+      const obligation = dashboardObligations.find((item) => item.id === obligationId);
+      if (!obligation) {
+        obligationDrawerContent.innerHTML = '<p class="empty">Obligation details were not found.</p>';
+        obligationDrawerOverlay.classList.add("open");
+        return;
+      }
+
+      const meta = obligation.metadata && typeof obligation.metadata === "object" ? obligation.metadata : {};
+      const assignment = meta.assignment && typeof meta.assignment === "object" ? meta.assignment : {};
+      const evidence = Array.isArray(meta.evidence) ? meta.evidence : [];
+      const relatedEvents = dashboardTimelineItems
+        .filter((event) => String(event.obligationRef || "").toLowerCase() === String(obligation.obligationType || "").toLowerCase())
+        .slice(0, 8);
+
+      obligationDrawerContent.innerHTML = `
+        <div class="drawer-section">
+          <div class="drawer-grid">
+            <div><strong>Source</strong><span>${escapeHtml(obligation.source)}</span></div>
+            <div><strong>Type</strong><span>${escapeHtml(obligation.obligationType)}</span></div>
+            <div><strong>Status</strong><span>${escapeHtml(String(obligation.status || "").replace("_", " "))}</span></div>
+            <div><strong>Due Date</strong><span>${escapeHtml(formatDate(obligation.dueDate))}</span></div>
+            <div><strong>Owner</strong><span>${escapeHtml(assignment.ownerUserId || "Unassigned")}</span></div>
+            <div><strong>Owner Due</strong><span>${escapeHtml(formatDate(assignment.dueDate))}</span></div>
+          </div>
+        </div>
+        <div class="drawer-section">
+          <h4>Evidence</h4>
+          <p class="compliance-sub">Status: ${escapeHtml(meta.evidenceStatus || "pending")} | Items: ${evidence.length}</p>
+          ${evidence.length ? `
+            <ul class="drawer-list">
+              ${evidence.map((item) => `
+                <li>
+                  <strong>${escapeHtml(item.fileName || "Evidence")}</strong>
+                  <div>${escapeHtml(item.notes || "")}</div>
+                  <div class="compliance-sub">${escapeHtml(formatDate(item.createdAt))}</div>
+                </li>
+              `).join("")}
+            </ul>
+          ` : '<p class="empty">No evidence items yet.</p>'}
+        </div>
+        <div class="drawer-section">
+          <h4>Timeline</h4>
+          ${relatedEvents.length ? `
+            <ul class="drawer-list">
+              ${relatedEvents.map((event) => `
+                <li>
+                  <strong>${escapeHtml(event.title || event.eventType || "Event")}</strong>
+                  <div>${escapeHtml(event.description || "")}</div>
+                  <div class="compliance-sub">${escapeHtml(formatDate(event.occurredAt || event.createdAt))}</div>
+                </li>
+              `).join("")}
+            </ul>
+          ` : '<p class="empty">No related timeline events found.</p>'}
+        </div>
+        <div class="inline-actions">
+          <a class="tiny-btn" href="${buildDocumentsLink(obligation)}">Open in Documents</a>
+          <button class="tiny-btn primary" type="button" data-evidence-id="${escapeHtml(obligation.id)}">Mark Evidence Complete</button>
+        </div>
+      `;
+      obligationDrawerOverlay.classList.add("open");
     }
 
     function statusBadgeClass(status) {
@@ -898,6 +1084,7 @@
       `;
 
       const obligations = Array.isArray(overview.obligations) ? overview.obligations : [];
+      dashboardObligations = obligations;
       const priority = obligations
         .filter((item) => ["overdue", "due_soon"].includes(String(item.status || "").toLowerCase()))
         .sort((left, right) => {
@@ -924,6 +1111,8 @@
                 </div>
                 <div style="margin-top:6px;color:var(--muted);">Due: ${formatDate(item.dueDate)}</div>
                 <div class="inline-actions">
+                  <a class="tiny-btn" href="${buildDocumentsLink(item)}">Open</a>
+                  <button class="tiny-btn" type="button" data-open-obligation="${item.id}">Details</button>
                   <button class="tiny-btn primary" type="button" data-evidence-id="${item.id}">Mark Evidence Complete</button>
                 </div>
               </li>
@@ -949,7 +1138,8 @@
               </div>
               <div style="margin-top:6px;color:var(--muted);">${item.source || ""}</div>
               <div class="inline-actions">
-                <a class="tiny-btn" href="${item.directLink || "#"}">Open</a>
+                <a class="tiny-btn" href="${buildActionOpenLink(item)}">Open</a>
+                ${item.obligationId ? `<button class="tiny-btn" type="button" data-open-obligation="${item.obligationId}">Details</button>` : ""}
                 ${item.alertId ? `<button class="tiny-btn primary" type="button" data-ack-alert="${item.alertId}">Acknowledge</button>` : ""}
                 ${item.obligationId ? `<button class="tiny-btn primary" type="button" data-evidence-id="${item.obligationId}">Mark Evidence Complete</button>` : ""}
               </div>
@@ -995,6 +1185,7 @@
 
     function renderTimelineCenter(items) {
       const rows = Array.isArray(items) ? items : [];
+      dashboardTimelineItems = rows;
       if (!rows.length) {
         timelineCenterWrap.innerHTML = '<p class="empty">No timeline events yet.</p>';
         return;
@@ -1149,10 +1340,31 @@
       renderComplianceOverview(complianceOverview);
       renderActionCenter(actionCenter);
       renderTimelineCenter(timelineCenter?.items || []);
+      const openObligationId = pageParams.get("obligationId");
+      if (openObligationId) {
+        openObligationDrawer(openObligationId);
+      }
     }
 
     initSidebarResize();
+    obligationDrawerClose.addEventListener("click", closeObligationDrawer);
+    obligationDrawerOverlay.addEventListener("click", (event) => {
+      if (event.target === obligationDrawerOverlay) {
+        closeObligationDrawer();
+      }
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && obligationDrawerOverlay.classList.contains("open")) {
+        closeObligationDrawer();
+      }
+    });
     document.addEventListener("click", async (event) => {
+      const detailsBtn = event.target.closest("[data-open-obligation]");
+      if (detailsBtn) {
+        openObligationDrawer(detailsBtn.getAttribute("data-open-obligation"));
+        return;
+      }
+
       const ackBtn = event.target.closest("[data-ack-alert]");
       if (ackBtn) {
         try {

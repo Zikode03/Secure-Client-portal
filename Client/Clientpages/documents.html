@@ -496,6 +496,11 @@ th {
   border-radius: 12px;
   padding: 16px;
 }
+.doc-focus {
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 2px #bfdbfe;
+  background: #eff6ff;
+}
 
 .doc-card h4 {
   font-size: 14px;
@@ -905,6 +910,9 @@ let category = "All Documents";
 let view = "list";
 let sortKey = "uploadedAt";
 let sortDirection = "desc";
+const docPageParams = new URLSearchParams(window.location.search);
+let highlightDocId = "";
+let hasAppliedDeepLinkFocus = false;
 
 function safeDate(v) {
   const d = new Date(v);
@@ -1018,7 +1026,7 @@ function renderList(items) {
       </thead>
       <tbody>
         ${items.map((d) => `
-          <tr>
+          <tr data-doc-id="${d.id}" class="${highlightDocId === d.id ? "doc-focus" : ""}">
             <td>
               <div class="name-cell">
                 <div class="name-icon"><i class="fa fa-file-alt"></i></div>
@@ -1051,7 +1059,7 @@ function renderGrid(items) {
   gridView.innerHTML = `
     <div class="grid-wrap">
       ${items.map((d) => `
-        <div class="doc-card">
+        <div class="doc-card ${highlightDocId === d.id ? "doc-focus" : ""}" data-doc-id="${d.id}">
           <h4>${d.name || "Untitled"}</h4>
           <div class="meta">${inferCategory(d)} • ${size(d.sizeBytes)}</div>
           <span class="${badgeClass(d.status)}"><i class="fa ${statusIcon(d.status)}"></i>${d.status || "unknown"}</span>
@@ -1108,6 +1116,48 @@ function render() {
   gridView.hidden = view !== "grid";
   renderExpiry();
   renderAudit();
+  if (highlightDocId) {
+    const el = document.querySelector(`[data-doc-id="${highlightDocId}"]`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }
+}
+
+function findDeepLinkDocument() {
+  const byId = docPageParams.get("documentId");
+  if (byId) {
+    const exact = docs.find((item) => String(item.id) === String(byId));
+    if (exact) return exact;
+  }
+
+  const obligationText = String(docPageParams.get("obligation") || "").toLowerCase();
+  const sourceText = String(docPageParams.get("source") || "").toLowerCase();
+  if (!obligationText && !sourceText) return null;
+
+  return docs.find((item) => {
+    const haystack = `${item.name || ""} ${item.category || ""}`.toLowerCase();
+    const obligationMatch = obligationText ? haystack.includes(obligationText) : true;
+    const sourceMatch = sourceText ? haystack.includes(sourceText) : true;
+    return obligationMatch && sourceMatch;
+  }) || null;
+}
+
+function applyDeepLinkFocus() {
+  if (hasAppliedDeepLinkFocus) return;
+  hasAppliedDeepLinkFocus = true;
+  const hasDeepLink = docPageParams.has("documentId") || docPageParams.has("obligation") || docPageParams.has("source");
+  const target = findDeepLinkDocument();
+  if (!target) {
+    if (hasDeepLink && window.ClientUI) {
+      window.ClientUI.toast("Linked document was not found. Showing closest results.", "info");
+    }
+    return;
+  }
+  highlightDocId = target.id;
+  if (!searchInput.value && docPageParams.get("obligation")) {
+    searchInput.value = docPageParams.get("obligation");
+  }
 }
 
 async function load() {
@@ -1124,6 +1174,7 @@ async function load() {
     requests = (await r.json()).items || [];
     notifications = (await n.json()).items || [];
 
+    applyDeepLinkFocus();
     render();
   } catch (error) {
     console.error(error);

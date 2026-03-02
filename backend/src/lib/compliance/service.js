@@ -208,7 +208,7 @@ export async function getClientActionCenter(reqUser, clientId) {
   hasClientAccess(reqUser, clientId);
   const obligations = await obligationsByClient(clientId);
   const alerts = await alertsByClient(clientId, false);
-  const acts = obligations.filter((o) => ["overdue", "due_soon"].includes(normStatus(o.status))).map((o) => ({ type: "obligation", source: o.source, title: `${o.obligationType} ${normStatus(o.status) === "overdue" ? "overdue" : "due soon"}`, urgency: normStatus(o.status) === "overdue" ? 1000 : 500, dueDate: o.dueDate, directLink: `/Client/Clientpages/documents.html?obligation=${encodeURIComponent(o.obligationType)}`, obligationId: o.id }))
+  const acts = obligations.filter((o) => ["overdue", "due_soon"].includes(normStatus(o.status))).map((o) => ({ type: "obligation", source: o.source, title: `${o.obligationType} ${normStatus(o.status) === "overdue" ? "overdue" : "due soon"}`, urgency: normStatus(o.status) === "overdue" ? 1000 : 500, dueDate: o.dueDate, directLink: `/Client/Clientpages/documents.html?obligationId=${encodeURIComponent(o.id)}&obligation=${encodeURIComponent(o.obligationType)}&source=${encodeURIComponent(o.source)}`, obligationId: o.id }))
     .concat(alerts.map((a) => ({ type: "alert", source: a.source, title: a.title, urgency: sev(a.severity) * 200 + (a.status === "escalated" ? 150 : 0), directLink: `/Client/Clientpages/notifications.html?alertId=${encodeURIComponent(a.id)}`, alertId: a.id })))
     .sort((a, b) => b.urgency - a.urgency)
     .slice(0, 3);

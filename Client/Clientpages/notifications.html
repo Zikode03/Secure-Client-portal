@@ -128,6 +128,12 @@ main {
   justify-content:space-between;
 }
 
+.drawer-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .drawer-header h2 {
   font-size:20px;
   font-weight:700;
@@ -141,6 +147,18 @@ main {
 .close {
   cursor:pointer;
   color:var(--muted);
+}
+
+.back-btn {
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
 }
 
 /* FILTERS */
@@ -197,6 +215,26 @@ main {
   position:absolute;
   top:24px;
   right:24px;
+}
+
+.item.focus {
+  border-left: 3px solid var(--primary);
+  background: #eff6ff;
+}
+
+.item.selected {
+  outline: 2px solid #bfdbfe;
+  outline-offset: -2px;
+}
+
+.selection-wrap {
+  display: flex;
+  align-items: center;
+}
+
+.selection-wrap input {
+  width: 16px;
+  height: 16px;
 }
 
 .icon {
@@ -289,6 +327,45 @@ main {
   font-weight:600;
   color:var(--muted);
 }
+
+.footer-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.prefs-panel {
+  padding: 14px 24px;
+  border-top: 1px solid var(--border);
+  background: #f9fbff;
+}
+
+.prefs-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 8px;
+}
+
+.prefs-grid label {
+  font-size: 12px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.focus-alert {
+  margin: 0 24px 12px;
+  border: 1px solid #bfdbfe;
+  border-radius: 10px;
+  background: #eff6ff;
+  padding: 12px;
+}
+
+.focus-alert h4 {
+  font-size: 14px;
+  margin-bottom: 6px;
+}
 </style>
 <link rel="stylesheet" href="../../shared/client-theme.css">
 <link rel="stylesheet" href="../../shared/inline-migrated.css">
@@ -324,20 +401,42 @@ main {
         <h2>Notifications</h2>
         <p id="unreadText">You have 0 unread updates</p>
       </div>
-      <span class="material-symbols-outlined close">close</span>
+      <div class="drawer-head-actions">
+        <button class="back-btn" id="backBtn" type="button">Back</button>
+        <button class="back-btn close" id="closeBtn" type="button" aria-label="Close notifications">
+          <span class="material-symbols-outlined">close</span>
+        </button>
+      </div>
     </div>
 
     <div class="filters">
+      <label class="selection-wrap" title="Select all loaded notifications">
+        <input type="checkbox" id="selectAllCb" aria-label="Select all notifications">
+      </label>
       <div class="filter active" data-filter="all">All</div>
       <div class="filter" data-filter="unread">Unread</div>
       <div class="filter" data-filter="action">Action Required</div>
     </div>
 
+    <div id="focusAlertPanel"></div>
     <div class="list" id="notificationList"></div>
 
     <div class="drawer-footer">
-      <button class="btn primary" id="loadMoreBtn">Load More</button>
-      <div class="secondary" id="markAllReadBtn">Mark all as read</div>
+      <div class="footer-actions">
+        <button class="btn primary" id="loadMoreBtn" type="button">Load More</button>
+        <button class="btn outline" id="markSelectedReadBtn" type="button">Mark selected as read</button>
+        <div class="secondary" id="markAllReadBtn">Mark all as read</div>
+      </div>
+    </div>
+
+    <div class="prefs-panel">
+      <strong>Notification Preferences</strong>
+      <div class="prefs-grid">
+        <label><input type="checkbox" id="prefInApp"> In-app</label>
+        <label><input type="checkbox" id="prefEmail"> Email</label>
+        <label><input type="checkbox" id="prefSms"> SMS</label>
+      </div>
+      <div class="secondary" id="savePrefsBtn">Save preferences</div>
     </div>
 
   </div>
@@ -351,15 +450,41 @@ const API_BASE_URL = window.PortalConfig.API_BASE_URL;
 const session = window.PortalAuth.requireRole("client", "../Clientlogins/login.html");
 if (!session) { throw new Error("Unauthorized"); }
 const { token } = session;
+const pageParams = new URLSearchParams(window.location.search);
+const selectedIds = new Set();
+let loadedItems = [];
 
 function authHeaders() {
   return window.PortalAuth.authHeaders(token);
+}
+
+function goBackToClientPage() {
+  const fallback = "Clientportal.html";
+  const referrer = document.referrer || "";
+  try {
+    if (referrer && new URL(referrer).origin === window.location.origin) {
+      window.history.back();
+      return;
+    }
+  } catch (_error) {
+    // fallback below
+  }
+  window.location.href = fallback;
 }
 
 let page = 1;
 const limit = 10;
 let activeFilter = "all";
 let hasMore = false;
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
 
 function iconForType(type) {
   if (type === "message_received") return "mail";
@@ -369,18 +494,24 @@ function iconForType(type) {
 
 function renderItems(items, append = false) {
   const list = document.getElementById("notificationList");
+  const focusedNotificationId = pageParams.get("notificationId");
   if (!append) list.innerHTML = "";
+  loadedItems = append ? loadedItems.concat(items) : [...items];
   for (const n of items) {
     const div = document.createElement("div");
-    div.className = `item ${n.read ? "" : "unread"}`;
+    div.className = `item ${n.read ? "" : "unread"} ${selectedIds.has(n.id) ? "selected" : ""} ${focusedNotificationId === n.id ? "focus" : ""}`;
+    div.setAttribute("data-id", n.id);
     div.innerHTML = `
+      <label class="selection-wrap">
+        <input type="checkbox" data-select-id="${n.id}" ${selectedIds.has(n.id) ? "checked" : ""} aria-label="Select notification">
+      </label>
       <div class="icon"><span class="material-symbols-outlined">${iconForType(n.type)}</span></div>
       <div class="content">
         <div class="inl-1141c4304a">
-          <h4>${n.title}</h4>
+          <h4>${escapeHtml(n.title)}</h4>
           <span class="time">${new Date(n.createdAt).toLocaleString()}</span>
         </div>
-        <p>${n.message}</p>
+        <p>${escapeHtml(n.message)}</p>
         <div class="actions">
           <span class="link" data-read-id="${n.id}">${n.read ? "Read" : "Mark as read"}</span>
         </div>
@@ -388,6 +519,8 @@ function renderItems(items, append = false) {
     `;
     list.appendChild(div);
   }
+  const allSelected = loadedItems.length > 0 && loadedItems.every((item) => selectedIds.has(item.id));
+  document.getElementById("selectAllCb").checked = allSelected;
 }
 
 async function loadNotifications(append = false) {
@@ -399,9 +532,92 @@ async function loadNotifications(append = false) {
   if (!response.ok) return;
   const data = await response.json();
   renderItems(data.items || [], append);
+  const focusedNotificationId = pageParams.get("notificationId");
+  if (focusedNotificationId) {
+    const target = document.querySelector(`.item[data-id="${focusedNotificationId}"]`);
+    if (target) target.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
   document.getElementById("unreadText").textContent = `You have ${data.unreadCount || 0} unread updates`;
   hasMore = Boolean(data.pagination?.hasMore);
   document.getElementById("loadMoreBtn").style.display = hasMore ? "block" : "none";
+}
+
+async function loadFocusedAlert() {
+  const alertId = pageParams.get("alertId");
+  const panel = document.getElementById("focusAlertPanel");
+  if (!alertId) {
+    panel.innerHTML = "";
+    return;
+  }
+  const response = await fetch(`${API_BASE_URL}/compliance/overview`, { headers: authHeaders() });
+  if (!response.ok) return;
+  const data = await response.json().catch(() => ({}));
+  const alerts = Array.isArray(data.alerts) ? data.alerts : [];
+  const target = alerts.find((item) => item.id === alertId);
+  if (!target) {
+    panel.innerHTML = `<div class="focus-alert"><h4>Linked alert not found</h4><p>This alert may already be resolved.</p></div>`;
+    return;
+  }
+  panel.innerHTML = `
+    <div class="focus-alert">
+      <h4>${escapeHtml(target.title || "Compliance Alert")}</h4>
+      <p>${escapeHtml(target.message || "")}</p>
+      <div class="actions">
+        <button class="btn outline" type="button" data-ack-alert="${escapeHtml(target.id)}">Acknowledge</button>
+      </div>
+    </div>
+  `;
+}
+
+async function markSelectedRead() {
+  const ids = Array.from(selectedIds);
+  if (!ids.length) {
+    if (window.ClientUI) window.ClientUI.toast("Select notifications first", "info");
+    return;
+  }
+  const response = await fetch(`${API_BASE_URL}/notifications/read-bulk`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ ids }),
+  });
+  if (!response.ok) return;
+  selectedIds.clear();
+  page = 1;
+  await loadNotifications(false);
+  if (window.ClientUI) window.ClientUI.toast("Selected notifications marked as read", "success");
+}
+
+async function loadPreferences() {
+  const response = await fetch(`${API_BASE_URL}/notifications/preferences`, {
+    headers: authHeaders(),
+  });
+  if (!response.ok) return;
+  const data = await response.json().catch(() => ({}));
+  const prefs = data.preferences || {};
+  const channels = prefs.channels || {};
+  document.getElementById("prefInApp").checked = channels.inApp !== false;
+  document.getElementById("prefEmail").checked = channels.email !== false;
+  document.getElementById("prefSms").checked = channels.sms === true;
+}
+
+async function savePreferences() {
+  const payload = {
+    channels: {
+      inApp: document.getElementById("prefInApp").checked,
+      email: document.getElementById("prefEmail").checked,
+      sms: document.getElementById("prefSms").checked,
+    },
+  };
+  const response = await fetch(`${API_BASE_URL}/notifications/preferences`, {
+    method: "PATCH",
+    headers: authHeaders(),
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    if (window.ClientUI) window.ClientUI.toast("Failed to save preferences", "error");
+    return;
+  }
+  if (window.ClientUI) window.ClientUI.toast("Notification preferences saved", "success");
 }
 
 document.querySelectorAll(".filter").forEach((el) => {
@@ -410,6 +626,7 @@ document.querySelectorAll(".filter").forEach((el) => {
     el.classList.add("active");
     activeFilter = el.getAttribute("data-filter");
     page = 1;
+    selectedIds.clear();
     loadNotifications(false);
   });
 });
@@ -433,7 +650,53 @@ document.getElementById("markAllReadBtn").addEventListener("click", async () => 
   }
 });
 
+document.getElementById("markSelectedReadBtn").addEventListener("click", markSelectedRead);
+document.getElementById("savePrefsBtn").addEventListener("click", savePreferences);
+document.getElementById("backBtn").addEventListener("click", goBackToClientPage);
+document.getElementById("closeBtn").addEventListener("click", goBackToClientPage);
+document.querySelector(".overlay").addEventListener("click", (event) => {
+  if (event.target.classList.contains("overlay")) {
+    goBackToClientPage();
+  }
+});
+document.getElementById("selectAllCb").addEventListener("change", (event) => {
+  const checked = event.target.checked;
+  if (checked) {
+    loadedItems.forEach((item) => selectedIds.add(item.id));
+  } else {
+    loadedItems.forEach((item) => selectedIds.delete(item.id));
+  }
+  renderItems(loadedItems, false);
+});
+
 document.addEventListener("click", async (event) => {
+  const selectCb = event.target.closest("[data-select-id]");
+  if (selectCb) {
+    const id = selectCb.getAttribute("data-select-id");
+    if (selectCb.checked) selectedIds.add(id);
+    else selectedIds.delete(id);
+    const row = selectCb.closest(".item");
+    if (row) row.classList.toggle("selected", selectCb.checked);
+    const allSelected = loadedItems.length > 0 && loadedItems.every((item) => selectedIds.has(item.id));
+    document.getElementById("selectAllCb").checked = allSelected;
+    return;
+  }
+
+  const ackBtn = event.target.closest("[data-ack-alert]");
+  if (ackBtn) {
+    const alertId = ackBtn.getAttribute("data-ack-alert");
+    const response = await fetch(`${API_BASE_URL}/compliance/alerts/${encodeURIComponent(alertId)}/acknowledge`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ note: "Client acknowledged from notifications drawer." }),
+    });
+    if (response.ok) {
+      if (window.ClientUI) window.ClientUI.toast("Compliance alert acknowledged", "success");
+      loadFocusedAlert();
+    }
+    return;
+  }
+
   const readBtn = event.target.closest("[data-read-id]");
   if (!readBtn) return;
   const id = readBtn.getAttribute("data-read-id");
@@ -449,7 +712,11 @@ document.addEventListener("click", async (event) => {
   }
 });
 
-loadNotifications(false);
+Promise.all([
+  loadNotifications(false),
+  loadPreferences(),
+  loadFocusedAlert(),
+]).catch(() => {});
 </script>
 </body>
 </html>
