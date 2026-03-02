@@ -5,6 +5,10 @@ dotenv.config();
 export const config = {
   port: Number(process.env.PORT || 4000),
   frontendOrigin: process.env.FRONTEND_ORIGIN || "*",
+  frontendOrigins: String(process.env.FRONTEND_ORIGIN || "*")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean),
   databaseUrl: process.env.DATABASE_URL || "",
   awsRegion: process.env.AWS_REGION,
   s3Bucket: process.env.S3_BUCKET,

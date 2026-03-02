@@ -44,9 +44,9 @@ npm run db:seed
 ```
 
 Notes:
-- Current API routes still read/write the in-memory store in `src/lib/store.js`.
-- PostgreSQL connection is initialized on server start when `DATABASE_URL` is set.
-- Phase 2 will move routes from in-memory to Prisma queries.
+- `DATABASE_URL` is required. Backend will not start without PostgreSQL.
+- Use `FRONTEND_ORIGIN` as a comma-separated list when needed. Example:
+  - `FRONTEND_ORIGIN=http://localhost:5500,http://127.0.0.1:5500`
 
 ## Run
 
@@ -73,6 +73,8 @@ Server default: `http://localhost:4010`
 ### Auth
 - `POST /api/auth/login`
 - `POST /api/auth/signup`
+- `POST /api/auth/forgot-password`
+- `POST /api/auth/reset-password`
 - `GET /api/auth/me`
 - `POST /api/auth/logout`
 
@@ -143,6 +145,5 @@ Server default: `http://localhost:4010`
 
 ## Notes
 
-- Current data store is in-memory for speed while building UI.
-- Restarting backend resets data.
-- Next phase can swap to PostgreSQL/MongoDB without changing API shape much.
+- Sensitive write endpoints support idempotency via `Idempotency-Key` header.
+- Local development can use Bearer token and/or `portal_token` HttpOnly session cookie.

@@ -27,6 +27,16 @@ export function addAudit({ actorUserId, action, entityType, entityId, metadata }
 }
 
 export function addNotification({ userId, type, title, message }) {
+  const latestMatchingInMemory = store.notifications.find((item) => (
+    item.userId === userId &&
+    item.type === type &&
+    item.title === title &&
+    item.message === message &&
+    item.read === false &&
+    new Date(item.createdAt).getTime() > Date.now() - 5 * 60 * 1000
+  ));
+  if (latestMatchingInMemory) return latestMatchingInMemory;
+
   const notification = {
     id: utils.makeId("notif"),
     userId,

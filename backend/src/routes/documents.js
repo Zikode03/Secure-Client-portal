@@ -4,9 +4,12 @@ import { addAudit } from "../lib/audit.js";
 import { store, utils } from "../lib/store.js";
 import { getDb } from "../lib/db.js";
 import { config } from "../lib/config.js";
+import { idempotencyMiddleware } from "../lib/idempotency.js";
+import { asEnum, asNonEmptyString } from "../lib/validation.js";
 
 const router = express.Router();
 const db = config.databaseUrl ? getDb() : null;
+const idempotency = idempotencyMiddleware();
 
 async function resolveClientIdForCreate(req, requestedClientId) {
   const requested = String(requestedClientId || "");
@@ -118,7 +121,7 @@ router.get("/", async (req, res) => {
   res.json({ items });
 });
 
-router.post("/", async (req, res) => {
+router.post("/", idempotency, async (req, res) => {
   const { clientId, name, category = "Uncategorized", status = "pending", sizeBytes = 0 } = req.body || {};
   if (!name) return res.status(400).json({ error: "name is required" });
 
@@ -132,9 +135,9 @@ router.post("/", async (req, res) => {
   const document = {
     id: utils.makeId("d"),
     clientId: resolvedClientId,
-    name,
-    category,
-    status,
+    name: asNonEmptyString(name, { max: 200 }),
+    category: asNonEmptyString(category, { max: 80 }) || "Uncategorized",
+    status: asEnum(status, ["pending", "approved", "rejected", "request-fix", "processing"], "pending"),
     sizeBytes: Number(sizeBytes) || 0,
     key: null,
     uploadedBy: req.user.id,
@@ -157,7 +160,7 @@ router.post("/", async (req, res) => {
   res.status(201).json({ document });
 });
 
-router.patch("/:documentId/status", requireRole("accountant"), async (req, res) => {
+router.patch("/:documentId/status", requireRole("accountant"), idempotency, async (req, res) => {
   const document = db
     ? await db.document.findUnique({ where: { id: req.params.documentId } })
     : store.documents.find((doc) => doc.id === req.params.documentId);

@@ -11,6 +11,7 @@ function sha256(value) {
 export const store = {
   users: [],
   sessions: new Map(),
+  passwordResets: new Map(),
   clients: [],
   messages: [],
   requests: [],

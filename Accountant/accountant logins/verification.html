@@ -298,7 +298,7 @@ document.getElementById("verifyBtn").addEventListener("click", function() {
 
     if(code === "123456") {
         alert("Verification successful! Redirecting...");
-        window.location.href = "dashboard.html";
+        window.location.href = "../dashboards.html";
     } else {
         document.getElementById("errorMsg").style.display = "block";
     }
@@ -309,7 +309,7 @@ document.getElementById("backupBtn").addEventListener("click", function() {
     let backup = prompt("Enter backup recovery code:");
     if(backup === "RECOVERY2024") {
         alert("Backup verified. Redirecting...");
-        window.location.href = "dashboard.html";
+        window.location.href = "../dashboards.html";
     } else if(backup !== null) {
         alert("Invalid recovery code.");
     }

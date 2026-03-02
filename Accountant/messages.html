@@ -7,6 +7,8 @@
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
+
+<link rel="stylesheet" href="../shared/accountant-theme.css">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 body{
@@ -290,9 +292,9 @@ body{
       <button type="button" class="thread-filter" data-tab="support">Internal Support</button>
       <button type="button" class="thread-filter" data-tab="archived">Archived</button>
     </div>
-    <div style="margin-top:10px;">
+    <div class="messages-search-wrap">
       <label class="sr-only" for="clientSearchInput">Search clients</label>
-      <input id="clientSearchInput" placeholder="Search clients..." style="width:100%;padding:10px;border:1px solid #e2e8f0;border-radius:8px;">
+      <input id="clientSearchInput" class="messages-search-input" placeholder="Search clients...">
     </div>
   </div>
 
@@ -600,5 +602,7 @@ messageInput.addEventListener("keydown", (event) => {
 
 </body>
 </html>
+
+
 
 

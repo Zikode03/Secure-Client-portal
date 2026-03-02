@@ -59,10 +59,16 @@ export function findUserByCredentials(email, password) {
 
 export function authRequired(req, res, next) {
   const header = req.get("authorization") || "";
-  const [scheme, token] = header.split(" ");
+  const [scheme, bearerToken] = header.split(" ");
+  const cookieToken = String(req.get("cookie") || "")
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith("portal_token="))
+    ?.split("=")[1];
+  const token = scheme === "Bearer" && bearerToken ? bearerToken : cookieToken;
 
-  if (scheme !== "Bearer" || !token) {
-    return res.status(401).json({ error: "Missing Bearer token" });
+  if (!token) {
+    return res.status(401).json({ error: "Missing auth token" });
   }
 
   (async () => {
@@ -111,9 +117,15 @@ export function authRequired(req, res, next) {
 }
 
 export function requireRole(...roles) {
+  const ROLE_ALIASES = {
+    accountant_admin: "accountant",
+    accountant_manager: "accountant",
+  };
   return (req, res, next) => {
     if (!req.user) return res.status(401).json({ error: "Auth required" });
-    if (!roles.includes(req.user.role)) {
+    const effectiveRole = ROLE_ALIASES[req.user.role] || req.user.role;
+    const allowed = roles.map((role) => ROLE_ALIASES[role] || role);
+    if (!allowed.includes(effectiveRole)) {
       return res.status(403).json({ error: "Insufficient role" });
     }
     return next();
@@ -122,7 +134,9 @@ export function requireRole(...roles) {
 
 export function canAccessClient(user, clientId) {
   if (!user) return false;
-  if (user.role === "accountant") return user.clientIds.includes(clientId);
+  if (["accountant", "accountant_admin", "accountant_manager"].includes(user.role)) {
+    return user.clientIds.includes(clientId);
+  }
   if (user.role === "client") return user.clientIds.includes(clientId);
   return false;
 }

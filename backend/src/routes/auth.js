@@ -4,14 +4,33 @@ import { store, utils } from "../lib/store.js";
 import { addAudit } from "../lib/audit.js";
 import { getDb } from "../lib/db.js";
 import { config } from "../lib/config.js";
+import { asNonEmptyString, isEmail, requireFields } from "../lib/validation.js";
+import { idempotencyMiddleware } from "../lib/idempotency.js";
 
 const router = express.Router();
 const db = config.databaseUrl ? getDb() : null;
+const RESET_TTL_MS = 15 * 60 * 1000;
+const idempotency = idempotencyMiddleware();
+
+function applySessionCookie(res, token) {
+  res.setHeader(
+    "Set-Cookie",
+    `portal_token=${token}; Path=/; Max-Age=${config.authTokenTtlSeconds}; HttpOnly; SameSite=Lax`,
+  );
+}
+
+function clearSessionCookie(res) {
+  res.setHeader("Set-Cookie", "portal_token=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax");
+}
 
 router.post("/login", async (req, res) => {
   const { email, password } = req.body || {};
-  if (!email || !password) {
-    return res.status(400).json({ error: "email and password are required" });
+  const required = requireFields(req.body, ["email", "password"]);
+  if (!required.ok) {
+    return res.status(400).json({ error: required.error });
+  }
+  if (!isEmail(email)) {
+    return res.status(400).json({ error: "A valid email is required" });
   }
 
   let user = null;
@@ -91,6 +110,7 @@ router.post("/login", async (req, res) => {
   }
 
   const token = await issueToken(user.id);
+  applySessionCookie(res, token);
   const activity = {
     id: utils.makeId("la"),
     userId: user.id,
@@ -116,13 +136,20 @@ router.post("/login", async (req, res) => {
   return res.json({ token, user: toPublicUser(user) });
 });
 
-router.post("/signup", async (req, res) => {
+router.post("/signup", idempotency, async (req, res) => {
   const { fullName, email, password, role = "client", clientId } = req.body || {};
-  if (!fullName || !email || !password) {
-    return res.status(400).json({ error: "fullName, email and password are required" });
+  const required = requireFields(req.body, ["fullName", "email", "password"]);
+  if (!required.ok) {
+    return res.status(400).json({ error: required.error });
   }
-  if (!["client", "accountant"].includes(role)) {
-    return res.status(400).json({ error: "role must be client or accountant" });
+  if (!isEmail(email)) {
+    return res.status(400).json({ error: "A valid email is required" });
+  }
+  if (String(password).length < 8) {
+    return res.status(400).json({ error: "Password must be at least 8 characters" });
+  }
+  if (!["client", "accountant", "accountant_admin", "accountant_manager"].includes(role)) {
+    return res.status(400).json({ error: "role must be client, accountant, accountant_admin or accountant_manager" });
   }
   if (db) {
     const existing = await db.user.findUnique({ where: { email: String(email).toLowerCase() } });
@@ -133,7 +160,7 @@ router.post("/signup", async (req, res) => {
 
   const user = {
     id: utils.makeId("u"),
-    fullName: String(fullName),
+    fullName: asNonEmptyString(fullName, { max: 120 }),
     email: String(email).toLowerCase(),
     passwordHash: utils.sha256(String(password)),
     role,
@@ -163,6 +190,110 @@ router.post("/signup", async (req, res) => {
   return res.status(201).json({ user: toPublicUser(user) });
 });
 
+router.post("/forgot-password", idempotency, async (req, res) => {
+  const { email, role = "" } = req.body || {};
+  if (!isEmail(email)) {
+    return res.status(400).json({ error: "A valid email is required" });
+  }
+
+  const normalizedEmail = String(email).toLowerCase();
+  const user = db
+    ? await db.user.findUnique({ where: { email: normalizedEmail } })
+    : store.users.find((candidate) => candidate.email.toLowerCase() === normalizedEmail);
+
+  if (!user || (role && user.role !== role)) {
+    // Prevent account enumeration.
+    return res.json({ ok: true, message: "If this account exists, reset instructions have been generated." });
+  }
+
+  const rawToken = utils.makeId("reset");
+  const tokenHash = utils.sha256(rawToken);
+  const expiresAt = Date.now() + RESET_TTL_MS;
+
+  if (db) {
+    const security = user.security && typeof user.security === "object" ? user.security : {};
+    security.passwordReset = {
+      tokenHash,
+      expiresAt,
+      requestedAt: Date.now(),
+    };
+    await db.user.update({
+      where: { id: user.id },
+      data: { security },
+    });
+  } else {
+    store.passwordResets.set(tokenHash, {
+      userId: user.id,
+      expiresAt,
+      requestedAt: Date.now(),
+    });
+  }
+
+  addAudit({
+    actorUserId: user.id,
+    action: "auth.password.reset.request",
+    entityType: "user",
+    entityId: user.id,
+  });
+
+  // Development-friendly response until email provider is configured.
+  return res.json({
+    ok: true,
+    message: "If this account exists, reset instructions have been generated.",
+    resetToken: rawToken,
+    resetPath: `/Accountant/accountant logins/verification.html?token=${encodeURIComponent(rawToken)}`,
+  });
+});
+
+router.post("/reset-password", idempotency, async (req, res) => {
+  const { token, newPassword } = req.body || {};
+  if (!asNonEmptyString(token)) return res.status(400).json({ error: "token is required" });
+  if (String(newPassword || "").length < 8) {
+    return res.status(400).json({ error: "newPassword must be at least 8 characters" });
+  }
+
+  const tokenHash = utils.sha256(String(token));
+  let user = null;
+
+  if (db) {
+    const users = await db.user.findMany();
+    user = users.find((candidate) => {
+      const reset = candidate.security?.passwordReset;
+      return reset && reset.tokenHash === tokenHash && Number(reset.expiresAt || 0) >= Date.now();
+    });
+  } else {
+    const reset = store.passwordResets.get(tokenHash);
+    if (reset && reset.expiresAt >= Date.now()) {
+      user = store.users.find((candidate) => candidate.id === reset.userId) || null;
+    }
+  }
+
+  if (!user) {
+    return res.status(400).json({ error: "Invalid or expired reset token" });
+  }
+
+  if (db) {
+    const security = user.security && typeof user.security === "object" ? user.security : {};
+    delete security.passwordReset;
+    await db.user.update({
+      where: { id: user.id },
+      data: { passwordHash: utils.sha256(String(newPassword)), security },
+    });
+  } else {
+    user.passwordHash = utils.sha256(String(newPassword));
+    store.passwordResets.delete(tokenHash);
+  }
+
+  addAudit({
+    actorUserId: user.id,
+    action: "auth.password.reset.complete",
+    entityType: "user",
+    entityId: user.id,
+  });
+
+  return res.json({ ok: true, message: "Password reset successfully." });
+});
+
 router.get("/me", authRequired, async (req, res) => {
   const user = db
     ? await db.user.findUnique({ where: { id: req.user.id } })
@@ -177,6 +308,7 @@ router.get("/me", authRequired, async (req, res) => {
 
 router.post("/logout", authRequired, async (req, res) => {
   await revokeToken(req.authToken);
+  clearSessionCookie(res);
   addAudit({
     actorUserId: req.user.id,
     action: "auth.logout",

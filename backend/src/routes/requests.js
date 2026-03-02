@@ -4,9 +4,12 @@ import { addAudit, addNotification } from "../lib/audit.js";
 import { store, utils } from "../lib/store.js";
 import { getDb } from "../lib/db.js";
 import { config } from "../lib/config.js";
+import { idempotencyMiddleware } from "../lib/idempotency.js";
+import { asEnum, asNonEmptyString } from "../lib/validation.js";
 
 const router = express.Router();
 const db = config.databaseUrl ? getDb() : null;
+const idempotency = idempotencyMiddleware();
 
 router.get("/", async (req, res) => {
   const status = String(req.query.status || "").toLowerCase();
@@ -23,7 +26,7 @@ router.get("/", async (req, res) => {
   res.json({ items });
 });
 
-router.post("/", async (req, res) => {
+router.post("/", idempotency, async (req, res) => {
   const { clientId, title, description = "", priority = "medium", dueDate } = req.body || {};
   if (!clientId || !title || !dueDate) {
     return res.status(400).json({ error: "clientId, title and dueDate are required" });
@@ -35,9 +38,9 @@ router.post("/", async (req, res) => {
   const request = {
     id: utils.makeId("r"),
     clientId,
-    title,
-    description,
-    priority: String(priority).toLowerCase(),
+    title: asNonEmptyString(title, { max: 180 }),
+    description: asNonEmptyString(description, { max: 1200 }),
+    priority: asEnum(priority, ["low", "medium", "high"], "medium"),
     status: "pending",
     dueDate,
     requestedByUserId: req.user.id,
@@ -85,7 +88,7 @@ router.post("/", async (req, res) => {
   res.status(201).json({ request });
 });
 
-router.patch("/:requestId/status", async (req, res) => {
+router.patch("/:requestId/status", idempotency, async (req, res) => {
   const request = db
     ? await db.request.findUnique({ where: { id: req.params.requestId } })
     : store.requests.find((item) => item.id === req.params.requestId);

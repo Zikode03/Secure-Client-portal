@@ -1,5 +1,5 @@
 import express from "express";
-import { canAccessClient } from "../lib/auth.js";
+import { canAccessClient, requireRole } from "../lib/auth.js";
 import {
   acknowledgeAlert,
   assignObligation,
@@ -87,7 +87,7 @@ router.get("/client/:clientId/actions", async (req, res, next) => {
   }
 });
 
-router.get("/firm/overview", async (req, res, next) => {
+router.get("/firm/overview", requireRole("accountant"), async (req, res, next) => {
   try {
     const overview = await getFirmComplianceOverview(req.user);
     return res.json(overview);
@@ -96,7 +96,7 @@ router.get("/firm/overview", async (req, res, next) => {
   }
 });
 
-router.get("/firm/alerts", async (req, res, next) => {
+router.get("/firm/alerts", requireRole("accountant"), async (req, res, next) => {
   try {
     const includeResolved = String(req.query.includeResolved || "") === "true";
     const items = await listFirmAlerts(req.user, includeResolved);
@@ -106,7 +106,7 @@ router.get("/firm/alerts", async (req, res, next) => {
   }
 });
 
-router.get("/firm/heatmap", async (req, res, next) => {
+router.get("/firm/heatmap", requireRole("accountant"), async (req, res, next) => {
   try {
     const payload = await getFirmHeatmap(req.user);
     return res.json(payload);
@@ -115,7 +115,7 @@ router.get("/firm/heatmap", async (req, res, next) => {
   }
 });
 
-router.get("/diagnostics/sync", async (req, res, next) => {
+router.get("/diagnostics/sync", requireRole("accountant"), async (req, res, next) => {
   try {
     const payload = await getSyncDiagnostics(req.user);
     return res.json(payload);
@@ -187,7 +187,7 @@ router.post("/obligations/:obligationId/evidence", async (req, res, next) => {
   }
 });
 
-router.post("/rules/escalations/run", async (req, res, next) => {
+router.post("/rules/escalations/run", requireRole("accountant"), async (req, res, next) => {
   try {
     const payload = await runEscalationRules();
     return res.json({ ok: true, ...payload });
@@ -196,7 +196,7 @@ router.post("/rules/escalations/run", async (req, res, next) => {
   }
 });
 
-router.post("/rules/reminders/run", async (req, res, next) => {
+router.post("/rules/reminders/run", requireRole("accountant"), async (req, res, next) => {
   try {
     const payload = await runReminderRules();
     return res.json({ ok: true, ...payload });
@@ -215,7 +215,7 @@ router.get("/reports/client/:clientId", async (req, res, next) => {
   }
 });
 
-router.get("/reports/firm.csv", async (req, res, next) => {
+router.get("/reports/firm.csv", requireRole("accountant"), async (req, res, next) => {
   try {
     const csv = await getFirmComplianceReportCsv(req.user);
     res.setHeader("Content-Type", "text/csv; charset=utf-8");

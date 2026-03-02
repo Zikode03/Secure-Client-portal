@@ -8,6 +8,8 @@
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
 
+
+<link rel="stylesheet" href="../shared/accountant-theme.css">
 <style>
 /* Reset */
 * {
@@ -616,12 +618,12 @@ tbody tr {
   <div class="table-card">
     <div class="table-head">
       <h3>Firm Compliance Risk Monitor</h3>
-      <div style="display:flex;gap:8px;">
+      <div class="toolbar-actions">
         <button id="complianceRefreshBtn"><i class="fa-solid fa-rotate"></i> Refresh</button>
         <button id="complianceExportBtn"><i class="fa-solid fa-download"></i> Export CSV</button>
       </div>
     </div>
-    <div class="card-body" id="firmComplianceWrap" style="padding:16px;">
+    <div class="card-body" id="firmComplianceWrap">
       <p>Loading compliance statuses...</p>
     </div>
   </div>
@@ -629,7 +631,7 @@ tbody tr {
     <div class="table-head">
       <h3>Compliance Alerts</h3>
     </div>
-    <div class="card-body" id="firmComplianceAlerts" style="padding:16px;">
+    <div class="card-body" id="firmComplianceAlerts">
       <p>Loading alerts...</p>
     </div>
   </div>
@@ -637,7 +639,7 @@ tbody tr {
     <div class="table-head">
       <h3>Portfolio Heatmap</h3>
     </div>
-    <div class="card-body" id="firmHeatmapWrap" style="padding:16px;">
+    <div class="card-body" id="firmHeatmapWrap">
       <p>Loading heatmap...</p>
     </div>
   </div>
@@ -853,7 +855,7 @@ async function loadFirmCompliance() {
       complianceWrap.innerHTML = "<p>No linked clients for compliance monitoring.</p>";
     } else {
       complianceWrap.innerHTML = `
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+        <div class="toolbar-actions" style="margin-bottom:12px;">
           <span class="pill green">Green ${overview.green || 0}</span>
           <span class="pill amber">Amber ${overview.amber || 0}</span>
           <span class="pill red">Red ${overview.red || 0}</span>
@@ -862,8 +864,8 @@ async function loadFirmCompliance() {
           ${items.slice(0, 10).map((item) => `
             <div class="compliance-item">
               <div>
-                <div style="font-weight:700;">${item.clientName}</div>
-                <div style="font-size:12px;color:#64748b;">Score: ${item.score}% | Overdue: ${item.overdueCount} | Due soon: ${item.dueSoonCount}</div>
+                <div class="inline-strong">${item.clientName}</div>
+                <div class="inline-small">Score: ${item.score}% | Overdue: ${item.overdueCount} | Due soon: ${item.dueSoonCount}</div>
               </div>
               <span class="${compliancePill(item.status)}">${String(item.status || "amber").toUpperCase()}</span>
             </div>
@@ -888,10 +890,10 @@ async function loadFirmCompliance() {
   alertsWrap.innerHTML = alerts.slice(0, 8).map((item) => `
     <div class="compliance-item">
       <div>
-        <div style="font-weight:700;">${item.title}</div>
-        <div style="font-size:12px;color:#64748b;">${item.message || ""}</div>
-        <div style="font-size:12px;color:#64748b;margin-top:6px;">${item.clientId || "-"} - ${item.source || "-"}</div>
-        <div style="display:flex;gap:6px;margin-top:8px;">
+        <div class="inline-strong">${item.title}</div>
+        <div class="inline-small">${item.message || ""}</div>
+        <div class="inline-small-spaced">${item.clientId || "-"} - ${item.source || "-"}</div>
+        <div class="inline-actions" style="margin-top:8px;">
           <button class="icon-btn" data-alert-lifecycle="${item.id}" data-status="in_progress" title="Mark In Progress"><i class="fa-solid fa-person-running"></i></button>
           <button class="icon-btn" data-alert-lifecycle="${item.id}" data-status="resolved" title="Resolve"><i class="fa-solid fa-circle-check"></i></button>
           <button class="icon-btn red" data-alert-lifecycle="${item.id}" data-status="dismissed" title="Dismiss"><i class="fa-solid fa-ban"></i></button>
@@ -913,9 +915,9 @@ async function loadFirmCompliance() {
         <div class="heatmap-grid">
           ${rows.slice(-6).map((row) => `
             <div class="heatmap-row">
-              <div style="font-weight:700;margin-bottom:6px;">${row.month}</div>
+              <div class="block-title">${row.month}</div>
               ${Object.entries(row.services || {}).map(([service, counts]) => `
-                <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
+                <div class="heatmap-item-row">
                   <span>${service}</span>
                   <span>G:${counts.green || 0} A:${counts.amber || 0} R:${counts.red || 0}</span>
                 </div>
@@ -935,8 +937,8 @@ async function loadFirmCompliance() {
       alertsWrap.innerHTML = `
         <div class="compliance-item">
           <div>
-            <div style="font-weight:700;">Connector Diagnostics</div>
-            <div style="font-size:12px;color:#64748b;">${failed} source connection(s) reporting errors.</div>
+            <div class="inline-strong">Connector Diagnostics</div>
+            <div class="inline-small">${failed} source connection(s) reporting errors.</div>
           </div>
           <span class="pill red">ERROR</span>
         </div>
@@ -996,5 +998,7 @@ loadFirmCompliance().catch((error) => {
 </script>
 </body>
 </html>
+
+
 
 

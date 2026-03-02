@@ -4,9 +4,12 @@ import { store, utils } from "../lib/store.js";
 import { addAudit, addNotification } from "../lib/audit.js";
 import { getDb } from "../lib/db.js";
 import { config } from "../lib/config.js";
+import { idempotencyMiddleware } from "../lib/idempotency.js";
+import { asEnum, asNonEmptyString } from "../lib/validation.js";
 
 const router = express.Router();
 const db = config.databaseUrl ? getDb() : null;
+const idempotency = idempotencyMiddleware();
 
 router.get("/", async (req, res) => {
   const { clientId = "", status = "", priority = "", dueWithinDays = "" } = req.query;
@@ -27,7 +30,7 @@ router.get("/", async (req, res) => {
   res.json({ items: filtered });
 });
 
-router.post("/", requireRole("accountant"), async (req, res) => {
+router.post("/", requireRole("accountant"), idempotency, async (req, res) => {
   const { clientId, title, dueDate, priority = "medium" } = req.body || {};
   if (!clientId || !title || !dueDate) {
     return res.status(400).json({ error: "clientId, title and dueDate are required" });
@@ -39,10 +42,10 @@ router.post("/", requireRole("accountant"), async (req, res) => {
   const task = {
     id: utils.makeId("t"),
     clientId,
-    title,
+    title: asNonEmptyString(title, { max: 160 }),
     status: "pending",
     dueDate,
-    priority,
+    priority: asEnum(priority, ["low", "medium", "high"], "medium"),
     createdBy: req.user.id,
     createdAt: utils.nowIso(),
   };
@@ -75,7 +78,7 @@ router.post("/", requireRole("accountant"), async (req, res) => {
   res.status(201).json({ task });
 });
 
-router.patch("/:taskId", async (req, res) => {
+router.patch("/:taskId", idempotency, async (req, res) => {
   const task = db
     ? await db.task.findUnique({ where: { id: req.params.taskId } })
     : store.tasks.find((item) => item.id === req.params.taskId);
@@ -115,7 +118,7 @@ router.patch("/:taskId", async (req, res) => {
   res.json({ task });
 });
 
-router.delete("/:taskId", requireRole("accountant"), async (req, res) => {
+router.delete("/:taskId", requireRole("accountant"), idempotency, async (req, res) => {
   const task = db
     ? await db.task.findUnique({ where: { id: req.params.taskId } })
     : store.tasks.find((item) => item.id === req.params.taskId);
@@ -138,7 +141,7 @@ router.delete("/:taskId", requireRole("accountant"), async (req, res) => {
   res.json({ ok: true });
 });
 
-router.post("/automation/run", requireRole("accountant"), async (req, res) => {
+router.post("/automation/run", requireRole("accountant"), idempotency, async (req, res) => {
   const now = new Date();
   let remindersCreated = 0;
   let slaAlerts = 0;

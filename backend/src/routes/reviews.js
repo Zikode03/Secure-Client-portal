@@ -4,9 +4,11 @@ import { addAudit, addNotification } from "../lib/audit.js";
 import { store, utils } from "../lib/store.js";
 import { getDb } from "../lib/db.js";
 import { config } from "../lib/config.js";
+import { idempotencyMiddleware } from "../lib/idempotency.js";
 
 const router = express.Router();
 const db = config.databaseUrl ? getDb() : null;
+const idempotency = idempotencyMiddleware();
 
 const ACTION_TO_STATUS = {
   approve: "approved",
@@ -14,7 +16,7 @@ const ACTION_TO_STATUS = {
   request_fix: "request-fix",
 };
 
-router.post("/:documentId/action", requireRole("accountant"), async (req, res) => {
+router.post("/:documentId/action", requireRole("accountant"), idempotency, async (req, res) => {
   const { documentId } = req.params;
   const { action, note = "" } = req.body || {};
   const nextStatus = ACTION_TO_STATUS[action];

@@ -24,7 +24,24 @@ import { startComplianceScheduler } from "./lib/compliance/scheduler.js";
 const app = express();
 
 app.use(helmet());
-app.use(cors({ origin: config.frontendOrigin === "*" ? true : config.frontendOrigin }));
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin) return callback(null, true);
+    if (config.frontendOrigin === "*" || config.frontendOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    // Convenience fallback for localhost/127.0.0.1 mismatch in local development.
+    const equivalent = origin
+      .replace("127.0.0.1", "localhost")
+      .replace("localhost", "127.0.0.1");
+    if (config.frontendOrigins.includes(equivalent)) {
+      return callback(null, true);
+    }
+    return callback(new Error(`CORS blocked for origin: ${origin}`));
+  },
+  credentials: true,
+}));
 app.use(express.json({ limit: "2mb" }));
 
 app.get("/health", (_req, res) => {

@@ -7,6 +7,8 @@
 
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
 
+
+<link rel="stylesheet" href="../shared/accountant-theme.css">
 <style>
 
 /* =========================
@@ -271,7 +273,7 @@ button {
 
 <div class="container">
 
-  <div style="display:flex; justify-content:space-between; align-items:center;">
+  <div class="page-header-row">
     <div>
       <h1>Alerts</h1>
       <p>Actionable notifications across all clients.</p>
@@ -320,7 +322,7 @@ button {
   </div>
 
   <div class="card notif-panel">
-    <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px;">
+    <div class="alert-row">
       <h3>Account Notifications</h3>
       <div class="notif-actions">
         <button class="btn-outline" id="notifReloadBtn" type="button">Reload</button>
@@ -442,12 +444,12 @@ function renderNotifications() {
   container.innerHTML = notifications.map((item) => `
     <div class="notif-item ${item.read ? "" : "unread"}">
       <input type="checkbox" data-notification-select="${item.id}" ${selectedNotificationIds.has(item.id) ? "checked" : ""}>
-      <div style="flex:1;">
+      <div class="alert-flex">
         <h4>${item.title || "Notification"}</h4>
         <p>${item.message || ""}</p>
         <small>${shortTime(item.createdAt)} - ${item.type || "update"}</small>
       </div>
-      <div style="display:flex;gap:6px;">
+      <div class="inline-actions">
         <button class="btn-ghost" data-notification-read="${item.id}" type="button">${item.read ? "Read" : "Mark read"}</button>
         <button class="btn-ghost" data-notification-dismiss="${item.id}" type="button">Dismiss</button>
         <button class="btn-ghost" data-notification-snooze="${item.id}" data-hours="24" type="button">Snooze 24h</button>
@@ -662,3 +664,5 @@ loadNotificationPreferences().catch(() => {});
 
 </body>
 </html>
+
+

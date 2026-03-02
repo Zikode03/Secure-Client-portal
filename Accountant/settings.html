@@ -8,6 +8,8 @@
 <!-- FONT AWESOME -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
+
+<link rel="stylesheet" href="../shared/accountant-theme.css">
 <style>
 
 /* ======================
@@ -362,7 +364,7 @@ body{
     <br>
     <button class="btn btn-outline" id="profileCancelBtn" type="button">Cancel</button>
     <button class="btn btn-primary" id="profileSaveBtn" type="button">Save Changes</button>
-    <div id="profileMessage" class="page-sub" style="margin-top:10px;margin-bottom:0;"></div>
+    <div id="profileMessage" class="page-sub form-feedback"></div>
   </div>
 
   <!-- SECURITY + CONNECTED -->
@@ -382,7 +384,7 @@ body{
       <button class="btn btn-outline" id="securityToggleBtn" type="button">Toggle 2FA</button>
       <button class="btn btn-outline" id="securitySmsBtn" type="button">Toggle SMS 2FA</button>
       <button class="btn btn-outline" id="updatePasswordBtn" type="button">Update Password</button>
-      <div id="securityMessage" class="page-sub" style="margin-top:10px;margin-bottom:0;"></div>
+      <div id="securityMessage" class="page-sub form-feedback"></div>
     </div>
 
     <div class="card">
@@ -550,5 +552,7 @@ loadSettings().catch((error) => {
 
 </body>
 </html>
+
+
 
 

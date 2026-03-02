@@ -29,6 +29,18 @@ const weight = (s) => (normStatus(s) === "overdue" ? 1 : normStatus(s) === "due_
 const sev = (s) => (String(s || "").toLowerCase() === "high" ? 3 : String(s || "").toLowerCase() === "medium" ? 2 : 1);
 const j = (v, f = {}) => (v && typeof v === "object" ? v : f);
 const defaultPref = { channels: { inApp: true, email: true, sms: false }, reminderDays: REMINDER_DAYS };
+const hasComplianceDbModels = !db || (
+  db.complianceAccount &&
+  db.complianceObligation &&
+  db.complianceStatusSnapshot &&
+  db.complianceEvent &&
+  db.complianceAlert
+);
+
+function ensureComplianceDbReady() {
+  if (hasComplianceDbModels) return;
+  throw new Error("Compliance DB models are unavailable. Run `npx prisma generate` and migrate.");
+}
 
 async function getClient(clientId) {
   return db ? db.client.findUnique({ where: { id: clientId } }) : store.clients.find((x) => x.id === clientId) || null;
@@ -179,6 +191,7 @@ function trend(snaps, windows = [7, 30, 90]) {
 }
 
 export async function syncClientCompliance(clientId, actorUserId = null) {
+  ensureComplianceDbReady();
   const client = await getClient(clientId);
   if (!client) throw new Error("Client not found");
   const [sars, cipc, csd] = await Promise.all([pullSarsState(client), pullCipcState(client), pullCsdState(client)]);
@@ -194,6 +207,7 @@ export async function syncClientCompliance(clientId, actorUserId = null) {
 }
 
 export async function syncAllClientsCompliance(actorUserId = null) {
+  ensureComplianceDbReady();
   const clients = await listClients();
   const out = [];
   for (const c of clients) {
@@ -329,6 +343,7 @@ export async function attachObligationEvidence(reqUser, obligationId, payload) {
 }
 
 export async function runEscalationRules() {
+  ensureComplianceDbReady();
   const now = new Date();
   const list = db ? await db.complianceAlert.findMany({ where: { status: { in: ["open", "acknowledged", "in_progress"] } } }) : store.complianceAlerts.filter((x) => ["open", "acknowledged", "in_progress"].includes(String(x.status || "").toLowerCase()));
   let escalated = 0;
@@ -344,6 +359,7 @@ export async function runEscalationRules() {
 }
 
 export async function runReminderRules() {
+  ensureComplianceDbReady();
   const obligations = db ? await db.complianceObligation.findMany() : store.complianceObligations;
   const now = new Date(); let remindersCreated = 0;
   const usersByClientCache = new Map();
