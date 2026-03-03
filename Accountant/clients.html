@@ -10,10 +10,7 @@
 * { box-sizing: border-box; }
 body { margin: 0; background: #f6f8fc; color: #0f172a; font-family: "Public Sans", Arial, sans-serif; }
 .app-layout { display: flex; min-height: 100vh; }
-.sidebar { width: 260px; background: linear-gradient(180deg,#0f172a,#020617); color: #fff; padding: 16px; position: fixed; inset: 0 auto 0 0; }
-.sidebar .nav a { display: flex; gap: 10px; align-items: center; padding: 11px 12px; color: #cbd5f5; text-decoration: none; border-radius: 10px; margin-bottom: 6px; }
-.sidebar .nav a.active, .sidebar .nav a:hover { background: #1e293b; }
-.page { margin-left: 260px; width: calc(100% - 260px); padding: 26px 28px; }
+.page { margin-left: 260px; flex: 1; width: auto; padding: 26px 28px; }
 .page-header { display: flex; justify-content: space-between; align-items: end; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
 .page-header h1 { margin: 0; font-size: 30px; letter-spacing: -0.02em; }
 .page-header p { margin: 6px 0 0; color: #64748b; }
@@ -49,7 +46,6 @@ tbody td { border-bottom: 1px solid #eef2f7; padding: 12px 14px; font-size: 14px
 .message.error { color: #b91c1c; }
 .message.ok { color: #166534; }
 @media (max-width: 900px) {
-  .sidebar { position: static; width: 100%; }
   .page { margin-left: 0; width: 100%; }
   .grid { grid-template-columns: repeat(2,minmax(150px,1fr)); }
 }
@@ -282,4 +278,3 @@ loadClients().catch((error) => {
 </script>
 </body>
 </html>
-
