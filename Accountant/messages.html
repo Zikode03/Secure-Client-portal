@@ -238,8 +238,83 @@ body{
   height:100%;
   color:#6b7280;
 }
+
+/* UX REFRESH */
+.page {
+  padding: 28px 30px 32px;
+}
+
+.page h1 {
+  font-size: 30px;
+  letter-spacing: -0.02em;
+}
+
+.grid {
+  gap: 16px;
+  margin-top: 18px;
+  height: calc(100vh - 150px);
+}
+
+.card {
+  border-radius: 16px;
+  border-color: #dbe3f0;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+}
+
+.card-header {
+  padding: 18px 18px 14px;
+}
+
+.thread-filters {
+  gap: 12px;
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.thread-filter {
+  border: 1px solid #dbe3f0;
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 12px;
+  color: #334155;
+}
+
+.thread-filter.active {
+  background: #0f172a;
+  color: #f8fafc;
+  border-color: #0f172a;
+}
+
+.thread-filter.active::after {
+  display: none;
+}
+
+.client {
+  border: 1px solid transparent;
+}
+
+.client.active {
+  border-left: 1px solid #bfdbfe;
+  border-color: #bfdbfe;
+}
+
+.message-bubble {
+  border-radius: 12px;
+}
+
+.message-bubble.own {
+  background: #1d4ed8;
+}
+
+.input-area {
+  padding: 12px;
+  background: #f8fafc;
+}
+
+.input-area input {
+  background: #ffffff;
+}
 </style>
-  <script defer src="accountant-nav.js"></script>
 <link rel="stylesheet" href="../shared/inline-migrated.css">
 </head>
 
@@ -431,7 +506,7 @@ function renderActiveThread() {
 
   chatHeader.innerHTML = `
     <h3>${escapeHtml(thread.name)}</h3>
-    <p>${escapeHtml(thread.company)} • ${thread.count} message(s)</p>
+    <p>${escapeHtml(thread.company)} | ${thread.count} message(s)</p>
   `;
   inputArea.style.display = "flex";
 
@@ -460,7 +535,7 @@ function renderActiveThread() {
     row.innerHTML = `
       <div class="message-bubble ${msg.from}">
         ${escapeHtml(msg.text)}
-        <div class="meta">${msg.from === "own" ? "You" : escapeHtml(thread.name)} • ${shortTime(msg.createdAt)} • ${escapeHtml(msg.deliveryStatus || "sent")}</div>
+        <div class="meta">${msg.from === "own" ? "You" : escapeHtml(thread.name)} | ${shortTime(msg.createdAt)} | ${escapeHtml(msg.deliveryStatus || "sent")}</div>
       </div>
     `;
     container.appendChild(row);

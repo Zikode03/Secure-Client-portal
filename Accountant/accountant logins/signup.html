@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Accountant Sign Up - LedgerPro Secure</title>
+<title>Accountant Sign Up - Prospera Secure Portal</title>
 <link rel="stylesheet" href="../../shared/auth-pages.css">
 
 <!-- FontAwesome -->
@@ -217,7 +217,7 @@ button:hover {
     <!-- LEFT SIDE -->
     <div class="left">
         <div>
-            <h1><i class="fa-solid fa-chart-column"></i> LedgerPro Secure</h1>
+            <h1><i class="fa-solid fa-chart-column"></i> Prospera Secure Portal</h1>
 
             <h2>Empowering your firm with secure digital collaboration</h2>
 
@@ -239,7 +239,7 @@ button:hover {
         </div>
 
         <div class="footer-text">
-            © 2024 LedgerPro Secure. All rights reserved.
+            © 2024 Prospera Secure Portal. All rights reserved.
         </div>
     </div>
 
@@ -281,7 +281,7 @@ button:hover {
                     <label for="password">Create Password</label>
                     <div class="password-container">
                         <input type="password" id="password" required>
-                        <i class="fa-solid fa-eye" onclick="togglePassword()"></i>
+                        <i class="fa-solid fa-eye" id="togglePasswordBtn"></i>
                     </div>
 
                     <div class="strength">
@@ -327,6 +327,7 @@ function togglePassword() {
   const password = document.getElementById("password");
   password.type = password.type === "password" ? "text" : "password";
 }
+document.getElementById("togglePasswordBtn")?.addEventListener("click", togglePassword);
 
 // Password Strength Checker
 document.getElementById("password").addEventListener("input", function () {
@@ -413,4 +414,5 @@ signupForm.addEventListener("submit", async function (e) {
 
 </body>
 </html>
+
 

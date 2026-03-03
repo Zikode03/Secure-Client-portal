@@ -267,6 +267,77 @@ button {
   font-size: 12px;
 }
 
+/* UX REFRESH */
+body {
+  padding: 0;
+  background:
+    radial-gradient(1200px 500px at 100% -10%, rgba(37, 99, 235, 0.08), transparent 70%),
+    #f6f8fc;
+}
+
+.container {
+  max-width: none;
+  margin: 0;
+  padding: 26px 30px 36px;
+}
+
+.page-header-row h1 {
+  font-size: 30px;
+  letter-spacing: -0.02em;
+}
+
+.page-header-row p {
+  margin-top: 6px;
+}
+
+.grid-3 {
+  margin-top: 18px;
+  gap: 14px;
+}
+
+.summary-card {
+  border-radius: 16px;
+}
+
+.summary-number {
+  font-size: 28px;
+}
+
+.tab-buttons {
+  gap: 10px;
+}
+
+.tab-btn {
+  border: 1px solid #dbe3f0;
+  background: #ffffff;
+  font-weight: 600;
+  color: #334155;
+}
+
+.tab-btn.active {
+  background: #0f172a;
+  border-color: #0f172a;
+  color: #f8fafc;
+}
+
+.alert-card {
+  border-radius: 14px;
+  border-color: #dbe3f0;
+  box-shadow: 0 6px 14px rgba(15, 23, 42, 0.05);
+}
+
+.alert-actions {
+  align-items: flex-start;
+}
+
+.notif-panel {
+  border-radius: 16px;
+}
+
+.notif-item {
+  border-color: #dbe3f0;
+}
+
 </style>
 </head>
 <body>
@@ -278,7 +349,7 @@ button {
       <h1>Alerts</h1>
       <p>Actionable notifications across all clients.</p>
     </div>
-    <button class="btn-outline" id="dismissAll">Dismiss All</button>
+    <button type="button" class="btn-outline" id="dismissAll">Dismiss All</button>
   </div>
 
   <!-- SUMMARY -->
@@ -311,11 +382,11 @@ button {
   <!-- TABS -->
   <div class="tabs">
     <div class="tab-buttons">
-      <button class="tab-btn active" data-tab="all">All</button>
-      <button class="tab-btn" data-tab="open">Open</button>
-      <button class="tab-btn" data-tab="escalated">Escalated</button>
-      <button class="tab-btn" data-tab="resolved">Resolved</button>
-      <button class="tab-btn" data-tab="high">High Severity</button>
+      <button type="button" class="tab-btn active" data-tab="all">All</button>
+      <button type="button" class="tab-btn" data-tab="open">Open</button>
+      <button type="button" class="tab-btn" data-tab="escalated">Escalated</button>
+      <button type="button" class="tab-btn" data-tab="resolved">Resolved</button>
+      <button type="button" class="tab-btn" data-tab="high">High Severity</button>
     </div>
 
     <div id="alertsContainer"></div>
@@ -426,9 +497,9 @@ function renderAlerts() {
           </div>
         </div>
         <div class="alert-actions">
-          <button class="btn-outline" data-lifecycle-id="${alert.id}">Lifecycle</button>
-          <button class="btn-outline" data-assign-id="${alert.id}">Assign</button>
-          <button class="btn-ghost" data-resolve-id="${alert.id}">Resolve</button>
+          <button type="button" class="btn-outline" data-lifecycle-id="${alert.id}">Lifecycle</button>
+          <button type="button" class="btn-outline" data-assign-id="${alert.id}">Assign</button>
+          <button type="button" class="btn-ghost" data-resolve-id="${alert.id}">Resolve</button>
         </div>
       </div>
     `;
@@ -518,9 +589,9 @@ async function updateLifecycle(alertId, status, ownerUserId = "", completionNote
 async function assignFromAlert(alertId) {
   const alert = alerts.find((item) => item.id === alertId);
   if (!alert) return;
-  const ownerUserId = window.prompt("Assign owner user ID (optional):", alert.assignedUserId || "") || "";
-  const dueDate = window.prompt("Owner due date (YYYY-MM-DD, optional):", "") || "";
-  const completionNotes = window.prompt("Assignment notes (optional):", "") || "";
+  const input = await requestAssignInput(alert);
+  if (!input) return;
+  const { ownerUserId, dueDate, completionNotes } = input;
 
   if (alert.obligationType && alert.clientId) {
     const overviewRes = await fetch(`${API_BASE_URL}/compliance/client/${encodeURIComponent(alert.clientId)}/overview`, { headers: authHeaders() });
@@ -539,6 +610,103 @@ async function assignFromAlert(alertId) {
   }
 
   await updateLifecycle(alertId, "in_progress", ownerUserId, completionNotes || `Assigned ${ownerUserId || "owner"} with due ${dueDate || "n/a"}`);
+}
+
+async function requestAssignInput(alert) {
+  return new Promise((resolve) => {
+    let overlay = document.getElementById("assignModal");
+    if (!overlay) {
+      overlay = document.createElement("div");
+      overlay.id = "assignModal";
+      overlay.innerHTML = `
+        <div style="position:fixed;inset:0;background:rgba(2,6,23,.5);display:grid;place-items:center;z-index:1200;">
+          <div style="background:#fff;border:1px solid #dbe3f0;border-radius:14px;width:min(560px,92vw);padding:16px;">
+            <h3 style="margin:0 0 8px;">Assign Alert</h3>
+            <label style="display:block;font-size:12px;font-weight:700;color:#334155;margin-bottom:4px;">Owner User ID (optional)</label>
+            <input id="assignOwnerInput" style="width:100%;height:40px;border:1px solid #dbe3f0;border-radius:10px;padding:0 10px;">
+            <label style="display:block;font-size:12px;font-weight:700;color:#334155;margin:10px 0 4px;">Due Date (optional)</label>
+            <input id="assignDueInput" type="date" style="width:100%;height:40px;border:1px solid #dbe3f0;border-radius:10px;padding:0 10px;">
+            <label style="display:block;font-size:12px;font-weight:700;color:#334155;margin:10px 0 4px;">Notes (optional)</label>
+            <textarea id="assignNotesInput" style="width:100%;min-height:90px;border:1px solid #dbe3f0;border-radius:10px;padding:10px;"></textarea>
+            <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px;">
+              <button id="assignCancelBtn" type="button" style="border:1px solid #dbe3f0;background:#fff;border-radius:10px;padding:9px 12px;cursor:pointer;">Cancel</button>
+              <button id="assignSaveBtn" type="button" style="border:1px solid #1d4ed8;background:#1d4ed8;color:#fff;border-radius:10px;padding:9px 12px;cursor:pointer;">Save</button>
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+    } else {
+      overlay.style.display = "block";
+    }
+
+    const ownerInput = overlay.querySelector("#assignOwnerInput");
+    const dueInput = overlay.querySelector("#assignDueInput");
+    const notesInput = overlay.querySelector("#assignNotesInput");
+    ownerInput.value = alert.assignedUserId || "";
+    dueInput.value = "";
+    notesInput.value = "";
+    ownerInput.focus();
+
+    const close = (payload) => {
+      overlay.style.display = "none";
+      resolve(payload);
+    };
+    overlay.querySelector("#assignCancelBtn").onclick = () => close(null);
+    overlay.querySelector("#assignSaveBtn").onclick = () => close({
+      ownerUserId: ownerInput.value.trim(),
+      dueDate: dueInput.value.trim(),
+      completionNotes: notesInput.value.trim(),
+    });
+  });
+}
+
+async function requestLifecycleInput() {
+  return new Promise((resolve) => {
+    let overlay = document.getElementById("lifecycleModal");
+    if (!overlay) {
+      overlay = document.createElement("div");
+      overlay.id = "lifecycleModal";
+      overlay.innerHTML = `
+        <div style="position:fixed;inset:0;background:rgba(2,6,23,.5);display:grid;place-items:center;z-index:1200;">
+          <div style="background:#fff;border:1px solid #dbe3f0;border-radius:14px;width:min(560px,92vw);padding:16px;">
+            <h3 style="margin:0 0 8px;">Update Alert Lifecycle</h3>
+            <label style="display:block;font-size:12px;font-weight:700;color:#334155;margin-bottom:4px;">Status</label>
+            <select id="lifecycleStatusInput" style="width:100%;height:40px;border:1px solid #dbe3f0;border-radius:10px;padding:0 10px;">
+              <option value="open">open</option>
+              <option value="acknowledged">acknowledged</option>
+              <option value="in_progress" selected>in_progress</option>
+              <option value="escalated">escalated</option>
+              <option value="resolved">resolved</option>
+              <option value="dismissed">dismissed</option>
+            </select>
+            <label style="display:block;font-size:12px;font-weight:700;color:#334155;margin:10px 0 4px;">Owner User ID (optional)</label>
+            <input id="lifecycleOwnerInput" style="width:100%;height:40px;border:1px solid #dbe3f0;border-radius:10px;padding:0 10px;">
+            <label style="display:block;font-size:12px;font-weight:700;color:#334155;margin:10px 0 4px;">Completion Note (optional)</label>
+            <textarea id="lifecycleNoteInput" style="width:100%;min-height:90px;border:1px solid #dbe3f0;border-radius:10px;padding:10px;"></textarea>
+            <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px;">
+              <button id="lifecycleCancelBtn" type="button" style="border:1px solid #dbe3f0;background:#fff;border-radius:10px;padding:9px 12px;cursor:pointer;">Cancel</button>
+              <button id="lifecycleSaveBtn" type="button" style="border:1px solid #1d4ed8;background:#1d4ed8;color:#fff;border-radius:10px;padding:9px 12px;cursor:pointer;">Save</button>
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+    } else {
+      overlay.style.display = "block";
+    }
+
+    const close = (payload) => {
+      overlay.style.display = "none";
+      resolve(payload);
+    };
+    overlay.querySelector("#lifecycleCancelBtn").onclick = () => close(null);
+    overlay.querySelector("#lifecycleSaveBtn").onclick = () => close({
+      status: overlay.querySelector("#lifecycleStatusInput").value,
+      owner: overlay.querySelector("#lifecycleOwnerInput").value.trim(),
+      note: overlay.querySelector("#lifecycleNoteInput").value.trim(),
+    });
+  });
 }
 
 document.querySelectorAll(".tab-btn").forEach((btn) => {
@@ -632,10 +800,9 @@ document.addEventListener("click", async (event) => {
   const lifecycleBtn = event.target.closest("[data-lifecycle-id]");
   if (lifecycleBtn) {
     const alertId = lifecycleBtn.getAttribute("data-lifecycle-id");
-    const status = window.prompt("Set status: open, acknowledged, in_progress, escalated, resolved, dismissed", "in_progress");
-    if (!status) return;
-    const owner = window.prompt("Owner user ID (optional):", "") || "";
-    const note = window.prompt("Completion note (optional):", "") || "";
+    const input = await requestLifecycleInput();
+    if (!input) return;
+    const { status, owner, note } = input;
     await updateLifecycle(alertId, status, owner, note);
     await loadAlerts(true);
     return;
@@ -664,5 +831,6 @@ loadNotificationPreferences().catch(() => {});
 
 </body>
 </html>
+
 
 

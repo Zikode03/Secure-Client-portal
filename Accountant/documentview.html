@@ -3,402 +3,168 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Document Review Detail</title>
-
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-
-
+<title>Document Review | Prospera Accountant Portal</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <link rel="stylesheet" href="../shared/accountant-theme.css">
 <style>
-*{margin:0;padding:0;box-sizing:border-box;}
-
-body{
-  font-family: Arial, sans-serif;
-  background:#f6f6f8;
-  color:#111318;
-  height:100vh;
-  display:flex;
-  flex-direction:column;
-}
-
-/* ===== HEADER ===== */
-.header{
-  background:#fff;
-  border-bottom:1px solid #dcdfe5;
-  padding:14px 20px;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-}
-
-.header-left{
-  display:flex;
-  align-items:center;
-  gap:12px;
-  font-size:14px;
-}
-
-.header-right{
-  display:flex;
-  align-items:center;
-  gap:12px;
-}
-
-.back-btn{
-  border:none;
-  background:none;
-  cursor:pointer;
-  font-size:16px;
-  padding:6px;
-}
-.back-btn:hover{
-  opacity:.7;
-}
-
-.upload-btn{
-  background:#1754cf;
-  color:white;
-  border:none;
-  padding:8px 14px;
-  border-radius:8px;
-  font-weight:bold;
-  cursor:pointer;
-}
-.upload-btn:hover{opacity:.9;}
-
-.status{
-  background:#fff6e5;
-  color:#f59e0b;
-  padding:4px 8px;
-  border-radius:4px;
-  font-size:11px;
-  font-weight:bold;
-  text-transform:uppercase;
-}
-
-/* ===== SPLIT SCREEN ===== */
-.split{
-  flex:1;
-  display:flex;
-  overflow:hidden;
-}
-
-/* LEFT PANEL */
-.preview{
-  width:65%;
-  background:#eef0f3;
-  padding:20px;
-  overflow:auto;
-  border-right:1px solid #dcdfe5;
-}
-
-.toolbar{
-  background:#fff;
-  border:1px solid #dcdfe5;
-  border-radius:8px;
-  padding:8px 12px;
-  display:flex;
-  justify-content:space-between;
-  margin-bottom:16px;
-}
-.toolbar button{
-  border:none;
-  background:none;
-  cursor:pointer;
-  padding:6px;
-}
-
-.paper{
-  background:#fff;
-  max-width:780px;
-  margin:auto;
-  min-height:900px;
-  border-radius:8px;
-  padding:48px;
-  box-shadow:0 6px 20px rgba(0,0,0,.08);
-}
-
-.invoice-header{
-  display:flex;
-  justify-content:space-between;
-  border-bottom:2px solid #f1f5f9;
-  padding-bottom:20px;
-}
-
-.invoice-title{font-size:30px;font-weight:bold;}
-.invoice-id{color:#64748b;margin-top:6px;}
-
-.section{margin-top:30px;}
-
-.table{
-  width:100%;
-  border-collapse:collapse;
-  margin-top:20px;
-}
-.table th{
-  font-size:12px;
-  text-transform:uppercase;
-  color:#64748b;
-  border-bottom:2px solid #f1f5f9;
-  padding:10px 0;
-}
-.table td{
-  padding:14px 0;
-  border-bottom:1px solid #f1f5f9;
-}
-
-.total{
-  margin-top:50px;
-  display:flex;
-  justify-content:flex-end;
-  gap:30px;
-  font-size:22px;
-  font-weight:bold;
-  color:#1754cf;
-}
-
-/* RIGHT PANEL */
-.details{
-  width:35%;
-  background:#fff;
-  overflow:auto;
-}
-
-.tabs{
-  display:flex;
-  gap:30px;
-  border-bottom:1px solid #dcdfe5;
-  padding:0 20px;
-}
-.tab{
-  padding:14px 0;
-  font-weight:bold;
-  border-bottom:3px solid transparent;
-  color:#636f88;
-}
-.tab.active{
-  color:#1754cf;
-  border-color:#1754cf;
-}
-
-.details-content{
-  padding:20px;
-}
-
-.meta-title{
-  font-size:12px;
-  text-transform:uppercase;
-  font-weight:bold;
-  color:#636f88;
-  margin-bottom:14px;
-}
-
-.meta-grid{
-  display:grid;
-  grid-template-columns:40% 1fr;
-  gap:12px;
-  font-size:14px;
-}
-
-textarea{
-  width:100%;
-  margin-top:10px;
-  border:1px solid #dcdfe5;
-  border-radius:8px;
-  padding:10px;
-  resize:none;
-}
-
-/* ACTIONS */
-.action-btn{
-  width:100%;
-  border:none;
-  border-radius:8px;
-  padding:12px;
-  color:white;
-  font-weight:bold;
-  cursor:pointer;
-}
-.green{background:#10b981;}
-.yellow{background:#f59e0b;}
-.red{background:#ef4444;}
-
-.action-row{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:10px;
-  margin-top:10px;
-}
+* { box-sizing: border-box; }
+body { margin: 0; font-family: "Public Sans", Arial, sans-serif; background: #f6f8fc; color: #0f172a; }
+.page { max-width: 1100px; margin: 0 auto; padding: 22px 18px 30px; }
+.topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.breadcrumbs { display: flex; align-items: center; gap: 10px; color: #64748b; font-size: 14px; }
+.btn { border: 1px solid #dbe3f0; border-radius: 10px; background: #fff; color: #0f172a; padding: 10px 14px; cursor: pointer; font-weight: 600; }
+.btn.primary { background: #1d4ed8; color: #fff; border-color: #1d4ed8; }
+.layout { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; }
+.card { background: #fff; border: 1px solid #dbe3f0; border-radius: 14px; box-shadow: 0 8px 18px rgba(15,23,42,.05); }
+.viewer { min-height: 520px; display: grid; place-items: center; color: #64748b; border-radius: 14px; border: 2px dashed #dbe3f0; margin: 12px; text-align: center; padding: 20px; }
+.meta { padding: 14px; }
+.meta h2 { margin: 0; font-size: 20px; }
+.meta-sub { color: #64748b; margin-top: 6px; font-size: 13px; }
+.rows { margin-top: 12px; }
+.row { display: grid; grid-template-columns: 120px 1fr; gap: 8px; padding: 9px 0; border-bottom: 1px solid #eef2f7; }
+.row .k { font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: .03em; }
+.row .v { font-size: 14px; }
+.pill { border-radius: 999px; padding: 4px 10px; font-size: 11px; font-weight: 700; }
+.pill.pending { background: #fef3c7; color: #92400e; }
+.pill.approved { background: #dcfce7; color: #166534; }
+.pill.rejected { background: #fee2e2; color: #b91c1c; }
+.note-wrap { margin-top: 12px; }
+.label { font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 4px; display: block; }
+textarea { width: 100%; border: 1px solid #dbe3f0; border-radius: 10px; min-height: 108px; padding: 10px; resize: vertical; font-family: inherit; }
+.actions { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 10px; }
+.message { min-height: 20px; margin-top: 8px; font-size: 13px; }
+.message.error { color: #b91c1c; }
+.message.ok { color: #166534; }
+@media (max-width: 980px) { .layout { grid-template-columns: 1fr; } .actions { grid-template-columns: 1fr; } }
 </style>
-  <script defer src="accountant-nav.js"></script>
+<script defer src="accountant-nav.js"></script>
 </head>
-
 <body>
-
-<!-- HEADER -->
-<header class="header">
-  <div class="header-left">
-   <button id="backBtn" class="back-btn">
-  <i class="fa-solid fa-arrow-left"></i>
-</button>
-
-    <span>Documents / <strong>Invoice #INV-2023-084</strong></span>
-  </div>
-
-  <div class="header-right">
-    <button class="upload-btn" data-route="documents.html">
-      <i class="fa-solid fa-upload"></i> Upload Document
-    </button>
-    <span class="status">Pending Review</span>
-    <i class="fa-solid fa-ellipsis-vertical"></i>
-  </div>
-</header>
-
-<!-- SPLIT VIEW -->
-<div class="split">
-
-  <!-- LEFT: DOCUMENT -->
-  <section class="preview">
-
-    <div class="toolbar">
-      <div>
-        <button><i class="fa-solid fa-magnifying-glass-minus"></i></button>
-        100%
-        <button><i class="fa-solid fa-magnifying-glass-plus"></i></button>
-      </div>
-      <div>Page 1 of 1</div>
-      <div>
-        <button><i class="fa-solid fa-rotate-right"></i></button>
-        <button><i class="fa-solid fa-download"></i></button>
-      </div>
+<main class="page">
+  <section class="topbar">
+    <div class="breadcrumbs">
+      <button id="backBtn" class="btn" type="button"><i class="fa-solid fa-arrow-left"></i> Back</button>
+      <span>Documents / Review</span>
     </div>
-
-    <div class="paper">
-      <div class="invoice-header">
-        <div>
-          <div class="invoice-title">INVOICE</div>
-          <div class="invoice-id">#INV-2023-084</div>
-        </div>
-        <div>
-          <strong>TechSolutions Inc.</strong><br>
-          <small>123 Tech Way, Silicon Valley</small>
-        </div>
-      </div>
-
-      <div class="section">
-        <strong>Bill To:</strong><br>
-        Acme Corp
-      </div>
-
-      <table class="table">
-        <thead>
-          <tr>
-            <th>Description</th>
-            <th align="right">Qty</th>
-            <th align="right">Price</th>
-            <th align="right">Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Cloud Computing Subscription - Annual</td>
-            <td align="right">1</td>
-            <td align="right">R1,200.00</td>
-            <td align="right">R1,200.00</td>
-          </tr>
-          <tr>
-            <td>Support & Maintenance</td>
-            <td align="right">1</td>
-            <td align="right">R50.00</td>
-            <td align="right">R50.00</td>
-          </tr>
-        </tbody>
-      </table>
-
-      <div class="total">
-        <span>Grand Total</span>
-        <span>R1,250.00</span>
-      </div>
-    </div>
-
+    <button id="openDocumentsBtn" class="btn" type="button"><i class="fa-solid fa-folder-open"></i> Open Documents</button>
   </section>
 
-  <!-- RIGHT: DETAILS -->
-  <section class="details">
-    <div class="tabs">
-      <div class="tab active">Details</div>
-      <div class="tab">History</div>
-    </div>
-
-    <div class="details-content">
-
-      <div class="meta-title">Document Metadata</div>
-      <div class="meta-grid">
-        <div>Client Name</div><div><strong>Acme Corp</strong></div>
-        <div>Document Type</div><div>Invoice</div>
-        <div>Upload Date</div><div>Oct 24, 2023</div>
-        <div>Amount</div><div><strong>R1,250.00</strong></div>
+  <section class="layout">
+    <article class="card">
+      <div class="meta">
+        <h2 id="docName">Loading document...</h2>
+        <p class="meta-sub" id="docSubtitle"></p>
       </div>
-
-      <div class="section">
-        <div class="meta-title">Comments & Feedback</div>
-        <textarea rows="4" placeholder="Add a note..."></textarea>
-      </div>
-
-      <div class="section">
-        <div class="meta-title">Actions</div>
-        <button class="action-btn green"><i class="fa-solid fa-circle-check"></i> Approve Document</button>
-
-        <div class="action-row">
-          <button class="action-btn yellow"><i class="fa-solid fa-pen"></i> Request Fix</button>
-          <button class="action-btn red"><i class="fa-solid fa-xmark"></i> Reject</button>
+      <div class="viewer" id="viewerBox">
+        <div>
+          <i class="fa-solid fa-file-lines fa-2x"></i>
+          <p style="margin-top:10px;">File preview is disabled in this prototype.<br>Use metadata and review actions on the right.</p>
         </div>
       </div>
+    </article>
 
-    </div>
+    <aside class="card">
+      <div class="meta">
+        <h2>Review Details</h2>
+        <div class="rows" id="metaRows"></div>
+        <div class="note-wrap">
+          <label for="reviewNote" class="label">Review Note</label>
+          <textarea id="reviewNote" placeholder="Add note for approve/reject/request fix"></textarea>
+        </div>
+        <div class="actions">
+          <button class="btn primary" id="approveBtn" type="button"><i class="fa-solid fa-circle-check"></i> Approve</button>
+          <button class="btn" id="fixBtn" type="button"><i class="fa-solid fa-pen"></i> Request Fix</button>
+          <button class="btn" id="rejectBtn" type="button"><i class="fa-solid fa-xmark"></i> Reject</button>
+        </div>
+        <p id="message" class="message"></p>
+      </div>
+    </aside>
   </section>
+</main>
 
-</div>
-
+<script src="../shared/portal-config.js"></script>
+<script src="../shared/portal-auth.js"></script>
 <script>
-console.log("Document Review Page Ready");
+const API_BASE_URL = window.PortalConfig?.API_BASE_URL || "http://127.0.0.1:4010/api";
+const session = window.PortalAuth.requireRole("accountant", "accountant logins/login.html");
+if (!session) throw new Error("Unauthorized");
 
-// Example document database (later from backend)
-const documents = [
-  { id:1, title:"Tax Return 2025.pdf", client:"John Doe", amount:"R2,300" },
-  { id:2, title:"Invoice #1234.pdf", client:"Mike Johnson", amount:"R1,250" },
-  { id:3, title:"Payroll Summary.pdf", client:"Acme Corp", amount:"R4,800" }
-];
-
-// Get ID from URL
 const params = new URLSearchParams(window.location.search);
-const docId = Number(params.get("id"));
+const docId = String(params.get("id") || "");
+let currentDoc = null;
 
-// Find selected document
-const doc = documents.find(d => d.id === docId);
+function authHeaders() { return window.PortalAuth.authHeaders(session.token); }
+function esc(v) { return String(v || "").replace(/[&<>"']/g, (m) => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m])); }
+function bytes(v) { const n = Number(v || 0); if (!n) return "0 B"; const u=["B","KB","MB","GB"]; let i=0, x=n; while(x>=1024&&i<u.length-1){x/=1024;i++;} return `${x.toFixed(1)} ${u[i]}`; }
+function dateFmt(v) { const d = new Date(v); return Number.isNaN(d.getTime()) ? "-" : d.toLocaleString(); }
+function setMessage(text, kind = "") { const el = document.getElementById("message"); el.className = `message ${kind}`.trim(); el.textContent = text || ""; }
 
-if(doc){
-  document.querySelector(".invoice-id").textContent = doc.title;
-  document.querySelector(".meta-grid strong").textContent = doc.client;
+function render() {
+  if (!currentDoc) {
+    document.getElementById("docName").textContent = "Document not found";
+    document.getElementById("docSubtitle").textContent = "Open from documents list.";
+    document.getElementById("metaRows").innerHTML = "";
+    return;
+  }
+  document.getElementById("docName").textContent = currentDoc.name || "Untitled Document";
+  document.getElementById("docSubtitle").textContent = `Client ${currentDoc.clientId || "-"} | ${currentDoc.category || "-"}`;
+  const status = String(currentDoc.status || "").toLowerCase();
+  const pill = status === "approved" ? "approved" : status === "rejected" ? "rejected" : "pending";
+  document.getElementById("metaRows").innerHTML = `
+    <div class="row"><div class="k">Document ID</div><div class="v">${esc(currentDoc.id)}</div></div>
+    <div class="row"><div class="k">Client ID</div><div class="v">${esc(currentDoc.clientId)}</div></div>
+    <div class="row"><div class="k">Category</div><div class="v">${esc(currentDoc.category)}</div></div>
+    <div class="row"><div class="k">Status</div><div class="v"><span class="pill ${pill}">${esc(currentDoc.status)}</span></div></div>
+    <div class="row"><div class="k">Size</div><div class="v">${bytes(currentDoc.sizeBytes)}</div></div>
+    <div class="row"><div class="k">Uploaded</div><div class="v">${dateFmt(currentDoc.uploadedAt)}</div></div>
+  `;
 }
 
-document.getElementById("backBtn").addEventListener("click", function(){
+async function loadDocument() {
+  const response = await fetch(`${API_BASE_URL}/documents`, { headers: authHeaders() });
+  if (!response.ok) throw new Error("Failed to load documents");
+  const payload = await response.json().catch(() => ({}));
+  const docs = Array.isArray(payload.items) ? payload.items : [];
+  currentDoc = docs.find((item) => String(item.id) === docId) || null;
+  render();
+}
 
-  // Go back to previous page
-  if (window.history.length > 1) {
-    window.history.back();
-  } else {
-    // fallback if user opened directly
-    window.location.href = "documents.html";
+async function runReview(action) {
+  if (!currentDoc) return;
+  const note = document.getElementById("reviewNote").value.trim();
+  if ((action === "reject" || action === "request_fix") && !note) {
+    setMessage("Note is required for reject/request fix.", "error");
+    return;
   }
+  setMessage("Saving review...");
+  const response = await fetch(`${API_BASE_URL}/reviews/${encodeURIComponent(currentDoc.id)}/action`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ action, note }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    setMessage(data.error || "Failed to update review", "error");
+    return;
+  }
+  setMessage("Review updated.", "ok");
+  await loadDocument();
+}
 
+document.getElementById("approveBtn").addEventListener("click", () => runReview("approve").catch(console.error));
+document.getElementById("fixBtn").addEventListener("click", () => runReview("request_fix").catch(console.error));
+document.getElementById("rejectBtn").addEventListener("click", () => runReview("reject").catch(console.error));
+document.getElementById("backBtn").addEventListener("click", () => {
+  if (window.history.length > 1) window.history.back();
+  else window.location.href = "documents.html";
 });
+document.getElementById("openDocumentsBtn").addEventListener("click", () => { window.location.href = "documents.html"; });
 
+loadDocument().catch((error) => {
+  setMessage(error.message || "Failed to load document", "error");
+  render();
+});
 </script>
-
 </body>
 </html>
-
-
-
 

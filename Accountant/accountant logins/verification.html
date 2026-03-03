@@ -3,328 +3,88 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FinSecure Portal - MFA Verification</title>
-<link rel="stylesheet" href="../../shared/auth-pages.css">
-
-<!-- FontAwesome -->
+<title>Verify Reset Token | Accountant Portal</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-
 <style>
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    font-family: Arial, Helvetica, sans-serif;
-}
-
-body {
-    background: #f4f6f9;
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-}
-
-/* HEADER */
-header {
-    background: white;
-    padding: 15px 30px;
-    border-bottom: 1px solid #ddd;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.logo {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.logo-box {
-    background: #1754cf;
-    color: white;
-    padding: 8px;
-    border-radius: 6px;
-}
-
-.logo h2 {
-    font-size: 18px;
-}
-
-.header-right {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    font-size: 12px;
-    text-transform: uppercase;
-    color: #666;
-}
-
-.icon-btn {
-    position: relative;
-    cursor: pointer;
-}
-
-.notification-count {
-    position: absolute;
-    top: -6px;
-    right: -8px;
-    background: red;
-    color: white;
-    font-size: 10px;
-    padding: 2px 5px;
-    border-radius: 50%;
-}
-
-/* MAIN */
-main {
-    flex: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 40px 20px;
-}
-
-.card {
-    background: white;
-    width: 100%;
-    max-width: 420px;
-    padding: 40px 30px;
-    border-radius: 12px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-    text-align: center;
-}
-.top-back {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 12px;
-    color: #1754cf;
-    text-decoration: none;
-    font-weight: bold;
-    font-size: 13px;
-}
-.top-back:hover { text-decoration: underline; }
-
-.shield {
-    width: 70px;
-    height: 70px;
-    background: rgba(23,84,207,0.1);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 20px;
-    color: #1754cf;
-    font-size: 30px;
-}
-
-.card h1 {
-    font-size: 22px;
-    margin-bottom: 10px;
-}
-
-.card p {
-    font-size: 14px;
-    color: #666;
-    margin-bottom: 25px;
-}
-
-/* OTP INPUTS */
-.otp-container {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 20px;
-}
-
-.otp {
-    width: 45px;
-    height: 55px;
-    font-size: 20px;
-    text-align: center;
-    border: 2px solid #ddd;
-    border-radius: 6px;
-    outline: none;
-}
-
-.otp:focus {
-    border-color: #1754cf;
-}
-
-/* BUTTON */
-button {
-    width: 100%;
-    padding: 14px;
-    background: #1754cf;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-weight: bold;
-    cursor: pointer;
-    margin-bottom: 15px;
-}
-
-button:hover {
-    background: #1343a5;
-}
-
-.link-btn {
-    background: none;
-    color: #1754cf;
-    font-size: 13px;
-    cursor: pointer;
-    border: none;
-    margin-bottom: 10px;
-}
-
-.link-btn:hover {
-    text-decoration: underline;
-}
-
-.error {
-    color: red;
-    font-size: 13px;
-    margin-bottom: 15px;
-    display: none;
-}
-
-/* FOOTER */
-footer {
-    text-align: center;
-    font-size: 12px;
-    color: #888;
-    padding: 20px;
-}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f4f6fb;font-family:Arial,Helvetica,sans-serif;color:#0f172a}
+.card{width:min(500px,92vw);background:#fff;border:1px solid #dbe3f0;border-radius:14px;box-shadow:0 14px 32px rgba(2,6,23,.1);padding:28px}
+h1{margin:0 0 6px;font-size:28px}.sub{margin:0 0 16px;color:#64748b}
+label{display:block;font-size:13px;font-weight:700;color:#334155;margin:10px 0 6px}
+input{width:100%;height:42px;border:1px solid #dbe3f0;border-radius:10px;padding:0 12px}
+input:focus{outline:none;border-color:#1d4ed8}
+.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.btn{height:40px;border-radius:10px;border:1px solid #dbe3f0;background:#fff;padding:0 14px;cursor:pointer;font-weight:700}
+.btn.primary{background:#1d4ed8;border-color:#1d4ed8;color:#fff}
+.msg{min-height:20px;margin-top:8px;font-size:13px}
+.msg.error{color:#b91c1c}.msg.ok{color:#166534}
+a{color:#1d4ed8;text-decoration:none;font-weight:700}
 </style>
 </head>
-
 <body>
+<section class="card">
+  <h1>Verify Reset Token</h1>
+  <p class="sub">Paste the reset token you received, then continue to set a new password.</p>
+  <label for="tokenInput">Reset Token</label>
+  <input id="tokenInput" placeholder="Paste token here">
+  <label for="emailInput">Account Email (for resend)</label>
+  <input id="emailInput" type="email" placeholder="name@firm.com">
+  <div class="row">
+    <button class="btn primary" id="continueBtn" type="button"><i class="fa-solid fa-arrow-right"></i> Continue</button>
+    <button class="btn" id="resendBtn" type="button"><i class="fa-solid fa-paper-plane"></i> Resend Token</button>
+    <button class="btn" id="backBtn" type="button">Back to Login</button>
+  </div>
+  <p id="message" class="msg"></p>
+  <p style="margin-top:10px;"><a href="passwordRecovery.html">Need a new reset token?</a></p>
+</section>
 
-<header>
-    <div class="logo">
-        <div class="logo-box">
-            <i class="fa-solid fa-building-columns"></i>
-        </div>
-        <h2>FinSecure Portal</h2>
-    </div>
-
-    <div class="header-right">
-        Internal Access Only
-
-        <div class="icon-btn" id="notificationBtn">
-            <i class="fa-solid fa-bell"></i>
-            <span class="notification-count">3</span>
-        </div>
-
-        <div class="icon-btn" onclick="alert('Contact IT Support: support@finsecure.co.za')">
-            <i class="fa-solid fa-circle-question"></i>
-        </div>
-    </div>
-</header>
-
-<main>
-    <div class="card">
-        <a class="top-back" href="login.html" aria-label="Back to login">
-            <i class="fa-solid fa-arrow-left"></i> Back to Login
-        </a>
-        <div class="shield">
-            <i class="fa-solid fa-shield-halved"></i>
-        </div>
-
-        <h1>Two-Step Verification</h1>
-        <p>Enter the 6-digit code from your authenticator app.</p>
-
-        <div class="otp-container">
-            <input type="text" maxlength="1" class="otp" aria-label="Verification code digit 1">
-            <input type="text" maxlength="1" class="otp" aria-label="Verification code digit 2">
-            <input type="text" maxlength="1" class="otp" aria-label="Verification code digit 3">
-            <input type="text" maxlength="1" class="otp" aria-label="Verification code digit 4">
-            <input type="text" maxlength="1" class="otp" aria-label="Verification code digit 5">
-            <input type="text" maxlength="1" class="otp" aria-label="Verification code digit 6">
-        </div>
-
-        <div class="error" id="errorMsg">Invalid code. Please try again.</div>
-
-        <button id="verifyBtn" type="button">
-            Verify & Sign In <i class="fa-solid fa-arrow-right"></i>
-        </button>
-
-        <button class="link-btn" id="backupBtn" type="button">
-            Lost access? Use backup recovery code
-        </button>
-
-        <button class="link-btn" id="resendBtn" type="button">
-            Resend verification code
-        </button>
-
-        <div class="security-note">
-            <i class="fa-solid fa-lock"></i> End-to-End Encrypted Session
-        </div>
-    </div>
-</main>
-
-<footer>
-© 2024 Accounting Firm Enterprise Portal. All Rights Reserved.
-</footer>
-
+<script src="../../shared/portal-config.js"></script>
 <script>
-// OTP Auto Move
-const inputs = document.querySelectorAll(".otp");
+const API_BASE_URL = (window.PortalConfig && window.PortalConfig.API_BASE_URL)
+  ? window.PortalConfig.API_BASE_URL
+  : "http://127.0.0.1:4010/api";
+const params = new URLSearchParams(window.location.search);
+const tokenInput = document.getElementById("tokenInput");
+tokenInput.value = params.get("token") || "";
 
-inputs.forEach((input, index) => {
-    input.addEventListener("input", () => {
-        input.value = input.value.replace(/[^0-9]/g, '');
-        if (input.value && index < inputs.length - 1) {
-            inputs[index + 1].focus();
-        }
+function setMessage(text, kind = "") {
+  const el = document.getElementById("message");
+  el.className = `msg ${kind}`.trim();
+  el.textContent = text || "";
+}
+
+document.getElementById("continueBtn").addEventListener("click", () => {
+  const token = tokenInput.value.trim();
+  if (!token) {
+    setMessage("Reset token is required.", "error");
+    return;
+  }
+  window.location.href = `resetPassword.html?token=${encodeURIComponent(token)}`;
+});
+
+document.getElementById("resendBtn").addEventListener("click", async () => {
+  const email = document.getElementById("emailInput").value.trim();
+  if (!email) return;
+  setMessage("Requesting new reset token...");
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, role: "accountant" }),
     });
-
-    input.addEventListener("keydown", (e) => {
-        if (e.key === "Backspace" && !input.value && index > 0) {
-            inputs[index - 1].focus();
-        }
-    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || "Failed to resend token");
+    if (data.resetToken) tokenInput.value = data.resetToken;
+    setMessage("New reset token generated. Continue to set password.", "ok");
+  } catch (error) {
+    setMessage(error.message || "Failed to resend token.", "error");
+  }
 });
 
-// Verify Button
-document.getElementById("verifyBtn").addEventListener("click", function() {
-    let code = "";
-    inputs.forEach(i => code += i.value);
-
-    if(code.length !== 6) {
-        document.getElementById("errorMsg").style.display = "block";
-        return;
-    }
-
-    if(code === "123456") {
-        alert("Verification successful! Redirecting...");
-        window.location.href = "../dashboards.html";
-    } else {
-        document.getElementById("errorMsg").style.display = "block";
-    }
-});
-
-// Backup Code
-document.getElementById("backupBtn").addEventListener("click", function() {
-    let backup = prompt("Enter backup recovery code:");
-    if(backup === "RECOVERY2024") {
-        alert("Backup verified. Redirecting...");
-        window.location.href = "../dashboards.html";
-    } else if(backup !== null) {
-        alert("Invalid recovery code.");
-    }
-});
-
-// Resend
-document.getElementById("resendBtn").addEventListener("click", function() {
-    alert("New verification code sent.");
-});
-
-// Notifications
-document.getElementById("notificationBtn").addEventListener("click", function() {
-    alert("You have 3 new security alerts.");
+document.getElementById("backBtn").addEventListener("click", () => {
+  window.location.href = "login.html";
 });
 </script>
-
 </body>
 </html>
+

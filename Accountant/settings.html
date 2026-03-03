@@ -277,6 +277,75 @@ body{
   }
 }
 
+/* UX REFRESH */
+.main {
+  padding: 30px 30px 36px;
+  background:
+    radial-gradient(1000px 400px at 100% -5%, rgba(37, 99, 235, 0.08), transparent 70%),
+    #f6f8fc;
+}
+
+.page-title {
+  font-size: 30px;
+  letter-spacing: -0.02em;
+}
+
+.page-sub {
+  margin-top: 6px;
+}
+
+.tabs {
+  gap: 10px;
+  border: none;
+  margin-bottom: 18px;
+}
+
+.tabs button {
+  border: 1px solid #dbe3f0;
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #334155;
+  background: #ffffff;
+}
+
+.tabs button.active {
+  color: #f8fafc;
+  background: #0f172a;
+  border-color: #0f172a;
+}
+
+.card {
+  border: 1px solid #dbe3f0;
+  border-radius: 16px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.05);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.card h3 {
+  font-size: 18px;
+}
+
+.profile-img {
+  width: 96px;
+  height: 96px;
+  margin-bottom: 18px;
+}
+
+.form-grid {
+  gap: 14px;
+}
+
+.btn {
+  border-radius: 10px;
+}
+
+.danger-box {
+  border-radius: 16px;
+}
+
 </style>
   <script defer src="accountant-nav.js"></script>
 </head>
@@ -309,7 +378,7 @@ body{
       <strong>Sarah Johnson</strong><br>
       sarah@prospera.com
     </div>
-    <button class="logout"><i class="fa fa-sign-out"></i> Logout</button>
+    <button type="button" class="logout"><i class="fa fa-sign-out"></i> Logout</button>
   </div>
 </aside>
 
@@ -321,10 +390,10 @@ body{
 
   <!-- TABS -->
   <div class="tabs">
-    <button class="active">Profile</button>
-    <button>Preferences</button>
-    <button>Security</button>
-    <button>Notifications</button>
+    <button type="button" class="active">Profile</button>
+    <button type="button">Preferences</button>
+    <button type="button">Security</button>
+    <button type="button">Notifications</button>
   </div>
 
   <!-- PROFILE -->
@@ -391,12 +460,12 @@ body{
       <h3>Connected Tools</h3>
 
       <p><strong>QuickBooks Online</strong>  Synced</p>
-      <button class="btn btn-danger">Disconnect</button>
+      <button type="button" class="btn btn-danger">Disconnect</button>
 
       <br><br>
 
       <p><strong>Xero Accounting</strong>  Not Connected</p>
-      <button class="btn btn-primary">Connect</button>
+      <button type="button" class="btn btn-primary">Connect</button>
     </div>
 
   </div>
@@ -406,7 +475,7 @@ body{
     <h4>Deactivate Account</h4>
     <p>Once deactivated, you will lose access to all firm records and client portals.</p>
     <br>
-    <button class="btn btn-danger">Start Deactivation</button>
+    <button type="button" class="btn btn-danger">Start Deactivation</button>
   </div>
 
 </div>
@@ -506,10 +575,9 @@ async function toggleSecurityField(field) {
 }
 
 async function updatePassword() {
-  const currentPassword = window.prompt("Current password:");
-  if (!currentPassword) return;
-  const newPassword = window.prompt("New password (min 8 chars):");
-  if (!newPassword) return;
+  const values = await requestPasswordUpdateInput();
+  if (!values) return;
+  const { currentPassword, newPassword } = values;
   const response = await fetch(`${API_BASE_URL}/settings/security/change-password`, {
     method: "POST",
     headers: authHeaders(),
@@ -519,6 +587,56 @@ async function updatePassword() {
   if (!response.ok) throw new Error(data.error || "Failed to update password");
   setMessage("securityMessage", "Password updated successfully.", "success");
   await loadSettings();
+}
+
+async function requestPasswordUpdateInput() {
+  return new Promise((resolve) => {
+    let overlay = document.getElementById("passwordModal");
+    if (!overlay) {
+      overlay = document.createElement("div");
+      overlay.id = "passwordModal";
+      overlay.innerHTML = `
+        <div style="position:fixed;inset:0;background:rgba(2,6,23,.5);display:grid;place-items:center;z-index:1200;">
+          <div style="background:#fff;border:1px solid #dbe3f0;border-radius:14px;width:min(520px,92vw);padding:16px;">
+            <h3 style="margin:0 0 8px;">Update Password</h3>
+            <label style="display:block;font-size:12px;font-weight:700;color:#334155;margin-bottom:4px;">Current Password</label>
+            <input id="currentPasswordModalInput" type="password" style="width:100%;height:40px;border:1px solid #dbe3f0;border-radius:10px;padding:0 10px;">
+            <label style="display:block;font-size:12px;font-weight:700;color:#334155;margin:10px 0 4px;">New Password</label>
+            <input id="newPasswordModalInput" type="password" style="width:100%;height:40px;border:1px solid #dbe3f0;border-radius:10px;padding:0 10px;">
+            <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px;">
+              <button id="passwordModalCancel" type="button" style="border:1px solid #dbe3f0;background:#fff;border-radius:10px;padding:9px 12px;cursor:pointer;">Cancel</button>
+              <button id="passwordModalSave" type="button" style="border:1px solid #1d4ed8;background:#1d4ed8;color:#fff;border-radius:10px;padding:9px 12px;cursor:pointer;">Update</button>
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+    } else {
+      overlay.style.display = "block";
+    }
+
+    const currentInput = overlay.querySelector("#currentPasswordModalInput");
+    const newInput = overlay.querySelector("#newPasswordModalInput");
+    currentInput.value = "";
+    newInput.value = "";
+    currentInput.focus();
+
+    const close = (payload) => {
+      overlay.style.display = "none";
+      resolve(payload);
+    };
+
+    overlay.querySelector("#passwordModalCancel").onclick = () => close(null);
+    overlay.querySelector("#passwordModalSave").onclick = () => {
+      const currentPassword = currentInput.value;
+      const newPassword = newInput.value;
+      if (!currentPassword || !newPassword) {
+        setMessage("securityMessage", "Both current and new password are required.", "error");
+        return;
+      }
+      close({ currentPassword, newPassword });
+    };
+  });
 }
 
 document.getElementById("profileSaveBtn").addEventListener("click", async () => {
@@ -552,6 +670,7 @@ loadSettings().catch((error) => {
 
 </body>
 </html>
+
 
 
 

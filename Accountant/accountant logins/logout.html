@@ -26,16 +26,23 @@
       <h1>Signed Out Safely</h1>
       <p>Your accountant session has been closed and local credentials were cleared on this browser.</p>
       <div class="actions">
-        <button class="btn btn-primary" type="button" onclick="window.location.href='login.html'">Log In Again</button>
-        <button class="btn btn-secondary" type="button" onclick="window.location.href='../../Accountant/dashboards.html'">Back to Portal</button>
+        <button class="btn btn-primary" id="loginAgainBtn" type="button">Log In Again</button>
+        <button class="btn btn-secondary" id="backPortalBtn" type="button">Back to Portal</button>
       </div>
     </div>
   </main>
-  <footer>(c) 2024 Ledge & Ledger Accounting Firms. All rights reserved.</footer>
+  <footer>(c) 2024 Prospera Secure Portal. All rights reserved.</footer>
 
   <script>
     window.localStorage.removeItem("authToken");
     window.localStorage.removeItem("authUser");
+    document.getElementById("loginAgainBtn")?.addEventListener("click", () => {
+      window.location.href = "login.html";
+    });
+    document.getElementById("backPortalBtn")?.addEventListener("click", () => {
+      window.location.href = "../../Accountant/dashboards.html";
+    });
   </script>
 </body>
 </html>
+

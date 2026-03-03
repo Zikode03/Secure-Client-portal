@@ -3,526 +3,283 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pro Accountant Dashboard</title>
-
-<!-- FONT AWESOME -->
+<title>Clients | Prospera Accountant Portal</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-
-
 <link rel="stylesheet" href="../shared/accountant-theme.css">
 <style>
-
-/* =========================
-   RESET
-========================= */
-/* Reset */
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+* { box-sizing: border-box; }
+body { margin: 0; background: #f6f8fc; color: #0f172a; font-family: "Public Sans", Arial, sans-serif; }
+.app-layout { display: flex; min-height: 100vh; }
+.sidebar { width: 260px; background: linear-gradient(180deg,#0f172a,#020617); color: #fff; padding: 16px; position: fixed; inset: 0 auto 0 0; }
+.sidebar .nav a { display: flex; gap: 10px; align-items: center; padding: 11px 12px; color: #cbd5f5; text-decoration: none; border-radius: 10px; margin-bottom: 6px; }
+.sidebar .nav a.active, .sidebar .nav a:hover { background: #1e293b; }
+.page { margin-left: 260px; width: calc(100% - 260px); padding: 26px 28px; }
+.page-header { display: flex; justify-content: space-between; align-items: end; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+.page-header h1 { margin: 0; font-size: 30px; letter-spacing: -0.02em; }
+.page-header p { margin: 6px 0 0; color: #64748b; }
+.toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+.input, .select { height: 40px; border: 1px solid #dbe3f0; border-radius: 10px; background: #fff; padding: 0 12px; }
+.input { min-width: 260px; }
+.btn { border: 1px solid #dbe3f0; border-radius: 10px; background: #fff; color: #0f172a; padding: 10px 14px; cursor: pointer; font-weight: 600; }
+.btn.primary { background: #1d4ed8; color: #fff; border-color: #1d4ed8; }
+.grid { display: grid; grid-template-columns: repeat(4,minmax(170px,1fr)); gap: 12px; margin-bottom: 14px; }
+.kpi { background: #fff; border: 1px solid #dbe3f0; border-radius: 14px; padding: 14px; box-shadow: 0 6px 16px rgba(15,23,42,.05); }
+.kpi .label { color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+.kpi .value { font-size: 24px; font-weight: 700; margin-top: 6px; }
+.card { background: #fff; border: 1px solid #dbe3f0; border-radius: 14px; box-shadow: 0 6px 16px rgba(15,23,42,.05); overflow: hidden; }
+.table-wrap { overflow: auto; max-height: calc(100vh - 340px); }
+table { width: 100%; border-collapse: collapse; min-width: 860px; }
+thead th { position: sticky; top: 0; z-index: 2; background: #f8fafc; color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid #dbe3f0; padding: 12px 14px; text-align: left; }
+tbody td { border-bottom: 1px solid #eef2f7; padding: 12px 14px; font-size: 14px; }
+.pill { border-radius: 999px; padding: 4px 10px; font-size: 11px; font-weight: 700; }
+.pill.active { background: #dcfce7; color: #166534; }
+.pill.pending { background: #fef3c7; color: #92400e; }
+.pill.risk { background: #fee2e2; color: #b91c1c; }
+.row-actions { display: flex; gap: 6px; }
+.icon-btn { width: 34px; height: 34px; border: 1px solid #dbe3f0; border-radius: 8px; background: #fff; cursor: pointer; }
+.empty { padding: 40px; text-align: center; color: #64748b; }
+.modal-backdrop { position: fixed; inset: 0; background: rgba(2,6,23,.45); display: none; align-items: center; justify-content: center; z-index: 1000; }
+.modal { width: min(560px,92vw); background: #fff; border-radius: 14px; border: 1px solid #dbe3f0; box-shadow: 0 20px 50px rgba(2,6,23,.25); }
+.modal header { padding: 14px 16px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
+.modal .body { padding: 16px; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.form-grid .full { grid-column: 1 / -1; }
+.label { font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 4px; display: block; }
+.message { min-height: 20px; margin-top: 8px; font-size: 13px; }
+.message.error { color: #b91c1c; }
+.message.ok { color: #166534; }
+@media (max-width: 900px) {
+  .sidebar { position: static; width: 100%; }
+  .page { margin-left: 0; width: 100%; }
+  .grid { grid-template-columns: repeat(2,minmax(150px,1fr)); }
 }
-
-body {
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-  background: #f6f6f8;
-  color: #111318;
-}
-
-
-.main {
-  margin-left: 260px;
-  flex: 1;
-}
-
-.app-layout{display:flex;min-height:100vh;width:100%;}
-
-/* =========================
-   LAYOUT
-========================= */
-.app{
-  display:flex;
-  min-height:100vh;
-}
-
-/* SIDEBAR */
-.sidebar{
-  width:260px;
-  background:linear-gradient(180deg,#0f172a,#020617);
-  color:white;
-  display:flex;
-  flex-direction:column;
-  position:fixed;
-  height:100vh;
-}
-.sidebar-header{
-  padding:22px;
-  display:flex;
-  gap:12px;
-  align-items:center;
-}
-.sidebar-header i{font-size:30px;color:#60a5fa;}
-.sidebar-header h1{font-size:16px;}
-.sidebar-header p{font-size:12px;color:#94a3b8;}
-
-.nav{padding:16px;flex:1;}
-.nav a{
-  display:flex;
-  gap:12px;
-  align-items:center;
-  padding:12px 14px;
-  border-radius:10px;
-  color:#cbd5f5;
-  text-decoration:none;
-  margin-bottom:6px;
-}
-.nav a:hover{background:#1e293b;}
-.nav a.active{background:#2563eb;color:white;}
-
-.sidebar-footer{padding:16px;}
-.user-box{
-  background:#1e293b;
-  padding:12px;
-  border-radius:10px;
-  margin-bottom:12px;
-}
-.role{color:#60a5fa;font-size:12px;}
-
-.logout{
-  width:100%;
-  background:none;
-  border:none;
-  color:#cbd5f5;
-  padding:12px;
-  border-radius:10px;
-  cursor:pointer;
-  text-align:left;
-}
-.logout:hover{background:#1e293b;}
-
-.badge {
-  margin-left: auto;
-  background: #1754cf;
-  color: #ffffff;
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 999px;
-  font-weight: 700;
-}
-
-
-/* =========================
-   MAIN
-========================= */
-.main{
-  flex:1;
-  padding:25px 35px;
-}
-
-/* TOP BAR */
-.topbar{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin-bottom:25px;
-}
-.search{
-  background:#e5e7eb;
-  padding:10px 14px;
-  border-radius:8px;
-  display:flex;
-  gap:10px;
-  width:380px;
-}
-.search input{
-  border:none;
-  background:transparent;
-  outline:none;
-  width:100%;
-}
-.top-actions{
-  display:flex;
-  gap:15px;
-  align-items:center;
-}
-.new-btn{
-  background:#2563eb;
-  color:white;
-  border:none;
-  padding:10px 16px;
-  border-radius:8px;
-  cursor:pointer;
-}
-.new-btn:hover{opacity:0.9}
-
-/* =========================
-   GRID
-========================= */
-.grid{
-  display:grid;
-  grid-template-columns:2fr 1fr;
-  gap:25px;
-}
-
-/* CARD */
-.card{
-  background:white;
-  padding:20px;
-  border-radius:14px;
-  box-shadow:0 5px 20px rgba(0,0,0,0.05);
-  margin-bottom:20px;
-}
-.card-header{
-  display:flex;
-  justify-content:space-between;
-  margin-bottom:15px;
-}
-.card-header h3{
-  font-size:16px;
-}
-.small-link{
-  color:#2563eb;
-  font-size:13px;
-  cursor:pointer;
-}
-
-/* =========================
-   TABLE
-========================= */
-table{
-  width:100%;
-  border-collapse:collapse;
-}
-th{
-  text-align:left;
-  font-size:12px;
-  color:#6b7280;
-  padding-bottom:10px;
-}
-td{
-  padding:12px 0;
-  border-top:1px solid #eee;
-  font-size:14px;
-}
-
-.badge{
-  padding:4px 8px;
-  font-size:11px;
-  border-radius:20px;
-  font-weight:600;
-}
-.attention{background:#fef3c7;color:#b45309}
-.compliant{background:#dcfce7;color:#15803d}
-.review{background:#e0e7ff;color:#4338ca}
-
-.progress{
-  height:6px;
-  background:#e5e7eb;
-  border-radius:20px;
-  margin-top:5px;
-  overflow:hidden;
-}
-.fill{
-  height:100%;
-  background:#2563eb;
-}
-
-/* =========================
-   REQUEST CARDS
-========================= */
-.request{
-  border:1px solid #eee;
-  border-radius:12px;
-  padding:15px;
-  margin-bottom:15px;
-}
-.request-title{
-  display:flex;
-  justify-content:space-between;
-  margin-bottom:10px;
-}
-.request small{
-  color:#6b7280;
-}
-.request button{
-  background:none;
-  border:none;
-  color:#2563eb;
-  cursor:pointer;
-  font-weight:600;
-}
-
-/* =========================
-   TASKS
-========================= */
-.task{
-  display:flex;
-  gap:10px;
-  margin-bottom:12px;
-}
-.task.completed{
-  text-decoration:line-through;
-  opacity:0.6;
-}
-.task small{
-  display:block;
-  color:#6b7280;
-}
-
-/* =========================
-   INSIGHTS
-========================= */
-.insight{
-  display:flex;
-  align-items:center;
-  gap:10px;
-  margin-bottom:10px;
-}
-.insight i{
-  color:#2563eb;
-}
-
-/* =========================
-   TOAST
-========================= */
-.toast{
-  position:fixed;
-  bottom:30px;
-  right:30px;
-  background:#111827;
-  color:white;
-  padding:15px 20px;
-  border-radius:10px;
-  display:none;
-  gap:10px;
-  align-items:center;
-}
-
-@media(max-width:1000px){
-  .grid{grid-template-columns:1fr}
-}
-
 </style>
-  <script defer src="accountant-nav.js"></script>
-<link rel="stylesheet" href="../shared/inline-migrated.css">
+<script defer src="accountant-nav.js"></script>
 </head>
-
 <body>
-
-<aside class="sidebar">
-  <div class="sidebar-header">
-    <i class="fa-solid fa-shield-halved"></i>
-    <div>
-      <h1>Prospera</h1>
-      <p>Accountant Portal</p>
-    </div>
-  </div>
-
-
-  <!-- SIDEBAR -->
-  <nav class="nav">
-    <a href="dashboards.html"><i class="fa fa-chart-line"></i> Dashboard</a>
-    <a href="clients.html"class="active"><i class="fa fa-users"></i> Clients</a>
-    <a href="documents.html"><i class="fa fa-file"></i> Documents</a>
-    <a href="tasks.html" ><i class="fa fa-tasks"></i> Tasks</a>
-    <a href="messages.html" ><i class="fa fa-message"></i> Messages</a>
-    <a href="settings.html"><i class="fa fa-gear"></i> Settings</a>
-  </nav>
-
-   <div class="sidebar-footer">
-    <div class="user-box">
-      <p><strong>Sarah Johnson</strong></p>
-      <p>sarah@prospera.com</p>
-      <p class="role">Primary Accountant</p>
-    </div>
-    <button class="logout"><i class="fa fa-sign-out"></i> Logout</button>
-  </div>
-</aside>
-
-
-  <!-- MAIN -->
-  <div class="main">
-
-    <div class="topbar">
-      <h2>CLients</h2>
-
-      <div class="search">
-        <i class="fa fa-search"></i>
-        <input type="text" placeholder="Search clients, requests, or tasks...">
-      </div>
-
-      <div class="top-actions">
-        <i class="fa fa-bell"></i>
-        <button class="new-btn" onclick="showToast('New Request Created')">
-          <i class="fa fa-plus"></i> New Request
-        </button>
-      </div>
-    </div>
-
-    <div class="grid">
-
-      <!-- LEFT -->
+<div class="app-layout">
+  <aside class="sidebar">
+    <div class="nav"></div>
+  </aside>
+  <main class="page">
+    <section class="page-header">
       <div>
-
-        <!-- CLIENT OVERVIEW -->
-        <div class="card">
-          <div class="card-header">
-            <h3>Client Overview</h3>
-            <a href="clients-directory.html" class="small-link">
-  View All Clients
-</a>
-
-          </div>
-
-          <table>
-            <thead>
-              <tr>
-                <th>CLIENT NAME</th>
-                <th>COMPLIANCE HEALTH</th>
-                <th>LAST ACTIVE</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Acme Corporation</td>
-                <td>
-                  <span class="badge attention">ATTENTION</span>
-                  <div class="progress"><div class="fill inl-51d488e4bb"></div></div>
-                </td>
-                <td>2 hours ago</td>
-              </tr>
-              <tr>
-                <td>Global Ltd</td>
-                <td>
-                  <span class="badge compliant">COMPLIANT</span>
-                  <div class="progress"><div class="fill inl-31621155dc"></div></div>
-                </td>
-                <td>5 hours ago</td>
-              </tr>
-              <tr>
-                <td>TechStart Inc.</td>
-                <td>
-                  <span class="badge review">IN REVIEW</span>
-                  <div class="progress"><div class="fill inl-337dc0f83b"></div></div>
-                </td>
-                <td>Yesterday</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        <!-- ACTIVE REQUESTS -->
-        <div class="card">
-          <div class="card-header">
-            <h3>Active Requests</h3>
-            <span class="badge review">12 Pending</span>
-          </div>
-
-          <div class="request">
-            <div class="request-title">
-              <strong>Year-End Ledger Docs</strong>
-              <span class="badge attention">Awaiting Client</span>
-            </div>
-            <small>Sent to Acme Corporation</small>
-            <div class="progress"><div class="fill inl-518cc756cf"></div></div>
-            <button onclick="showToast('Reminder Sent')">Remind Client</button>
-          </div>
-
-          <div class="request">
-            <div class="request-title">
-              <strong>Payroll Summary - Sept</strong>
-              <span class="badge review">In Review</span>
-            </div>
-            <small>Sent to Global Ltd</small>
-            <div class="progress"><div class="fill inl-31621155dc"></div></div>
-            <button onclick="showToast('Opening Review')">Review Now</button>
-          </div>
-
-        </div>
-
+        <h1>Clients</h1>
+        <p>Manage client records and quickly act on at-risk accounts.</p>
       </div>
+      <button class="btn primary" id="openCreateClient" type="button"><i class="fa-solid fa-plus"></i> Add Client</button>
+    </section>
 
-      <!-- RIGHT -->
-      <div>
+    <section class="toolbar">
+      <input class="input" id="searchInput" placeholder="Search name, contact, entity type" aria-label="Search clients">
+      <select class="select" id="statusFilter" aria-label="Filter client status">
+        <option value="">All Status</option>
+        <option value="active">Active</option>
+        <option value="pending">Pending</option>
+        <option value="at-risk">At Risk</option>
+      </select>
+      <button class="btn" id="refreshBtn" type="button"><i class="fa-solid fa-rotate"></i> Refresh</button>
+    </section>
 
-        <!-- TASKS -->
-        <div class="card">
-          <div class="card-header">
-            <h3>Internal Tasks</h3>
-            <i class="fa fa-plus-circle"></i>
-          </div>
+    <section class="grid" id="kpiGrid"></section>
 
-          <div class="task">
-            <input type="checkbox" onchange="toggleTask(this)">
-            <div>
-              Review Alpha Corp Audit
-              <small>High Priority - Due in 2h</small>
-            </div>
-          </div>
-
-          <div class="task">
-            <input type="checkbox" onchange="toggleTask(this)">
-            <div>
-              Follow up with John Doe
-              <small>Regarding missing invoices</small>
-            </div>
-          </div>
-
-          <div class="task completed">
-            <input type="checkbox" checked onchange="toggleTask(this)">
-            <div>
-              Check subscription status
-              <small>Completed today</small>
-            </div>
-          </div>
-        </div>
-
-        <!-- INSIGHTS -->
-        <div class="card">
-          <h3 class="inl-9ab9bec820">Insights</h3>
-
-          <div class="insight">
-            <i class="fa fa-arrow-trend-up"></i>
-            Efficiency up 12%
-          </div>
-
-          <div class="insight">
-            <i class="fa fa-exclamation-circle"></i>
-            4 Overdue Items
-          </div>
-        </div>
-
+    <section class="card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Client</th>
+              <th>Entity Type</th>
+              <th>Primary Contact</th>
+              <th>Email</th>
+              <th>Status</th>
+              <th>Health</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="clientsTableBody"></tbody>
+        </table>
       </div>
+      <div id="emptyState" class="empty" hidden>No clients found for current filters.</div>
+    </section>
+  </main>
+</div>
 
+<div id="createClientModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="createClientTitle">
+  <div class="modal">
+    <header>
+      <strong id="createClientTitle">Create New Client</strong>
+      <button id="closeCreateClient" class="icon-btn" type="button" aria-label="Close create client dialog"><i class="fa-solid fa-xmark"></i></button>
+    </header>
+    <div class="body">
+      <div class="form-grid">
+        <div class="full">
+          <label class="label" for="newClientName">Client Name</label>
+          <input id="newClientName" class="input" placeholder="Example: Apex Holdings">
+        </div>
+        <div>
+          <label class="label" for="newEntityType">Entity Type</label>
+          <input id="newEntityType" class="input" placeholder="Pty Ltd">
+        </div>
+        <div>
+          <label class="label" for="newPrimaryContact">Primary Contact</label>
+          <input id="newPrimaryContact" class="input" placeholder="Jane Doe">
+        </div>
+        <div class="full">
+          <label class="label" for="newClientEmail">Email</label>
+          <input id="newClientEmail" class="input" placeholder="contact@company.com">
+        </div>
+      </div>
+      <p id="createClientMessage" class="message"></p>
+      <div class="toolbar" style="margin-top:10px; margin-bottom:0;">
+        <button class="btn" id="cancelCreateClient" type="button">Cancel</button>
+        <button class="btn primary" id="saveCreateClient" type="button">Create Client</button>
+      </div>
     </div>
-
   </div>
 </div>
 
-<!-- TOAST -->
-<div class="toast" id="toast">
-  <i class="fa fa-check-circle"></i>
-  <span id="toastMsg"></span>
-</div>
-
+<script src="../shared/portal-config.js"></script>
+<script src="../shared/portal-auth.js"></script>
 <script>
+const API_BASE_URL = window.PortalConfig?.API_BASE_URL || "http://127.0.0.1:4010/api";
+const session = window.PortalAuth.requireRole("accountant", "accountant logins/login.html");
+if (!session) throw new Error("Unauthorized");
 
-function toggleTask(el){
-  el.closest(".task").classList.toggle("completed");
+const state = { clients: [] };
+const tableBody = document.getElementById("clientsTableBody");
+const emptyState = document.getElementById("emptyState");
+const kpiGrid = document.getElementById("kpiGrid");
+const searchInput = document.getElementById("searchInput");
+const statusFilter = document.getElementById("statusFilter");
+
+function authHeaders() { return window.PortalAuth.authHeaders(session.token); }
+function esc(v) { return String(v || "").replace(/[&<>"']/g, (m) => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m])); }
+function healthPill(v) { return Number(v || 0) >= 80 ? "active" : Number(v || 0) >= 50 ? "pending" : "risk"; }
+function statusPill(v) { const s = String(v || "").toLowerCase(); return s === "active" ? "active" : s === "pending" ? "pending" : "risk"; }
+
+function renderKpi(items) {
+  const total = items.length;
+  const active = items.filter((c) => String(c.status).toLowerCase() === "active").length;
+  const pending = items.filter((c) => String(c.status).toLowerCase() === "pending").length;
+  const atRisk = items.filter((c) => String(c.status).toLowerCase() === "at-risk").length;
+  kpiGrid.innerHTML = `
+    <article class="kpi"><div class="label">Total Clients</div><div class="value">${total}</div></article>
+    <article class="kpi"><div class="label">Active</div><div class="value">${active}</div></article>
+    <article class="kpi"><div class="label">Pending</div><div class="value">${pending}</div></article>
+    <article class="kpi"><div class="label">At Risk</div><div class="value">${atRisk}</div></article>
+  `;
 }
 
-function showToast(msg){
-  const t=document.getElementById("toast");
-  document.getElementById("toastMsg").innerText=msg;
-  t.style.display="flex";
-  setTimeout(()=>{t.style.display="none"},3000);
+function filteredClients() {
+  const q = searchInput.value.trim().toLowerCase();
+  const status = statusFilter.value.toLowerCase();
+  return state.clients.filter((client) => {
+    const statusOk = !status || String(client.status || "").toLowerCase() === status;
+    if (!statusOk) return false;
+    if (!q) return true;
+    return [client.name, client.entityType, client.primaryContact, client.email].some((v) => String(v || "").toLowerCase().includes(q));
+  });
 }
 
+function renderTable() {
+  const items = filteredClients();
+  renderKpi(items);
+  tableBody.innerHTML = "";
+  emptyState.hidden = items.length > 0;
+  if (!items.length) return;
+
+  tableBody.innerHTML = items.map((client) => `
+    <tr>
+      <td><strong>${esc(client.name)}</strong><br><span style="color:#64748b;font-size:12px;">${esc(client.id)}</span></td>
+      <td>${esc(client.entityType)}</td>
+      <td>${esc(client.primaryContact)}</td>
+      <td>${esc(client.email)}</td>
+      <td><span class="pill ${statusPill(client.status)}">${esc(client.status)}</span></td>
+      <td><span class="pill ${healthPill(client.complianceHealth)}">${Number(client.complianceHealth || 0)}%</span></td>
+      <td>
+        <div class="row-actions">
+          <button class="icon-btn" type="button" data-open-client="${esc(client.id)}" title="Open client profile"><i class="fa-solid fa-user"></i></button>
+          <button class="icon-btn" type="button" data-open-docs="${esc(client.id)}" title="Open documents"><i class="fa-solid fa-file-lines"></i></button>
+          <button class="icon-btn" type="button" data-open-msg="${esc(client.id)}" title="Open messages"><i class="fa-solid fa-message"></i></button>
+        </div>
+      </td>
+    </tr>
+  `).join("");
+}
+
+async function loadClients() {
+  const response = await fetch(`${API_BASE_URL}/clients`, { headers: authHeaders() });
+  if (!response.ok) throw new Error("Failed to load clients");
+  const payload = await response.json().catch(() => ({}));
+  state.clients = Array.isArray(payload.items) ? payload.items : [];
+  renderTable();
+}
+
+function openCreateClientModal(open) {
+  document.getElementById("createClientModal").style.display = open ? "flex" : "none";
+  if (!open) document.getElementById("createClientMessage").textContent = "";
+}
+
+async function createClient() {
+  const name = document.getElementById("newClientName").value.trim();
+  const entityType = document.getElementById("newEntityType").value.trim();
+  const primaryContact = document.getElementById("newPrimaryContact").value.trim();
+  const email = document.getElementById("newClientEmail").value.trim();
+  const msg = document.getElementById("createClientMessage");
+  if (!name || !entityType || !primaryContact || !email) {
+    msg.className = "message error";
+    msg.textContent = "All fields are required.";
+    return;
+  }
+
+  const response = await fetch(`${API_BASE_URL}/clients`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ name, entityType, primaryContact, email }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || "Failed to create client");
+  openCreateClientModal(false);
+  await loadClients();
+}
+
+searchInput.addEventListener("input", renderTable);
+statusFilter.addEventListener("change", renderTable);
+document.getElementById("refreshBtn").addEventListener("click", () => loadClients().catch(console.error));
+document.getElementById("openCreateClient").addEventListener("click", () => openCreateClientModal(true));
+document.getElementById("closeCreateClient").addEventListener("click", () => openCreateClientModal(false));
+document.getElementById("cancelCreateClient").addEventListener("click", () => openCreateClientModal(false));
+document.getElementById("saveCreateClient").addEventListener("click", () => createClient().catch((error) => {
+  const msg = document.getElementById("createClientMessage");
+  msg.className = "message error";
+  msg.textContent = error.message || "Failed to create client";
+}));
+
+document.addEventListener("click", (event) => {
+  const openClient = event.target.closest("[data-open-client]");
+  if (openClient) {
+    window.location.href = `client-profile.html?id=${encodeURIComponent(openClient.getAttribute("data-open-client"))}`;
+    return;
+  }
+  const openDocs = event.target.closest("[data-open-docs]");
+  if (openDocs) {
+    window.location.href = `documents.html?clientId=${encodeURIComponent(openDocs.getAttribute("data-open-docs"))}`;
+    return;
+  }
+  const openMsg = event.target.closest("[data-open-msg]");
+  if (openMsg) {
+    window.location.href = `messages.html?clientId=${encodeURIComponent(openMsg.getAttribute("data-open-msg"))}`;
+  }
+});
+
+loadClients().catch((error) => {
+  tableBody.innerHTML = "";
+  emptyState.hidden = false;
+  emptyState.textContent = error.message || "Failed to load clients.";
+  renderKpi([]);
+});
 </script>
-
 </body>
 </html>
-
-
-
-
 

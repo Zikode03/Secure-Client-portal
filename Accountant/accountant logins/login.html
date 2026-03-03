@@ -338,7 +338,7 @@ footer a:hover {
           <div class="input-wrapper">
             <i class="fas fa-lock-open"></i>
             <input type="password" id="password" placeholder="Enter your password" required>
-            <i class="fas fa-eye password-toggle" onclick="togglePassword()"></i>
+            <i class="fas fa-eye password-toggle" id="togglePasswordBtn"></i>
           </div>
         </div>
 
@@ -384,7 +384,7 @@ footer a:hover {
 </main>
 
 <footer>
-  <div>(c) 2024 Ledge & Ledger Accounting Firms. All rights reserved.</div>
+  <div>(c) 2024 Prospera Secure Portal. All rights reserved.</div>
   <div>
     <a href="#">Privacy Policy</a>
     <a href="#">Terms of Service</a>
@@ -421,6 +421,7 @@ function togglePassword() {
     icon.classList.add("fa-eye");
   }
 }
+document.getElementById("togglePasswordBtn")?.addEventListener("click", togglePassword);
 
 document.getElementById("loginForm").addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -478,3 +479,4 @@ document.getElementById("loginForm").addEventListener("submit", async (event) =>
 
 </body>
 </html>
+
