@@ -163,6 +163,25 @@ tbody tr:hover { background: #f8fbff; }
   flex-wrap: wrap;
 }
 .row-actions .btn { font-size: 11px; height: 30px; padding: 0 8px; }
+.bulk-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 16px;
+  border-bottom: 1px solid #eef2f7;
+  background: #f8fafc;
+}
+.bulk-label {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+.row-check {
+  width: 16px;
+  height: 16px;
+  accent-color: #2563eb;
+}
 
 .action-queue {
   display: grid;
@@ -326,10 +345,19 @@ tbody tr:hover { background: #f8fbff; }
             </label>
           </div>
         </div>
+        <div class="bulk-row">
+          <label><input id="bulkSelectAll" type="checkbox" class="row-check"> Select all visible</label>
+          <span class="bulk-label" id="bulkSelectedCount">0 selected</span>
+          <button type="button" class="btn" id="bulkAssignBtn">Assign Selected</button>
+          <button type="button" class="btn" id="bulkInProgressBtn">In Progress Selected</button>
+          <button type="button" class="btn btn-primary" id="bulkResolveBtn">Resolve Selected</button>
+          <button type="button" class="btn" id="bulkRemindBtn">Send Reminders</button>
+        </div>
         <div style="overflow:auto; max-height: 520px;">
           <table>
             <thead>
               <tr>
+                <th>Select</th>
                 <th>Client</th>
                 <th>Overall</th>
                 <th>SARS</th>
@@ -392,7 +420,7 @@ if (!session) throw new Error("Unauthorized");
 const { token, user } = session;
 document.getElementById("sidebarEmail").textContent = user?.email || "-";
 
-const state = { items: [], selectedClientId: "" };
+const state = { items: [], selectedClientId: "", selectedIds: new Set() };
 function headers() { return window.PortalAuth.authHeaders(token); }
 function qs(params) {
   const out = new URLSearchParams();
@@ -440,6 +468,9 @@ async function fetchPortfolio() {
   if (!response.ok) throw new Error("Failed to load compliance portfolio");
   const data = await response.json();
   state.items = Array.isArray(data.items) ? data.items : [];
+  state.selectedIds = new Set(Array.from(state.selectedIds).filter((id) => state.items.some((item) => item.clientId === id)));
+  const allSelected = state.items.length > 0 && state.items.every((item) => state.selectedIds.has(item.clientId));
+  document.getElementById("bulkSelectAll").checked = allSelected;
   renderKpis(data.kpis || {});
   renderActionQueue(state.items);
   renderTable(state.items);
@@ -477,11 +508,17 @@ function renderActionQueue(items) {
 function renderTable(items) {
   const body = document.getElementById("portfolioBody");
   if (!items.length) {
-    body.innerHTML = `<tr><td colspan="10" class="muted">No matching clients.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="11" class="muted">No matching clients.</td></tr>`;
+    state.selectedIds.clear();
+    renderBulkCount();
     return;
   }
+  const selected = state.selectedIds;
   body.innerHTML = items.map((item) => `
     <tr data-client-id="${asText(item.clientId)}">
+      <td>
+        <input type="checkbox" class="row-check" data-select-client-id="${asText(item.clientId)}" ${selected.has(item.clientId) ? "checked" : ""} aria-label="Select ${asText(item.clientName)}">
+      </td>
       <td><strong>${asText(item.clientName)}</strong><div class="muted mono">Risk ${Number(item.riskScore || 0)}</div></td>
       <td><span class="${pill(item.overallStatus)}">${asText(item.overallStatus.toUpperCase())}</span></td>
       <td><span class="${pill(item.sarsStatus)}">${asText(String(item.sarsStatus || "unknown").toUpperCase())}</span></td>
@@ -502,6 +539,11 @@ function renderTable(items) {
       </td>
     </tr>
   `).join("");
+  renderBulkCount();
+}
+
+function renderBulkCount() {
+  document.getElementById("bulkSelectedCount").textContent = `${state.selectedIds.size} selected`;
 }
 
 async function loadTimeline(clientId) {
@@ -570,6 +612,25 @@ async function runEscalations() {
   });
 }
 
+async function runBulkAction(kind) {
+  const selectedRows = state.items.filter((item) => state.selectedIds.has(item.clientId));
+  if (!selectedRows.length) return;
+  for (const row of selectedRows) {
+    if (kind === "assign") {
+      if (row.actionObligationId) await assignToMe(row.actionObligationId);
+    } else if (kind === "in_progress") {
+      if (row.actionAlertId) await updateAlert(row.actionAlertId, "in_progress");
+    } else if (kind === "resolve") {
+      if (row.actionAlertId) await updateAlert(row.actionAlertId, "resolved");
+    } else if (kind === "remind") {
+      await runReminders();
+      break;
+    }
+  }
+  showToast("Bulk action completed.");
+  await fetchPortfolio();
+}
+
 document.getElementById("refreshBtn").addEventListener("click", () => fetchPortfolio().catch(console.error));
 document.getElementById("runEscalationBtn").addEventListener("click", async () => {
   await runEscalations();
@@ -581,8 +642,23 @@ document.getElementById("runEscalationBtn").addEventListener("click", async () =
   document.getElementById(id).addEventListener("change", () => fetchPortfolio().catch(console.error));
 });
 document.getElementById("ownerFilter").addEventListener("input", () => fetchPortfolio().catch(console.error));
+document.getElementById("bulkSelectAll").addEventListener("change", (event) => {
+  const checked = event.target.checked;
+  if (checked) {
+    state.items.forEach((item) => state.selectedIds.add(item.clientId));
+  } else {
+    state.selectedIds.clear();
+  }
+  renderTable(state.items);
+});
+document.getElementById("bulkAssignBtn").addEventListener("click", () => runBulkAction("assign").catch(console.error));
+document.getElementById("bulkInProgressBtn").addEventListener("click", () => runBulkAction("in_progress").catch(console.error));
+document.getElementById("bulkResolveBtn").addEventListener("click", () => runBulkAction("resolve").catch(console.error));
+document.getElementById("bulkRemindBtn").addEventListener("click", () => runBulkAction("remind").catch(console.error));
 
 document.getElementById("portfolioBody").addEventListener("click", async (event) => {
+  if (event.target.closest("[data-select-client-id]")) return;
+  if (event.target.closest("a")) return;
   const action = event.target.closest("[data-row-action]");
   if (action) {
     event.stopPropagation();
@@ -613,6 +689,15 @@ document.getElementById("portfolioBody").addEventListener("click", async (event)
   openDrawer(row.getAttribute("data-client-id"));
 });
 
+document.getElementById("portfolioBody").addEventListener("change", (event) => {
+  const checkbox = event.target.closest("[data-select-client-id]");
+  if (!checkbox) return;
+  const clientId = checkbox.getAttribute("data-select-client-id");
+  if (checkbox.checked) state.selectedIds.add(clientId);
+  else state.selectedIds.delete(clientId);
+  renderBulkCount();
+});
+
 document.getElementById("actionQueue").addEventListener("click", async (event) => {
   const action = event.target.closest("[data-row-action]");
   if (!action) return;
@@ -634,7 +719,7 @@ document.getElementById("applyTimelineFiltersBtn").addEventListener("click", () 
 
 fetchPortfolio().catch((error) => {
   console.error(error);
-  document.getElementById("portfolioBody").innerHTML = `<tr><td colspan="10" class="muted">Unable to load compliance board.</td></tr>`;
+  document.getElementById("portfolioBody").innerHTML = `<tr><td colspan="11" class="muted">Unable to load compliance board.</td></tr>`;
 });
 </script>
 </body>

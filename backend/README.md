@@ -56,6 +56,19 @@ npm run dev
 
 Server default: `http://localhost:4010`
 
+## Smoke Tests
+
+Run quick nav + role-gated API checks:
+
+```bash
+npm run smoke
+```
+
+Optional environment overrides:
+- `SMOKE_BASE_URL` (default `http://127.0.0.1:4010/api`)
+- `SMOKE_ACCOUNTANT_EMAIL`, `SMOKE_ACCOUNTANT_PASSWORD`
+- `SMOKE_CLIENT_EMAIL`, `SMOKE_CLIENT_PASSWORD`
+
 ## Demo Credentials
 
 - `accountant@prospera.com` / `Password123!`

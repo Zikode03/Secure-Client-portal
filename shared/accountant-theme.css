@@ -1,6 +1,9 @@
 @import url("https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap");
 
 :root {
+  --acc-font-sans: "Public Sans", "Segoe UI", Arial, sans-serif;
+  --acc-font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
   --acc-bg: #f5f7fb;
   --acc-surface: #ffffff;
   --acc-border: #e2e8f0;
@@ -12,11 +15,29 @@
   --acc-warning: #f59e0b;
   --acc-danger: #ef4444;
   --acc-radius: 14px;
+  --acc-radius-sm: 10px;
+  --acc-radius-lg: 16px;
   --acc-shadow: 0 6px 18px rgba(2, 6, 23, 0.06);
+
+  --acc-space-1: 4px;
+  --acc-space-2: 8px;
+  --acc-space-3: 12px;
+  --acc-space-4: 16px;
+  --acc-space-5: 20px;
+  --acc-space-6: 24px;
+  --acc-space-7: 28px;
+  --acc-space-8: 32px;
+
+  --acc-text-xs: 12px;
+  --acc-text-sm: 14px;
+  --acc-text-md: 16px;
+  --acc-text-lg: 20px;
+  --acc-text-xl: 24px;
+  --acc-text-2xl: 30px;
 }
 
 body {
-  font-family: "Public Sans", "Segoe UI", Arial, sans-serif;
+  font-family: var(--acc-font-sans);
   background: var(--acc-bg);
   color: var(--acc-text);
 }
@@ -68,8 +89,36 @@ table thead th {
 }
 
 .mono {
-  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--acc-font-mono);
 }
+
+.acc-page {
+  padding: var(--acc-space-6);
+}
+
+.acc-section {
+  margin-bottom: var(--acc-space-5);
+}
+
+.acc-title-xl {
+  font-size: var(--acc-text-xl);
+  letter-spacing: -0.02em;
+  font-weight: 800;
+}
+
+.acc-title-lg {
+  font-size: var(--acc-text-lg);
+  font-weight: 700;
+}
+
+.acc-text-muted {
+  color: var(--acc-muted);
+  font-size: var(--acc-text-sm);
+}
+
+.acc-stack-2 > * + * { margin-top: var(--acc-space-2); }
+.acc-stack-3 > * + * { margin-top: var(--acc-space-3); }
+.acc-stack-4 > * + * { margin-top: var(--acc-space-4); }
 
 .form-feedback {
   margin-top: 10px;

@@ -96,6 +96,46 @@
 
     h1 { font-size: 26px; margin-bottom: 8px; }
     .subtitle { color: #6b7280; margin-bottom: 32px; font-size: 15px; }
+    .bulk-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 10px 12px;
+    }
+    .bulk-count {
+      font-size: 13px;
+      color: #64748b;
+      margin-right: 6px;
+    }
+    .bulk-btn {
+      border: 1px solid #dbe3f0;
+      border-radius: 8px;
+      padding: 7px 10px;
+      background: #fff;
+      font-weight: 700;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .bulk-btn.primary { background: #1754cf; color: #fff; border-color: #1754cf; }
+    .bulk-btn.warn { color: #92400e; border-color: #f59e0b; background: #fffbeb; }
+    .bulk-btn.danger { color: #991b1b; border-color: #ef4444; background: #fef2f2; }
+    .select-doc {
+      width: 16px;
+      height: 16px;
+      margin-right: 8px;
+      accent-color: #1754cf;
+    }
+    .card-check {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 8px 10px 0;
+    }
 
     .full-queue {
       display: grid;
@@ -203,6 +243,13 @@
 
     <h1>Full Review Queue</h1>
     <p class="subtitle" id="queueSubtitle">Loading queue...</p>
+    <div class="bulk-bar">
+      <label><input id="selectAllDocs" type="checkbox"> Select all</label>
+      <span class="bulk-count" id="selectedCount">0 selected</span>
+      <button type="button" class="bulk-btn primary" id="bulkApproveBtn">Approve Selected</button>
+      <button type="button" class="bulk-btn warn" id="bulkRequestFixBtn">Request Fix Selected</button>
+      <button type="button" class="bulk-btn danger" id="bulkRejectBtn">Reject Selected</button>
+    </div>
 
     <div class="full-queue" id="fullQueue"></div>
   </div>
@@ -215,6 +262,7 @@ const API_BASE_URL = window.PortalConfig.API_BASE_URL;
 const session = window.PortalAuth.requireRole("accountant", "accountant logins/login.html");
 if (!session) { throw new Error("Unauthorized"); }
 const { token } = session;
+const selectedDocs = new Set();
 
 function authHeaders() { return window.PortalAuth.authHeaders(token); }
 
@@ -231,10 +279,12 @@ function humanSize(bytes) {
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-async function runReviewAction(documentId, action) {
-  let note = "";
+async function runReviewAction(documentId, action, presetNote = null) {
+  let note = presetNote == null ? "" : String(presetNote);
   if (action === "reject" || action === "request_fix") {
-    note = await requestReviewNote(action);
+    if (presetNote == null) {
+      note = await requestReviewNote(action);
+    }
     if (!note.trim()) {
       throw new Error("Review note is required for reject/request-fix actions.");
     }
@@ -294,9 +344,17 @@ async function loadQueue() {
     `${data.items.length} items awaiting review - sorted by most recent`;
 
   const container = document.getElementById("fullQueue");
+  selectedDocs.clear();
+  document.getElementById("selectedCount").textContent = "0 selected";
+  document.getElementById("selectAllDocs").checked = false;
   container.innerHTML = data.items.length
     ? data.items.map((item) => `
       <div class="queue-card">
+        <div class="card-check">
+          <label>
+            <input class="select-doc" type="checkbox" data-select-doc="${item.id}" aria-label="Select ${item.documentName}">
+          </label>
+        </div>
         <div class="queue-top"><span>${item.category}</span><span>${shortTime(item.uploadedAt)}</span></div>
         <div class="queue-body">
           <h4>${item.clientName} - ${item.documentName}</h4>
@@ -311,6 +369,26 @@ async function loadQueue() {
       </div>
     `).join("")
     : `<div class="queue-card"><div class="queue-body"><p>No pending reviews.</p></div></div>`;
+}
+
+function updateSelectedCount() {
+  document.getElementById("selectedCount").textContent = `${selectedDocs.size} selected`;
+}
+
+async function runBulkReviewAction(action) {
+  if (!selectedDocs.size) return;
+  const ids = Array.from(selectedDocs);
+  let bulkNote = null;
+  if (action === "reject" || action === "request_fix") {
+    bulkNote = await requestReviewNote(action);
+    if (!bulkNote.trim()) return;
+  }
+  for (const id of ids) {
+    await runReviewAction(id, action, bulkNote);
+  }
+  selectedDocs.clear();
+  updateSelectedCount();
+  await loadQueue();
 }
 
 document.addEventListener("click", async (event) => {
@@ -329,6 +407,38 @@ document.addEventListener("click", async (event) => {
   if (viewBtn) {
     window.location.href = `documentview.html?id=${encodeURIComponent(viewBtn.getAttribute("data-view-id"))}`;
   }
+});
+
+document.addEventListener("change", (event) => {
+  const select = event.target.closest("[data-select-doc]");
+  if (select) {
+    const id = select.getAttribute("data-select-doc");
+    if (select.checked) selectedDocs.add(id);
+    else selectedDocs.delete(id);
+    updateSelectedCount();
+    return;
+  }
+});
+
+document.getElementById("selectAllDocs").addEventListener("change", (event) => {
+  const checked = event.target.checked;
+  document.querySelectorAll("[data-select-doc]").forEach((input) => {
+    input.checked = checked;
+    const id = input.getAttribute("data-select-doc");
+    if (checked) selectedDocs.add(id);
+    else selectedDocs.delete(id);
+  });
+  updateSelectedCount();
+});
+
+document.getElementById("bulkApproveBtn").addEventListener("click", () => {
+  runBulkReviewAction("approve").catch((error) => console.error(error));
+});
+document.getElementById("bulkRequestFixBtn").addEventListener("click", () => {
+  runBulkReviewAction("request_fix").catch((error) => console.error(error));
+});
+document.getElementById("bulkRejectBtn").addEventListener("click", () => {
+  runBulkReviewAction("reject").catch((error) => console.error(error));
 });
 
 loadQueue().catch((error) => console.error(error));
