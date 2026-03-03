@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -11,12 +11,26 @@
 
 <link rel="stylesheet" href="../shared/accountant-theme.css">
 <style>
-/* ===== GLOBAL ===== */
-body {
-  margin: 0;
-  font-family: "Segoe UI", Arial, sans-serif;
-  background: #f8fafc;
-  color: #0f172a;
+:root{
+  --doc-bg:#f5f8ff;
+  --doc-surface:#ffffff;
+  --doc-border:#dbe3f0;
+  --doc-muted:#64748b;
+  --doc-text:#0f172a;
+  --doc-primary:#1d4ed8;
+  --doc-primary-strong:#1e40af;
+  --doc-primary-soft:#eff6ff;
+  --doc-shadow:0 8px 20px rgba(15,23,42,.06);
+}
+
+*{box-sizing:border-box;}
+body{
+  margin:0;
+  font-family:"Public Sans", "Segoe UI", Arial, sans-serif;
+  background:
+    radial-gradient(1000px 360px at 100% -8%, rgba(37,99,235,.10), transparent 70%),
+    var(--doc-bg);
+  color:var(--doc-text);
 }
 
 .app-layout{display:flex;min-height:100vh;width:100%;}
@@ -25,22 +39,16 @@ body {
 .sidebar{
   width:260px;
   background:linear-gradient(180deg,#0f172a,#020617);
-  color:white;
+  color:#fff;
   display:flex;
   flex-direction:column;
   position:fixed;
   height:100vh;
 }
-.sidebar-header{
-  padding:22px;
-  display:flex;
-  gap:12px;
-  align-items:center;
-}
+.sidebar-header{padding:22px;display:flex;gap:12px;align-items:center;}
 .sidebar-header i{font-size:30px;color:#60a5fa;}
-.sidebar-header h1{font-size:16px;}
-.sidebar-header p{font-size:12px;color:#94a3b8;}
-
+.sidebar-header h1{font-size:16px;margin:0;}
+.sidebar-header p{font-size:12px;color:#94a3b8;margin:0;}
 .nav{padding:16px;flex:1;}
 .nav a{
   display:flex;
@@ -53,17 +61,10 @@ body {
   margin-bottom:6px;
 }
 .nav a:hover{background:#1e293b;}
-.nav a.active{background:#2563eb;color:white;}
-
+.nav a.active{background:#2563eb;color:#fff;}
 .sidebar-footer{padding:16px;}
-.user-box{
-  background:#1e293b;
-  padding:12px;
-  border-radius:10px;
-  margin-bottom:12px;
-}
+.user-box{background:#1e293b;padding:12px;border-radius:10px;margin-bottom:12px;}
 .role{color:#60a5fa;font-size:12px;}
-
 .logout{
   width:100%;
   background:none;
@@ -76,87 +77,180 @@ body {
 }
 .logout:hover{background:#1e293b;}
 
-
+/* PAGE */
 .page{
   flex:1;
   margin-left:260px;
-  padding:24px;
+  padding:28px 30px 34px;
 }
-h2 {
-  font-size: 28px;
-  font-weight: 600;
-  margin: 0;
+.header{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-end;
+  gap:14px;
+  margin-bottom:16px;
+  flex-wrap:wrap;
 }
-
-.subtitle {
-  margin-top: 8px;
-  color: #64748b;
+h2{
+  margin:0;
+  font-size:30px;
+  letter-spacing:-.02em;
+  font-weight:800;
 }
-
-/* ===== HEADER ===== */
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 24px;
-}
-
-.button {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  border-radius: 8px;
-  border: none;
-  cursor: pointer;
-  font-size: 14px;
-  background: #2563eb;
-  color: white;
+.subtitle{
+  margin:7px 0 0;
+  color:var(--doc-muted);
+  line-height:1.45;
 }
 
-.button-outline {
-  background: white;
-  border: 1px solid #d1d5db;
-  color: #374151;
+/* BUTTONS + INPUTS */
+.button,
+.btn-primary,
+.btn-secondary{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  height:40px;
+  padding:0 14px;
+  border-radius:10px;
+  border:1px solid transparent;
+  cursor:pointer;
+  font-size:13px;
+  font-weight:700;
+  transition:all .16s ease;
+}
+.button{
+  background:var(--doc-primary);
+  color:#fff;
+  border-color:var(--doc-primary);
+}
+.button:hover{
+  background:var(--doc-primary-strong);
+  border-color:var(--doc-primary-strong);
+}
+.button-outline,
+.btn-secondary{
+  background:#fff;
+  color:#0f172a;
+  border-color:var(--doc-border);
+}
+.button-outline:hover,
+.btn-secondary:hover{
+  background:var(--doc-primary-soft);
+  color:var(--doc-primary);
+  border-color:#bfdbfe;
+}
+.button-ghost{
+  background:transparent;
+  border:none;
+  color:#334155;
+  cursor:pointer;
+}
+.button-icon{
+  width:34px;
+  height:34px;
+  border-radius:9px;
+  border:1px solid var(--doc-border);
+  background:#fff;
+  color:#334155;
+  cursor:pointer;
+  display:grid;
+  place-items:center;
+  transition:all .16s ease;
+}
+.button-icon:hover{
+  background:var(--doc-primary-soft);
+  border-color:#bfdbfe;
+  color:var(--doc-primary);
 }
 
-.button-ghost {
-  background: transparent;
-  border: none;
-  color: #374151;
-  cursor: pointer;
+.search-wrapper input,
+.filter-select,
+.bulk-actions select,
+.form-group input,
+.form-group select{
+  height:38px;
+  border:1px solid var(--doc-border);
+  border-radius:10px;
+  background:#fff;
+  font-size:13px;
+  padding:0 12px;
+  transition:border-color .14s ease, box-shadow .14s ease;
+}
+.search-wrapper input:focus,
+.filter-select:focus,
+.bulk-actions select:focus,
+.form-group input:focus,
+.form-group select:focus{
+  outline:none;
+  border-color:#93c5fd;
+  box-shadow:0 0 0 3px rgba(147,197,253,.35);
 }
 
-.button-icon {
-  padding: 8px;
-  border-radius: 6px;
-  border: 1px solid #d1d5db;
-  background: white;
-  cursor: pointer;
+/* CARD + CONTROLS */
+.card{
+  background:var(--doc-surface);
+  border-radius:16px;
+  border:1px solid var(--doc-border);
+  box-shadow:var(--doc-shadow);
+  overflow:hidden;
 }
-
-/* ===== CARD ===== */
-.card {
-  background: white;
-  border-radius: 12px;
-  border: 1px solid #e5e7eb;
+.card-header{
+  padding:14px 16px;
+  border-bottom:1px solid #e2e8f0;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:10px;
+  background:linear-gradient(180deg,#fff 0%, #f8fbff 100%);
 }
-.card-header {
-  padding: 20px;
-  border-bottom: 1px solid #e5e7eb;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.card-title{font-size:16px;font-weight:700;}
+.card-subtitle{
+  margin-top:4px;
+  color:var(--doc-muted);
+  font-size:12px;
+  font-weight:600;
 }
-
-
-.card-title {
-  font-size: 16px;
-  font-weight: 600;
+.docs-meta-chip{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  border:1px solid #bfdbfe;
+  background:#eff6ff;
+  color:#1e40af;
+  font-size:12px;
+  font-weight:700;
+  border-radius:999px;
+  padding:5px 10px;
 }
+.card-content{padding:0;overflow:visible;}
 
-.card-content {
-  padding: 0;
+.card-controls{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.search-wrapper{
+  position:relative;
+  width:320px;
+  max-width:100%;
+  display:flex;
+  align-items:center;
+}
+.search-wrapper input{
+  width:100%;
+  padding-left:36px;
+}
+.search-icon{
+  position:absolute;
+  left:11px;
+  top:50%;
+  transform:translateY(-50%);
+  color:#94a3b8;
+  font-size:12px;
 }
 
 .bulk-actions{
@@ -164,25 +258,153 @@ h2 {
   align-items:center;
   gap:8px;
   flex-wrap:wrap;
-  padding:12px 20px;
+  padding:12px 16px;
   border-bottom:1px solid #e5e7eb;
-  background:#f8fafc;
+  background:#f8fbff;
 }
-
 .bulk-actions .meta{
-  color:#64748b;
+  color:var(--doc-muted);
   font-size:12px;
   font-weight:700;
+  margin-right:4px;
+}
+.bulk-actions label{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  font-size:13px;
+  color:#334155;
 }
 
-.bulk-actions select{
-  height:34px;
-  border:1px solid #d1d5db;
-  border-radius:8px;
-  padding:0 10px;
-  background:#fff;
-  font-size:13px;
+/* TABLE */
+.table-shell{
+  position:relative;
+  overflow:auto;
+  max-height:calc(100vh - 320px);
+  min-height:300px;
 }
+table{
+  width:100%;
+  border-collapse:collapse;
+  min-width:1100px;
+}
+thead th{
+  position:sticky;
+  top:0;
+  z-index:2;
+  background:#f8fafc;
+  color:#64748b;
+  font-size:11px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.06em;
+  padding:12px 14px;
+  border-bottom:1px solid #dbe3f0;
+  text-align:left;
+}
+tbody td{
+  padding:12px 14px;
+  font-size:13px;
+  border-top:1px solid #eef2f7;
+  vertical-align:middle;
+}
+tbody tr:hover{background:#f8fbff;}
+.row-selected{background:#f0f7ff;}
+.table-check-cell{
+  width:54px;
+  text-align:center;
+}
+.table-check-cell input{
+  width:16px;
+  height:16px;
+  accent-color:var(--doc-primary);
+}
+.doc-cell{
+  min-width:280px;
+}
+.doc-name{
+  display:flex;
+  align-items:center;
+  font-weight:700;
+  color:#0f172a;
+}
+.doc-meta{
+  margin-top:3px;
+  color:#64748b;
+  font-size:12px;
+}
+.actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:8px;
+}
+.table-state{
+  position:absolute;
+  inset:0;
+  background:linear-gradient(180deg, rgba(248,251,255,.88), rgba(248,251,255,.96));
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  z-index:4;
+}
+.table-state.hidden{display:none;}
+.table-state-card{
+  max-width:440px;
+  text-align:center;
+  border:1px solid #dbe3f0;
+  background:#fff;
+  border-radius:14px;
+  padding:20px 18px;
+  box-shadow:0 12px 24px rgba(15,23,42,.08);
+}
+.table-state-card i{
+  font-size:20px;
+  color:#64748b;
+  margin-bottom:8px;
+}
+.table-state-title{
+  font-size:14px;
+  font-weight:700;
+  color:#0f172a;
+}
+.table-state-text{
+  margin-top:5px;
+  color:#64748b;
+  font-size:12px;
+}
+.skeleton-row td{
+  padding:14px;
+}
+.skeleton-pill{
+  height:10px;
+  border-radius:999px;
+  background:linear-gradient(90deg,#e2e8f0,#f1f5f9,#e2e8f0);
+  background-size:220% 100%;
+  animation:docPulse 1.2s linear infinite;
+}
+@keyframes docPulse{
+  0%{background-position:220% 0;}
+  100%{background-position:-220% 0;}
+}
+.file-icon{margin-right:8px;color:#6b7280;}
+
+/* STATUS + META BADGES */
+.badge{
+  padding:4px 10px;
+  border-radius:999px;
+  font-size:11px;
+  font-weight:700;
+  text-transform:capitalize;
+  border:1px solid transparent;
+}
+.completed{background:#dcfce7;color:#166534;border-color:#86efac;}
+.pending{background:#fef3c7;color:#854d0e;border-color:#fde68a;}
+.in-review,.processing{background:#e0f2fe;color:#075985;border-color:#93c5fd;}
+.review{background:#e0f2fe;color:#075985;border-color:#93c5fd;}
+.approved{background:#ede9fe;color:#5b21b6;border-color:#c4b5fd;}
+.request-fix{background:#ffedd5;color:#9a3412;border-color:#fdba74;}
+.rejected{background:#fee2e2;color:#991b1b;border-color:#fca5a5;}
 
 .meta-badge{
   display:inline-flex;
@@ -194,317 +416,133 @@ h2 {
   font-size:11px;
   font-weight:700;
 }
+.meta-badge.sla-ok{background:#dcfce7;border-color:#86efac;color:#166534;}
+.meta-badge.sla-warn{background:#fef3c7;border-color:#fcd34d;color:#854d0e;}
+.meta-badge.sla-breach{background:#fee2e2;border-color:#fca5a5;color:#991b1b;}
+.meta-badge.escalated{background:#fee2e2;border-color:#fca5a5;color:#991b1b;}
+.meta-badge.normal{background:#ecfeff;border-color:#99f6e4;color:#0f766e;}
+.small-text{color:#64748b;font-size:12px;line-height:1.45;}
 
-.meta-badge.sla-ok{
-  background:#dcfce7;
-  border-color:#86efac;
-  color:#166534;
+/* DROPDOWN */
+.dropdown{position:relative;}
+.menu-btn{
+  background:transparent;
+  border:none;
+  cursor:pointer;
+  padding:6px;
+  border-radius:8px;
 }
-
-.meta-badge.sla-warn{
-  background:#fef3c7;
-  border-color:#fcd34d;
-  color:#854d0e;
+.menu-btn:hover{background:#eff6ff;}
+.dropdown-menu{
+  position:absolute;
+  right:0;
+  top:36px;
+  background:#fff;
+  border:1px solid var(--doc-border);
+  border-radius:10px;
+  box-shadow:0 10px 24px rgba(0,0,0,.1);
+  min-width:180px;
+  display:none;
+  z-index:20;
+  overflow:hidden;
 }
-
-.meta-badge.sla-breach{
-  background:#fee2e2;
-  border-color:#fca5a5;
-  color:#991b1b;
+.dropdown-menu button{
+  width:100%;
+  border:none;
+  background:none;
+  text-align:left;
+  padding:10px 12px;
+  font-size:13px;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  gap:8px;
 }
-
-.meta-badge.escalated{
-  background:#fee2e2;
-  border-color:#fca5a5;
-  color:#991b1b;
+.dropdown-menu button:hover{
+  background:#f8fbff;
+  color:var(--doc-primary);
 }
+.dropdown.active .dropdown-menu{display:block;}
 
-.meta-badge.normal{
-  background:#ecfeff;
-  border-color:#99f6e4;
-  color:#0f766e;
-}
-
-.small-text{
-  color:#64748b;
-  font-size:12px;
-}
-
-/* ===== SEARCH ===== */
-.search-wrapper {
-  position: relative;
-  width: 260px;
-}
-
-.search-wrapper input {
-  width: 100%;
-  padding: 8px 12px 8px 36px;
-  border-radius: 8px;
-  border: 1px solid #d1d5db;
-  font-size: 14px;
-}
-
-.search-icon {
-  position: absolute;
-  left: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #9ca3af;
-}
-.card-controls {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.search-wrapper {
-  position: relative;
-  width: 260px;
-  display: flex;
-  align-items: center;
-}
-
-.search-wrapper input {
-  height: 38px;
-  width: 100%;
-  padding: 0 12px 0 36px;
-  border-radius: 8px;
-  border: 1px solid #d1d5db;
-  font-size: 14px;
-}
-
-.button-icon {
-  height: 38px;
-  width: 38px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.filter-select {
-  height: 38px;
-  padding: 0 10px;
-  border-radius: 8px;
-  border: 1px solid #d1d5db;
-  font-size: 14px;
-  cursor: pointer;
-}
-
-
-/* ===== TABLE ===== */
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-thead {
-  background: #f9fafb;
-}
-
-th, td {
-  padding: 14px 16px;
-  text-align: left;
-  font-size: 14px;
-}
-
-th {
-  color: #64748b;
-  font-weight: 500;
-}
-
-tbody tr {
-  border-top: 1px solid #e5e7eb;
-}
-
-tbody tr:hover {
-  background: #f9fafb;
-}
-
-.actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-/* ===== STATUS BADGES ===== */
-.badge {
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 500;
-  text-transform: capitalize;
-}
-
-.completed {
-  background: #dcfce7;
-  color: #166534;
-}
-
-.pending {
-  background: #fef9c3;
-  color: #854d0e;
-}
-
-.in-review {
-  background: #e0f2fe;
-  color: #075985;
-}
-
-.approved {
-  background: #ede9fe;
-  color: #5b21b6;
-}
-
-.request-fix{
-  background:#ffedd5;
-  color:#9a3412;
-}
-
-.processing{
-  background:#e0f2fe;
-  color:#075985;
-}
-
-.file-icon {
-  margin-right: 8px;
-  color: #6b7280;
-}
-
-/* ===== ACTION DROPDOWN ===== */
-.dropdown {
-  position: relative;
-}
-
-.menu-btn {
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 8px;
-  border-radius: 6px;
-}
-
-.menu-btn:hover {
-  background: #f1f5f9;
-}
-
-.dropdown-menu {
-  position: absolute;
-  right: 0;
-  top: 38px;
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.08);
-  min-width: 150px;
-  display: none;
-  z-index: 20;
-}
-
-.dropdown-menu button {
-  width: 100%;
-  border: none;
-  background: none;
-  text-align: left;
-  padding: 10px 12px;
-  font-size: 14px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.dropdown-menu button:hover {
-  background: #f8fafc;
-}
-
-.dropdown.active .dropdown-menu {
-  display: block;
-}
-
-/* ===== MODAL ===== */
+/* MODALS */
 .modal{
   position:fixed;
   inset:0;
-  background:rgba(15,23,42,0.45);
+  background:rgba(15,23,42,.45);
   display:none;
   align-items:center;
   justify-content:center;
   z-index:1000;
+  padding:18px;
 }
-
-.modal.show{
-  display:flex;
-}
-
+.modal.show{display:flex;}
 .modal-content{
-  width:500px;
+  width:min(560px, 100%);
   background:#fff;
-  border-radius:12px;
-  box-shadow:0 20px 45px rgba(0,0,0,0.15);
+  border-radius:14px;
+  border:1px solid var(--doc-border);
+  box-shadow:0 24px 54px rgba(0,0,0,.18);
   overflow:hidden;
   animation:fadeIn .2s ease;
 }
-
 @keyframes fadeIn{
   from{opacity:0;transform:translateY(10px);}
   to{opacity:1;transform:translateY(0);}
 }
-
 .modal-header{
-  padding:16px 20px;
+  padding:14px 16px;
   border-bottom:1px solid #e5e7eb;
   display:flex;
   justify-content:space-between;
   align-items:center;
+  background:linear-gradient(180deg,#fff 0%, #f8fbff 100%);
 }
-
 .close-btn{
   border:none;
   background:none;
   cursor:pointer;
   font-size:18px;
+  width:34px;
+  height:34px;
+  border-radius:8px;
 }
-
+.close-btn:hover{background:#eff6ff;color:var(--doc-primary);}
 .modal-body{
-  padding:20px;
+  padding:16px;
   display:flex;
   flex-direction:column;
-  gap:16px;
+  gap:14px;
 }
-
 .upload-drop{
   border:2px dashed #cbd5e1;
-  border-radius:10px;
-  padding:30px;
+  border-radius:12px;
+  padding:28px;
   text-align:center;
   cursor:pointer;
   color:#64748b;
-  transition:.2s;
+  transition:.18s ease;
 }
 .upload-drop:hover{
-  border-color:#2563eb;
-  background:#f8fafc;
+  border-color:var(--doc-primary);
+  background:#f8fbff;
 }
 .upload-drop i{
   font-size:26px;
   margin-bottom:8px;
-  color:#2563eb;
+  color:var(--doc-primary);
 }
-
 .form-group{
   display:flex;
   flex-direction:column;
   gap:6px;
 }
-.form-group input,
-.form-group select{
-  padding:10px;
-  border:1px solid #d1d5db;
-  border-radius:8px;
+.form-group label{
+  font-size:12px;
+  color:#334155;
+  font-weight:700;
 }
-
 .modal-footer{
-  padding:16px 20px;
+  padding:14px 16px;
   border-top:1px solid #e5e7eb;
   display:flex;
   justify-content:flex-end;
@@ -512,23 +550,36 @@ tbody tr:hover {
 }
 
 .btn-primary{
-  background:#2563eb;
-  color:white;
-  border:none;
-  padding:10px 16px;
-  border-radius:8px;
-  cursor:pointer;
+  background:var(--doc-primary);
+  color:#fff;
+  border-color:var(--doc-primary);
+}
+.btn-primary:hover{
+  background:var(--doc-primary-strong);
+  border-color:var(--doc-primary-strong);
 }
 
-.btn-secondary{
-  background:#fff;
-  border:1px solid #d1d5db;
-  padding:10px 16px;
-  border-radius:8px;
-  cursor:pointer;
+@media (max-width:1100px){
+  .page{padding:18px 16px 26px;}
+  .header{align-items:flex-start;}
+  .card-controls{width:100%;}
+  .search-wrapper{width:100%;}
 }
-
-
+@media (max-width:900px){
+  .page{margin-left:0;}
+}
+@media (max-width:760px){
+  .bulk-actions{align-items:stretch;}
+  .bulk-actions > *{width:100%;}
+  .button,
+  .button-outline,
+  .btn-primary,
+  .btn-secondary{width:100%;}
+  .table-shell{
+    max-height:none;
+    min-height:240px;
+  }
+}
 </style>
   <script defer src="accountant-nav.js"></script>
 <link rel="stylesheet" href="../shared/inline-migrated.css">
@@ -585,8 +636,12 @@ tbody tr:hover {
 
   <div class="card">
     <div class="card-header">
-      <div class="card-title">All Documents</div>
+      <div>
+        <div class="card-title">All Documents</div>
+        <div class="card-subtitle" id="docsUpdatedAt">Updated -</div>
+      </div>
       <div class="card-controls">
+        <span id="docsCountChip" class="docs-meta-chip"><i class="fa-solid fa-files"></i> 0</span>
         <div class="search-wrapper">
           <i class="fa-solid fa-search search-icon"></i>
           <input type="text" id="searchInput" placeholder="Search documents...">
@@ -620,23 +675,26 @@ tbody tr:hover {
     </div>
 
     <div class="card-content">
-      <table>
-        <thead>
-          <tr>
-            <th>Select</th>
-            <th>Document Name</th>
-            <th>Client</th>
-            <th>Category</th>
-            <th>Status</th>
-            <th>SLA</th>
-            <th>Owner</th>
-            <th>Escalation</th>
-            <th>Date</th>
-            <th class="inl-f6e3d7fea5">Actions</th>
-          </tr>
-        </thead>
-        <tbody id="documentsTable"></tbody>
-      </table>
+      <div class="table-shell">
+        <table>
+          <thead>
+            <tr>
+              <th class="table-check-cell">Select</th>
+              <th>Document</th>
+              <th>Client</th>
+              <th>Category</th>
+              <th>Status</th>
+              <th>SLA</th>
+              <th>Owner</th>
+              <th>Escalation</th>
+              <th>Date</th>
+              <th class="inl-f6e3d7fea5">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="documentsTable"></tbody>
+        </table>
+        <div id="documentsState" class="table-state hidden"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -742,6 +800,9 @@ function authHeaders() {
 }
 
 const tableBody = document.getElementById("documentsTable");
+const documentsState = document.getElementById("documentsState");
+const docsUpdatedAt = document.getElementById("docsUpdatedAt");
+const docsCountChip = document.getElementById("docsCountChip");
 const searchInput = document.getElementById("searchInput");
 const statusFilter = document.getElementById("statusFilter");
 const uploadBtn = document.getElementById("openUploadModal");
@@ -765,6 +826,60 @@ const compareLeft = document.getElementById("compareLeft");
 const compareRight = document.getElementById("compareRight");
 const runCompareBtn = document.getElementById("runCompareBtn");
 const compareResult = document.getElementById("compareResult");
+
+function formatShortDateTime(value) {
+  if (!value) return "-";
+  const dt = new Date(value);
+  if (Number.isNaN(dt.getTime())) return "-";
+  return dt.toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+function setDocumentsMeta(total = 0) {
+  docsCountChip.innerHTML = `<i class="fa-solid fa-files"></i> ${Number(total || 0)}`;
+  docsUpdatedAt.textContent = `Updated ${formatShortDateTime(new Date().toISOString())}`;
+}
+
+function setDocumentsState(kind = "hidden", title = "", message = "") {
+  if (kind === "hidden") {
+    documentsState.classList.add("hidden");
+    documentsState.innerHTML = "";
+    return;
+  }
+  const icon = kind === "loading"
+    ? "fa-solid fa-rotate fa-spin"
+    : kind === "error"
+      ? "fa-solid fa-circle-exclamation"
+      : "fa-regular fa-folder-open";
+  documentsState.classList.remove("hidden");
+  documentsState.innerHTML = `
+    <div class="table-state-card">
+      <i class="${icon}"></i>
+      <div class="table-state-title">${esc(title || "Documents")}</div>
+      <div class="table-state-text">${esc(message || "")}</div>
+    </div>
+  `;
+}
+
+function renderLoadingRows(count = 5) {
+  const rows = [];
+  for (let i = 0; i < count; i += 1) {
+    rows.push(`
+      <tr class="skeleton-row">
+        <td><div class="skeleton-pill"></div></td>
+        <td><div class="skeleton-pill"></div></td>
+        <td><div class="skeleton-pill"></div></td>
+        <td><div class="skeleton-pill"></div></td>
+        <td><div class="skeleton-pill"></div></td>
+        <td><div class="skeleton-pill"></div></td>
+        <td><div class="skeleton-pill"></div></td>
+        <td><div class="skeleton-pill"></div></td>
+        <td><div class="skeleton-pill"></div></td>
+        <td><div class="skeleton-pill"></div></td>
+      </tr>
+    `);
+  }
+  tableBody.innerHTML = rows.join("");
+}
 
 function setUploadStatus(message) {
   uploadStatusText.textContent = message || "";
@@ -852,19 +967,31 @@ function mapDoc(doc) {
 
 function renderDocuments(data) {
   tableBody.innerHTML = "";
+  setDocumentsMeta(data.length);
+  if (!data.length) {
+    updateBulkSelectionState();
+    setDocumentsState("empty", "No documents found", "Try adjusting your search or status filter.");
+    return;
+  }
+  setDocumentsState("hidden");
   for (const doc of data) {
     const statusClass = String(doc.status || "").toLowerCase().replace(/\s+/g, "-");
     const sla = slaMeta(doc.workflow);
     const escalation = escalationMeta(doc.workflow);
+    const isSelected = selectedDocs.has(doc.id);
     const row = document.createElement("tr");
+    if (isSelected) row.classList.add("row-selected");
     row.innerHTML = `
-      <td>
-        <input type="checkbox" data-select-doc-id="${esc(doc.id)}" ${selectedDocs.has(doc.id) ? "checked" : ""} />
+      <td class="table-check-cell">
+        <input type="checkbox" data-select-doc-id="${esc(doc.id)}" ${isSelected ? "checked" : ""} />
       </td>
-      <td><i class="fa-regular fa-file-lines file-icon"></i>${doc.name}</td>
-      <td>${doc.client}</td>
-      <td>${doc.category}</td>
-      <td><span class="badge ${statusClass}">${doc.status}</span></td>
+      <td class="doc-cell">
+        <div class="doc-name"><i class="fa-regular fa-file-lines file-icon"></i>${esc(doc.name)}</div>
+        <div class="doc-meta">${esc(doc.size)}${doc.versionGroupKey ? ` &middot; ${esc(doc.versionGroupKey)}` : ""}</div>
+      </td>
+      <td>${esc(doc.client)}</td>
+      <td>${esc(doc.category)}</td>
+      <td><span class="badge ${statusClass}">${esc(doc.status)}</span></td>
       <td><span class="meta-badge ${sla.className}" title="SLA target: ${Number(doc.workflow.slaTargetHours || 48)}h">${sla.text}</span></td>
       <td>${esc(doc.workflow.ownerName || "-")}</td>
       <td><span class="meta-badge ${escalation.className}" title="${esc(escalation.title)}">${escalation.text}</span></td>
@@ -931,17 +1058,27 @@ async function loadClientsMap() {
 }
 
 async function loadDocuments() {
+  renderLoadingRows();
+  setDocumentsState("loading", "Loading documents", "Fetching latest documents and workflow metadata...");
   const query = new URLSearchParams();
   const searchValue = searchInput.value.trim();
   const statusValue = statusFilter.value;
   if (searchValue) query.set("search", searchValue);
   if (statusValue !== "all") query.set("status", statusValue);
 
-  const response = await fetch(`${API_BASE_URL}/documents?${query.toString()}`, { headers: authHeaders() });
-  if (!response.ok) throw new Error("Failed to fetch documents");
-  const data = await response.json();
-  documents = (data.items || []).map(mapDoc);
-  renderDocuments(documents);
+  try {
+    const response = await fetch(`${API_BASE_URL}/documents?${query.toString()}`, { headers: authHeaders() });
+    if (!response.ok) throw new Error("Failed to fetch documents");
+    const data = await response.json();
+    documents = (data.items || []).map(mapDoc);
+    renderDocuments(documents);
+  } catch (error) {
+    documents = [];
+    tableBody.innerHTML = "";
+    setDocumentsMeta(0);
+    setDocumentsState("error", "Unable to load documents", error.message || "Try again in a few seconds.");
+    throw error;
+  }
 }
 
 function applyFilters() {
@@ -1112,6 +1249,8 @@ document.addEventListener("change", (event) => {
     const docId = rowCheckbox.getAttribute("data-select-doc-id");
     if (rowCheckbox.checked) selectedDocs.add(docId);
     else selectedDocs.delete(docId);
+    const row = rowCheckbox.closest("tr");
+    if (row) row.classList.toggle("row-selected", rowCheckbox.checked);
     updateBulkSelectionState();
   }
 });
@@ -1266,6 +1405,7 @@ Promise.all([loadClientsMap(), loadReviewers()])
 
 </body>
 </html>
+
 
 
 
