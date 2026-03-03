@@ -106,6 +106,22 @@ body {
   justify-content: space-between;
   align-items: center;
 }
+.card-head-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.mini-refresh {
+  border: 1px solid #dbe3f0;
+  background: #fff;
+  color: #334155;
+  border-radius: 8px;
+  height: 28px;
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
 .card-head h3 { font-size: 16px; font-weight: 700; }
 .card-body { padding: 16px 18px; }
 
@@ -351,7 +367,7 @@ tbody tr:hover { background: #f8fbff; }
             <span class="trend up" id="trendCompleted"><i class="fa-solid fa-arrow-trend-up"></i> +0</span>
           </div>
           <div class="stat-kpi" id="kpiCompleted">0</div>
-          <div class="stat-label">Completed Today</div>
+          <div class="stat-label">Critical Tasks</div>
         </article>
       </section>
 
@@ -359,9 +375,13 @@ tbody tr:hover { background: #f8fbff; }
         <article class="card">
           <div class="card-head">
             <h3>Client Overview</h3>
-            <div class="search">
-              <i class="fa-solid fa-magnifying-glass"></i>
-              <input id="clientSearch" type="text" placeholder="Search clients..." aria-label="Search clients" />
+            <div class="card-head-right">
+              <span class="muted" id="clientsUpdatedAt">Updated -</span>
+              <button type="button" class="mini-refresh" id="refreshClientsBtn"><i class="fa-solid fa-rotate"></i></button>
+              <div class="search">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input id="clientSearch" type="text" placeholder="Search clients..." aria-label="Search clients" />
+              </div>
             </div>
           </div>
           <div class="card-body">
@@ -383,7 +403,13 @@ tbody tr:hover { background: #f8fbff; }
         </article>
 
         <article class="card">
-          <div class="card-head"><h3>Weekly Workload</h3></div>
+          <div class="card-head">
+            <h3>Weekly Workload</h3>
+            <div class="card-head-right">
+              <span class="muted" id="workloadUpdatedAt">Updated -</span>
+              <button type="button" class="mini-refresh" id="refreshWorkloadBtn"><i class="fa-solid fa-rotate"></i></button>
+            </div>
+          </div>
           <div class="card-body">
             <div id="workloadWrap" class="workload-wrap">
               <div class="skeleton"></div>
@@ -398,7 +424,10 @@ tbody tr:hover { background: #f8fbff; }
         <article class="card">
           <div class="card-head">
             <h3><i class="fa-solid fa-file-circle-question"></i> Unnamed Invoices</h3>
-            <span class="pill attention" id="unnamedCount">0 detected</span>
+            <div class="card-head-right">
+              <span class="pill attention" id="unnamedCount">0 detected</span>
+              <button type="button" class="mini-refresh" id="refreshUnnamedBtn"><i class="fa-solid fa-rotate"></i></button>
+            </div>
           </div>
           <div class="card-body">
             <div class="list" id="unnamedList">
@@ -410,7 +439,11 @@ tbody tr:hover { background: #f8fbff; }
         <article class="card">
           <div class="card-head">
             <h3>Pending Approvals</h3>
-            <a class="btn" href="review-queue.html"><i class="fa-solid fa-arrow-up-right-from-square"></i> View all</a>
+            <div class="card-head-right">
+              <span class="muted" id="approvalsUpdatedAt">Updated -</span>
+              <button type="button" class="mini-refresh" id="refreshApprovalsBtn"><i class="fa-solid fa-rotate"></i></button>
+              <a class="btn" href="review-queue.html"><i class="fa-solid fa-arrow-up-right-from-square"></i> View all</a>
+            </div>
           </div>
           <div class="card-body">
             <div class="list" id="approvalsList">
@@ -422,7 +455,11 @@ tbody tr:hover { background: #f8fbff; }
         <article class="card">
           <div class="card-head">
             <h3>Messages</h3>
-            <span class="pill good" id="newMessageCount">0 new</span>
+            <div class="card-head-right">
+              <span class="muted" id="messagesUpdatedAt">Updated -</span>
+              <button type="button" class="mini-refresh" id="refreshMessagesBtn"><i class="fa-solid fa-rotate"></i></button>
+              <span class="pill good" id="newMessageCount">0 new</span>
+            </div>
           </div>
           <div class="card-body">
             <div class="list" id="messagesList">
@@ -449,7 +486,8 @@ const { token, user } = session;
 const state = {
   clients: [],
   reviewQueue: [],
-  messages: []
+  messages: [],
+  lastUpdatedAt: null
 };
 
 function authHeaders() { return window.PortalAuth.authHeaders(token); }
@@ -466,6 +504,22 @@ function escapeHtml(value) {
 function shortTime(iso) {
   if (!iso) return "-";
   return new Date(iso).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+function updatedLabel(iso) {
+  if (!iso) return "Updated -";
+  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (mins < 1) return "Updated just now";
+  if (mins === 1) return "Updated 1 min ago";
+  return `Updated ${mins} mins ago`;
+}
+
+function applyFreshness(iso) {
+  const label = updatedLabel(iso);
+  ["clientsUpdatedAt", "workloadUpdatedAt", "approvalsUpdatedAt", "messagesUpdatedAt"].forEach((id) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = label;
+  });
 }
 
 function healthScore(client) {
@@ -626,7 +680,7 @@ function renderMessages(threads) {
   }).join("");
 }
 
-function updateKpis(stats, clients, reviewQueue) {
+function updateKpis(stats, clients, reviewQueue, kpiContract) {
   const missing = clients.filter((client) => Number(client.pendingItems || 0) > 0).length;
   const completedToday = reviewQueue.filter((item) => {
     if (!item.uploadedAt) return false;
@@ -635,15 +689,15 @@ function updateKpis(stats, clients, reviewQueue) {
     return d.toDateString() === now.toDateString() && String(item.status || "").toLowerCase() === "approved";
   }).length;
 
-  document.getElementById("kpiActive").textContent = Number(stats.activeClients || clients.length || 0);
-  document.getElementById("kpiPending").textContent = Number(stats.pendingReviews || reviewQueue.length || 0);
+  document.getElementById("kpiActive").textContent = Number((kpiContract?.stats?.activeClients ?? stats.activeClients) || clients.length || 0);
+  document.getElementById("kpiPending").textContent = Number((kpiContract?.stats?.pendingReviews ?? stats.pendingReviews) || reviewQueue.length || 0);
   document.getElementById("kpiMissing").textContent = missing;
-  document.getElementById("kpiCompleted").textContent = completedToday;
+  document.getElementById("kpiCompleted").textContent = Number((kpiContract?.stats?.criticalTasks ?? completedToday) || 0);
 
   document.getElementById("trendActive").innerHTML = `<i class="fa-solid fa-arrow-trend-up"></i> +${Math.max(1, Math.round((clients.length || 1) * 0.08))} this month`;
-  document.getElementById("trendPending").innerHTML = `<i class="fa-solid fa-arrow-trend-down"></i> ${Math.max(0, Number(stats.pendingReviews || 0) - completedToday)} left`;
-  document.getElementById("trendCompleted").innerHTML = `<i class="fa-solid fa-arrow-trend-up"></i> +${completedToday} from avg`;
-  document.getElementById("headerSubtitle").textContent = `You have ${Number(stats.pendingReviews || 0)} items requiring attention.`;
+  document.getElementById("trendPending").innerHTML = `<i class="fa-solid fa-arrow-trend-down"></i> ${Math.max(0, Number((kpiContract?.stats?.pendingReviews ?? stats.pendingReviews) || 0) - completedToday)} left`;
+  document.getElementById("trendCompleted").innerHTML = `<i class="fa-solid fa-arrow-trend-up"></i> ${Number((kpiContract?.stats?.upcomingDeadlines ?? 0) || 0)} due in 7d`;
+  document.getElementById("headerSubtitle").textContent = `You have ${Number((kpiContract?.stats?.pendingReviews ?? stats.pendingReviews) || 0)} items requiring attention.`;
 }
 
 async function loadMessages() {
@@ -654,19 +708,25 @@ async function loadMessages() {
 }
 
 async function loadDashboard() {
-  const response = await fetch(`${API_BASE_URL}/dashboard/summary`, { headers: authHeaders() });
-  if (!response.ok) throw new Error("Failed to load dashboard");
-  const data = await response.json();
+  const [summaryRes, kpisRes] = await Promise.all([
+    fetch(`${API_BASE_URL}/dashboard/summary`, { headers: authHeaders() }),
+    fetch(`${API_BASE_URL}/dashboard/kpis`, { headers: authHeaders() }),
+  ]);
+  if (!summaryRes.ok) throw new Error("Failed to load dashboard");
+  const data = await summaryRes.json();
+  const kpiContract = kpisRes.ok ? await kpisRes.json().catch(() => ({})) : {};
   state.clients = Array.isArray(data.assignedClients) ? data.assignedClients : [];
   state.reviewQueue = Array.isArray(data.reviewQueue) ? data.reviewQueue : [];
   state.messages = await loadMessages();
+  state.lastUpdatedAt = data.generatedAt || kpiContract.generatedAt || new Date().toISOString();
 
-  updateKpis(data.stats || {}, state.clients, state.reviewQueue);
+  updateKpis(data.stats || {}, state.clients, state.reviewQueue, kpiContract);
   renderClients(state.clients);
   renderWorkload(state.reviewQueue);
   renderUnnamed(unnamedDocs(state.reviewQueue));
   renderApprovals(state.reviewQueue);
   renderMessages(state.messages);
+  applyFreshness(state.lastUpdatedAt);
 }
 
 document.getElementById("clientSearch").addEventListener("input", (event) => {
@@ -675,6 +735,14 @@ document.getElementById("clientSearch").addEventListener("input", (event) => {
     String(client.name || "").toLowerCase().includes(query)
   );
   renderClients(filtered);
+});
+
+["refreshClientsBtn", "refreshWorkloadBtn", "refreshUnnamedBtn", "refreshApprovalsBtn", "refreshMessagesBtn"].forEach((id) => {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener("click", () => {
+    loadDashboard().catch((error) => console.error(error));
+  });
 });
 
 document.addEventListener("click", async (event) => {

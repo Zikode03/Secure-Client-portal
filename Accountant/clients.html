@@ -19,6 +19,11 @@ body { margin: 0; background: #f6f8fc; color: #0f172a; font-family: "Public Sans
 .input { min-width: 260px; }
 .btn { border: 1px solid #dbe3f0; border-radius: 10px; background: #fff; color: #0f172a; padding: 10px 14px; cursor: pointer; font-weight: 600; }
 .btn.primary { background: #1d4ed8; color: #fff; border-color: #1d4ed8; }
+.bulk-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; padding: 10px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; }
+.bulk-row .count { font-size: 12px; color: #64748b; font-weight: 700; margin-right: 4px; }
+.pager { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 14px; border-top: 1px solid #e2e8f0; background: #fff; }
+.pager .meta { color: #64748b; font-size: 12px; }
+.chk { width: 16px; height: 16px; accent-color: #1d4ed8; }
 .grid { display: grid; grid-template-columns: repeat(4,minmax(170px,1fr)); gap: 12px; margin-bottom: 14px; }
 .kpi { background: #fff; border: 1px solid #dbe3f0; border-radius: 14px; padding: 14px; box-shadow: 0 6px 16px rgba(15,23,42,.05); }
 .kpi .label { color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
@@ -74,7 +79,52 @@ tbody td { border-bottom: 1px solid #eef2f7; padding: 12px 14px; font-size: 14px
         <option value="pending">Pending</option>
         <option value="at-risk">At Risk</option>
       </select>
+      <select class="select" id="industryFilter" aria-label="Filter industry">
+        <option value="">All Industries</option>
+        <option value="Technology">Technology</option>
+        <option value="General">General</option>
+        <option value="Finance">Finance</option>
+      </select>
+      <select class="select" id="riskBandFilter" aria-label="Filter risk band">
+        <option value="">Any Risk Band</option>
+        <option value="high">High</option>
+        <option value="medium">Medium</option>
+        <option value="low">Low</option>
+      </select>
+      <select class="select" id="complianceStatusFilter" aria-label="Filter compliance status">
+        <option value="">Any Compliance</option>
+        <option value="non-compliant">Non-compliant</option>
+        <option value="at-risk">At-risk</option>
+        <option value="compliant">Compliant</option>
+      </select>
+      <select class="select" id="savedViewFilter" aria-label="Saved views">
+        <option value="">Saved Views</option>
+        <option value="at-risk">At Risk</option>
+        <option value="no-activity-30d">No Activity 30d</option>
+      </select>
+      <select class="select" id="sortByFilter" aria-label="Sort by">
+        <option value="lastActivity">Sort: Last Activity</option>
+        <option value="name">Sort: Name</option>
+        <option value="risk">Sort: Risk</option>
+        <option value="status">Sort: Status</option>
+      </select>
+      <select class="select" id="sortDirFilter" aria-label="Sort direction">
+        <option value="desc">Desc</option>
+        <option value="asc">Asc</option>
+      </select>
       <button class="btn" id="refreshBtn" type="button"><i class="fa-solid fa-rotate"></i> Refresh</button>
+    </section>
+
+    <section class="bulk-row">
+      <span class="count" id="selectedClientsCount">0 selected</span>
+      <select class="select" id="bulkActionSelect" aria-label="Bulk action">
+        <option value="">Bulk Action</option>
+        <option value="status">Update Status</option>
+        <option value="assign_owner">Assign Owner</option>
+        <option value="archive">Archive</option>
+      </select>
+      <input class="input" id="bulkActionValue" placeholder="Value (status or owner user id)" aria-label="Bulk value">
+      <button class="btn primary" id="bulkApplyBtn" type="button">Apply to Selected</button>
     </section>
 
     <section class="grid" id="kpiGrid"></section>
@@ -84,17 +134,27 @@ tbody td { border-bottom: 1px solid #eef2f7; padding: 12px 14px; font-size: 14px
         <table>
           <thead>
             <tr>
+              <th><input id="selectAllClients" class="chk" type="checkbox" aria-label="Select all clients"></th>
               <th>Client</th>
               <th>Entity Type</th>
               <th>Primary Contact</th>
               <th>Email</th>
               <th>Status</th>
+              <th>Risk</th>
+              <th>Owner</th>
               <th>Health</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody id="clientsTableBody"></tbody>
         </table>
+      </div>
+      <div class="pager">
+        <div class="meta" id="clientsMeta">Page 1</div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn" id="prevPageBtn" type="button">Previous</button>
+          <button class="btn" id="nextPageBtn" type="button">Next</button>
+        </div>
       </div>
       <div id="emptyState" class="empty" hidden>No clients found for current filters.</div>
     </section>
@@ -142,7 +202,7 @@ const API_BASE_URL = window.PortalConfig?.API_BASE_URL || "http://127.0.0.1:4010
 const session = window.PortalAuth.requireRole("accountant", "accountant logins/login.html");
 if (!session) throw new Error("Unauthorized");
 
-const state = { clients: [] };
+const state = { clients: [], selected: new Set(), page: 1, pageSize: 20, sortBy: "lastActivity", sortDir: "desc", meta: null };
 const tableBody = document.getElementById("clientsTableBody");
 const emptyState = document.getElementById("emptyState");
 const kpiGrid = document.getElementById("kpiGrid");
@@ -153,6 +213,7 @@ function authHeaders() { return window.PortalAuth.authHeaders(session.token); }
 function esc(v) { return String(v || "").replace(/[&<>"']/g, (m) => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m])); }
 function healthPill(v) { return Number(v || 0) >= 80 ? "active" : Number(v || 0) >= 50 ? "pending" : "risk"; }
 function statusPill(v) { const s = String(v || "").toLowerCase(); return s === "active" ? "active" : s === "pending" ? "pending" : "risk"; }
+function riskPill(v) { return String(v || "").toLowerCase() === "low" ? "active" : String(v || "").toLowerCase() === "medium" ? "pending" : "risk"; }
 
 function renderKpi(items) {
   const total = items.length;
@@ -167,19 +228,8 @@ function renderKpi(items) {
   `;
 }
 
-function filteredClients() {
-  const q = searchInput.value.trim().toLowerCase();
-  const status = statusFilter.value.toLowerCase();
-  return state.clients.filter((client) => {
-    const statusOk = !status || String(client.status || "").toLowerCase() === status;
-    if (!statusOk) return false;
-    if (!q) return true;
-    return [client.name, client.entityType, client.primaryContact, client.email].some((v) => String(v || "").toLowerCase().includes(q));
-  });
-}
-
 function renderTable() {
-  const items = filteredClients();
+  const items = state.clients;
   renderKpi(items);
   tableBody.innerHTML = "";
   emptyState.hidden = items.length > 0;
@@ -187,11 +237,14 @@ function renderTable() {
 
   tableBody.innerHTML = items.map((client) => `
     <tr>
+      <td><input class="chk" type="checkbox" data-select-client="${esc(client.id)}" ${state.selected.has(client.id) ? "checked" : ""}></td>
       <td><strong>${esc(client.name)}</strong><br><span style="color:#64748b;font-size:12px;">${esc(client.id)}</span></td>
       <td>${esc(client.entityType)}</td>
       <td>${esc(client.primaryContact)}</td>
       <td>${esc(client.email)}</td>
       <td><span class="pill ${statusPill(client.status)}">${esc(client.status)}</span></td>
+      <td><span class="pill ${riskPill(client.riskBand)}">${esc(client.riskBand || "-")}</span></td>
+      <td>${esc(client.assignedAccountantId || "-")}</td>
       <td><span class="pill ${healthPill(client.complianceHealth)}">${Number(client.complianceHealth || 0)}%</span></td>
       <td>
         <div class="row-actions">
@@ -202,13 +255,38 @@ function renderTable() {
       </td>
     </tr>
   `).join("");
+  document.getElementById("clientsMeta").textContent = state.meta
+    ? `Page ${state.meta.page}/${state.meta.totalPages} | ${state.meta.total} total`
+    : "Page 1";
+  document.getElementById("selectAllClients").checked = items.length > 0 && items.every((c) => state.selected.has(c.id));
+  document.getElementById("selectedClientsCount").textContent = `${state.selected.size} selected`;
 }
 
 async function loadClients() {
-  const response = await fetch(`${API_BASE_URL}/clients`, { headers: authHeaders() });
+  const params = new URLSearchParams();
+  params.set("page", String(state.page));
+  params.set("pageSize", String(state.pageSize));
+  params.set("sortBy", state.sortBy);
+  params.set("sortDir", state.sortDir);
+  const q = searchInput.value.trim();
+  if (q) params.set("search", q);
+  const s = statusFilter.value.trim();
+  if (s) params.set("status", s);
+  const industry = document.getElementById("industryFilter")?.value?.trim();
+  const riskBand = document.getElementById("riskBandFilter")?.value?.trim();
+  const complianceStatus = document.getElementById("complianceStatusFilter")?.value?.trim();
+  const savedView = document.getElementById("savedViewFilter")?.value?.trim();
+  if (industry) params.set("industry", industry);
+  if (riskBand) params.set("riskBand", riskBand);
+  if (complianceStatus) params.set("complianceStatus", complianceStatus);
+  if (savedView) params.set("view", savedView);
+
+  const response = await fetch(`${API_BASE_URL}/clients?${params.toString()}`, { headers: authHeaders() });
   if (!response.ok) throw new Error("Failed to load clients");
   const payload = await response.json().catch(() => ({}));
   state.clients = Array.isArray(payload.items) ? payload.items : [];
+  state.meta = payload.meta || null;
+  state.selected = new Set(Array.from(state.selected).filter((id) => state.clients.some((client) => client.id === id)));
   renderTable();
 }
 
@@ -240,8 +318,21 @@ async function createClient() {
   await loadClients();
 }
 
-searchInput.addEventListener("input", renderTable);
-statusFilter.addEventListener("change", renderTable);
+function onFiltersChanged() {
+  state.page = 1;
+  state.sortBy = document.getElementById("sortByFilter").value;
+  state.sortDir = document.getElementById("sortDirFilter").value;
+  loadClients().catch(console.error);
+}
+
+searchInput.addEventListener("input", onFiltersChanged);
+statusFilter.addEventListener("change", onFiltersChanged);
+document.getElementById("industryFilter").addEventListener("change", onFiltersChanged);
+document.getElementById("riskBandFilter").addEventListener("change", onFiltersChanged);
+document.getElementById("complianceStatusFilter").addEventListener("change", onFiltersChanged);
+document.getElementById("savedViewFilter").addEventListener("change", onFiltersChanged);
+document.getElementById("sortByFilter").addEventListener("change", onFiltersChanged);
+document.getElementById("sortDirFilter").addEventListener("change", onFiltersChanged);
 document.getElementById("refreshBtn").addEventListener("click", () => loadClients().catch(console.error));
 document.getElementById("openCreateClient").addEventListener("click", () => openCreateClientModal(true));
 document.getElementById("closeCreateClient").addEventListener("click", () => openCreateClientModal(false));
@@ -267,6 +358,51 @@ document.addEventListener("click", (event) => {
   if (openMsg) {
     window.location.href = `messages.html?clientId=${encodeURIComponent(openMsg.getAttribute("data-open-msg"))}`;
   }
+});
+
+document.addEventListener("change", (event) => {
+  const rowCheck = event.target.closest("[data-select-client]");
+  if (rowCheck) {
+    const id = rowCheck.getAttribute("data-select-client");
+    if (rowCheck.checked) state.selected.add(id);
+    else state.selected.delete(id);
+    renderTable();
+    return;
+  }
+});
+
+document.getElementById("selectAllClients").addEventListener("change", (event) => {
+  const checked = event.target.checked;
+  if (checked) state.clients.forEach((client) => state.selected.add(client.id));
+  else state.clients.forEach((client) => state.selected.delete(client.id));
+  renderTable();
+});
+
+document.getElementById("prevPageBtn").addEventListener("click", () => {
+  if (state.page <= 1) return;
+  state.page -= 1;
+  loadClients().catch(console.error);
+});
+document.getElementById("nextPageBtn").addEventListener("click", () => {
+  const totalPages = state.meta?.totalPages || 1;
+  if (state.page >= totalPages) return;
+  state.page += 1;
+  loadClients().catch(console.error);
+});
+
+document.getElementById("bulkApplyBtn").addEventListener("click", async () => {
+  const action = document.getElementById("bulkActionSelect").value;
+  const value = document.getElementById("bulkActionValue").value.trim();
+  const clientIds = Array.from(state.selected);
+  if (!action || !clientIds.length) return;
+  const response = await fetch(`${API_BASE_URL}/clients/bulk`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ action, value, clientIds }),
+  });
+  if (!response.ok) return;
+  state.selected.clear();
+  await loadClients();
 });
 
 loadClients().catch((error) => {

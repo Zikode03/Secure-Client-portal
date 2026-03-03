@@ -506,6 +506,100 @@ body{
   padding-bottom:24px;
 }
 
+.audit-meta{
+  color:#64748b;
+  font-size:12px;
+  margin-top:8px;
+  margin-bottom:8px;
+}
+
+.panel-stack{
+  display:grid;
+  gap:18px;
+}
+
+.health-card{
+  padding:20px;
+}
+
+.health-lines{
+  display:grid;
+  gap:8px;
+  margin-top:12px;
+  font-size:13px;
+}
+
+.modal-overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(2,6,23,.5);
+  display:grid;
+  place-items:center;
+  z-index:1200;
+}
+
+.modal-card{
+  background:#fff;
+  border:1px solid #dbe3f0;
+  border-radius:14px;
+  width:min(600px,92vw);
+  padding:16px;
+}
+
+.modal-card h3{
+  margin:0 0 8px;
+}
+
+.modal-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+
+.modal-grid .full{
+  grid-column:1 / -1;
+}
+
+.modal-label{
+  display:block;
+  font-size:12px;
+  font-weight:700;
+  color:#334155;
+  margin-bottom:4px;
+}
+
+.modal-input{
+  width:100%;
+  height:40px;
+  border:1px solid #dbe3f0;
+  border-radius:10px;
+  padding:0 10px;
+}
+
+.modal-actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:8px;
+  margin-top:12px;
+}
+
+.modal-btn{
+  border-radius:10px;
+  padding:9px 12px;
+  cursor:pointer;
+}
+
+.modal-btn.cancel{
+  border:1px solid #dbe3f0;
+  background:#fff;
+}
+
+.modal-btn.save{
+  border:1px solid #1d4ed8;
+  background:#1d4ed8;
+  color:#fff;
+}
+
 @media(max-width:1000px){
   .main-grid{
     grid-template-columns:1fr;
@@ -595,20 +689,20 @@ Compliance History
 
 <div class="stat-box">
 <h4>Last Login</h4>
-<strong>2 hours ago</strong>
-<div class="green">+5% Activity</div>
+<strong id="statLastLogin">-</strong>
+<div class="green" id="statLastLoginNote">-</div>
 </div>
 
 <div class="stat-box">
 <h4>Total Documents</h4>
-<strong>142</strong>
-<div class="red">-2% MoM</div>
+<strong id="statTotalDocuments">0</strong>
+<div class="red" id="statDocumentsNote">-</div>
 </div>
 
 <div class="stat-box">
 <h4>Upcoming Deadlines</h4>
-<strong>3</strong>
-<div class="gray">No change</div>
+<strong id="statUpcomingDeadlines">0</strong>
+<div class="gray" id="statDeadlinesNote">-</div>
 </div>
 
 </div>
@@ -616,46 +710,8 @@ Compliance History
 <div class="activity-section">
 
 <h3>Recent Activity</h3>
-
-<div class="activity-item">
-
-<div class="activity-left">
-
-<div class="icon-box">
-<i class="fa fa-file-arrow-up"></i>
-</div>
-
-<div>
-<strong>Quarterly Tax Document Uploaded</strong>
-<br>
-<small>by Jane Doe  45 minutes ago</small>
-</div>
-
-</div>
-
-<button type="button" class="link-btn">View</button>
-
-</div>
-
-<div class="activity-item">
-
-<div class="activity-left">
-
-<div class="icon-box icon-success">
-<i class="fa fa-check"></i>
-</div>
-
-<div>
-<strong>Annual Report Approved</strong>
-<br>
-<small>by Admin System  Yesterday</small>
-</div>
-
-</div>
-
-<button type="button" class="link-btn">Download</button>
-
-</div>
+<div id="overviewAuditMeta" class="audit-meta">Overview audit: -</div>
+<div id="recentActivityList"></div>
 
 </div>
 
@@ -752,75 +808,12 @@ Jane Doe
 </div>
 
 <div class="timeline">
-
-<div class="timeline-item success">
-<div class="timeline-icon"><i class="fa fa-check"></i></div>
-<div class="timeline-content">
-<div class="timeline-top">
-<strong>Quarterly Filing Approved</strong>
-<span class="badge-approved">APPROVED</span>
-<span class="time">Oct 12, 2024  2:45 PM</span>
-</div>
-<p>The Q3 Sales Tax filing has been reviewed and approved for submission.</p>
-<div class="timeline-bottom">
-<span><span class="avatar-sm">ST</span>Performed by: <strong>Sarah Thompson (CPA)</strong></span>
-<button type="button" class="link-btn">View Document</button>
-</div>
-</div>
-</div>
-
-<div class="timeline-item rejected">
-<div class="timeline-icon"><i class="fa fa-xmark"></i></div>
-<div class="timeline-content">
-<div class="timeline-top">
-<strong>Tax Document Rejected</strong>
-<span class="badge-rejected">REJECTED</span>
-<span class="time">Oct 10, 2024  11:20 AM</span>
-</div>
-<p>Income Statement 2023_ Revised.pdf was rejected due to missing expense breakdown on page 4.</p>
-<div class="timeline-bottom">
-<span><span class="avatar-sm">ST</span>Performed by: <strong>Sarah Thompson (CPA)</strong></span>
-<button type="button" class="link-btn">View Details</button>
-</div>
-</div>
-</div>
-
-<div class="timeline-item pending">
-<div class="timeline-icon"><i class="fa fa-file"></i></div>
-<div class="timeline-content">
-<div class="timeline-top">
-<strong>New Document Uploaded</strong>
-<span class="badge-pending">PENDING REVIEW</span>
-<span class="time">Oct 09, 2024  04:15 PM</span>
-</div>
-<p>Quarterly Payroll Summary_Q3 2024 has been uploaded by the client.</p>
-<div class="timeline-bottom">
-<span><span class="avatar-sm gray-bg">JD</span>Performed by: <strong>Jane Doe (Client)</strong></span>
-<button type="button" class="link-btn">Download File</button>
-</div>
-</div>
-</div>
-
-<div class="timeline-item warning">
-<div class="timeline-icon"><i class="fa fa-exclamation"></i></div>
-<div class="timeline-content">
-<div class="timeline-top">
-<strong>KYC Verification Requested</strong>
-<span class="badge-warning">NEEDS ACTION</span>
-<span class="time">Oct 05, 2024  09:00 AM</span>
-</div>
-<p>Annual AML/KYC review is due. Please provide updated proof of address for all stakeholders.</p>
-<div class="timeline-bottom">
-<span><span class="avatar-sm gray-bg">SY</span>Performed by: <strong>System Bot</strong></span>
-<button type="button" class="link-btn">Resend Request</button>
-</div>
-</div>
-</div>
-
+<div id="complianceAuditMeta" class="audit-meta">Compliance audit: -</div>
+<div id="timelineList"></div>
 </div>
 
 <div class="load-more">
-<button type="button" class="edit-btn">Load More History</button>
+<button type="button" class="edit-btn" id="loadMoreTimelineBtn">Load More History</button>
 </div>
 
 </div>
@@ -829,11 +822,12 @@ Jane Doe
 
 </div>
 
-<div>
+<div class="panel-stack">
 
 <div class="card quick-actions">
 
 <h3>Quick Actions</h3>
+<div id="profileAuditMeta" class="audit-meta">Last profile update: -</div>
 
 <button type="button" class="primary" data-route="messages.html">
 <i class="fa fa-comment"></i>
@@ -874,6 +868,11 @@ Suspend Account
 <div class="gray">Senior Tax Partner</div>
 </div>
 
+</div>
+
+<div class="card health-card">
+<h4>HEALTH BREAKDOWN</h4>
+<div id="healthBreakdown" class="health-lines">Loading health summary...</div>
 </div>
 
 </div>
@@ -918,18 +917,151 @@ function currentClientId() {
   return params.get("clientId") || params.get("id") || "c_1001";
 }
 
+function whenText(iso) {
+  if (!iso) return "-";
+  const dt = new Date(iso);
+  if (Number.isNaN(dt.getTime())) return "-";
+  return dt.toLocaleString();
+}
+
+const timelineState = { items: [], visible: 8 };
+
+function renderRecentActivity(items) {
+  const wrap = document.getElementById("recentActivityList");
+  if (!items.length) {
+    wrap.innerHTML = `<p class="gray">No recent activity.</p>`;
+    return;
+  }
+  wrap.innerHTML = items.slice(0, 3).map((item) => `
+    <div class="activity-item">
+      <div class="activity-left">
+        <div class="icon-box ${String(item.type || "").toLowerCase() === "compliance" ? "icon-success" : ""}">
+          <i class="fa ${String(item.type || "").toLowerCase() === "document" ? "fa-file-arrow-up" : String(item.type || "").toLowerCase() === "task" ? "fa-check" : "fa-clock-rotate-left"}"></i>
+        </div>
+        <div>
+          <strong>${item.title || "Activity"}</strong>
+          <br>
+          <small>${item.source || "system"} &middot; ${whenText(item.occurredAt)}</small>
+        </div>
+      </div>
+      <button type="button" class="link-btn">View</button>
+    </div>
+  `).join("");
+}
+
+function timelineClass(item) {
+  const status = String(item.status || "").toLowerCase();
+  if (["approved", "completed", "compliant"].includes(status)) return "success";
+  if (["rejected", "overdue", "non-compliant"].includes(status)) return "rejected";
+  if (["pending", "in-progress", "in_review", "review"].includes(status)) return "pending";
+  return "warning";
+}
+
+function statusBadge(status) {
+  const s = String(status || "INFO").toUpperCase();
+  if (s.includes("APPROV") || s === "COMPLETED") return "badge-approved";
+  if (s.includes("REJECT") || s.includes("OVERDUE")) return "badge-rejected";
+  if (s.includes("PENDING") || s.includes("REVIEW")) return "badge-pending";
+  return "badge-warning";
+}
+
+function renderTimeline() {
+  const typeFilter = String(document.getElementById("docTypeFilter").value || "");
+  const statusFilter = String(document.getElementById("statusFilter").value || "");
+  const items = timelineState.items.filter((item) => {
+    if (typeFilter && String(item.type || "").toLowerCase() !== typeFilter.toLowerCase()) return false;
+    if (statusFilter && String(item.status || "").toLowerCase() !== statusFilter.toLowerCase()) return false;
+    return true;
+  });
+  const wrap = document.getElementById("timelineList");
+  if (!items.length) {
+    wrap.innerHTML = `<p class="gray">No timeline records for current filters.</p>`;
+    return;
+  }
+  wrap.innerHTML = items.slice(0, timelineState.visible).map((item) => `
+    <div class="timeline-item ${timelineClass(item)}">
+      <div class="timeline-icon"><i class="fa fa-clock"></i></div>
+      <div class="timeline-content">
+        <div class="timeline-top">
+          <strong>${item.title || "Timeline Event"}</strong>
+          <span class="${statusBadge(item.status)}">${String(item.status || "logged").toUpperCase()}</span>
+          <span class="time">${whenText(item.occurredAt)}</span>
+        </div>
+        <p>Source: ${item.source || "system"} &middot; Type: ${item.type || "event"}</p>
+        <div class="timeline-bottom">
+          <span><span class="avatar-sm">${String(item.source || "SY").slice(0, 2).toUpperCase()}</span>Entity: <strong>${item.entityId || "-"}</strong></span>
+        </div>
+      </div>
+    </div>
+  `).join("");
+}
+
 async function loadClientProfile() {
   const clientId = currentClientId();
-  const response = await fetch(`${API_BASE_URL}/clients/${encodeURIComponent(clientId)}`, { headers: authHeaders() });
-  if (!response.ok) return;
-  const data = await response.json();
-  const client = data.client;
+  const [profileRes, timelineRes, docsRes, tasksRes] = await Promise.all([
+    fetch(`${API_BASE_URL}/clients/${encodeURIComponent(clientId)}`, { headers: authHeaders() }),
+    fetch(`${API_BASE_URL}/clients/${encodeURIComponent(clientId)}/timeline?limit=120`, { headers: authHeaders() }),
+    fetch(`${API_BASE_URL}/documents?clientId=${encodeURIComponent(clientId)}`, { headers: authHeaders() }),
+    fetch(`${API_BASE_URL}/tasks?clientId=${encodeURIComponent(clientId)}`, { headers: authHeaders() }),
+  ]);
+  if (!profileRes.ok) return;
+  const data = await profileRes.json();
+  const client = data.client || {};
+  const timelinePayload = timelineRes.ok ? await timelineRes.json().catch(() => ({})) : {};
+  const docsPayload = docsRes.ok ? await docsRes.json().catch(() => ({})) : {};
+  const tasksPayload = tasksRes.ok ? await tasksRes.json().catch(() => ({})) : {};
+  const docs = Array.isArray(docsPayload.items) ? docsPayload.items : [];
+  const tasks = Array.isArray(tasksPayload.items) ? tasksPayload.items : [];
+  timelineState.items = Array.isArray(timelinePayload.items) ? timelinePayload.items : [];
 
   document.getElementById("clientBreadcrumbName").textContent = client.name;
   document.getElementById("clientName").textContent = client.name;
   document.getElementById("clientStatus").textContent = String(client.status || "").toUpperCase();
   document.getElementById("clientPrimaryContact").innerHTML = `<i class="fa fa-user"></i> Primary Contact: ${client.primaryContact}`;
   document.getElementById("clientMetaInfo").textContent = `${client.entityType}  ${client.email}`;
+  document.getElementById("statTotalDocuments").textContent = String(docs.length);
+  document.getElementById("statDocumentsNote").textContent = `${docs.filter((d) => ["pending", "in-review", "review", "request-fix"].includes(String(d.status || "").toLowerCase())).length} awaiting review`;
+  const upcoming = tasks.filter((task) => {
+    const dueAt = new Date(task.dueDate).getTime();
+    const days = Math.ceil((dueAt - Date.now()) / (1000 * 60 * 60 * 24));
+    return days >= 0 && days <= 14 && String(task.status || "").toLowerCase() !== "completed";
+  }).length;
+  document.getElementById("statUpcomingDeadlines").textContent = String(upcoming);
+  document.getElementById("statDeadlinesNote").textContent = `${tasks.filter((t) => String(t.status || "").toLowerCase() === "overdue").length} overdue`;
+  document.getElementById("statLastLogin").textContent = whenText(timelineState.items[0]?.occurredAt || client.createdAt);
+  document.getElementById("statLastLoginNote").textContent = `${timelineState.items.length} timeline event(s)`;
+
+  const health = data.health || {};
+  document.getElementById("healthBreakdown").innerHTML = `
+    <div>Score: <strong>${Number(health.score || 0)}%</strong></div>
+    <div>Risk Band: <strong>${health.riskBand || "-"}</strong></div>
+    <div>Status: <strong>${health.complianceStatus || "-"}</strong></div>
+    <div>Pending Documents: <strong>${Number(health.pendingDocs || 0)}</strong></div>
+    <div>Overdue Tasks: <strong>${Number(health.overdueTasks || 0)}</strong></div>
+    <div>Unread Messages: <strong>${Number(health.unreadMessages || 0)}</strong></div>
+    <div>Reasons: ${(Array.isArray(health.riskReasons) ? health.riskReasons.join("; ") : "-")}</div>
+  `;
+
+  const audit = data.audit;
+  document.getElementById("profileAuditMeta").textContent = audit
+    ? `Last profile update: ${audit.action} at ${whenText(audit.occurredAt)} by ${audit.actorUserId}`
+    : "Last profile update: no audit record yet";
+  document.getElementById("overviewAuditMeta").textContent = audit
+    ? `Overview audit: ${audit.action} by ${audit.actorUserId} on ${whenText(audit.occurredAt)}`
+    : "Overview audit: no recent updates";
+  const latestCompliance = timelineState.items.find((item) => String(item.type || "").toLowerCase() === "compliance");
+  document.getElementById("complianceAuditMeta").textContent = latestCompliance
+    ? `Compliance audit: ${latestCompliance.title || "event"} on ${whenText(latestCompliance.occurredAt)}`
+    : "Compliance audit: no recent compliance events";
+
+  const typeFilter = document.getElementById("docTypeFilter");
+  const statusFilter = document.getElementById("statusFilter");
+  const types = [...new Set(timelineState.items.map((item) => String(item.type || "").toLowerCase()).filter(Boolean))];
+  const statuses = [...new Set(timelineState.items.map((item) => String(item.status || "").toLowerCase()).filter(Boolean))];
+  typeFilter.innerHTML = `<option value="">All Event Types</option>${types.map((t) => `<option value="${t}">${t}</option>`).join("")}`;
+  statusFilter.innerHTML = `<option value="">All Statuses</option>${statuses.map((s) => `<option value="${s}">${s}</option>`).join("")}`;
+  renderRecentActivity(timelineState.items);
+  renderTimeline();
 }
 
 document.getElementById("editProfileBtn").addEventListener("click", async () => {
@@ -961,43 +1093,42 @@ async function openClientEditModal() {
     if (!overlay) {
       overlay = document.createElement("div");
       overlay.id = "editClientModal";
+      overlay.className = "modal-overlay";
       overlay.innerHTML = `
-        <div style="position:fixed;inset:0;background:rgba(2,6,23,.5);display:grid;place-items:center;z-index:1200;">
-          <div style="background:#fff;border:1px solid #dbe3f0;border-radius:14px;width:min(600px,92vw);padding:16px;">
-            <h3 style="margin:0 0 8px;">Edit Client Profile</h3>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
-              <div style="grid-column:1 / -1;">
-                <label style="display:block;font-size:12px;font-weight:700;color:#334155;margin-bottom:4px;">Client Name</label>
-                <input id="editClientNameInput" style="width:100%;height:40px;border:1px solid #dbe3f0;border-radius:10px;padding:0 10px;">
+          <div class="modal-card">
+            <h3>Edit Client Profile</h3>
+            <div class="modal-grid">
+              <div class="full">
+                <label class="modal-label">Client Name</label>
+                <input id="editClientNameInput" class="modal-input">
               </div>
               <div>
-                <label style="display:block;font-size:12px;font-weight:700;color:#334155;margin-bottom:4px;">Primary Contact</label>
-                <input id="editClientContactInput" style="width:100%;height:40px;border:1px solid #dbe3f0;border-radius:10px;padding:0 10px;">
+                <label class="modal-label">Primary Contact</label>
+                <input id="editClientContactInput" class="modal-input">
               </div>
               <div>
-                <label style="display:block;font-size:12px;font-weight:700;color:#334155;margin-bottom:4px;">Status</label>
-                <select id="editClientStatusInput" style="width:100%;height:40px;border:1px solid #dbe3f0;border-radius:10px;padding:0 10px;">
+                <label class="modal-label">Status</label>
+                <select id="editClientStatusInput" class="modal-input">
                   <option value="">No Change</option>
                   <option value="active">active</option>
                   <option value="pending">pending</option>
                   <option value="at-risk">at-risk</option>
                 </select>
               </div>
-              <div style="grid-column:1 / -1;">
-                <label style="display:block;font-size:12px;font-weight:700;color:#334155;margin-bottom:4px;">Email</label>
-                <input id="editClientEmailInput" style="width:100%;height:40px;border:1px solid #dbe3f0;border-radius:10px;padding:0 10px;">
+              <div class="full">
+                <label class="modal-label">Email</label>
+                <input id="editClientEmailInput" class="modal-input">
               </div>
-              <div style="grid-column:1 / -1;">
-                <label style="display:block;font-size:12px;font-weight:700;color:#334155;margin-bottom:4px;">Entity Type</label>
-                <input id="editClientEntityInput" style="width:100%;height:40px;border:1px solid #dbe3f0;border-radius:10px;padding:0 10px;">
+              <div class="full">
+                <label class="modal-label">Entity Type</label>
+                <input id="editClientEntityInput" class="modal-input">
               </div>
             </div>
-            <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px;">
-              <button id="editClientCancelBtn" type="button" style="border:1px solid #dbe3f0;background:#fff;border-radius:10px;padding:9px 12px;cursor:pointer;">Cancel</button>
-              <button id="editClientSaveBtn" type="button" style="border:1px solid #1d4ed8;background:#1d4ed8;color:#fff;border-radius:10px;padding:9px 12px;cursor:pointer;">Save</button>
+            <div class="modal-actions">
+              <button id="editClientCancelBtn" class="modal-btn cancel" type="button">Cancel</button>
+              <button id="editClientSaveBtn" class="modal-btn save" type="button">Save</button>
             </div>
           </div>
-        </div>
       `;
       document.body.appendChild(overlay);
     } else {
@@ -1020,6 +1151,12 @@ async function openClientEditModal() {
 }
 
 loadClientProfile().catch((error) => console.error(error));
+document.getElementById("docTypeFilter").addEventListener("change", renderTimeline);
+document.getElementById("statusFilter").addEventListener("change", renderTimeline);
+document.getElementById("loadMoreTimelineBtn").addEventListener("click", () => {
+  timelineState.visible += 8;
+  renderTimeline();
+});
 </script>
 
 </body>
