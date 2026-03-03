@@ -35,6 +35,49 @@ textarea { width: 100%; border: 1px solid #dbe3f0; border-radius: 10px; min-heig
 .message { min-height: 20px; margin-top: 8px; font-size: 13px; }
 .message.error { color: #b91c1c; }
 .message.ok { color: #166534; }
+.section { margin-top: 14px; padding-top: 12px; border-top: 1px solid #eef2f7; }
+.section h3 { font-size: 14px; margin: 0 0 8px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  border: 1px solid #dbe3f0;
+  background: #f8fafc;
+  color: #334155;
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.chip.warn { border-color: #f59e0b; background: #fffbeb; color: #92400e; }
+.chip.danger { border-color: #ef4444; background: #fef2f2; color: #991b1b; }
+.link-list { display: grid; gap: 7px; }
+.link-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 8px;
+  background: #f8fafc;
+}
+.link-item a { color: #1d4ed8; font-size: 12px; text-decoration: none; font-weight: 700; }
+.link-item a:hover { text-decoration: underline; }
+.link-meta { color: #64748b; font-size: 12px; margin-top: 3px; }
+.comment-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  padding: 8px;
+  margin-bottom: 8px;
+}
+.comment-meta { color: #64748b; font-size: 11px; margin-bottom: 4px; }
+.comment-actions { margin-top: 5px; }
+.actions.comment-actions { grid-template-columns: 1fr; }
+.replying {
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e3a8a;
+  border-radius: 8px;
+  padding: 7px 9px;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
 @media (max-width: 980px) { .layout { grid-template-columns: 1fr; } .actions { grid-template-columns: 1fr; } }
 </style>
 <script defer src="accountant-nav.js"></script>
@@ -54,6 +97,7 @@ textarea { width: 100%; border: 1px solid #dbe3f0; border-radius: 10px; min-heig
       <div class="meta">
         <h2 id="docName">Loading document...</h2>
         <p class="meta-sub" id="docSubtitle"></p>
+        <div class="chips" id="workflowChips"></div>
       </div>
       <div class="viewer" id="viewerBox">
         <div>
@@ -77,6 +121,28 @@ textarea { width: 100%; border: 1px solid #dbe3f0; border-radius: 10px; min-heig
           <button class="btn" id="rejectBtn" type="button"><i class="fa-solid fa-xmark"></i> Reject</button>
         </div>
         <p id="message" class="message"></p>
+
+        <div class="section">
+          <h3>Workflow Context</h3>
+          <div id="workflowContext" class="small">Loading context...</div>
+        </div>
+
+        <div class="section">
+          <h3>Linked Entities</h3>
+          <div id="linkedEntities" class="link-list"></div>
+        </div>
+
+        <div class="section">
+          <h3>Review Comments</h3>
+          <div id="replyingTo" class="replying" hidden></div>
+          <input id="commentParentId" type="hidden" value="">
+          <textarea id="newComment" placeholder="Add structured review comment"></textarea>
+          <div class="actions comment-actions">
+            <button class="btn" id="addCommentBtn" type="button"><i class="fa-solid fa-comment"></i> Add Comment</button>
+          </div>
+          <p id="commentMessage" class="message"></p>
+          <div id="commentsThread"></div>
+        </div>
       </div>
     </aside>
   </section>
@@ -92,18 +158,23 @@ if (!session) throw new Error("Unauthorized");
 const params = new URLSearchParams(window.location.search);
 const docId = String(params.get("id") || "");
 let currentDoc = null;
+let currentContext = null;
+let comments = [];
 
 function authHeaders() { return window.PortalAuth.authHeaders(session.token); }
 function esc(v) { return String(v || "").replace(/[&<>"']/g, (m) => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m])); }
 function bytes(v) { const n = Number(v || 0); if (!n) return "0 B"; const u=["B","KB","MB","GB"]; let i=0, x=n; while(x>=1024&&i<u.length-1){x/=1024;i++;} return `${x.toFixed(1)} ${u[i]}`; }
 function dateFmt(v) { const d = new Date(v); return Number.isNaN(d.getTime()) ? "-" : d.toLocaleString(); }
 function setMessage(text, kind = "") { const el = document.getElementById("message"); el.className = `message ${kind}`.trim(); el.textContent = text || ""; }
+function setCommentMessage(text, kind = "") { const el = document.getElementById("commentMessage"); el.className = `message ${kind}`.trim(); el.textContent = text || ""; }
+function hasText(value) { return Boolean(String(value || "").trim()); }
 
 function render() {
   if (!currentDoc) {
     document.getElementById("docName").textContent = "Document not found";
     document.getElementById("docSubtitle").textContent = "Open from documents list.";
     document.getElementById("metaRows").innerHTML = "";
+    document.getElementById("workflowChips").innerHTML = "";
     return;
   }
   document.getElementById("docName").textContent = currentDoc.name || "Untitled Document";
@@ -118,6 +189,111 @@ function render() {
     <div class="row"><div class="k">Size</div><div class="v">${bytes(currentDoc.sizeBytes)}</div></div>
     <div class="row"><div class="k">Uploaded</div><div class="v">${dateFmt(currentDoc.uploadedAt)}</div></div>
   `;
+
+  const workflow = currentDoc.workflow || {};
+  const chips = [];
+  if (workflow.ownerName) chips.push(`<span class="chip">Owner: ${esc(workflow.ownerName)}</span>`);
+  if (workflow.slaBreached) {
+    chips.push(`<span class="chip danger">SLA Overdue</span>`);
+  } else if (workflow.slaRemainingHours != null) {
+    chips.push(`<span class="chip warn">${Number(workflow.slaRemainingHours)}h left</span>`);
+  }
+  if (workflow.escalationFlag) chips.push(`<span class="chip danger">Escalated</span>`);
+  document.getElementById("workflowChips").innerHTML = chips.join("");
+}
+
+function renderWorkflowContext() {
+  const el = document.getElementById("workflowContext");
+  if (!currentContext?.workflow) {
+    el.textContent = "No workflow metadata available.";
+    return;
+  }
+  const workflow = currentContext.workflow;
+  const lines = [
+    `Reviewer: ${workflow.reviewerName || "Unassigned"}`,
+    `Assigned At: ${workflow.assignedAt ? dateFmt(workflow.assignedAt) : "-"}`,
+    `SLA Age: ${Number(workflow.slaAgeHours || 0)}h (Target ${Number(workflow.slaTargetHours || 48)}h)`,
+    workflow.slaBreached
+      ? `Status: SLA breached`
+      : `Status: ${Number(workflow.slaRemainingHours || 0)}h remaining`,
+  ];
+  el.innerHTML = lines.map((line) => `<div>${esc(line)}</div>`).join("");
+}
+
+function renderLinkedEntities() {
+  const wrap = document.getElementById("linkedEntities");
+  const related = currentContext?.related || {};
+  const items = [
+    ...(related.tasks || []).map((task) => ({
+      title: `Task: ${task.title || task.id}`,
+      meta: `${task.status || "unknown"} | due ${task.dueDate ? dateFmt(task.dueDate) : "-"}`,
+      link: task.link || "tasks.html",
+    })),
+    ...(related.requests || []).map((request) => ({
+      title: `Request: ${request.title || request.id}`,
+      meta: `${request.status || "unknown"} | due ${request.dueDate ? dateFmt(request.dueDate) : "-"}`,
+      link: request.link || "documents.html",
+    })),
+    ...(related.compliance || []).map((obligation) => ({
+      title: `${obligation.source || "Compliance"}: ${obligation.obligationType || obligation.id}`,
+      meta: `${obligation.status || "unknown"} | due ${obligation.dueDate ? dateFmt(obligation.dueDate) : "-"}`,
+      link: obligation.link || "compliance-board.html",
+    })),
+  ];
+  if (!items.length) {
+    wrap.innerHTML = `<p class="link-meta">No related tasks, requests, or obligations linked yet.</p>`;
+    return;
+  }
+  wrap.innerHTML = items.slice(0, 12).map((item) => `
+    <div class="link-item">
+      <a href="${esc(item.link)}">${esc(item.title)}</a>
+      <div class="link-meta">${esc(item.meta)}</div>
+    </div>
+  `).join("");
+}
+
+function setReplyTarget(comment = null) {
+  const box = document.getElementById("replyingTo");
+  const parentIdInput = document.getElementById("commentParentId");
+  if (!comment) {
+    box.hidden = true;
+    box.textContent = "";
+    parentIdInput.value = "";
+    return;
+  }
+  box.hidden = false;
+  box.textContent = `Replying to ${comment.author?.fullName || "comment"}: ${comment.message}`;
+  parentIdInput.value = comment.id;
+}
+
+function renderCommentsThread() {
+  const wrap = document.getElementById("commentsThread");
+  if (!comments.length) {
+    wrap.innerHTML = `<p class="link-meta">No comments yet.</p>`;
+    return;
+  }
+  const byParent = new Map();
+  for (const comment of comments) {
+    const parent = comment.parentId || "__root__";
+    if (!byParent.has(parent)) byParent.set(parent, []);
+    byParent.get(parent).push(comment);
+  }
+
+  function renderBranch(parentId, depth) {
+    const branch = byParent.get(parentId) || [];
+    return branch.map((comment) => `
+      <div class="comment-card" style="margin-left:${depth * 14}px;">
+        <div class="comment-meta">${esc(comment.author?.fullName || "Unknown")} | ${dateFmt(comment.createdAt)}</div>
+        <div>${esc(comment.message)}</div>
+        <div class="comment-actions">
+          <button type="button" class="btn" data-reply-to="${esc(comment.id)}">Reply</button>
+        </div>
+      </div>
+      ${renderBranch(comment.id, depth + 1)}
+    `).join("");
+  }
+
+  wrap.innerHTML = renderBranch("__root__", 0);
 }
 
 async function loadDocument() {
@@ -129,13 +305,34 @@ async function loadDocument() {
   render();
 }
 
+async function loadReviewContext() {
+  if (!docId) return;
+  const response = await fetch(`${API_BASE_URL}/reviews/${encodeURIComponent(docId)}/context`, { headers: authHeaders() });
+  if (!response.ok) throw new Error("Failed to load review context");
+  currentContext = await response.json().catch(() => ({}));
+  renderWorkflowContext();
+  renderLinkedEntities();
+}
+
+async function loadComments() {
+  if (!docId) return;
+  const response = await fetch(`${API_BASE_URL}/reviews/${encodeURIComponent(docId)}/comments`, { headers: authHeaders() });
+  if (!response.ok) throw new Error("Failed to load review comments");
+  const payload = await response.json().catch(() => ({}));
+  comments = Array.isArray(payload.items) ? payload.items : [];
+  comments.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+  renderCommentsThread();
+}
+
 async function runReview(action) {
   if (!currentDoc) return;
   const note = document.getElementById("reviewNote").value.trim();
-  if ((action === "reject" || action === "request_fix") && !note) {
+  if ((action === "reject" || action === "request_fix") && !hasText(note)) {
     setMessage("Note is required for reject/request fix.", "error");
     return;
   }
+  const buttons = ["approveBtn", "fixBtn", "rejectBtn"].map((id) => document.getElementById(id));
+  buttons.forEach((btn) => { btn.disabled = true; });
   setMessage("Saving review...");
   const response = await fetch(`${API_BASE_URL}/reviews/${encodeURIComponent(currentDoc.id)}/action`, {
     method: "POST",
@@ -145,10 +342,38 @@ async function runReview(action) {
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
     setMessage(data.error || "Failed to update review", "error");
+    buttons.forEach((btn) => { btn.disabled = false; });
     return;
   }
   setMessage("Review updated.", "ok");
+  buttons.forEach((btn) => { btn.disabled = false; });
   await loadDocument();
+  await loadReviewContext();
+}
+
+async function addComment() {
+  if (!docId) return;
+  const message = document.getElementById("newComment").value.trim();
+  const parentId = document.getElementById("commentParentId").value.trim();
+  if (!hasText(message)) {
+    setCommentMessage("Enter a comment first.", "error");
+    return;
+  }
+  setCommentMessage("Saving comment...");
+  const response = await fetch(`${API_BASE_URL}/reviews/${encodeURIComponent(docId)}/comments`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ message, parentId: parentId || null }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    setCommentMessage(payload.error || "Unable to save comment.", "error");
+    return;
+  }
+  document.getElementById("newComment").value = "";
+  setReplyTarget(null);
+  setCommentMessage("Comment saved.", "ok");
+  await loadComments();
 }
 
 document.getElementById("approveBtn").addEventListener("click", () => runReview("approve").catch(console.error));
@@ -159,12 +384,22 @@ document.getElementById("backBtn").addEventListener("click", () => {
   else window.location.href = "documents.html";
 });
 document.getElementById("openDocumentsBtn").addEventListener("click", () => { window.location.href = "documents.html"; });
-
-loadDocument().catch((error) => {
-  setMessage(error.message || "Failed to load document", "error");
-  render();
+document.getElementById("addCommentBtn").addEventListener("click", () => addComment().catch(console.error));
+document.getElementById("commentsThread").addEventListener("click", (event) => {
+  const replyBtn = event.target.closest("[data-reply-to]");
+  if (!replyBtn) return;
+  const target = comments.find((item) => item.id === replyBtn.getAttribute("data-reply-to"));
+  if (target) {
+    setReplyTarget(target);
+    document.getElementById("newComment").focus();
+  }
 });
+
+Promise.all([loadDocument(), loadReviewContext(), loadComments()])
+  .catch((error) => {
+    setMessage(error.message || "Failed to load document", "error");
+    render();
+  });
 </script>
 </body>
 </html>
-

@@ -283,6 +283,18 @@
       background: #f3f4f6; 
       color: #4b5563; 
     }
+    .status.overdue {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+    .status.completed {
+      background: #dcfce7;
+      color: #166534;
+    }
+    .status.blocked {
+      background: #fff7ed;
+      color: #9a3412;
+    }
 
     .priority-dot {
       display: inline-block;
@@ -433,6 +445,73 @@
       margin-right: 12px;
       cursor: pointer;
     }
+
+    .capacity-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .capacity-item {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+    }
+    .capacity-title {
+      font-weight: 700;
+      font-size: 14px;
+      margin-bottom: 6px;
+    }
+    .capacity-meta {
+      font-size: 12px;
+      color: #64748b;
+    }
+    .inline-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid #dbe3f0;
+      background: #f8fafc;
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 12px;
+      color: #334155;
+      margin-right: 6px;
+      margin-bottom: 6px;
+    }
+    .template-list {
+      max-height: 220px;
+      overflow: auto;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 10px;
+      margin-bottom: 16px;
+    }
+    .template-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid #f1f5f9;
+      padding: 8px 0;
+    }
+    .template-row:last-child {
+      border-bottom: none;
+    }
+    .template-row .meta {
+      font-size: 12px;
+      color: #64748b;
+    }
+    .mini-btn {
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      background: #fff;
+      color: #0f172a;
+      padding: 6px 10px;
+      cursor: pointer;
+      font-size: 12px;
+    }
   </style>
   <script defer src="accountant-nav.js"></script>
 <link rel="stylesheet" href="../shared/inline-migrated.css">
@@ -505,8 +584,23 @@
         <option value="medium">Priority: Medium</option>
         <option value="low">Priority: Low</option>
       </select>
+      <select id="ownerFilter" class="filter-select">
+        <option value="all">All Owners</option>
+      </select>
+      <select id="dependencyFilter" class="filter-select">
+        <option value="all">All Dependencies</option>
+        <option value="document">Blocked by Document</option>
+        <option value="review">Blocked by Review</option>
+        <option value="compliance">Blocked by Compliance</option>
+      </select>
       <button class="btn-primary inl-675583ce02" id="runAutomationBtn">Run SLA Automation</button>
+      <button class="btn-primary inl-675583ce02" id="openTemplatesBtn">Templates & Rules</button>
       <span id="clearFilters" class="clear">Clear all</span>
+    </div>
+
+    <div class="table-card">
+      <div class="table-head">Owner Capacity</div>
+      <div id="capacityGrid" class="capacity-grid"></div>
     </div>
 
     <div class="table-card">
@@ -517,8 +611,11 @@
             <th class="inl-93de2d4b1f"></th>
             <th>Task Name</th>
             <th>Client</th>
+            <th>Owner</th>
+            <th>Dependency</th>
             <th>Status</th>
             <th>Due</th>
+            <th>SLA Age</th>
           </tr>
         </thead>
         <tbody id="taskBody"></tbody>
@@ -554,6 +651,10 @@
           <input id="newTaskClient" placeholder="Search or enter client name...">
         </div>
         <div class="form-group">
+          <label class="label">OWNER</label>
+          <select id="newTaskOwner"></select>
+        </div>
+        <div class="form-group">
           <label class="label">DUE DATE</label>
           <input id="newTaskDue" type="date">
         </div>
@@ -574,6 +675,28 @@
             <option value="review">Review</option>
           </select>
         </div>
+        <div class="form-group">
+          <label class="label">DEPENDENCY TYPE</label>
+          <select id="newTaskDependencyType">
+            <option value="none">None</option>
+            <option value="document">Document</option>
+            <option value="review">Review Queue</option>
+            <option value="compliance">Compliance</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="label">DEPENDENCY REFERENCE</label>
+          <input id="newTaskDependencyRef" placeholder="e.g. VAT Return #2026-02">
+        </div>
+        <div class="form-group">
+          <label class="label">RECURRENCE</label>
+          <select id="newTaskRecurrence">
+            <option value="none">One-off</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+            <option value="quarterly">Quarterly</option>
+          </select>
+        </div>
       </div>
       <div class="modal-footer">
         <button class="btn-secondary" id="cancelModal">Cancel</button>
@@ -582,10 +705,76 @@
     </div>
   </div>
 
+  <div class="modal-overlay" id="templatesModal">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <h3>Recurring Templates & Automation Rules</h3>
+          <small class="inl-8628aadcc8">Create repeatable tasks and run rules for due/overdue work.</small>
+        </div>
+        <button id="closeTemplatesModal" class="inl-b979717ad6"></button>
+      </div>
+      <div class="modal-body">
+        <h4>Templates</h4>
+        <div id="templateList" class="template-list"></div>
+
+        <div class="form-group">
+          <label class="label">TEMPLATE TITLE</label>
+          <input id="templateTitle" placeholder="e.g., Monthly VAT Submission">
+        </div>
+        <div class="form-group">
+          <label class="label">PRIORITY</label>
+          <select id="templatePriority">
+            <option value="high">High</option>
+            <option value="medium" selected>Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="label">RECURRENCE</label>
+          <select id="templateRecurrence">
+            <option value="weekly">Weekly</option>
+            <option value="monthly" selected>Monthly</option>
+            <option value="quarterly">Quarterly</option>
+            <option value="none">One-time</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="label">DEFAULT DUE IN (DAYS)</label>
+          <input id="templateDueDays" type="number" min="0" max="180" value="7">
+        </div>
+        <button class="btn-primary" id="saveTemplateBtn" type="button">Save Template</button>
+
+        <h4 class="inl-a6a6fd23de">Automation Rules</h4>
+        <div id="ruleList" class="template-list"></div>
+        <div class="form-group">
+          <label class="label">TRIGGER</label>
+          <select id="ruleTrigger">
+            <option value="due_soon">Due Soon</option>
+            <option value="overdue">Overdue</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="label">ACTION</label>
+          <select id="ruleAction">
+            <option value="notify_owner">Notify Owner</option>
+            <option value="escalate_priority">Escalate Priority</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="label">THRESHOLD (DAYS)</label>
+          <input id="ruleThresholdDays" type="number" min="0" max="60" value="2">
+        </div>
+        <button class="btn-primary" id="saveRuleBtn" type="button">Save Rule</button>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <script src="../shared/portal-config.js"></script>
 <script src="../shared/portal-auth.js"></script>
+<script src="../shared/client-ui.js"></script>
 <script>
 const API_BASE_URL = window.PortalConfig.API_BASE_URL;
 const session = window.PortalAuth.requireRole("accountant", "accountant logins/login.html");
@@ -601,18 +790,34 @@ function authHeaders() {
 
 let tasks = [];
 let clients = [];
+let teamMembers = [];
+let capacityItems = [];
+let templates = [];
+let automationRules = [];
 let currentPage = 1;
 const ROWS_PER_PAGE = 6;
 
 const clientFilter = document.getElementById("clientFilter");
 const dueFilter = document.getElementById("dueFilter");
 const priorityFilter = document.getElementById("priorityFilter");
+const ownerFilter = document.getElementById("ownerFilter");
+const dependencyFilter = document.getElementById("dependencyFilter");
 const clearBtn = document.getElementById("clearFilters");
 const tbody = document.getElementById("taskBody");
 const pageInfo = document.getElementById("pageInfo");
 const pageButtons = document.getElementById("pageButtons");
 const drawer = document.getElementById("taskDrawer");
 const modal = document.getElementById("createModal");
+const templatesModal = document.getElementById("templatesModal");
+const capacityGrid = document.getElementById("capacityGrid");
+
+function notify(message, kind = "info") {
+  if (window.ClientUI && typeof window.ClientUI.toast === "function") {
+    window.ClientUI.toast(message, kind);
+    return;
+  }
+  window.alert(message);
+}
 
 function getClientName(clientId) {
   return (clients.find((c) => c.id === clientId) || {}).name || clientId;
@@ -622,10 +827,45 @@ function getStatusText(status) {
   return String(status || "").replace(/-/g, " ");
 }
 
+function ownerName(ownerUserId, fallback = "Unassigned") {
+  if (!ownerUserId) return fallback;
+  const owner = teamMembers.find((item) => item.id === ownerUserId);
+  return owner ? owner.fullName : fallback;
+}
+
+function dependencyText(task) {
+  if (!task.dependencyType || task.dependencyType === "none") return "None";
+  const label = task.dependencyType.charAt(0).toUpperCase() + task.dependencyType.slice(1);
+  if (!task.dependencyRef) return label;
+  return `${label}: ${task.dependencyRef}`;
+}
+
+function dueInDays(dueDate) {
+  const date = new Date(dueDate);
+  if (Number.isNaN(date.getTime())) return 0;
+  return Math.ceil((date - new Date()) / (1000 * 60 * 60 * 24));
+}
+
+function renderCapacity() {
+  if (!capacityItems.length) {
+    capacityGrid.innerHTML = `<div class="capacity-item"><div class="capacity-title">No workload data</div><div class="capacity-meta">Create or assign tasks to populate owner capacity.</div></div>`;
+    return;
+  }
+  capacityGrid.innerHTML = capacityItems.map((item) => `
+    <div class="capacity-item">
+      <div class="capacity-title">${item.ownerName}</div>
+      <div class="capacity-meta">Open: ${item.openTasks} | Overdue: ${item.overdueTasks} | Blocked: ${item.blockedTasks}</div>
+      <div class="capacity-meta">Due soon: ${item.dueSoonTasks} | High priority: ${item.highPriorityOpen}</div>
+    </div>
+  `).join("");
+}
+
 function filteredTasks() {
   return tasks.filter((task) => {
     if (clientFilter.value !== "all" && task.clientId !== clientFilter.value) return false;
     if (priorityFilter.value !== "all" && task.priority !== priorityFilter.value) return false;
+    if (ownerFilter.value !== "all" && task.ownerUserId !== ownerFilter.value) return false;
+    if (dependencyFilter.value !== "all" && task.dependencyType !== dependencyFilter.value) return false;
     if (dueFilter.value === "next7") {
       const diff = Math.ceil((new Date(task.dueDate) - new Date()) / (1000 * 60 * 60 * 24));
       if (diff < 0 || diff > 7) return false;
@@ -645,8 +885,11 @@ function renderTasks() {
       <td><input type="checkbox" class="task-check" data-id="${task.id}"></td>
       <td>${task.title}<br><span class="inl-3ff05674dc"><span class="priority-dot ${task.priority}"></span>${task.priority.toUpperCase()} PRIORITY</span></td>
       <td>${getClientName(task.clientId)}</td>
+      <td>${ownerName(task.ownerUserId, task.ownerName || "Unassigned")}</td>
+      <td>${dependencyText(task)}</td>
       <td><span class="status ${task.status}">${getStatusText(task.status)}</span></td>
       <td>${task.dueDate}</td>
+      <td>${task.slaAgeDays || 0}d</td>
     </tr>
   `).join("");
 
@@ -680,22 +923,30 @@ function updateDrawer(taskId) {
       <button id="closeDrawerBtn" class="inl-aba57da535">x</button>
     </div>
     <div class="inl-9b624ae5de">
-      <p><strong>Status:</strong> ${task.status}</p>
+      <p><strong>Status:</strong> ${getStatusText(task.status)}</p>
       <p><strong>Priority:</strong> ${task.priority}</p>
+      <p><strong>Owner:</strong> ${ownerName(task.ownerUserId, task.ownerName || "Unassigned")}</p>
+      <p><strong>Dependency:</strong> ${dependencyText(task)}</p>
+      <p><strong>Recurrence:</strong> ${task.recurrenceRule || "none"}</p>
+      <p><strong>SLA Age:</strong> ${task.slaAgeDays || 0} days</p>
       <p><strong>Due:</strong> ${task.dueDate}</p>
+      <label class="label inl-9540da2ffe">Completion Notes</label>
+      <input id="completionNotesInput" value="${task.completionNotes || ""}" placeholder="Add completion notes">
       <button class="btn-primary inl-5371db1648" id="markCompleteBtn">Mark Complete</button>
     </div>
   `;
   drawer.style.display = "flex";
   document.getElementById("closeDrawerBtn").onclick = () => (drawer.style.display = "none");
   document.getElementById("markCompleteBtn").onclick = async () => {
+    const completionNotes = document.getElementById("completionNotesInput").value.trim();
     await fetch(`${API_BASE_URL}/tasks/${encodeURIComponent(task.id)}`, {
       method: "PATCH",
       headers: authHeaders(),
-      body: JSON.stringify({ status: "completed" }),
+      body: JSON.stringify({ status: "completed", completionNotes }),
     });
-    await loadTasks();
+    await Promise.all([loadTasks(), loadCapacity()]);
     drawer.style.display = "none";
+    notify("Task marked complete.", "success");
   };
 }
 
@@ -710,10 +961,34 @@ async function loadClients() {
     .join("");
 }
 
+async function loadTeam() {
+  const response = await fetch(`${API_BASE_URL}/settings/team`, { headers: authHeaders() });
+  if (!response.ok) return;
+  const data = await response.json();
+  teamMembers = data.items || [];
+
+  ownerFilter.innerHTML = `<option value="all">All Owners</option>` + teamMembers
+    .map((member) => `<option value="${member.id}">${member.fullName}</option>`)
+    .join("");
+  document.getElementById("newTaskOwner").innerHTML = teamMembers
+    .map((member) => `<option value="${member.id}" ${member.id === session.user.id ? "selected" : ""}>${member.fullName}</option>`)
+    .join("");
+}
+
+async function loadCapacity() {
+  const response = await fetch(`${API_BASE_URL}/tasks/capacity`, { headers: authHeaders() });
+  if (!response.ok) return;
+  const data = await response.json();
+  capacityItems = data.items || [];
+  renderCapacity();
+}
+
 async function loadTasks() {
   const query = new URLSearchParams();
   if (clientFilter.value && clientFilter.value !== "all") query.set("clientId", clientFilter.value);
   if (priorityFilter.value && priorityFilter.value !== "all") query.set("priority", priorityFilter.value);
+  if (ownerFilter.value && ownerFilter.value !== "all") query.set("ownerUserId", ownerFilter.value);
+  if (dependencyFilter.value && dependencyFilter.value !== "all") query.set("dependencyType", dependencyFilter.value);
   if (dueFilter.value === "next7") query.set("dueWithinDays", "7");
 
   const response = await fetch(`${API_BASE_URL}/tasks?${query.toString()}`, { headers: authHeaders() });
@@ -727,10 +1002,14 @@ async function loadTasks() {
 clientFilter.addEventListener("change", loadTasks);
 dueFilter.addEventListener("change", loadTasks);
 priorityFilter.addEventListener("change", loadTasks);
+ownerFilter.addEventListener("change", loadTasks);
+dependencyFilter.addEventListener("change", loadTasks);
 clearBtn.addEventListener("click", () => {
   clientFilter.value = "all";
   dueFilter.value = "all";
   priorityFilter.value = "all";
+  ownerFilter.value = "all";
+  dependencyFilter.value = "all";
   loadTasks();
 });
 
@@ -755,30 +1034,176 @@ document.getElementById("saveNewTask").onclick = async () => {
   const clientName = document.getElementById("newTaskClient").value.trim();
   const dueDate = document.getElementById("newTaskDue").value;
   const priority = (document.querySelector("#priorityGroup button.active") || {}).dataset?.prio || "medium";
+  const status = document.getElementById("newTaskStatus").value;
+  const ownerUserId = document.getElementById("newTaskOwner").value;
+  const dependencyType = document.getElementById("newTaskDependencyType").value;
+  const dependencyRef = document.getElementById("newTaskDependencyRef").value.trim();
+  const recurrenceRule = document.getElementById("newTaskRecurrence").value;
 
   const client = clients.find((c) => c.name.toLowerCase() === clientName.toLowerCase()) || clients[0];
-  if (!title || !client || !dueDate) return;
+  if (!title || !client || !dueDate) {
+    notify("Task title, client, and due date are required.", "error");
+    return;
+  }
 
-  await fetch(`${API_BASE_URL}/tasks`, {
+  const response = await fetch(`${API_BASE_URL}/tasks`, {
     method: "POST",
     headers: authHeaders(),
-    body: JSON.stringify({ clientId: client.id, title, dueDate, priority }),
+    body: JSON.stringify({
+      clientId: client.id,
+      title,
+      dueDate,
+      priority,
+      status,
+      ownerUserId,
+      dependencyType,
+      dependencyRef,
+      recurrenceRule,
+    }),
   });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    notify(payload.error || "Failed to create task.", "error");
+    return;
+  }
 
   modal.style.display = "none";
-  await loadTasks();
+  await Promise.all([loadTasks(), loadCapacity()]);
+  notify("Task created.", "success");
 };
 
 document.getElementById("runAutomationBtn").onclick = async () => {
-  await fetch(`${API_BASE_URL}/tasks/automation/run`, {
+  const response = await fetch(`${API_BASE_URL}/tasks/automation/run`, {
     method: "POST",
     headers: authHeaders(),
     body: "{}",
   });
-  await loadTasks();
+  const payload = await response.json().catch(() => ({}));
+  await Promise.all([loadTasks(), loadCapacity(), loadTaskTemplates()]);
+  if (!response.ok) {
+    notify(payload.error || "Automation run failed.", "error");
+    return;
+  }
+  notify(`Automation complete. ${payload.slaAlerts || 0} SLA alerts, ${payload.generatedFromTemplates || 0} generated from templates.`, "success");
 };
 
-loadClients().then(loadTasks);
+function renderTemplates() {
+  const templateList = document.getElementById("templateList");
+  if (!templates.length) {
+    templateList.innerHTML = `<div class="capacity-meta">No templates yet.</div>`;
+  } else {
+    templateList.innerHTML = templates.map((template) => `
+      <div class="template-row">
+        <div>
+          <strong>${template.title}</strong>
+          <div class="meta">${template.recurrenceRule} | ${template.priority} | due+${template.defaultDueInDays}d</div>
+        </div>
+        <button type="button" class="mini-btn" data-template-delete="${template.id}">Delete</button>
+      </div>
+    `).join("");
+  }
+
+  const ruleList = document.getElementById("ruleList");
+  if (!automationRules.length) {
+    ruleList.innerHTML = `<div class="capacity-meta">No automation rules yet.</div>`;
+  } else {
+    ruleList.innerHTML = automationRules.map((rule) => `
+      <div class="template-row">
+        <div>
+          <strong>${rule.trigger.replace(/_/g, " ")}</strong>
+          <div class="meta">${rule.action.replace(/_/g, " ")} at ${rule.thresholdDays} day(s)</div>
+        </div>
+        <button type="button" class="mini-btn" data-rule-delete="${rule.id}">Delete</button>
+      </div>
+    `).join("");
+  }
+}
+
+async function loadTaskTemplates() {
+  const response = await fetch(`${API_BASE_URL}/tasks/templates`, { headers: authHeaders() });
+  if (!response.ok) return;
+  const data = await response.json();
+  templates = data.templates || [];
+  automationRules = data.automationRules || [];
+  renderTemplates();
+}
+
+document.getElementById("openTemplatesBtn").addEventListener("click", () => {
+  templatesModal.style.display = "flex";
+  renderTemplates();
+});
+document.getElementById("closeTemplatesModal").addEventListener("click", () => { templatesModal.style.display = "none"; });
+
+document.getElementById("saveTemplateBtn").addEventListener("click", async () => {
+  const title = document.getElementById("templateTitle").value.trim();
+  if (!title) return notify("Template title is required.", "error");
+  const payload = {
+    title,
+    priority: document.getElementById("templatePriority").value,
+    recurrenceRule: document.getElementById("templateRecurrence").value,
+    defaultDueInDays: Number(document.getElementById("templateDueDays").value || 7),
+    ownerUserId: document.getElementById("newTaskOwner").value || session.user.id,
+  };
+  const response = await fetch(`${API_BASE_URL}/tasks/templates`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) return notify(data.error || "Failed to save template.", "error");
+  document.getElementById("templateTitle").value = "";
+  await loadTaskTemplates();
+  notify("Template saved.", "success");
+});
+
+document.getElementById("saveRuleBtn").addEventListener("click", async () => {
+  const payload = {
+    trigger: document.getElementById("ruleTrigger").value,
+    action: document.getElementById("ruleAction").value,
+    thresholdDays: Number(document.getElementById("ruleThresholdDays").value || 2),
+  };
+  const response = await fetch(`${API_BASE_URL}/tasks/automation-rules`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify(payload),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) return notify(data.error || "Failed to save automation rule.", "error");
+  await loadTaskTemplates();
+  notify("Automation rule saved.", "success");
+});
+
+document.getElementById("templateList").addEventListener("click", async (event) => {
+  const button = event.target.closest("button[data-template-delete]");
+  if (!button) return;
+  const id = button.getAttribute("data-template-delete");
+  const response = await fetch(`${API_BASE_URL}/tasks/templates/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+    body: "{}",
+  });
+  if (!response.ok) return notify("Failed to delete template.", "error");
+  await loadTaskTemplates();
+  notify("Template deleted.", "success");
+});
+
+document.getElementById("ruleList").addEventListener("click", async (event) => {
+  const button = event.target.closest("button[data-rule-delete]");
+  if (!button) return;
+  const id = button.getAttribute("data-rule-delete");
+  const response = await fetch(`${API_BASE_URL}/tasks/automation-rules/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: authHeaders(),
+    body: "{}",
+  });
+  if (!response.ok) return notify("Failed to delete rule.", "error");
+  await loadTaskTemplates();
+  notify("Rule deleted.", "success");
+});
+
+Promise.all([loadClients(), loadTeam(), loadTasks(), loadCapacity(), loadTaskTemplates()]).catch((error) => {
+  notify(error.message || "Failed to load task workspace.", "error");
+});
 </script>
 
 </body>

@@ -314,6 +314,96 @@ body{
 .input-area input {
   background: #ffffff;
 }
+
+.tag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.tag-chip {
+  border: 1px solid #dbe3f0;
+  background: #fff;
+  color: #334155;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.tag-chip.active {
+  background: #0f172a;
+  color: #f8fafc;
+  border-color: #0f172a;
+}
+.thread-row-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+.thread-tag {
+  border: 1px solid #dbe3f0;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  color: #475569;
+  background: #f8fafc;
+}
+.sla-chip {
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  border: 1px solid transparent;
+}
+.sla-chip.overdue {
+  background: #fee2e2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+.sla-chip.due_soon {
+  background: #fff7ed;
+  color: #9a3412;
+  border-color: #fed7aa;
+}
+.sla-chip.open {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+.composer-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.composer-row select, .composer-row input {
+  height: 34px;
+  border: 1px solid #dbe3f0;
+  border-radius: 8px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+.message-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.message-tag {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+}
+.message-doc-link {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 12px;
+  color: #1d4ed8;
+}
 </style>
 <link rel="stylesheet" href="../shared/inline-migrated.css">
 </head>
@@ -371,6 +461,17 @@ body{
       <label class="sr-only" for="clientSearchInput">Search clients</label>
       <input id="clientSearchInput" class="messages-search-input" placeholder="Search clients...">
     </div>
+    <div class="tag-chips" id="threadTagFilters">
+      <button type="button" class="tag-chip active" data-tag="all">All</button>
+      <button type="button" class="tag-chip" data-tag="urgent">Urgent</button>
+      <button type="button" class="tag-chip" data-tag="compliance">Compliance</button>
+      <button type="button" class="tag-chip" data-tag="document_request">Document Request</button>
+      <button type="button" class="tag-chip" data-tag="billing">Billing</button>
+    </div>
+    <label class="inl-70db8519c5">
+      <input id="slaOverdueOnly" type="checkbox" />
+      SLA overdue only
+    </label>
   </div>
 
   <div class="card-content" id="clientList"></div>
@@ -391,11 +492,28 @@ body{
   </div>
 
   <div class="input-area inl-cb45893012" id="inputArea">
-    <label for="messageInput" class="sr-only">Type your message reply</label>
-    <input id="messageInput" placeholder="Type your reply..." aria-label="Type your message reply" />
-    <button type="button" class="send-btn" id="sendBtn" aria-label="Send message" title="Send message">
-      <i class="fa fa-paper-plane"></i>
-    </button>
+    <div class="inl-8c537cb4ca">
+      <div class="composer-row">
+        <select id="composerTag">
+          <option value="">No Tag</option>
+          <option value="urgent">Urgent</option>
+          <option value="compliance">Compliance</option>
+          <option value="document_request">Document request</option>
+          <option value="billing">Billing</option>
+        </select>
+        <select id="composerDocSelect">
+          <option value="">Attach document record...</option>
+        </select>
+        <input id="composerSlaHours" type="number" min="1" max="72" value="24" placeholder="SLA hours">
+      </div>
+      <div class="inl-f05f712f16">
+        <label for="messageInput" class="sr-only">Type your message reply</label>
+        <input id="messageInput" placeholder="Type your reply..." aria-label="Type your message reply" />
+        <button type="button" class="send-btn" id="sendBtn" aria-label="Send message" title="Send message">
+          <i class="fa fa-paper-plane"></i>
+        </button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -419,11 +537,17 @@ const chatHeader = document.getElementById("chatHeader");
 const inputArea = document.getElementById("inputArea");
 const sendBtn = document.getElementById("sendBtn");
 const messageInput = document.getElementById("messageInput");
+const composerTag = document.getElementById("composerTag");
+const composerDocSelect = document.getElementById("composerDocSelect");
+const composerSlaHours = document.getElementById("composerSlaHours");
+const threadTagFilters = document.getElementById("threadTagFilters");
+const slaOverdueOnly = document.getElementById("slaOverdueOnly");
 
 let threads = [];
 let activeClientId = "";
 let threadFilter = "assigned";
 let pollTimer = null;
+let activeTag = "all";
 const threadState = new Map();
 
 function authHeaders() {
@@ -456,6 +580,9 @@ function mapThread(item) {
     unread: Number(item.unreadCount || 0),
     count: Number(item.count || 0),
     lastMessageAt: last?.createdAt || null,
+    tags: Array.isArray(item.tags) ? item.tags : [],
+    responseDueAt: item.responseDueAt || null,
+    slaStatus: item.slaStatus || "none",
     messages: [],
   };
 }
@@ -465,6 +592,8 @@ function renderClients() {
   clientList.innerHTML = "";
   const filtered = threads.filter((thread) => {
     if (threadFilter !== "all" && thread.section !== threadFilter) return false;
+    if (activeTag !== "all" && !thread.tags.includes(activeTag)) return false;
+    if (slaOverdueOnly.checked && thread.slaStatus !== "overdue") return false;
     if (!q) return true;
     return thread.name.toLowerCase().includes(q) || thread.company.toLowerCase().includes(q);
   });
@@ -484,10 +613,15 @@ function renderClients() {
         ${thread.unread > 0 ? `<span class="badge">${thread.unread}</span>` : ""}
       </div>
       <div class="client-meta">${escapeHtml(thread.company)}</div>
+      <div class="thread-row-meta">
+        ${thread.tags.slice(0, 2).map((tag) => `<span class="thread-tag">${escapeHtml(tag.replace(/_/g, " "))}</span>`).join("")}
+        ${thread.slaStatus && thread.slaStatus !== "none" && thread.slaStatus !== "met" ? `<span class="sla-chip ${thread.slaStatus}">${thread.slaStatus.replace(/_/g, " ")}</span>` : ""}
+      </div>
     `;
     div.addEventListener("click", async () => {
       activeClientId = thread.id;
       await loadMessages(thread.id, { reset: true });
+      await loadClientDocuments(thread.id);
       renderClients();
       renderActiveThread();
     });
@@ -506,7 +640,7 @@ function renderActiveThread() {
 
   chatHeader.innerHTML = `
     <h3>${escapeHtml(thread.name)}</h3>
-    <p>${escapeHtml(thread.company)} | ${thread.count} message(s)</p>
+    <p>${escapeHtml(thread.company)} | ${thread.count} message(s)${thread.responseDueAt ? ` | Reply due ${shortTime(thread.responseDueAt)}` : ""}</p>
   `;
   inputArea.style.display = "flex";
 
@@ -535,6 +669,8 @@ function renderActiveThread() {
     row.innerHTML = `
       <div class="message-bubble ${msg.from}">
         ${escapeHtml(msg.text)}
+        ${Array.isArray(msg.tags) && msg.tags.length ? `<div class="message-tags">${msg.tags.map((tag) => `<span class="message-tag">${escapeHtml(tag.replace(/_/g, " "))}</span>`).join("")}</div>` : ""}
+        ${msg.linkedDocumentId ? `<a href="documentview.html?id=${encodeURIComponent(msg.linkedDocumentId)}" class="message-doc-link">Linked doc: ${escapeHtml(msg.linkedDocumentName || msg.linkedDocumentId)}</a>` : ""}
         <div class="meta">${msg.from === "own" ? "You" : escapeHtml(thread.name)} | ${shortTime(msg.createdAt)} | ${escapeHtml(msg.deliveryStatus || "sent")}</div>
       </div>
     `;
@@ -567,6 +703,9 @@ async function loadMessages(clientId, { reset = true } = {}) {
     text: item.body || "",
     createdAt: item.createdAt,
     deliveryStatus: item.deliveryStatus || "sent",
+    tags: Array.isArray(item.tags) ? item.tags : [],
+    linkedDocumentId: item.linkedDocumentId || "",
+    linkedDocumentName: item.linkedDocumentName || "",
   }));
   if (reset) {
     thread.messages = mapped;
@@ -598,10 +737,15 @@ async function sendMessage() {
   if (!thread) return;
   const text = messageInput.value.trim();
   if (!text) return;
+  const selectedTag = String(composerTag.value || "").trim();
+  const tags = selectedTag ? [selectedTag] : [];
+  const linkedDocumentId = String(composerDocSelect.value || "").trim();
+  const slaHours = Math.max(1, Math.min(72, Number(composerSlaHours.value || 24)));
+  const slaDueAt = new Date(Date.now() + (slaHours * 60 * 60 * 1000)).toISOString();
   const response = await fetch(`${API_BASE_URL}/messages/threads/${encodeURIComponent(thread.id)}`, {
     method: "POST",
     headers: authHeaders(),
-    body: JSON.stringify({ body: text }),
+    body: JSON.stringify({ body: text, tags, linkedDocumentId, slaDueAt }),
   });
   if (!response.ok) throw new Error("Failed to send message");
   const payload = await response.json().catch(() => ({}));
@@ -613,11 +757,15 @@ async function sendMessage() {
       text: message.body || text,
       createdAt: message.createdAt || new Date().toISOString(),
       deliveryStatus: message.deliveryStatus || "sent",
+      tags: Array.isArray(message.tags) ? message.tags : [],
+      linkedDocumentId: message.linkedDocumentId || "",
+      linkedDocumentName: message.linkedDocumentName || "",
     });
   } else {
-    thread.messages.push({ id: `temp_${Date.now()}`, from: "own", text, createdAt: new Date().toISOString(), deliveryStatus: "sent" });
+    thread.messages.push({ id: `temp_${Date.now()}`, from: "own", text, createdAt: new Date().toISOString(), deliveryStatus: "sent", tags, linkedDocumentId });
   }
   messageInput.value = "";
+  composerTag.value = "";
   renderActiveThread();
   renderClients();
 }
@@ -636,10 +784,30 @@ async function pollActiveThread() {
     text: item.body || "",
     createdAt: item.createdAt,
     deliveryStatus: item.deliveryStatus || "sent",
+    tags: Array.isArray(item.tags) ? item.tags : [],
+    linkedDocumentId: item.linkedDocumentId || "",
+    linkedDocumentName: item.linkedDocumentName || "",
   }));
   thread.count = Number(payload.pagination?.total || thread.messages.length);
+  thread.responseDueAt = payload.threadSla?.responseDueAt || null;
+  thread.slaStatus = payload.threadSla?.slaStatus || thread.slaStatus;
   renderActiveThread();
   renderClients();
+}
+
+async function loadClientDocuments(clientId) {
+  composerDocSelect.innerHTML = `<option value="">Attach document record...</option>`;
+  if (!clientId) return;
+  const response = await fetch(`${API_BASE_URL}/documents?clientId=${encodeURIComponent(clientId)}`, { headers: authHeaders() });
+  if (!response.ok) return;
+  const payload = await response.json().catch(() => ({}));
+  const docs = Array.isArray(payload.items) ? payload.items : [];
+  docs.slice(0, 80).forEach((doc) => {
+    const option = document.createElement("option");
+    option.value = doc.id;
+    option.textContent = `${doc.name} (${doc.status})`;
+    composerDocSelect.appendChild(option);
+  });
 }
 
 document.querySelectorAll(".thread-filter").forEach((btn) => {
@@ -651,6 +819,15 @@ document.querySelectorAll(".thread-filter").forEach((btn) => {
   });
 });
 document.getElementById("clientSearchInput").addEventListener("input", renderClients);
+threadTagFilters.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-tag]");
+  if (!button) return;
+  activeTag = button.getAttribute("data-tag") || "all";
+  threadTagFilters.querySelectorAll("button[data-tag]").forEach((item) => item.classList.remove("active"));
+  button.classList.add("active");
+  renderClients();
+});
+slaOverdueOnly.addEventListener("change", renderClients);
 sendBtn.addEventListener("click", async () => {
   try { await sendMessage(); } catch (error) { if (window.ClientUI) window.ClientUI.toast(error.message || "Send failed", "error"); }
 });
@@ -665,6 +842,7 @@ messageInput.addEventListener("keydown", (event) => {
   try {
     await loadThreads();
     if (activeClientId) await loadMessages(activeClientId, { reset: true });
+    if (activeClientId) await loadClientDocuments(activeClientId);
     renderClients();
     renderActiveThread();
     if (pollTimer) clearInterval(pollTimer);

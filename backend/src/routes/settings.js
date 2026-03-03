@@ -3,9 +3,46 @@ import { addAudit } from "../lib/audit.js";
 import { getDb } from "../lib/db.js";
 import { config } from "../lib/config.js";
 import { store, utils } from "../lib/store.js";
+import { requireRole } from "../lib/auth.js";
 
 const router = express.Router();
 const db = config.databaseUrl ? getDb() : null;
+const TEAM_ROLES = ["accountant", "accountant_manager", "accountant_admin"];
+
+function normalizePermissions(value) {
+  const source = value && typeof value === "object" ? value : {};
+  return {
+    manageClients: Boolean(source.manageClients),
+    manageCompliance: Boolean(source.manageCompliance),
+    manageBilling: Boolean(source.manageBilling),
+    manageTeam: Boolean(source.manageTeam),
+    viewAuditLogs: Boolean(source.viewAuditLogs),
+  };
+}
+
+function defaultNotificationMatrix() {
+  return {
+    compliance_alert: { inApp: true, email: true, sms: false },
+    overdue_task: { inApp: true, email: true, sms: false },
+    message_received: { inApp: true, email: false, sms: false },
+    document_uploaded: { inApp: true, email: false, sms: false },
+  };
+}
+
+function normalizeNotificationMatrix(value) {
+  const base = defaultNotificationMatrix();
+  const source = value && typeof value === "object" ? value : {};
+  const output = {};
+  for (const key of Object.keys(base)) {
+    const row = source[key] && typeof source[key] === "object" ? source[key] : {};
+    output[key] = {
+      inApp: row.inApp === undefined ? base[key].inApp : Boolean(row.inApp),
+      email: row.email === undefined ? base[key].email : Boolean(row.email),
+      sms: row.sms === undefined ? base[key].sms : Boolean(row.sms),
+    };
+  }
+  return output;
+}
 
 function findUser(userId) {
   return store.users.find((candidate) => candidate.id === userId);
@@ -257,6 +294,211 @@ router.get("/security/connected-devices", async (req, res) => {
     .slice(0, 10);
 
   return res.json({ items });
+});
+
+router.get("/settings/team", requireRole("accountant"), async (req, res) => {
+  const [users, clients] = await Promise.all([
+    db ? db.user.findMany() : Promise.resolve(store.users),
+    db ? db.client.findMany() : Promise.resolve(store.clients),
+  ]);
+
+  const availableClientIds = new Set(Array.isArray(req.user.clientIds) ? req.user.clientIds : []);
+  const availableClients = clients
+    .filter((client) => availableClientIds.has(client.id))
+    .map((client) => ({ id: client.id, name: client.name }))
+    .sort((a, b) => String(a.name).localeCompare(String(b.name)));
+
+  const items = users
+    .filter((user) => TEAM_ROLES.includes(String(user.role || "").toLowerCase()))
+    .map((user) => {
+      const profile = user.profile && typeof user.profile === "object" ? user.profile : {};
+      const permissions = normalizePermissions(profile.permissions || {});
+      const managerUserId = String(profile.managerUserId || "");
+      const scopedClientIds = Array.isArray(user.clientIds)
+        ? user.clientIds.filter((id) => availableClientIds.has(id))
+        : [];
+      return {
+        id: user.id,
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role,
+        clientIds: scopedClientIds,
+        managerUserId,
+        permissions,
+      };
+    })
+    .sort((a, b) => String(a.fullName).localeCompare(String(b.fullName)));
+
+  return res.json({
+    items,
+    roles: TEAM_ROLES,
+    availableClients,
+  });
+});
+
+router.patch("/settings/team/:userId", requireRole("accountant"), async (req, res) => {
+  const userId = String(req.params.userId || "");
+  const target = db
+    ? await db.user.findUnique({ where: { id: userId } })
+    : store.users.find((item) => item.id === userId);
+  if (!target) return res.status(404).json({ error: "Team member not found" });
+  if (!TEAM_ROLES.includes(String(target.role || "").toLowerCase())) {
+    return res.status(400).json({ error: "Only accountant team members can be updated here" });
+  }
+
+  const role = req.body?.role !== undefined ? String(req.body.role || "").trim().toLowerCase() : target.role;
+  if (req.body?.role !== undefined && !TEAM_ROLES.includes(role)) {
+    return res.status(400).json({ error: "Invalid team role" });
+  }
+
+  const allowedClientIds = new Set(Array.isArray(req.user.clientIds) ? req.user.clientIds : []);
+  const nextClientIds = req.body?.clientIds !== undefined
+    ? (Array.isArray(req.body.clientIds) ? req.body.clientIds : [])
+      .map((id) => String(id))
+      .filter((id) => allowedClientIds.has(id))
+    : (Array.isArray(target.clientIds) ? target.clientIds.filter((id) => allowedClientIds.has(id)) : []);
+
+  const profile = target.profile && typeof target.profile === "object" ? target.profile : {};
+  if (req.body?.managerUserId !== undefined) profile.managerUserId = String(req.body.managerUserId || "");
+  if (req.body?.permissions !== undefined) profile.permissions = normalizePermissions(req.body.permissions);
+
+  if (db) {
+    await db.user.update({
+      where: { id: userId },
+      data: {
+        role,
+        clientIds: nextClientIds,
+        profile,
+      },
+    });
+  } else {
+    target.role = role;
+    target.clientIds = nextClientIds;
+    target.profile = profile;
+  }
+
+  addAudit({
+    actorUserId: req.user.id,
+    action: "settings.team.update",
+    entityType: "user",
+    entityId: userId,
+    metadata: {
+      role,
+      clientIds: nextClientIds,
+      managerUserId: profile.managerUserId || "",
+    },
+  });
+
+  return res.json({
+    ok: true,
+    user: {
+      id: target.id,
+      fullName: target.fullName,
+      email: target.email,
+      role,
+      clientIds: nextClientIds,
+      managerUserId: String(profile.managerUserId || ""),
+      permissions: normalizePermissions(profile.permissions || {}),
+    },
+  });
+});
+
+router.get("/settings/notification-matrix", async (req, res) => {
+  const user = await getUser(req.user.id);
+  if (!user) return res.status(404).json({ error: "User not found" });
+  const profile = user.profile && typeof user.profile === "object" ? user.profile : {};
+  const matrix = normalizeNotificationMatrix(profile.notificationMatrix || {});
+  return res.json({ matrix });
+});
+
+router.patch("/settings/notification-matrix", async (req, res) => {
+  const user = await getUser(req.user.id);
+  if (!user) return res.status(404).json({ error: "User not found" });
+
+  const profile = user.profile && typeof user.profile === "object" ? user.profile : {};
+  const matrix = normalizeNotificationMatrix(req.body?.matrix || {});
+  profile.notificationMatrix = matrix;
+
+  if (db) {
+    await db.user.update({
+      where: { id: user.id },
+      data: { profile },
+    });
+  } else {
+    user.profile = profile;
+  }
+
+  addAudit({
+    actorUserId: req.user.id,
+    action: "settings.notification_matrix.update",
+    entityType: "user",
+    entityId: user.id,
+  });
+
+  return res.json({ ok: true, matrix });
+});
+
+router.get("/settings/integrations/health", requireRole("accountant"), async (req, res) => {
+  const ids = Array.isArray(req.user.clientIds) ? req.user.clientIds : [];
+  const accounts = db
+    ? await db.complianceAccount.findMany({ where: { clientId: { in: ids } } })
+    : store.complianceAccounts.filter((item) => ids.includes(item.clientId));
+
+  const bySource = new Map();
+  for (const source of ["SARS", "CIPC", "CSD"]) {
+    bySource.set(source, {
+      source,
+      status: "disconnected",
+      connectedClients: 0,
+      errors: 0,
+      lastSyncedAt: null,
+    });
+  }
+
+  for (const account of accounts) {
+    const source = String(account.source || "").toUpperCase();
+    const bucket = bySource.get(source) || {
+      source,
+      status: "disconnected",
+      connectedClients: 0,
+      errors: 0,
+      lastSyncedAt: null,
+    };
+    if (String(account.status || "").toLowerCase() === "connected") bucket.connectedClients += 1;
+    if (account.lastError) bucket.errors += 1;
+    if (account.lastSyncedAt) {
+      const ts = new Date(account.lastSyncedAt);
+      if (!Number.isNaN(ts.getTime())) {
+        const prev = bucket.lastSyncedAt ? new Date(bucket.lastSyncedAt) : null;
+        if (!prev || ts.getTime() > prev.getTime()) bucket.lastSyncedAt = ts.toISOString();
+      }
+    }
+    bucket.status = bucket.errors > 0 ? "warning" : (bucket.connectedClients > 0 ? "healthy" : "disconnected");
+    bySource.set(source, bucket);
+  }
+
+  const connectors = Array.from(bySource.values());
+  const overallStatus = connectors.some((item) => item.errors > 0)
+    ? "warning"
+    : connectors.some((item) => item.connectedClients > 0)
+      ? "healthy"
+      : "disconnected";
+
+  return res.json({
+    overallStatus,
+    api: {
+      status: "healthy",
+      checkedAt: utils.nowIso(),
+    },
+    database: {
+      enabled: Boolean(config.databaseUrl),
+      status: config.databaseUrl ? "connected" : "disabled",
+    },
+    connectors,
+    links: {
+      complianceBoard: "compliance-board.html",
+    },
+  });
 });
 
 export default router;

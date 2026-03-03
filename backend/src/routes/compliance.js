@@ -12,6 +12,7 @@ import {
   getFirmHeatmap,
   getFirmComplianceOverview,
   getCompliancePortfolio,
+  getCompliancePortfolioCsv,
   getFrameworkComplianceItems,
   getSyncDiagnostics,
   listFirmAlerts,
@@ -103,6 +104,7 @@ router.get("/portfolio", requireRole("accountant"), async (req, res, next) => {
       status: String(req.query.status || ""),
       source: String(req.query.source || ""),
       owner: String(req.query.owner || ""),
+      ownerUserId: String(req.query.ownerUserId || ""),
       overdueOnly: String(req.query.overdueOnly || ""),
       sortBy: String(req.query.sortBy || ""),
       sortDir: String(req.query.sortDir || ""),
@@ -237,6 +239,25 @@ router.get("/reports/firm.csv", requireRole("accountant"), async (req, res, next
     const csv = await getFirmComplianceReportCsv(req.user);
     res.setHeader("Content-Type", "text/csv; charset=utf-8");
     res.setHeader("Content-Disposition", 'attachment; filename="firm-compliance-report.csv"');
+    return res.send(csv);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.get("/reports/portfolio.csv", requireRole("accountant"), async (req, res, next) => {
+  try {
+    const csv = await getCompliancePortfolioCsv(req.user, {
+      status: String(req.query.status || ""),
+      source: String(req.query.source || ""),
+      owner: String(req.query.owner || ""),
+      ownerUserId: String(req.query.ownerUserId || ""),
+      overdueOnly: String(req.query.overdueOnly || ""),
+      sortBy: String(req.query.sortBy || ""),
+      sortDir: String(req.query.sortDir || ""),
+    });
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", 'attachment; filename="portfolio-compliance-report.csv"');
     return res.send(csv);
   } catch (error) {
     return next(error);

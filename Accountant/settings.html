@@ -346,6 +346,74 @@ body{
   border-radius: 16px;
 }
 
+.settings-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.settings-table th,
+.settings-table td {
+  padding: 10px 8px;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 13px;
+  text-align: left;
+}
+
+.settings-table th {
+  color: #64748b;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.matrix-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 8px;
+  align-items: center;
+}
+
+.matrix-grid .head {
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.matrix-row {
+  display: contents;
+}
+
+.integration-list {
+  display: grid;
+  gap: 10px;
+}
+
+.integration-item {
+  border: 1px solid #dbe3f0;
+  border-radius: 10px;
+  padding: 10px;
+  background: #fff;
+}
+
+.pill {
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.pill.healthy {
+  background: #dcfce7;
+  color: #166534;
+}
+.pill.warning {
+  background: #ffedd5;
+  color: #9a3412;
+}
+.pill.disconnected {
+  background: #e2e8f0;
+  color: #334155;
+}
+
 </style>
   <script defer src="accountant-nav.js"></script>
 </head>
@@ -470,6 +538,50 @@ body{
 
   </div>
 
+  <div class="card">
+    <div class="page-header-row">
+      <h3>Team Roles & Permissions</h3>
+      <button class="btn btn-outline" id="reloadTeamBtn" type="button">Refresh Team</button>
+    </div>
+    <div class="acc-text-muted inl-f60da9f356">Manage role hierarchy, owner manager, and client access routing.</div>
+    <div class="inl-b38430e0bc">
+      <table class="settings-table">
+        <thead>
+          <tr>
+            <th>Team Member</th>
+            <th>Role</th>
+            <th>Manager</th>
+            <th>Client Scope</th>
+            <th>Permissions</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="teamTableBody"></tbody>
+      </table>
+    </div>
+    <div id="teamMessage" class="page-sub form-feedback"></div>
+  </div>
+
+  <div class="card">
+    <h3>Notification Routing Matrix</h3>
+    <div class="acc-text-muted inl-ef91af1f34">Define which channel receives each event type for your account.</div>
+    <div class="matrix-grid inl-d53d77c608" id="notificationMatrix"></div>
+    <button class="btn btn-primary inl-4ec0d8952a" id="saveMatrixBtn" type="button">Save Notification Matrix</button>
+    <div id="matrixMessage" class="page-sub form-feedback"></div>
+  </div>
+
+  <div class="card">
+    <div class="page-header-row">
+      <h3>Integration Health</h3>
+      <button class="btn btn-outline" id="refreshIntegrationBtn" type="button">Refresh Health</button>
+    </div>
+    <div class="integration-list" id="integrationHealthList"></div>
+    <div class="toolbar-actions inl-6eb46e13a5">
+      <a href="compliance-board.html" class="btn btn-primary">Open Compliance Board</a>
+    </div>
+    <div id="integrationMessage" class="page-sub form-feedback"></div>
+  </div>
+
   <!-- DEACTIVATE -->
   <div class="danger-box">
     <h4>Deactivate Account</h4>
@@ -508,11 +620,14 @@ function setMessage(id, message, kind = "info") {
 
 let loadedProfile = null;
 let loadedSecurity = null;
+let teamMembers = [];
+let availableClients = [];
+let matrixState = null;
 
 async function loadSettings() {
   const [profileRes, securityRes] = await Promise.all([
-    fetch(`${API_BASE_URL}/settings/profile`, { headers: authHeaders() }),
-    fetch(`${API_BASE_URL}/settings/security`, { headers: authHeaders() }),
+    fetch(`${API_BASE_URL}/profile`, { headers: authHeaders() }),
+    fetch(`${API_BASE_URL}/security`, { headers: authHeaders() }),
   ]);
   if (!profileRes.ok || !securityRes.ok) throw new Error("Failed to load settings");
   loadedProfile = await profileRes.json();
@@ -536,6 +651,173 @@ async function loadSettings() {
   document.getElementById("passwordStatus").textContent = `Last changed ${loadedSecurity.lastPasswordChange ? new Date(loadedSecurity.lastPasswordChange).toLocaleDateString() : "-"}`;
 }
 
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function renderTeamTable() {
+  const tbody = document.getElementById("teamTableBody");
+  if (!tbody) return;
+  if (!teamMembers.length) {
+    tbody.innerHTML = `<tr><td colspan="6">No team members available.</td></tr>`;
+    return;
+  }
+
+  const roleOptions = ["accountant", "accountant_manager", "accountant_admin"];
+  tbody.innerHTML = teamMembers.map((member) => `
+    <tr data-user-id="${member.id}">
+      <td>
+        <strong>${escapeHtml(member.fullName)}</strong><br>
+        <span class="acc-text-muted">${escapeHtml(member.email)}</span>
+      </td>
+      <td>
+        <select data-field="role">
+          ${roleOptions.map((role) => `<option value="${role}" ${member.role === role ? "selected" : ""}>${role.replace(/_/g, " ")}</option>`).join("")}
+        </select>
+      </td>
+      <td>
+        <select data-field="managerUserId">
+          <option value="">None</option>
+          ${teamMembers.map((candidate) => `<option value="${candidate.id}" ${member.managerUserId === candidate.id ? "selected" : ""}>${escapeHtml(candidate.fullName)}</option>`).join("")}
+        </select>
+      </td>
+      <td>
+        <select data-field="clientIds" multiple size="3">
+          ${availableClients.map((client) => `<option value="${client.id}" ${member.clientIds.includes(client.id) ? "selected" : ""}>${escapeHtml(client.name)}</option>`).join("")}
+        </select>
+      </td>
+      <td>
+        <label><input type="checkbox" data-perm="manageClients" ${member.permissions?.manageClients ? "checked" : ""}> Clients</label><br>
+        <label><input type="checkbox" data-perm="manageCompliance" ${member.permissions?.manageCompliance ? "checked" : ""}> Compliance</label><br>
+        <label><input type="checkbox" data-perm="manageBilling" ${member.permissions?.manageBilling ? "checked" : ""}> Billing</label><br>
+        <label><input type="checkbox" data-perm="manageTeam" ${member.permissions?.manageTeam ? "checked" : ""}> Team</label><br>
+        <label><input type="checkbox" data-perm="viewAuditLogs" ${member.permissions?.viewAuditLogs ? "checked" : ""}> Audit</label>
+      </td>
+      <td>
+        <button type="button" class="btn btn-outline" data-action="save-team-row">Save</button>
+      </td>
+    </tr>
+  `).join("");
+}
+
+async function loadTeamSettings() {
+  const response = await fetch(`${API_BASE_URL}/settings/team`, { headers: authHeaders() });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || "Failed to load team settings");
+  teamMembers = Array.isArray(data.items) ? data.items : [];
+  availableClients = Array.isArray(data.availableClients) ? data.availableClients : [];
+  renderTeamTable();
+}
+
+async function saveTeamRow(row) {
+  const userId = row.getAttribute("data-user-id");
+  if (!userId) return;
+  const role = row.querySelector('select[data-field="role"]').value;
+  const managerUserId = row.querySelector('select[data-field="managerUserId"]').value;
+  const clientIds = Array.from(row.querySelector('select[data-field="clientIds"]').selectedOptions).map((option) => option.value);
+  const permissions = {
+    manageClients: row.querySelector('input[data-perm="manageClients"]').checked,
+    manageCompliance: row.querySelector('input[data-perm="manageCompliance"]').checked,
+    manageBilling: row.querySelector('input[data-perm="manageBilling"]').checked,
+    manageTeam: row.querySelector('input[data-perm="manageTeam"]').checked,
+    viewAuditLogs: row.querySelector('input[data-perm="viewAuditLogs"]').checked,
+  };
+
+  const response = await fetch(`${API_BASE_URL}/settings/team/${encodeURIComponent(userId)}`, {
+    method: "PATCH",
+    headers: authHeaders(),
+    body: JSON.stringify({ role, managerUserId, clientIds, permissions }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || "Failed to save team member settings");
+  setMessage("teamMessage", "Team member updated.", "success");
+  await loadTeamSettings();
+}
+
+function renderNotificationMatrix() {
+  const container = document.getElementById("notificationMatrix");
+  if (!container || !matrixState) return;
+
+  const labels = {
+    compliance_alert: "Compliance Alert",
+    overdue_task: "Overdue Task",
+    message_received: "Message Received",
+    document_uploaded: "Document Uploaded",
+  };
+
+  container.innerHTML = `
+    <div class="head">Event</div>
+    <div class="head">In-App</div>
+    <div class="head">Email</div>
+    <div class="head">SMS</div>
+    ${Object.keys(labels).map((key) => `
+      <div class="matrix-row">
+        <div>${labels[key]}</div>
+        <div><input type="checkbox" data-matrix-event="${key}" data-matrix-channel="inApp" ${matrixState[key]?.inApp ? "checked" : ""}></div>
+        <div><input type="checkbox" data-matrix-event="${key}" data-matrix-channel="email" ${matrixState[key]?.email ? "checked" : ""}></div>
+        <div><input type="checkbox" data-matrix-event="${key}" data-matrix-channel="sms" ${matrixState[key]?.sms ? "checked" : ""}></div>
+      </div>
+    `).join("")}
+  `;
+}
+
+async function loadNotificationMatrix() {
+  const response = await fetch(`${API_BASE_URL}/settings/notification-matrix`, { headers: authHeaders() });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || "Failed to load notification matrix");
+  matrixState = data.matrix || {};
+  renderNotificationMatrix();
+}
+
+function collectNotificationMatrix() {
+  const result = {};
+  document.querySelectorAll("[data-matrix-event][data-matrix-channel]").forEach((input) => {
+    const eventKey = input.getAttribute("data-matrix-event");
+    const channel = input.getAttribute("data-matrix-channel");
+    if (!result[eventKey]) result[eventKey] = { inApp: false, email: false, sms: false };
+    result[eventKey][channel] = input.checked;
+  });
+  return result;
+}
+
+async function saveNotificationMatrix() {
+  const matrix = collectNotificationMatrix();
+  const response = await fetch(`${API_BASE_URL}/settings/notification-matrix`, {
+    method: "PATCH",
+    headers: authHeaders(),
+    body: JSON.stringify({ matrix }),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || "Failed to save notification matrix");
+  matrixState = data.matrix || matrix;
+  setMessage("matrixMessage", "Notification matrix saved.", "success");
+}
+
+async function loadIntegrationHealth() {
+  const response = await fetch(`${API_BASE_URL}/settings/integrations/health`, { headers: authHeaders() });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(data.error || "Failed to load integration diagnostics");
+  const list = document.getElementById("integrationHealthList");
+  if (!list) return;
+  const connectors = Array.isArray(data.connectors) ? data.connectors : [];
+  list.innerHTML = connectors.map((connector) => `
+    <div class="integration-item">
+      <div class="page-header-row">
+        <strong>${escapeHtml(connector.source)}</strong>
+        <span class="pill ${connector.status}">${connector.status}</span>
+      </div>
+      <div class="acc-text-muted">Connected clients: ${connector.connectedClients || 0} | Errors: ${connector.errors || 0}</div>
+      <div class="acc-text-muted">Last sync: ${connector.lastSyncedAt ? new Date(connector.lastSyncedAt).toLocaleString() : "Never"}</div>
+    </div>
+  `).join("") || `<div class="integration-item">No integration diagnostics available.</div>`;
+  setMessage("integrationMessage", `System status: ${data.overallStatus || "unknown"}.`, "info");
+}
+
 async function saveProfile() {
   const fullName = document.getElementById("fullNameInput").value.trim();
   const email = document.getElementById("emailInput").value.trim();
@@ -543,7 +825,7 @@ async function saveProfile() {
   const certification = document.getElementById("certificationSelect").value;
   const split = splitName(fullName);
 
-  const response = await fetch(`${API_BASE_URL}/settings/profile`, {
+  const response = await fetch(`${API_BASE_URL}/profile`, {
     method: "PATCH",
     headers: authHeaders(),
     body: JSON.stringify({
@@ -563,7 +845,7 @@ async function saveProfile() {
 async function toggleSecurityField(field) {
   const payload = {};
   payload[field] = !Boolean(loadedSecurity && loadedSecurity[field]);
-  const response = await fetch(`${API_BASE_URL}/settings/security`, {
+  const response = await fetch(`${API_BASE_URL}/security`, {
     method: "PATCH",
     headers: authHeaders(),
     body: JSON.stringify(payload),
@@ -578,7 +860,7 @@ async function updatePassword() {
   const values = await requestPasswordUpdateInput();
   if (!values) return;
   const { currentPassword, newPassword } = values;
-  const response = await fetch(`${API_BASE_URL}/settings/security/change-password`, {
+  const response = await fetch(`${API_BASE_URL}/security/change-password`, {
     method: "POST",
     headers: authHeaders(),
     body: JSON.stringify({ currentPassword, newPassword }),
@@ -662,9 +944,54 @@ document.getElementById("updatePasswordBtn").addEventListener("click", async () 
   try { await updatePassword(); } catch (error) { setMessage("securityMessage", error.message || "Password update failed.", "error"); }
 });
 
-loadSettings().catch((error) => {
+document.getElementById("teamTableBody").addEventListener("click", async (event) => {
+  const button = event.target.closest('button[data-action="save-team-row"]');
+  if (!button) return;
+  const row = button.closest("tr[data-user-id]");
+  if (!row) return;
+  try {
+    await saveTeamRow(row);
+  } catch (error) {
+    setMessage("teamMessage", error.message || "Failed to save team member.", "error");
+  }
+});
+
+document.getElementById("reloadTeamBtn").addEventListener("click", async () => {
+  try {
+    await loadTeamSettings();
+    setMessage("teamMessage", "Team settings refreshed.", "info");
+  } catch (error) {
+    setMessage("teamMessage", error.message || "Failed to load team settings.", "error");
+  }
+});
+
+document.getElementById("saveMatrixBtn").addEventListener("click", async () => {
+  try {
+    await saveNotificationMatrix();
+  } catch (error) {
+    setMessage("matrixMessage", error.message || "Failed to save matrix.", "error");
+  }
+});
+
+document.getElementById("refreshIntegrationBtn").addEventListener("click", async () => {
+  try {
+    await loadIntegrationHealth();
+  } catch (error) {
+    setMessage("integrationMessage", error.message || "Failed to load integrations.", "error");
+  }
+});
+
+Promise.all([
+  loadSettings(),
+  loadTeamSettings(),
+  loadNotificationMatrix(),
+  loadIntegrationHealth(),
+]).catch((error) => {
   setMessage("profileMessage", error.message || "Failed to load settings.", "error");
   setMessage("securityMessage", error.message || "Failed to load settings.", "error");
+  setMessage("teamMessage", error.message || "Failed to load settings.", "error");
+  setMessage("matrixMessage", error.message || "Failed to load settings.", "error");
+  setMessage("integrationMessage", error.message || "Failed to load settings.", "error");
 });
 </script>
 

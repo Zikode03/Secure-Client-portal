@@ -325,6 +325,7 @@ export async function getCompliancePortfolio(reqUser, filters = {}) {
 
   const sourceFilter = String(filters.source || "").toUpperCase();
   const ownerFilter = String(filters.owner || "").trim().toLowerCase();
+  const ownerUserIdFilter = String(filters.ownerUserId || "").trim();
   const statusFilter = String(filters.status || "").toLowerCase();
   const overdueOnly = String(filters.overdueOnly || "").toLowerCase() === "true";
   const sortBy = String(filters.sortBy || "risk").toLowerCase();
@@ -335,9 +336,46 @@ export async function getCompliancePortfolio(reqUser, filters = {}) {
     listUsers(),
   ]);
   const userNameById = new Map(users.map((u) => [u.id, u.fullName || u.email || u.id]));
+  const assignableOwners = users
+    .filter((user) => ["accountant", "accountant_manager", "accountant_admin"].includes(String(user.role || "").toLowerCase()))
+    .map((user) => ({
+      id: user.id,
+      name: user.fullName || user.email || user.id,
+      email: user.email,
+      role: user.role,
+    }));
   const accountItems = db
     ? await db.complianceAccount.findMany({ where: { clientId: { in: ids } } })
     : store.complianceAccounts.filter((item) => ids.includes(item.clientId));
+
+  const allAlerts = db
+    ? await db.complianceAlert.findMany({ where: { clientId: { in: ids } }, orderBy: { updatedAt: "desc" } })
+    : store.complianceAlerts
+      .filter((item) => ids.includes(item.clientId))
+      .sort((a, b) => (toDate(b.updatedAt || b.createdAt)?.getTime() || 0) - (toDate(a.updatedAt || a.createdAt)?.getTime() || 0));
+  const alertIds = allAlerts.map((item) => item.id);
+  const escalationAudits = db
+    ? (alertIds.length
+      ? await db.audit.findMany({
+        where: { entityType: "compliance_alert", entityId: { in: alertIds } },
+        orderBy: { createdAt: "desc" },
+      })
+      : [])
+    : store.audits
+      .filter((audit) => audit.entityType === "compliance_alert" && alertIds.includes(audit.entityId))
+      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  const escalatedByAlertId = new Map();
+  for (const audit of escalationAudits) {
+    if (escalatedByAlertId.has(audit.entityId)) continue;
+    const metadata = j(audit.metadata, {});
+    if (String(metadata.status || "").toLowerCase() !== "escalated") continue;
+    escalatedByAlertId.set(audit.entityId, {
+      escalatedByUserId: audit.actorUserId || null,
+      escalatedByName: userNameById.get(audit.actorUserId) || "System",
+      escalatedAt: audit.createdAt || null,
+      escalationWhy: String(metadata.completionNotes || metadata.note || "").trim() || null,
+    });
+  }
 
   const records = [];
   for (const client of clients) {
@@ -366,6 +404,13 @@ export async function getCompliancePortfolio(reqUser, filters = {}) {
     const riskScore = overdueCount > 0 ? 100 : dueSoonCount > 0 || syncFailures > 0 ? 60 : 20;
     const normalizedStatus = overdueCount > 0 ? "red" : dueSoonCount > 0 || syncFailures > 0 ? "amber" : "green";
     const latestAlert = openAlerts[0] || null;
+    const latestEscalatedAlert = allAlerts.find((alert) => alert.clientId === client.id && String(alert.status || "").toLowerCase() === "escalated") || null;
+    const escalationAudit = latestEscalatedAlert ? escalatedByAlertId.get(latestEscalatedAlert.id) : null;
+    const escalationReasonFromMessage = latestEscalatedAlert
+      ? String(latestEscalatedAlert.message || "")
+        .split("\n")
+        .find((line) => line.toLowerCase().includes("escalated:")) || null
+      : null;
 
     records.push({
       clientId: client.id,
@@ -383,6 +428,12 @@ export async function getCompliancePortfolio(reqUser, filters = {}) {
       ownerUserId,
       ownerName,
       syncFailures,
+      escalationFlag: Boolean(latestEscalatedAlert),
+      escalationStatus: latestEscalatedAlert ? String(latestEscalatedAlert.status || "escalated").toLowerCase() : "none",
+      escalatedAt: escalationAudit?.escalatedAt || latestEscalatedAlert?.updatedAt || latestEscalatedAlert?.createdAt || null,
+      escalatedByUserId: escalationAudit?.escalatedByUserId || latestEscalatedAlert?.assignedUserId || null,
+      escalatedByName: escalationAudit?.escalatedByName || userNameById.get(latestEscalatedAlert?.assignedUserId) || null,
+      escalationReason: escalationAudit?.escalationWhy || escalationReasonFromMessage || latestEscalatedAlert?.title || null,
       actionAlertId: latestAlert?.id || null,
       actionObligationId: obligations.find((o) => ["overdue", "due_soon"].includes(normStatus(o.status)))?.id || null,
       actionObligationType: obligations.find((o) => ["overdue", "due_soon"].includes(normStatus(o.status)))?.obligationType || null,
@@ -393,6 +444,7 @@ export async function getCompliancePortfolio(reqUser, filters = {}) {
     if (statusFilter && item.overallStatus !== statusFilter) return false;
     if (overdueOnly && item.overdueCount < 1) return false;
     if (ownerFilter && !item.ownerName.toLowerCase().includes(ownerFilter)) return false;
+    if (ownerUserIdFilter && item.ownerUserId !== ownerUserIdFilter) return false;
     if (sourceFilter) {
       const value = item[`${sourceFilter.toLowerCase()}Status`];
       if (!value || value === "unknown" || value === "green") return false;
@@ -421,6 +473,7 @@ export async function getCompliancePortfolio(reqUser, filters = {}) {
       overdueObligations: filtered.reduce((sum, row) => sum + row.overdueCount, 0),
       syncFailures: filtered.reduce((sum, row) => sum + row.syncFailures, 0),
     },
+    assignableOwners,
     items: filtered,
   };
 }
@@ -602,4 +655,26 @@ export async function getClientComplianceReport(reqUser, clientId) {
 export async function getFirmComplianceReportCsv(reqUser) {
   const f = await getFirmComplianceOverview(reqUser);
   return csv(f.items.map((x) => ({ clientId: x.clientId, clientName: x.clientName, status: x.status, score: x.score, scoreV2: x.scoreV2, riskPercentV2: x.riskPercentV2, overdueCount: x.overdueCount, dueSoonCount: x.dueSoonCount, nonCompliantCount: x.nonCompliantCount, sarsStatus: x.sarsStatus, cipcStatus: x.cipcStatus, csdStatus: x.csdStatus, lastUpdatedAt: x.lastUpdatedAt })));
+}
+
+export async function getCompliancePortfolioCsv(reqUser, filters = {}) {
+  const payload = await getCompliancePortfolio(reqUser, filters);
+  return csv(payload.items.map((item) => ({
+    clientId: item.clientId,
+    clientName: item.clientName,
+    overallStatus: item.overallStatus,
+    sarsStatus: item.sarsStatus,
+    cipcStatus: item.cipcStatus,
+    csdStatus: item.csdStatus,
+    overdueCount: item.overdueCount,
+    nextDueDate: item.nextDueDate || "",
+    lastSync: item.lastSync || "",
+    ownerName: item.ownerName,
+    ownerUserId: item.ownerUserId || "",
+    riskScore: item.riskScore,
+    escalationFlag: item.escalationFlag ? "yes" : "no",
+    escalatedAt: item.escalatedAt || "",
+    escalatedByName: item.escalatedByName || "",
+    escalationReason: item.escalationReason || "",
+  })));
 }

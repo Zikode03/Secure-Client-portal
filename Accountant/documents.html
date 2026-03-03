@@ -159,6 +159,77 @@ h2 {
   padding: 0;
 }
 
+.bulk-actions{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+  padding:12px 20px;
+  border-bottom:1px solid #e5e7eb;
+  background:#f8fafc;
+}
+
+.bulk-actions .meta{
+  color:#64748b;
+  font-size:12px;
+  font-weight:700;
+}
+
+.bulk-actions select{
+  height:34px;
+  border:1px solid #d1d5db;
+  border-radius:8px;
+  padding:0 10px;
+  background:#fff;
+  font-size:13px;
+}
+
+.meta-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:3px 9px;
+  border-radius:999px;
+  border:1px solid transparent;
+  font-size:11px;
+  font-weight:700;
+}
+
+.meta-badge.sla-ok{
+  background:#dcfce7;
+  border-color:#86efac;
+  color:#166534;
+}
+
+.meta-badge.sla-warn{
+  background:#fef3c7;
+  border-color:#fcd34d;
+  color:#854d0e;
+}
+
+.meta-badge.sla-breach{
+  background:#fee2e2;
+  border-color:#fca5a5;
+  color:#991b1b;
+}
+
+.meta-badge.escalated{
+  background:#fee2e2;
+  border-color:#fca5a5;
+  color:#991b1b;
+}
+
+.meta-badge.normal{
+  background:#ecfeff;
+  border-color:#99f6e4;
+  color:#0f766e;
+}
+
+.small-text{
+  color:#64748b;
+  font-size:12px;
+}
+
 /* ===== SEARCH ===== */
 .search-wrapper {
   position: relative;
@@ -282,6 +353,16 @@ tbody tr:hover {
 .approved {
   background: #ede9fe;
   color: #5b21b6;
+}
+
+.request-fix{
+  background:#ffedd5;
+  color:#9a3412;
+}
+
+.processing{
+  background:#e0f2fe;
+  color:#075985;
 }
 
 .file-icon {
@@ -512,23 +593,44 @@ tbody tr:hover {
         </div>
         <select id="statusFilter" class="filter-select">
   <option value="all">All</option>
-  <option value="completed">Completed</option>
   <option value="pending">Pending</option>
   <option value="in-review">In Review</option>
+  <option value="review">Review</option>
+  <option value="processing">Processing</option>
   <option value="approved">Approved</option>
+  <option value="request-fix">Request Fix</option>
+  <option value="rejected">Rejected</option>
 </select>
 
       </div>
+    </div>
+    <div class="bulk-actions">
+      <label>
+        <input id="selectAllDocs" type="checkbox" />
+        Select all
+      </label>
+      <span class="meta" id="selectedDocsCount">0 selected</span>
+      <select id="bulkReviewerSelect" aria-label="Bulk reviewer">
+        <option value="">Assign reviewer...</option>
+      </select>
+      <button class="button button-outline" id="bulkAssignBtn" type="button"><i class="fa-solid fa-user-check"></i> Assign</button>
+      <button class="button button-outline" id="bulkApproveBtn" type="button"><i class="fa-solid fa-circle-check"></i> Approve</button>
+      <button class="button button-outline" id="bulkFixBtn" type="button"><i class="fa-solid fa-pen"></i> Request Fix</button>
+      <button class="button button-outline" id="bulkRejectBtn" type="button"><i class="fa-solid fa-xmark"></i> Reject</button>
     </div>
 
     <div class="card-content">
       <table>
         <thead>
           <tr>
+            <th>Select</th>
             <th>Document Name</th>
             <th>Client</th>
             <th>Category</th>
             <th>Status</th>
+            <th>SLA</th>
+            <th>Owner</th>
+            <th>Escalation</th>
             <th>Date</th>
             <th class="inl-f6e3d7fea5">Actions</th>
           </tr>
@@ -538,6 +640,28 @@ tbody tr:hover {
     </div>
   </div>
 </div>
+</div>
+
+<div id="historyModal" class="modal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 id="historyTitle">Version History</h3>
+      <button class="close-btn" id="closeHistoryModal"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div id="historyVersions"></div>
+      <div class="form-group">
+        <label for="compareLeft">Compare From</label>
+        <select id="compareLeft"></select>
+      </div>
+      <div class="form-group">
+        <label for="compareRight">Compare To</label>
+        <select id="compareRight"></select>
+      </div>
+      <button class="btn-secondary" id="runCompareBtn" type="button"><i class="fa-solid fa-code-compare"></i> Compare Versions</button>
+      <div id="compareResult" class="small-text"></div>
+    </div>
+  </div>
 </div>
 
 <!-- ===== UPLOAD DOCUMENT MODAL ===== -->
@@ -599,6 +723,11 @@ tbody tr:hover {
 <script src="../shared/portal-auth.js"></script>
 <script>
 let documents = [];
+let reviewUsers = [];
+let historyVersions = [];
+let historyReviewEvents = [];
+let activeHistoryDocumentId = "";
+const selectedDocs = new Set();
 const clientsById = {};
 const API_BASE_URL = window.PortalConfig.API_BASE_URL;
 const session = window.PortalAuth.requireRole("accountant", "accountant logins/login.html");
@@ -625,9 +754,24 @@ const clientIdInput = document.getElementById("clientIdInput");
 const documentNameInput = document.getElementById("documentNameInput");
 const categoryInput = document.getElementById("categoryInput");
 const uploadStatusText = document.getElementById("uploadStatusText");
+const selectAllDocs = document.getElementById("selectAllDocs");
+const selectedDocsCount = document.getElementById("selectedDocsCount");
+const bulkReviewerSelect = document.getElementById("bulkReviewerSelect");
+const historyModal = document.getElementById("historyModal");
+const closeHistoryModal = document.getElementById("closeHistoryModal");
+const historyTitle = document.getElementById("historyTitle");
+const historyVersionsEl = document.getElementById("historyVersions");
+const compareLeft = document.getElementById("compareLeft");
+const compareRight = document.getElementById("compareRight");
+const runCompareBtn = document.getElementById("runCompareBtn");
+const compareResult = document.getElementById("compareResult");
 
 function setUploadStatus(message) {
   uploadStatusText.textContent = message || "";
+}
+
+function setCompareResult(text) {
+  compareResult.textContent = text || "";
 }
 
 function humanBytes(bytes) {
@@ -638,7 +782,60 @@ function humanBytes(bytes) {
   return `${(n / (1024 * 1024 * 1024)).toFixed(1)} GB`;
 }
 
+function esc(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function askReviewNote(action) {
+  if (!["reject", "request_fix"].includes(action)) return Promise.resolve("");
+  const title = action === "reject" ? "Reason for rejection" : "What should be fixed";
+  const note = window.prompt(`${title}:`, "");
+  return Promise.resolve(String(note || "").trim());
+}
+
+function renderReviewerOptions() {
+  const options = [`<option value="">Assign reviewer...</option>`];
+  for (const reviewer of reviewUsers) {
+    options.push(`<option value="${esc(reviewer.id)}">${esc(reviewer.fullName || reviewer.email || reviewer.id)}</option>`);
+  }
+  bulkReviewerSelect.innerHTML = options.join("");
+}
+
+function slaMeta(workflow = {}) {
+  const age = Number(workflow.slaAgeHours || 0);
+  const remaining = Number(workflow.slaRemainingHours || 0);
+  const breached = Boolean(workflow.slaBreached);
+  if (breached) {
+    return { className: "sla-breach", text: `Overdue ${Math.max(1, age - 48)}h` };
+  }
+  if (remaining <= 12) {
+    return { className: "sla-warn", text: `${remaining}h left` };
+  }
+  return { className: "sla-ok", text: `${remaining}h left` };
+}
+
+function escalationMeta(workflow = {}) {
+  if (workflow.escalationFlag) {
+    return {
+      className: "escalated",
+      text: "Escalated",
+      title: workflow.escalationReason || "Escalation active",
+    };
+  }
+  return {
+    className: "normal",
+    text: "Normal",
+    title: "No escalation",
+  };
+}
+
 function mapDoc(doc) {
+  const workflow = doc.workflow && typeof doc.workflow === "object" ? doc.workflow : {};
   return {
     id: doc.id,
     name: doc.name,
@@ -648,29 +845,52 @@ function mapDoc(doc) {
     size: humanBytes(doc.sizeBytes),
     status: doc.status,
     date: (doc.uploadedAt || "").slice(0, 10),
+    workflow,
+    versionGroupKey: doc.versionGroupKey || "",
   };
 }
 
 function renderDocuments(data) {
   tableBody.innerHTML = "";
   for (const doc of data) {
+    const statusClass = String(doc.status || "").toLowerCase().replace(/\s+/g, "-");
+    const sla = slaMeta(doc.workflow);
+    const escalation = escalationMeta(doc.workflow);
     const row = document.createElement("tr");
     row.innerHTML = `
+      <td>
+        <input type="checkbox" data-select-doc-id="${esc(doc.id)}" ${selectedDocs.has(doc.id) ? "checked" : ""} />
+      </td>
       <td><i class="fa-regular fa-file-lines file-icon"></i>${doc.name}</td>
       <td>${doc.client}</td>
       <td>${doc.category}</td>
-      <td><span class="badge ${doc.status}">${doc.status}</span></td>
+      <td><span class="badge ${statusClass}">${doc.status}</span></td>
+      <td><span class="meta-badge ${sla.className}" title="SLA target: ${Number(doc.workflow.slaTargetHours || 48)}h">${sla.text}</span></td>
+      <td>${esc(doc.workflow.ownerName || "-")}</td>
+      <td><span class="meta-badge ${escalation.className}" title="${esc(escalation.title)}">${escalation.text}</span></td>
       <td>${doc.date}</td>
       <td>
         <div class="actions">
           <div class="dropdown">
             <button class="button-icon menu-btn"><i class="fa-solid fa-ellipsis"></i></button>
             <div class="dropdown-menu">
-              <button class="view-btn" data-doc-id="${doc.id}">
+              <button data-view-id="${doc.id}">
                 <i class="fa-regular fa-eye"></i> View
               </button>
               <button data-download-id="${doc.id}">
                 <i class="fa-solid fa-download"></i> Download
+              </button>
+              <button data-history-id="${doc.id}">
+                <i class="fa-solid fa-clock-rotate-left"></i> Version History
+              </button>
+              <button data-review-action="approve" data-doc-id="${doc.id}">
+                <i class="fa-solid fa-circle-check"></i> Approve
+              </button>
+              <button data-review-action="request_fix" data-doc-id="${doc.id}">
+                <i class="fa-solid fa-pen"></i> Request Fix
+              </button>
+              <button data-review-action="reject" data-doc-id="${doc.id}">
+                <i class="fa-solid fa-xmark"></i> Reject
               </button>
             </div>
           </div>
@@ -679,6 +899,26 @@ function renderDocuments(data) {
     `;
     tableBody.appendChild(row);
   }
+  updateBulkSelectionState();
+}
+
+function updateBulkSelectionState() {
+  selectedDocsCount.textContent = `${selectedDocs.size} selected`;
+  const visibleIds = documents.map((doc) => doc.id);
+  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selectedDocs.has(id));
+  selectAllDocs.checked = allVisibleSelected;
+}
+
+async function loadReviewers() {
+  const response = await fetch(`${API_BASE_URL}/reviews/reviewers`, { headers: authHeaders() });
+  if (!response.ok) {
+    reviewUsers = [];
+    renderReviewerOptions();
+    return;
+  }
+  const data = await response.json().catch(() => ({}));
+  reviewUsers = Array.isArray(data.items) ? data.items : [];
+  renderReviewerOptions();
 }
 
 async function loadClientsMap() {
@@ -711,7 +951,118 @@ function applyFilters() {
 searchInput.addEventListener("input", applyFilters);
 statusFilter.addEventListener("change", applyFilters);
 
-document.addEventListener("click", function (e) {
+async function runReviewAction(documentId, action, explicitNote = null) {
+  let note = explicitNote;
+  if (note == null) {
+    note = await askReviewNote(action);
+  }
+  if (["reject", "request_fix"].includes(action) && !String(note || "").trim()) {
+    return;
+  }
+  const response = await fetch(`${API_BASE_URL}/reviews/${encodeURIComponent(documentId)}/action`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ action, note }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || "Review action failed");
+}
+
+async function runBulkReviewAction(action) {
+  const documentIds = Array.from(selectedDocs);
+  if (!documentIds.length) return;
+  let note = "";
+  if (["reject", "request_fix"].includes(action)) {
+    note = await askReviewNote(action);
+    if (!note) return;
+  }
+  const response = await fetch(`${API_BASE_URL}/reviews/bulk`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ action, documentIds, note }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || "Bulk review action failed");
+  selectedDocs.clear();
+  await loadDocuments();
+}
+
+async function runBulkAssign() {
+  const reviewerUserId = String(bulkReviewerSelect.value || "").trim();
+  const documentIds = Array.from(selectedDocs);
+  if (!reviewerUserId || !documentIds.length) return;
+  const response = await fetch(`${API_BASE_URL}/reviews/bulk`, {
+    method: "POST",
+    headers: authHeaders(),
+    body: JSON.stringify({ action: "assign", documentIds, reviewerUserId }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || "Bulk assignment failed");
+  await loadDocuments();
+}
+
+function renderHistoryVersions(versions = [], reviewHistory = []) {
+  if (!versions.length) {
+    historyVersionsEl.innerHTML = `<p class="small-text">No versions found.</p>`;
+    return;
+  }
+  const versionsHtml = versions.map((version) => `
+    <div class="small-text">
+      <strong>${esc(version.name)}</strong>
+      <div>Status: ${esc(version.status)} | Size: ${humanBytes(version.sizeBytes)} | Uploaded: ${esc((version.uploadedAt || "").slice(0, 19).replace("T", " "))}</div>
+    </div>
+  `).join("<hr>");
+  const reviewHtml = reviewHistory.length
+    ? `<hr><div class="small-text"><strong>Review / Status History</strong></div>${reviewHistory.slice(0, 8).map((event) => `
+      <div class="small-text">${esc(event.action)} | ${esc((event.createdAt || "").slice(0, 19).replace("T", " "))}</div>
+    `).join("")}`
+    : "";
+  historyVersionsEl.innerHTML = `${versionsHtml}${reviewHtml}`;
+}
+
+function setCompareOptions(versions = []) {
+  const options = versions.map((version) => `<option value="${esc(version.id)}">${esc(version.name)} (${esc(version.status)})</option>`);
+  compareLeft.innerHTML = options.join("");
+  compareRight.innerHTML = options.join("");
+  if (versions.length > 1) compareRight.selectedIndex = 1;
+}
+
+async function openHistory(documentId) {
+  const response = await fetch(`${API_BASE_URL}/documents/${encodeURIComponent(documentId)}/history`, { headers: authHeaders() });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || "Unable to load history");
+  activeHistoryDocumentId = documentId;
+  historyVersions = Array.isArray(payload.versions) ? payload.versions : [];
+  historyReviewEvents = Array.isArray(payload.reviewHistory) ? payload.reviewHistory : [];
+  historyTitle.textContent = `Version History (${historyVersions.length})`;
+  renderHistoryVersions(historyVersions, historyReviewEvents);
+  setCompareOptions(historyVersions);
+  setCompareResult("");
+  historyModal.classList.add("show");
+}
+
+async function runCompareVersions() {
+  const left = String(compareLeft.value || "");
+  const right = String(compareRight.value || "");
+  if (!activeHistoryDocumentId || !left || !right) return;
+  const response = await fetch(
+    `${API_BASE_URL}/documents/${encodeURIComponent(activeHistoryDocumentId)}/compare?left=${encodeURIComponent(left)}&right=${encodeURIComponent(right)}`,
+    { headers: authHeaders() },
+  );
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    setCompareResult(payload.error || "Unable to compare versions.");
+    return;
+  }
+  const differences = Array.isArray(payload.differences) ? payload.differences : [];
+  if (!differences.length) {
+    setCompareResult(payload.summary || "No metadata differences detected.");
+    return;
+  }
+  setCompareResult(differences.map((diff) => `${diff.field}: "${diff.leftValue}" -> "${diff.rightValue}"`).join(" | "));
+}
+
+document.addEventListener("click", async function (e) {
   for (const drop of document.querySelectorAll(".dropdown")) {
     if (drop.contains(e.target)) {
       drop.classList.toggle("active");
@@ -720,9 +1071,24 @@ document.addEventListener("click", function (e) {
     }
   }
 
-  const viewBtn = e.target.closest(".view-btn");
+  const viewBtn = e.target.closest("[data-view-id]");
   if (viewBtn) {
-    window.location.href = `documentview.html?id=${encodeURIComponent(viewBtn.getAttribute("data-doc-id"))}`;
+    window.location.href = `documentview.html?id=${encodeURIComponent(viewBtn.getAttribute("data-view-id"))}`;
+    return;
+  }
+
+  const historyBtn = e.target.closest("[data-history-id]");
+  if (historyBtn) {
+    await openHistory(historyBtn.getAttribute("data-history-id")).catch((error) => console.error(error));
+    return;
+  }
+
+  const reviewBtn = e.target.closest("[data-review-action][data-doc-id]");
+  if (reviewBtn) {
+    await runReviewAction(
+      reviewBtn.getAttribute("data-doc-id"),
+      reviewBtn.getAttribute("data-review-action"),
+    ).then(loadDocuments).catch((error) => console.error(error));
     return;
   }
 
@@ -740,18 +1106,51 @@ document.addEventListener("click", function (e) {
   }
 });
 
+document.addEventListener("change", (event) => {
+  const rowCheckbox = event.target.closest("[data-select-doc-id]");
+  if (rowCheckbox) {
+    const docId = rowCheckbox.getAttribute("data-select-doc-id");
+    if (rowCheckbox.checked) selectedDocs.add(docId);
+    else selectedDocs.delete(docId);
+    updateBulkSelectionState();
+  }
+});
+
+selectAllDocs.addEventListener("change", (event) => {
+  const checked = event.target.checked;
+  for (const doc of documents) {
+    if (checked) selectedDocs.add(doc.id);
+    else selectedDocs.delete(doc.id);
+  }
+  renderDocuments(documents);
+});
+
+document.getElementById("bulkApproveBtn").addEventListener("click", () => {
+  runBulkReviewAction("approve").catch((error) => console.error(error));
+});
+document.getElementById("bulkFixBtn").addEventListener("click", () => {
+  runBulkReviewAction("request_fix").catch((error) => console.error(error));
+});
+document.getElementById("bulkRejectBtn").addEventListener("click", () => {
+  runBulkReviewAction("reject").catch((error) => console.error(error));
+});
+document.getElementById("bulkAssignBtn").addEventListener("click", () => {
+  runBulkAssign().catch((error) => console.error(error));
+});
+
 async function uploadFileMultipart(file, metadata) {
-  const initiateRes = await fetch(`${API_BASE_URL}/uploads/initiate`, {
+  const fingerprint = `${file.name}:${file.size}:${file.lastModified}`;
+  const initiateRes = await fetch(`${API_BASE_URL}/uploads/init`, {
     method: "POST",
     headers: authHeaders(),
     body: JSON.stringify({
       fileName: file.name,
-      fileType: file.type || "application/octet-stream",
-      fileSize: file.size,
+      fileSize: Number(file.size || 0),
+      mimeType: file.type || "application/octet-stream",
       clientId: metadata.clientId,
-      documentName: metadata.documentName,
       category: metadata.category,
-      client: metadata.client,
+      notes: metadata.documentName,
+      fileFingerprint: fingerprint,
     }),
   });
   if (!initiateRes.ok) {
@@ -760,43 +1159,43 @@ async function uploadFileMultipart(file, metadata) {
   }
 
   const initiateData = await initiateRes.json();
-  const partSize = initiateData.partSizeBytes || 8 * 1024 * 1024;
-  const partCount = Math.ceil(file.size / partSize);
-  const parts = [];
+  const uploadId = String(initiateData.uploadId || "");
+  const chunkSizeBytes = Number(initiateData?.chunks?.chunkSizeBytes || 8 * 1024 * 1024);
+  const totalChunks = Number(initiateData?.chunks?.total || Math.max(1, Math.ceil(file.size / chunkSizeBytes)));
+  const uploadedIndexes = new Set(Array.isArray(initiateData?.chunks?.uploadedIndexes) ? initiateData.chunks.uploadedIndexes : []);
 
-  for (let partNumber = 1; partNumber <= partCount; partNumber += 1) {
-    const start = (partNumber - 1) * partSize;
-    const end = Math.min(start + partSize, file.size);
+  if (!uploadId) throw new Error("Upload session id missing from backend");
+
+  for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex += 1) {
+    if (uploadedIndexes.has(chunkIndex)) {
+      continue;
+    }
+    const start = chunkIndex * chunkSizeBytes;
+    const end = Math.min(start + chunkSizeBytes, file.size);
     const blobPart = file.slice(start, end);
-
-    const urlRes = await fetch(`${API_BASE_URL}/uploads/${encodeURIComponent(initiateData.uploadId)}/part-url`, {
-      method: "POST",
-      headers: authHeaders(),
-      body: JSON.stringify({ key: initiateData.key, partNumber }),
-    });
-    if (!urlRes.ok) throw new Error(`Failed to get part URL ${partNumber}`);
-
-    const { signedUrl } = await urlRes.json();
-    const putRes = await fetch(signedUrl, {
+    const putRes = await fetch(`${API_BASE_URL}/uploads/${encodeURIComponent(uploadId)}/chunks/${chunkIndex}`, {
       method: "PUT",
-      headers: { "Content-Type": file.type || "application/octet-stream" },
+      headers: {
+        Authorization: `Bearer ${token || ""}`,
+        "Content-Type": "application/octet-stream",
+      },
       body: blobPart,
     });
-    if (!putRes.ok) throw new Error(`Failed to upload part ${partNumber}`);
-
-    const eTag = putRes.headers.get("ETag");
-    if (!eTag) throw new Error(`Missing ETag on part ${partNumber}`);
-    parts.push({ PartNumber: partNumber, ETag: eTag });
-    setUploadStatus(`Uploading... ${partNumber}/${partCount}`);
+    const chunkPayload = await putRes.json().catch(() => ({}));
+    if (!putRes.ok) throw new Error(chunkPayload.error || `Failed to upload chunk ${chunkIndex + 1}`);
+    setUploadStatus(`Uploading... ${chunkIndex + 1}/${totalChunks}`);
   }
 
-  const completeRes = await fetch(`${API_BASE_URL}/uploads/${encodeURIComponent(initiateData.uploadId)}/complete`, {
+  const completeRes = await fetch(`${API_BASE_URL}/uploads/${encodeURIComponent(uploadId)}/complete`, {
     method: "POST",
     headers: authHeaders(),
-    body: JSON.stringify({ key: initiateData.key, parts }),
+    body: JSON.stringify({}),
   });
-  if (!completeRes.ok) throw new Error("Failed to finalize upload");
-  return completeRes.json();
+  const completePayload = await completeRes.json().catch(() => ({}));
+  if (!completeRes.ok) throw new Error(completePayload.error || "Failed to finalize upload");
+  setUploadStatus("Upload complete. Processing document...");
+  await new Promise((resolve) => setTimeout(resolve, 350));
+  return completePayload;
 }
 
 confirmUploadBtn.addEventListener("click", async () => {
@@ -849,7 +1248,20 @@ uploadModal.addEventListener("click", (e) => {
   }
 });
 
-loadClientsMap().then(loadDocuments).catch((error) => console.error(error));
+closeHistoryModal.addEventListener("click", () => historyModal.classList.remove("show"));
+historyModal.addEventListener("click", (event) => {
+  if (event.target === historyModal) historyModal.classList.remove("show");
+});
+runCompareBtn.addEventListener("click", () => {
+  runCompareVersions().catch((error) => {
+    console.error(error);
+    setCompareResult(error.message || "Unable to compare versions.");
+  });
+});
+
+Promise.all([loadClientsMap(), loadReviewers()])
+  .then(loadDocuments)
+  .catch((error) => console.error(error));
 </script>
 
 </body>

@@ -172,6 +172,24 @@ tbody tr:hover { background: #f8fbff; }
   border-bottom: 1px solid #eef2f7;
   background: #f8fafc;
 }
+.bulk-row select {
+  border: 1px solid #dbe3f0;
+  border-radius: 9px;
+  height: 32px;
+  padding: 0 8px;
+  font-size: 12px;
+  background: #fff;
+}
+.reviewer-select {
+  width: 100%;
+  margin-top: 6px;
+  border: 1px solid #dbe3f0;
+  border-radius: 9px;
+  height: 30px;
+  padding: 0 8px;
+  font-size: 12px;
+  background: #fff;
+}
 .bulk-label {
   color: #64748b;
   font-size: 12px;
@@ -292,6 +310,8 @@ tbody tr:hover { background: #f8fbff; }
         </div>
         <div>
           <button type="button" class="btn" id="refreshBtn"><i class="fa-solid fa-rotate"></i> Refresh</button>
+          <button type="button" class="btn" id="exportCsvBtn"><i class="fa-solid fa-file-csv"></i> Export CSV</button>
+          <button type="button" class="btn" id="exportPdfBtn"><i class="fa-solid fa-file-pdf"></i> Export PDF</button>
           <button type="button" class="btn btn-primary" id="runEscalationBtn"><i class="fa-solid fa-triangle-exclamation"></i> Run Escalations</button>
         </div>
       </div>
@@ -331,7 +351,9 @@ tbody tr:hover { background: #f8fbff; }
               <option value="CIPC">CIPC</option>
               <option value="CSD">CSD</option>
             </select>
-            <input id="ownerFilter" type="text" placeholder="Owner..." aria-label="Filter by owner" />
+            <select id="ownerFilter" aria-label="Filter by owner">
+              <option value="">All Owners</option>
+            </select>
             <select id="sortBy" aria-label="Sort by">
               <option value="risk">Sort: Risk score</option>
               <option value="next_due">Sort: Next due date</option>
@@ -348,6 +370,9 @@ tbody tr:hover { background: #f8fbff; }
         <div class="bulk-row">
           <label><input id="bulkSelectAll" type="checkbox" class="row-check"> Select all visible</label>
           <span class="bulk-label" id="bulkSelectedCount">0 selected</span>
+          <select id="bulkOwnerSelect" aria-label="Bulk owner assignment">
+            <option value="">Assign owner...</option>
+          </select>
           <button type="button" class="btn" id="bulkAssignBtn">Assign Selected</button>
           <button type="button" class="btn" id="bulkInProgressBtn">In Progress Selected</button>
           <button type="button" class="btn btn-primary" id="bulkResolveBtn">Resolve Selected</button>
@@ -367,6 +392,9 @@ tbody tr:hover { background: #f8fbff; }
                 <th>Next Due Date</th>
                 <th>Last Sync</th>
                 <th>Owner</th>
+                <th>Escalation</th>
+                <th>Escalated By</th>
+                <th>Escalated At</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -420,7 +448,7 @@ if (!session) throw new Error("Unauthorized");
 const { token, user } = session;
 document.getElementById("sidebarEmail").textContent = user?.email || "-";
 
-const state = { items: [], selectedClientId: "", selectedIds: new Set() };
+const state = { items: [], selectedClientId: "", selectedIds: new Set(), assignableOwners: [] };
 function headers() { return window.PortalAuth.authHeaders(token); }
 function qs(params) {
   const out = new URLSearchParams();
@@ -455,18 +483,45 @@ function showToast(text) {
   setTimeout(() => el.classList.remove("show"), 1800);
 }
 
-async function fetchPortfolio() {
-  const payload = {
+function currentFilters() {
+  return {
     status: document.getElementById("statusFilter").value,
     source: document.getElementById("sourceFilter").value,
-    owner: document.getElementById("ownerFilter").value.trim(),
+    ownerUserId: document.getElementById("ownerFilter").value,
     overdueOnly: document.getElementById("overdueOnly").checked ? "true" : "",
     sortBy: document.getElementById("sortBy").value,
     sortDir: document.getElementById("sortDir").value,
   };
+}
+
+function ownerOptions(selectedId = "") {
+  const options = [`<option value="">Assign owner...</option>`];
+  for (const owner of state.assignableOwners) {
+    options.push(`<option value="${asText(owner.id)}" ${owner.id === selectedId ? "selected" : ""}>${asText(owner.name)}</option>`);
+  }
+  return options.join("");
+}
+
+function renderOwnerSelectors() {
+  const ownerFilter = document.getElementById("ownerFilter");
+  const bulkOwnerSelect = document.getElementById("bulkOwnerSelect");
+  const ownerFilterValue = ownerFilter.value;
+  const bulkOwnerValue = bulkOwnerSelect.value;
+  ownerFilter.innerHTML = `<option value="">All Owners</option>${state.assignableOwners.map((owner) => `
+    <option value="${asText(owner.id)}">${asText(owner.name)}</option>
+  `).join("")}`;
+  bulkOwnerSelect.innerHTML = ownerOptions();
+  ownerFilter.value = state.assignableOwners.some((owner) => owner.id === ownerFilterValue) ? ownerFilterValue : "";
+  bulkOwnerSelect.value = state.assignableOwners.some((owner) => owner.id === bulkOwnerValue) ? bulkOwnerValue : "";
+}
+
+async function fetchPortfolio() {
+  const payload = currentFilters();
   const response = await fetch(`${API_BASE_URL}/compliance/portfolio${qs(payload)}`, { headers: headers() });
   if (!response.ok) throw new Error("Failed to load compliance portfolio");
   const data = await response.json();
+  state.assignableOwners = Array.isArray(data.assignableOwners) ? data.assignableOwners : state.assignableOwners;
+  renderOwnerSelectors();
   state.items = Array.isArray(data.items) ? data.items : [];
   state.selectedIds = new Set(Array.from(state.selectedIds).filter((id) => state.items.some((item) => item.clientId === id)));
   const allSelected = state.items.length > 0 && state.items.every((item) => state.selectedIds.has(item.clientId));
@@ -508,7 +563,7 @@ function renderActionQueue(items) {
 function renderTable(items) {
   const body = document.getElementById("portfolioBody");
   if (!items.length) {
-    body.innerHTML = `<tr><td colspan="11" class="muted">No matching clients.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="14" class="muted">No matching clients.</td></tr>`;
     state.selectedIds.clear();
     renderBulkCount();
     return;
@@ -527,11 +582,24 @@ function renderTable(items) {
       <td>${Number(item.overdueCount || 0)}</td>
       <td class="muted">${dt(item.nextDueDate)}</td>
       <td class="muted">${dt(item.lastSync)}</td>
-      <td>${asText(item.ownerName || "Unassigned")}</td>
+      <td>
+        <div>${asText(item.ownerName || "Unassigned")}</div>
+        <select data-owner-select-client="${asText(item.clientId)}" class="reviewer-select">
+          ${ownerOptions(item.ownerUserId || "")}
+        </select>
+      </td>
+      <td>
+        ${item.escalationFlag
+    ? `<span class="${pill("red")}">Escalated</span><div class="muted">${asText(item.escalationReason || "-")}</div>`
+    : `<span class="${pill("green")}">No</span>`
+}
+      </td>
+      <td class="muted">${asText(item.escalatedByName || "-")}</td>
+      <td class="muted">${dt(item.escalatedAt)}</td>
       <td>
         <div class="row-actions">
           <a class="btn" href="client-profile.html?clientId=${encodeURIComponent(item.clientId)}">Open</a>
-          <button type="button" class="btn" data-row-action="assign" data-obligation-id="${asText(item.actionObligationId || "")}">Assign</button>
+          <button type="button" class="btn" data-row-action="assign" data-obligation-id="${asText(item.actionObligationId || "")}" data-alert-id="${asText(item.actionAlertId || "")}">Assign</button>
           <button type="button" class="btn" data-row-action="remind" data-client-id="${asText(item.clientId)}">Send Reminder</button>
           <button type="button" class="btn" data-row-action="in_progress" data-alert-id="${asText(item.actionAlertId || "")}">In Progress</button>
           <button type="button" class="btn btn-primary" data-row-action="resolve" data-alert-id="${asText(item.actionAlertId || "")}">Resolve</button>
@@ -583,41 +651,48 @@ function closeDrawer() {
   document.getElementById("timelineDrawer").classList.remove("open");
 }
 
-async function updateAlert(alertId, status) {
+async function updateAlert(alertId, status, ownerUserId = "") {
   if (!alertId) return;
-  await fetch(`${API_BASE_URL}/compliance/alerts/${encodeURIComponent(alertId)}/lifecycle`, {
+  const response = await fetch(`${API_BASE_URL}/compliance/alerts/${encodeURIComponent(alertId)}/lifecycle`, {
     method: "POST",
     headers: headers(),
-    body: JSON.stringify({ status }),
+    body: JSON.stringify({ status, ownerUserId: ownerUserId || undefined }),
   });
+  if (!response.ok) throw new Error("Alert update failed");
 }
-async function assignToMe(obligationId) {
+async function assignOwner(obligationId, ownerUserId) {
   if (!obligationId) return;
-  await fetch(`${API_BASE_URL}/compliance/obligations/${encodeURIComponent(obligationId)}/assign`, {
+  const response = await fetch(`${API_BASE_URL}/compliance/obligations/${encodeURIComponent(obligationId)}/assign`, {
     method: "POST",
     headers: headers(),
-    body: JSON.stringify({ ownerUserId: user.id }),
+    body: JSON.stringify({ ownerUserId }),
   });
+  if (!response.ok) throw new Error("Owner assignment failed");
 }
 async function runReminders() {
-  await fetch(`${API_BASE_URL}/compliance/rules/reminders/run`, {
+  const response = await fetch(`${API_BASE_URL}/compliance/rules/reminders/run`, {
     method: "POST",
     headers: headers(),
   });
+  if (!response.ok) throw new Error("Reminder execution failed");
 }
 async function runEscalations() {
-  await fetch(`${API_BASE_URL}/compliance/rules/escalations/run`, {
+  const response = await fetch(`${API_BASE_URL}/compliance/rules/escalations/run`, {
     method: "POST",
     headers: headers(),
   });
+  if (!response.ok) throw new Error("Escalation execution failed");
 }
 
 async function runBulkAction(kind) {
   const selectedRows = state.items.filter((item) => state.selectedIds.has(item.clientId));
   if (!selectedRows.length) return;
+  const bulkOwnerUserId = document.getElementById("bulkOwnerSelect").value;
   for (const row of selectedRows) {
     if (kind === "assign") {
-      if (row.actionObligationId) await assignToMe(row.actionObligationId);
+      if (!bulkOwnerUserId) throw new Error("Choose owner before bulk assign.");
+      if (row.actionObligationId) await assignOwner(row.actionObligationId, bulkOwnerUserId);
+      else if (row.actionAlertId) await updateAlert(row.actionAlertId, "open", bulkOwnerUserId);
     } else if (kind === "in_progress") {
       if (row.actionAlertId) await updateAlert(row.actionAlertId, "in_progress");
     } else if (kind === "resolve") {
@@ -631,7 +706,73 @@ async function runBulkAction(kind) {
   await fetchPortfolio();
 }
 
+async function exportCsv() {
+  const response = await fetch(`${API_BASE_URL}/compliance/reports/portfolio.csv${qs(currentFilters())}`, { headers: headers() });
+  if (!response.ok) throw new Error("Export failed");
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = "compliance-portfolio.csv";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function exportPdf() {
+  const rows = state.items.map((item) => `
+    <tr>
+      <td>${asText(item.clientName)}</td>
+      <td>${asText(item.overallStatus)}</td>
+      <td>${asText(item.sarsStatus)}</td>
+      <td>${asText(item.cipcStatus)}</td>
+      <td>${asText(item.csdStatus)}</td>
+      <td>${Number(item.overdueCount || 0)}</td>
+      <td>${asText(item.ownerName || "-")}</td>
+      <td>${item.escalationFlag ? "Yes" : "No"}</td>
+      <td>${asText(item.escalatedByName || "-")}</td>
+      <td>${asText(dt(item.escalatedAt))}</td>
+    </tr>
+  `).join("");
+  const win = window.open("", "_blank", "width=1200,height=800");
+  if (!win) return;
+  win.document.write(`
+    <html>
+      <head>
+        <title>Compliance Portfolio Export</title>
+        <style>
+          body{font-family:Arial,sans-serif;padding:20px;}
+          table{width:100%;border-collapse:collapse;}
+          th,td{border:1px solid #ccc;padding:8px;text-align:left;font-size:12px;}
+          th{background:#f3f4f6;}
+        </style>
+      </head>
+      <body>
+        <h2>Compliance Portfolio (Filtered View)</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Client</th><th>Status</th><th>SARS</th><th>CIPC</th><th>CSD</th>
+              <th>Overdue</th><th>Owner</th><th>Escalation</th><th>Escalated By</th><th>Escalated At</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </body>
+    </html>
+  `);
+  win.document.close();
+  win.focus();
+  win.print();
+}
+
 document.getElementById("refreshBtn").addEventListener("click", () => fetchPortfolio().catch(console.error));
+document.getElementById("exportCsvBtn").addEventListener("click", () => exportCsv().catch((error) => {
+  console.error(error);
+  showToast("CSV export failed.");
+}));
+document.getElementById("exportPdfBtn").addEventListener("click", exportPdf);
 document.getElementById("runEscalationBtn").addEventListener("click", async () => {
   await runEscalations();
   await fetchPortfolio();
@@ -641,7 +782,7 @@ document.getElementById("runEscalationBtn").addEventListener("click", async () =
 ["statusFilter", "sourceFilter", "sortBy", "sortDir", "overdueOnly"].forEach((id) => {
   document.getElementById(id).addEventListener("change", () => fetchPortfolio().catch(console.error));
 });
-document.getElementById("ownerFilter").addEventListener("input", () => fetchPortfolio().catch(console.error));
+document.getElementById("ownerFilter").addEventListener("change", () => fetchPortfolio().catch(console.error));
 document.getElementById("bulkSelectAll").addEventListener("change", (event) => {
   const checked = event.target.checked;
   if (checked) {
@@ -663,10 +804,17 @@ document.getElementById("portfolioBody").addEventListener("click", async (event)
   if (action) {
     event.stopPropagation();
     const rowAction = action.getAttribute("data-row-action");
+    const row = action.closest("tr[data-client-id]");
+    const clientId = row?.getAttribute("data-client-id") || "";
+    const rowOwnerSelect = clientId ? document.querySelector(`[data-owner-select-client="${clientId}"]`) : null;
+    const ownerUserId = rowOwnerSelect ? rowOwnerSelect.value : "";
     try {
       if (rowAction === "assign") {
-        await assignToMe(action.getAttribute("data-obligation-id"));
-        showToast("Assigned to you.");
+        const owner = ownerUserId || user.id;
+        const obligationId = action.getAttribute("data-obligation-id");
+        if (obligationId) await assignOwner(obligationId, owner);
+        else await updateAlert(action.getAttribute("data-alert-id"), "open", owner);
+        showToast("Owner assignment updated.");
       } else if (rowAction === "in_progress") {
         await updateAlert(action.getAttribute("data-alert-id"), "in_progress");
         showToast("Marked in progress.");
@@ -719,7 +867,7 @@ document.getElementById("applyTimelineFiltersBtn").addEventListener("click", () 
 
 fetchPortfolio().catch((error) => {
   console.error(error);
-  document.getElementById("portfolioBody").innerHTML = `<tr><td colspan="11" class="muted">Unable to load compliance board.</td></tr>`;
+  document.getElementById("portfolioBody").innerHTML = `<tr><td colspan="14" class="muted">Unable to load compliance board.</td></tr>`;
 });
 </script>
 </body>
