@@ -10,35 +10,125 @@
 * { box-sizing: border-box; }
 body { margin: 0; background: #f6f8fc; color: #0f172a; font-family: "Public Sans", Arial, sans-serif; }
 .app-layout { display: flex; min-height: 100vh; }
-.page { margin-left: 260px; flex: 1; width: auto; padding: 26px 28px; }
-.page-header { display: flex; justify-content: space-between; align-items: end; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+.page { margin-left: 260px; flex: 1; width: auto; padding: 28px 30px; background: radial-gradient(900px 320px at 100% -2%, rgba(37,99,235,.08), transparent 70%), #f6f8fc; }
+.page-header { display: flex; justify-content: space-between; align-items: end; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
 .page-header h1 { margin: 0; font-size: 30px; letter-spacing: -0.02em; }
-.page-header p { margin: 6px 0 0; color: #64748b; }
-.toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
-.input, .select { height: 40px; border: 1px solid #dbe3f0; border-radius: 10px; background: #fff; padding: 0 12px; }
-.input { min-width: 260px; }
+.page-header p { margin: 6px 0 0; color: #64748b; line-height: 1.45; }
+
+.filters-card {
+  background: #fff;
+  border: 1px solid #dbe3f0;
+  border-radius: 14px;
+  box-shadow: 0 6px 16px rgba(15,23,42,.05);
+  padding: 12px;
+  margin-bottom: 12px;
+}
+.filters-top { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: center; }
+.filters-main { display: grid; grid-template-columns: minmax(280px, 1.8fr) minmax(150px, .8fr) minmax(150px, .8fr); gap: 8px; flex: 1; }
+.filters-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.filters-advanced {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #e2e8f0;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(130px, 1fr));
+  gap: 8px;
+}
+.filters-advanced.hidden { display: none; }
+
+.search-wrap { position: relative; min-width: 0; }
+.search-wrap i {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #64748b;
+  font-size: 12px;
+}
+
+.input, .select {
+  height: 42px;
+  border: 1px solid #dbe3f0;
+  border-radius: 10px;
+  background: #fff;
+  padding: 0 12px;
+  width: 100%;
+  transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
+}
+.search-wrap .input { padding-left: 32px; min-width: 0; }
+.input:focus, .select:focus {
+  outline: none;
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 3px rgba(147,197,253,.35);
+}
+
 .btn { border: 1px solid #dbe3f0; border-radius: 10px; background: #fff; color: #0f172a; padding: 10px 14px; cursor: pointer; font-weight: 600; }
 .btn.primary { background: #1d4ed8; color: #fff; border-color: #1d4ed8; }
-.bulk-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; padding: 10px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; }
+.btn:hover { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
+.btn.primary:hover { background: #1e40af; border-color: #1e40af; color: #fff; }
+
+.bulk-row {
+  display: grid;
+  grid-template-columns: auto minmax(160px, 170px) minmax(240px, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px solid #dbe3f0;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 6px 16px rgba(15,23,42,.05);
+}
 .bulk-row .count { font-size: 12px; color: #64748b; font-weight: 700; margin-right: 4px; }
 .pager { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 14px; border-top: 1px solid #e2e8f0; background: #fff; }
 .pager .meta { color: #64748b; font-size: 12px; }
 .chk { width: 16px; height: 16px; accent-color: #1d4ed8; }
 .grid { display: grid; grid-template-columns: repeat(4,minmax(170px,1fr)); gap: 12px; margin-bottom: 14px; }
-.kpi { background: #fff; border: 1px solid #dbe3f0; border-radius: 14px; padding: 14px; box-shadow: 0 6px 16px rgba(15,23,42,.05); }
+.kpi {
+  background: linear-gradient(180deg, #fff 0%, #f8fbff 100%);
+  border: 1px solid #dbe3f0;
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 6px 16px rgba(15,23,42,.05);
+  position: relative;
+  overflow: hidden;
+}
+.kpi::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #1d4ed8, #60a5fa);
+}
 .kpi .label { color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
 .kpi .value { font-size: 24px; font-weight: 700; margin-top: 6px; }
 .card { background: #fff; border: 1px solid #dbe3f0; border-radius: 14px; box-shadow: 0 6px 16px rgba(15,23,42,.05); overflow: hidden; }
+.card-head {
+  padding: 14px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+}
+.card-head h2 { margin: 0; font-size: 16px; }
+.card-head p { margin: 3px 0 0; color: #64748b; font-size: 13px; }
 .table-wrap { overflow: auto; max-height: calc(100vh - 340px); }
 table { width: 100%; border-collapse: collapse; min-width: 860px; }
 thead th { position: sticky; top: 0; z-index: 2; background: #f8fafc; color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid #dbe3f0; padding: 12px 14px; text-align: left; }
 tbody td { border-bottom: 1px solid #eef2f7; padding: 12px 14px; font-size: 14px; }
+tbody tr:hover { background: #f8fbff; }
+.client-id { color:#64748b; font-size:12px; }
 .pill { border-radius: 999px; padding: 4px 10px; font-size: 11px; font-weight: 700; }
 .pill.active { background: #dcfce7; color: #166534; }
 .pill.pending { background: #fef3c7; color: #92400e; }
 .pill.risk { background: #fee2e2; color: #b91c1c; }
 .row-actions { display: flex; gap: 6px; }
 .icon-btn { width: 34px; height: 34px; border: 1px solid #dbe3f0; border-radius: 8px; background: #fff; cursor: pointer; }
+.icon-btn:hover { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
 .empty { padding: 40px; text-align: center; color: #64748b; }
 .modal-backdrop { position: fixed; inset: 0; background: rgba(2,6,23,.45); display: none; align-items: center; justify-content: center; z-index: 1000; }
 .modal { width: min(560px,92vw); background: #fff; border-radius: 14px; border: 1px solid #dbe3f0; box-shadow: 0 20px 50px rgba(2,6,23,.25); }
@@ -50,9 +140,14 @@ tbody td { border-bottom: 1px solid #eef2f7; padding: 12px 14px; font-size: 14px
 .message { min-height: 20px; margin-top: 8px; font-size: 13px; }
 .message.error { color: #b91c1c; }
 .message.ok { color: #166534; }
+.modal-actions { display: flex; gap: 10px; margin-top: 10px; }
 @media (max-width: 900px) {
   .page { margin-left: 0; width: 100%; }
   .grid { grid-template-columns: repeat(2,minmax(150px,1fr)); }
+  .filters-main { grid-template-columns: 1fr; }
+  .filters-advanced { grid-template-columns: 1fr 1fr; }
+  .bulk-row { grid-template-columns: 1fr; }
+  .modal-actions { flex-wrap: wrap; }
 }
 </style>
 <script defer src="accountant-nav.js"></script>
@@ -71,48 +166,61 @@ tbody td { border-bottom: 1px solid #eef2f7; padding: 12px 14px; font-size: 14px
       <button class="btn primary" id="openCreateClient" type="button"><i class="fa-solid fa-plus"></i> Add Client</button>
     </section>
 
-    <section class="toolbar">
-      <input class="input" id="searchInput" placeholder="Search name, contact, entity type" aria-label="Search clients">
-      <select class="select" id="statusFilter" aria-label="Filter client status">
-        <option value="">All Status</option>
-        <option value="active">Active</option>
-        <option value="pending">Pending</option>
-        <option value="at-risk">At Risk</option>
-      </select>
-      <select class="select" id="industryFilter" aria-label="Filter industry">
-        <option value="">All Industries</option>
-        <option value="Technology">Technology</option>
-        <option value="General">General</option>
-        <option value="Finance">Finance</option>
-      </select>
-      <select class="select" id="riskBandFilter" aria-label="Filter risk band">
-        <option value="">Any Risk Band</option>
-        <option value="high">High</option>
-        <option value="medium">Medium</option>
-        <option value="low">Low</option>
-      </select>
-      <select class="select" id="complianceStatusFilter" aria-label="Filter compliance status">
-        <option value="">Any Compliance</option>
-        <option value="non-compliant">Non-compliant</option>
-        <option value="at-risk">At-risk</option>
-        <option value="compliant">Compliant</option>
-      </select>
-      <select class="select" id="savedViewFilter" aria-label="Saved views">
-        <option value="">Saved Views</option>
-        <option value="at-risk">At Risk</option>
-        <option value="no-activity-30d">No Activity 30d</option>
-      </select>
-      <select class="select" id="sortByFilter" aria-label="Sort by">
-        <option value="lastActivity">Sort: Last Activity</option>
-        <option value="name">Sort: Name</option>
-        <option value="risk">Sort: Risk</option>
-        <option value="status">Sort: Status</option>
-      </select>
-      <select class="select" id="sortDirFilter" aria-label="Sort direction">
-        <option value="desc">Desc</option>
-        <option value="asc">Asc</option>
-      </select>
-      <button class="btn" id="refreshBtn" type="button"><i class="fa-solid fa-rotate"></i> Refresh</button>
+    <section class="filters-card">
+      <div class="filters-top">
+        <div class="filters-main">
+          <div class="search-wrap">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input class="input" id="searchInput" placeholder="Search name, contact, entity type" aria-label="Search clients">
+          </div>
+          <select class="select" id="statusFilter" aria-label="Filter client status">
+            <option value="">All Status</option>
+            <option value="active">Active</option>
+            <option value="pending">Pending</option>
+            <option value="at-risk">At Risk</option>
+          </select>
+          <select class="select" id="savedViewFilter" aria-label="Saved views">
+            <option value="">Saved Views</option>
+            <option value="at-risk">At Risk</option>
+            <option value="no-activity-30d">No Activity 30d</option>
+          </select>
+        </div>
+        <div class="filters-actions">
+          <button class="btn" id="toggleAdvancedFilters" type="button"><i class="fa-solid fa-sliders"></i> More Filters</button>
+          <button class="btn" id="clearFiltersBtn" type="button"><i class="fa-solid fa-eraser"></i> Clear</button>
+          <button class="btn primary" id="refreshBtn" type="button"><i class="fa-solid fa-rotate"></i> Refresh</button>
+        </div>
+      </div>
+      <div class="filters-advanced hidden" id="advancedFilters">
+        <select class="select" id="industryFilter" aria-label="Filter industry">
+          <option value="">All Industries</option>
+          <option value="Technology">Technology</option>
+          <option value="General">General</option>
+          <option value="Finance">Finance</option>
+        </select>
+        <select class="select" id="riskBandFilter" aria-label="Filter risk band">
+          <option value="">Any Risk Band</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+        <select class="select" id="complianceStatusFilter" aria-label="Filter compliance status">
+          <option value="">Any Compliance</option>
+          <option value="non-compliant">Non-compliant</option>
+          <option value="at-risk">At-risk</option>
+          <option value="compliant">Compliant</option>
+        </select>
+        <select class="select" id="sortByFilter" aria-label="Sort by">
+          <option value="lastActivity">Sort: Last Activity</option>
+          <option value="name">Sort: Name</option>
+          <option value="risk">Sort: Risk</option>
+          <option value="status">Sort: Status</option>
+        </select>
+        <select class="select" id="sortDirFilter" aria-label="Sort direction">
+          <option value="desc">Desc</option>
+          <option value="asc">Asc</option>
+        </select>
+      </div>
     </section>
 
     <section class="bulk-row">
@@ -130,6 +238,13 @@ tbody td { border-bottom: 1px solid #eef2f7; padding: 12px 14px; font-size: 14px
     <section class="grid" id="kpiGrid"></section>
 
     <section class="card">
+      <div class="card-head">
+        <div>
+          <h2>Client Directory</h2>
+          <p id="clientsSubhead">Showing assigned clients</p>
+        </div>
+        <span class="count" id="tableUpdatedAt">Updated -</span>
+      </div>
       <div class="table-wrap">
         <table>
           <thead>
@@ -187,7 +302,7 @@ tbody td { border-bottom: 1px solid #eef2f7; padding: 12px 14px; font-size: 14px
         </div>
       </div>
       <p id="createClientMessage" class="message"></p>
-      <div class="toolbar" style="margin-top:10px; margin-bottom:0;">
+      <div class="modal-actions">
         <button class="btn" id="cancelCreateClient" type="button">Cancel</button>
         <button class="btn primary" id="saveCreateClient" type="button">Create Client</button>
       </div>
@@ -238,7 +353,7 @@ function renderTable() {
   tableBody.innerHTML = items.map((client) => `
     <tr>
       <td><input class="chk" type="checkbox" data-select-client="${esc(client.id)}" ${state.selected.has(client.id) ? "checked" : ""}></td>
-      <td><strong>${esc(client.name)}</strong><br><span style="color:#64748b;font-size:12px;">${esc(client.id)}</span></td>
+      <td><strong>${esc(client.name)}</strong><br><span class="client-id">${esc(client.id)}</span></td>
       <td>${esc(client.entityType)}</td>
       <td>${esc(client.primaryContact)}</td>
       <td>${esc(client.email)}</td>
@@ -258,6 +373,10 @@ function renderTable() {
   document.getElementById("clientsMeta").textContent = state.meta
     ? `Page ${state.meta.page}/${state.meta.totalPages} | ${state.meta.total} total`
     : "Page 1";
+  document.getElementById("clientsSubhead").textContent = state.meta
+    ? `Showing ${items.length} clients on this page (${state.meta.total} total)`
+    : `Showing ${items.length} clients`;
+  document.getElementById("tableUpdatedAt").textContent = `Updated ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
   document.getElementById("selectAllClients").checked = items.length > 0 && items.every((c) => state.selected.has(c.id));
   document.getElementById("selectedClientsCount").textContent = `${state.selected.size} selected`;
 }
@@ -325,6 +444,18 @@ function onFiltersChanged() {
   loadClients().catch(console.error);
 }
 
+function clearFilters() {
+  searchInput.value = "";
+  statusFilter.value = "";
+  document.getElementById("industryFilter").value = "";
+  document.getElementById("riskBandFilter").value = "";
+  document.getElementById("complianceStatusFilter").value = "";
+  document.getElementById("savedViewFilter").value = "";
+  document.getElementById("sortByFilter").value = "lastActivity";
+  document.getElementById("sortDirFilter").value = "desc";
+  onFiltersChanged();
+}
+
 searchInput.addEventListener("input", onFiltersChanged);
 statusFilter.addEventListener("change", onFiltersChanged);
 document.getElementById("industryFilter").addEventListener("change", onFiltersChanged);
@@ -334,6 +465,14 @@ document.getElementById("savedViewFilter").addEventListener("change", onFiltersC
 document.getElementById("sortByFilter").addEventListener("change", onFiltersChanged);
 document.getElementById("sortDirFilter").addEventListener("change", onFiltersChanged);
 document.getElementById("refreshBtn").addEventListener("click", () => loadClients().catch(console.error));
+document.getElementById("clearFiltersBtn").addEventListener("click", clearFilters);
+document.getElementById("toggleAdvancedFilters").addEventListener("click", () => {
+  const panel = document.getElementById("advancedFilters");
+  const isHidden = panel.classList.toggle("hidden");
+  document.getElementById("toggleAdvancedFilters").innerHTML = isHidden
+    ? '<i class="fa-solid fa-sliders"></i> More Filters'
+    : '<i class="fa-solid fa-sliders"></i> Less Filters';
+});
 document.getElementById("openCreateClient").addEventListener("click", () => openCreateClientModal(true));
 document.getElementById("closeCreateClient").addEventListener("click", () => openCreateClientModal(false));
 document.getElementById("cancelCreateClient").addEventListener("click", () => openCreateClientModal(false));
