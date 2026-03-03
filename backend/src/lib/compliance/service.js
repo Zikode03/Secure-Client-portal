@@ -55,6 +55,9 @@ async function usersByClient(clientId) {
   }
   return store.users.filter((user) => Array.isArray(user.clientIds) && user.clientIds.includes(clientId));
 }
+async function listUsers() {
+  return db ? db.user.findMany() : store.users;
+}
 function prefForUser(user) {
   const security = j(user?.security, {});
   const raw = j(security.notificationPreferences, {});
@@ -166,6 +169,52 @@ async function addEventsAndAlerts(client, events) {
   }
 }
 
+async function addStatusRegressionAlert(client, prevStatus, nextStatus) {
+  const from = String(prevStatus || "").toLowerCase();
+  const to = String(nextStatus || "").toLowerCase();
+  if (!(from === "green" && ["amber", "red"].includes(to))) return;
+  const title = "Compliance status changed to attention";
+  const duplicate = db
+    ? await db.complianceAlert.findFirst({
+      where: { clientId: client.id, title, status: { in: OPEN_ALERTS } },
+    })
+    : store.complianceAlerts.find((x) => x.clientId === client.id && x.title === title && OPEN_ALERTS.includes(String(x.status || "").toLowerCase()));
+  if (duplicate) return;
+
+  const message = `${client.name} moved from compliant (green) to ${to}. Immediate review is required.`;
+  const alert = {
+    id: utils.makeId("cal"),
+    clientId: client.id,
+    severity: to === "red" ? "high" : "medium",
+    status: "open",
+    title,
+    message,
+    source: "SYSTEM",
+    obligationType: null,
+    assignedUserId: client.assignedAccountantId || null,
+  };
+  const event = {
+    id: utils.makeId("ce"),
+    clientId: client.id,
+    source: "SYSTEM",
+    eventType: "status.regression",
+    severity: alert.severity,
+    title,
+    description: message,
+    obligationRef: null,
+    payload: { from, to },
+    occurredAt: new Date(),
+  };
+
+  if (db) {
+    await db.complianceEvent.create({ data: event });
+    await db.complianceAlert.create({ data: alert });
+  } else {
+    store.complianceEvents.unshift({ ...event, occurredAt: event.occurredAt.toISOString(), createdAt: nowIso() });
+    store.complianceAlerts.unshift({ ...alert, createdAt: nowIso(), updatedAt: nowIso(), resolvedAt: null, readAt: null });
+  }
+}
+
 function scoreV2(obligations) {
   const t = obligations.length || 1;
   const risk = Math.round((obligations.reduce((s, o) => s + weight(o.status), 0) / t) * 100);
@@ -194,6 +243,7 @@ export async function syncClientCompliance(clientId, actorUserId = null) {
   ensureComplianceDbReady();
   const client = await getClient(clientId);
   if (!client) throw new Error("Client not found");
+  const previousSnapshot = await latestSnapshot(clientId);
   const [sars, cipc, csd] = await Promise.all([pullSarsState(client), pullCipcState(client), pullCsdState(client)]);
   const snap = deriveSnapshot({ sarsState: sars, cipcState: cipc, csdState: csd });
   const obligations = snap.obligations.map((o) => ({ id: utils.makeId("obl"), clientId, source: String(o.source || "Unknown"), obligationType: String(o.obligationType || "Obligation"), periodLabel: o.periodLabel ? String(o.periodLabel) : null, dueDate: toDate(o.dueDate), submittedAt: toDate(o.submittedAt), paidAt: toDate(o.paidAt), status: String(o.status || "compliant"), amountDue: o.amountDue == null ? null : Number(o.amountDue), metadata: o.metadata || {} }));
@@ -201,6 +251,7 @@ export async function syncClientCompliance(clientId, actorUserId = null) {
   await upsertAccounts(clientId, sars, cipc, csd);
   await replaceObligations(clientId, obligations);
   await addSnapshot(clientId, snap);
+  await addStatusRegressionAlert(client, previousSnapshot?.overallStatus, snap.overallStatus);
   await addEventsAndAlerts(client, buildEvents({ client, obligations }));
   if (actorUserId) addAudit({ actorUserId, action: "compliance.sync", entityType: "client", entityId: clientId, metadata: { overallStatus: snap.overallStatus, score: snap.score } });
   return { clientId, snapshot: snap, obligations };
@@ -263,6 +314,115 @@ export async function getFirmComplianceOverview(reqUser) {
     items.push({ clientId: c.id, clientName: c.name, status: o.status, score: o.score, scoreV2: o.scoreV2, riskPercentV2: o.riskPercentV2, overdueCount: o.counts.overdue, dueSoonCount: o.counts.dueSoon, nonCompliantCount: o.counts.nonCompliant, lastUpdatedAt: o.lastUpdatedAt, sarsStatus: o.sarsStatus, cipcStatus: o.cipcStatus, csdStatus: o.csdStatus, serviceLine: c.entityType || "General", industry: j(c.profile || {}, {}).industry || "General" });
   }
   return { totalClients: items.length, green: items.filter((x) => x.status === "green").length, amber: items.filter((x) => x.status === "amber").length, red: items.filter((x) => x.status === "red").length, items };
+}
+
+export async function getCompliancePortfolio(reqUser, filters = {}) {
+  if (reqUser.role !== "accountant") {
+    const e = new Error("Insufficient role");
+    e.status = 403;
+    throw e;
+  }
+
+  const sourceFilter = String(filters.source || "").toUpperCase();
+  const ownerFilter = String(filters.owner || "").trim().toLowerCase();
+  const statusFilter = String(filters.status || "").toLowerCase();
+  const overdueOnly = String(filters.overdueOnly || "").toLowerCase() === "true";
+  const sortBy = String(filters.sortBy || "risk").toLowerCase();
+  const sortDir = String(filters.sortDir || "desc").toLowerCase() === "asc" ? 1 : -1;
+  const ids = Array.isArray(reqUser.clientIds) ? reqUser.clientIds : [];
+  const [clients, users] = await Promise.all([
+    db ? getDb().client.findMany({ where: { id: { in: ids } } }) : Promise.resolve(store.clients.filter((c) => ids.includes(c.id))),
+    listUsers(),
+  ]);
+  const userNameById = new Map(users.map((u) => [u.id, u.fullName || u.email || u.id]));
+  const accountItems = db
+    ? await db.complianceAccount.findMany({ where: { clientId: { in: ids } } })
+    : store.complianceAccounts.filter((item) => ids.includes(item.clientId));
+
+  const records = [];
+  for (const client of clients) {
+    const overview = await getClientComplianceOverview(reqUser, client.id);
+    const obligations = Array.isArray(overview.obligations) ? overview.obligations : [];
+    const accounts = accountItems.filter((a) => a.clientId === client.id);
+    const openAlerts = (overview.alerts || []).filter((a) => OPEN_ALERTS.includes(String(a.status || "").toLowerCase()));
+    const overdueCount = Number(overview.counts?.overdue || 0);
+    const dueSoonCount = Number(overview.counts?.dueSoon || 0);
+    const syncFailures = accounts.filter((a) => Boolean(a.lastError)).length;
+    const nextDueAt = obligations
+      .map((o) => toDate(o.dueDate))
+      .filter((d) => d && d.getTime() >= Date.now())
+      .sort((a, b) => a.getTime() - b.getTime())[0] || null;
+    const lastSyncedAt = accounts
+      .map((a) => toDate(a.lastSyncedAt))
+      .filter(Boolean)
+      .sort((a, b) => b.getTime() - a.getTime())[0] || null;
+    const ownerUserId = openAlerts.find((a) => a.assignedUserId)?.assignedUserId || client.assignedAccountantId || reqUser.id;
+    const ownerName = userNameById.get(ownerUserId) || "Unassigned";
+    const sourceStatuses = {
+      SARS: String(overview.sarsStatus || "unknown").toLowerCase(),
+      CIPC: String(overview.cipcStatus || "unknown").toLowerCase(),
+      CSD: String(overview.csdStatus || "unknown").toLowerCase(),
+    };
+    const riskScore = overdueCount > 0 ? 100 : dueSoonCount > 0 || syncFailures > 0 ? 60 : 20;
+    const normalizedStatus = overdueCount > 0 ? "red" : dueSoonCount > 0 || syncFailures > 0 ? "amber" : "green";
+    const latestAlert = openAlerts[0] || null;
+
+    records.push({
+      clientId: client.id,
+      clientName: client.name,
+      overallStatus: normalizedStatus,
+      riskScore,
+      sarsStatus: sourceStatuses.SARS,
+      cipcStatus: sourceStatuses.CIPC,
+      csdStatus: sourceStatuses.CSD,
+      overdueCount,
+      dueSoonCount,
+      nonCompliantCount: Number(overview.counts?.nonCompliant || 0),
+      nextDueDate: nextDueAt ? nextDueAt.toISOString() : null,
+      lastSync: lastSyncedAt ? lastSyncedAt.toISOString() : null,
+      ownerUserId,
+      ownerName,
+      syncFailures,
+      actionAlertId: latestAlert?.id || null,
+      actionObligationId: obligations.find((o) => ["overdue", "due_soon"].includes(normStatus(o.status)))?.id || null,
+      actionObligationType: obligations.find((o) => ["overdue", "due_soon"].includes(normStatus(o.status)))?.obligationType || null,
+    });
+  }
+
+  let filtered = records.filter((item) => {
+    if (statusFilter && item.overallStatus !== statusFilter) return false;
+    if (overdueOnly && item.overdueCount < 1) return false;
+    if (ownerFilter && !item.ownerName.toLowerCase().includes(ownerFilter)) return false;
+    if (sourceFilter) {
+      const value = item[`${sourceFilter.toLowerCase()}Status`];
+      if (!value || value === "unknown" || value === "green") return false;
+    }
+    return true;
+  });
+
+  filtered.sort((a, b) => {
+    if (a.overallStatus !== b.overallStatus) {
+      const order = { red: 3, amber: 2, green: 1 };
+      return (order[b.overallStatus] - order[a.overallStatus]);
+    }
+    if (sortBy === "next_due") {
+      const av = a.nextDueDate ? new Date(a.nextDueDate).getTime() : Number.MAX_SAFE_INTEGER;
+      const bv = b.nextDueDate ? new Date(b.nextDueDate).getTime() : Number.MAX_SAFE_INTEGER;
+      return (av - bv) * sortDir;
+    }
+    return (a.riskScore - b.riskScore) * sortDir;
+  });
+
+  return {
+    kpis: {
+      compliantClients: filtered.filter((x) => x.overallStatus === "green").length,
+      atRiskClients: filtered.filter((x) => x.overallStatus === "amber").length,
+      nonCompliantClients: filtered.filter((x) => x.overallStatus === "red").length,
+      overdueObligations: filtered.reduce((sum, row) => sum + row.overdueCount, 0),
+      syncFailures: filtered.reduce((sum, row) => sum + row.syncFailures, 0),
+    },
+    items: filtered,
+  };
 }
 
 export async function getFirmHeatmap(reqUser) {
@@ -346,13 +506,25 @@ export async function runEscalationRules() {
   ensureComplianceDbReady();
   const now = new Date();
   const list = db ? await db.complianceAlert.findMany({ where: { status: { in: ["open", "acknowledged", "in_progress"] } } }) : store.complianceAlerts.filter((x) => ["open", "acknowledged", "in_progress"].includes(String(x.status || "").toLowerCase()));
+  const users = await listUsers();
+  const managerByClient = new Map();
+  for (const user of users) {
+    const role = String(user.role || "").toLowerCase();
+    if (!["accountant_manager", "accountant_admin"].includes(role)) continue;
+    const userClientIds = Array.isArray(user.clientIds) ? user.clientIds : [];
+    for (const clientId of userClientIds) {
+      if (!managerByClient.has(clientId)) managerByClient.set(clientId, user.id);
+    }
+  }
+  const thresholdDays = Number(config.complianceEscalationDays || 5);
   let escalated = 0;
   for (const a of list) {
     const age = (now.getTime() - (toDate(a.createdAt) || now).getTime()) / (1000 * 60 * 60 * 24);
-    const t = String(a.severity || "").toLowerCase() === "high" ? 3 : String(a.severity || "").toLowerCase() === "medium" ? 5 : 7;
+    const t = thresholdDays;
     if (age < t) continue;
-    if (db) await db.complianceAlert.update({ where: { id: a.id }, data: { status: "escalated", updatedAt: new Date(), message: `${a.message}\n\nEscalated: unresolved for ${Math.floor(age)} days` } });
-    else { a.status = "escalated"; a.updatedAt = nowIso(); a.message = `${a.message}\n\nEscalated: unresolved for ${Math.floor(age)} days`; }
+    const managerUserId = managerByClient.get(a.clientId) || a.assignedUserId || null;
+    if (db) await db.complianceAlert.update({ where: { id: a.id }, data: { status: "escalated", assignedUserId: managerUserId, updatedAt: new Date(), message: `${a.message}\n\nEscalated: unresolved for ${Math.floor(age)} days` } });
+    else { a.status = "escalated"; a.assignedUserId = managerUserId; a.updatedAt = nowIso(); a.message = `${a.message}\n\nEscalated: unresolved for ${Math.floor(age)} days`; }
     escalated += 1;
   }
   return { escalated };

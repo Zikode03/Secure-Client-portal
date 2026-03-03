@@ -15,6 +15,7 @@ export const config = {
   maxUploadBytes: Number(process.env.MAX_UPLOAD_BYTES || 10 * 1024 * 1024 * 1024),
   signedUrlTtlSeconds: Number(process.env.SIGNED_URL_TTL_SECONDS || 900),
   authTokenTtlSeconds: Number(process.env.AUTH_TOKEN_TTL_SECONDS || 7 * 24 * 60 * 60),
+  complianceEscalationDays: Number(process.env.COMPLIANCE_ESCALATION_DAYS || 5),
 };
 
 export function requireConfig(keys) {

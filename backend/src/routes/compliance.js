@@ -11,6 +11,7 @@ import {
   getFirmComplianceReportCsv,
   getFirmHeatmap,
   getFirmComplianceOverview,
+  getCompliancePortfolio,
   getFrameworkComplianceItems,
   getSyncDiagnostics,
   listFirmAlerts,
@@ -91,6 +92,22 @@ router.get("/firm/overview", requireRole("accountant"), async (req, res, next) =
   try {
     const overview = await getFirmComplianceOverview(req.user);
     return res.json(overview);
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.get("/portfolio", requireRole("accountant"), async (req, res, next) => {
+  try {
+    const payload = await getCompliancePortfolio(req.user, {
+      status: String(req.query.status || ""),
+      source: String(req.query.source || ""),
+      owner: String(req.query.owner || ""),
+      overdueOnly: String(req.query.overdueOnly || ""),
+      sortBy: String(req.query.sortBy || ""),
+      sortDir: String(req.query.sortDir || ""),
+    });
+    return res.json(payload);
   } catch (error) {
     return next(error);
   }

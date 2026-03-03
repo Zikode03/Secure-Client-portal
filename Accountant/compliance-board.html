@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Compliance Board | Prospera</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+<link rel="stylesheet" href="../shared/accountant-theme.css" />
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: "Public Sans", "Segoe UI", sans-serif; background: #f3f6fb; color: #0f172a; }
+.app-layout { display: flex; min-height: 100vh; }
+.main { margin-left: 260px; flex: 1; }
+
+.sidebar {
+  width: 260px;
+  background: linear-gradient(180deg, #0f172a, #020617);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  height: 100vh;
+}
+.sidebar-header { padding: 22px; display: flex; gap: 12px; align-items: center; }
+.sidebar-header i { font-size: 30px; color: #60a5fa; }
+.sidebar-header h1 { font-size: 16px; }
+.sidebar-header p { font-size: 12px; color: #94a3b8; }
+.nav { padding: 16px; flex: 1; }
+.nav a {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 14px;
+  border-radius: 10px;
+  color: #cbd5f5;
+  text-decoration: none;
+  margin-bottom: 6px;
+}
+.nav a:hover { background: #1e293b; }
+.nav a.active { background: #2563eb; color: #fff; }
+.sidebar-footer { padding: 16px; }
+.user-box { background: #1e293b; padding: 12px; border-radius: 10px; margin-bottom: 12px; }
+.role { color: #60a5fa; font-size: 12px; }
+.logout { width: 100%; background: none; border: none; color: #cbd5f5; padding: 12px; border-radius: 10px; text-align: left; cursor: pointer; }
+.logout:hover { background: #1e293b; }
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: #ffffffde;
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid #e2e8f0;
+  padding: 16px 22px;
+}
+.header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.header h2 { font-size: 24px; letter-spacing: -.02em; }
+.header p { color: #64748b; margin-top: 4px; font-size: 14px; }
+
+.btn {
+  border: 1px solid #dbe3f0;
+  border-radius: 10px;
+  background: #fff;
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 9px 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.btn-primary { background: #1754cf; border-color: #1754cf; color: #fff; }
+
+.content { padding: 20px; display: grid; gap: 14px; }
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+.kpi {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  padding: 14px;
+}
+.kpi-label { color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; }
+.kpi-value { font-size: 30px; font-weight: 800; margin-top: 4px; letter-spacing: -.02em; }
+
+.board-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #fff;
+  overflow: hidden;
+}
+.card-head {
+  padding: 14px 16px;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr auto auto auto;
+  gap: 8px;
+}
+.filters input,
+.filters select {
+  border: 1px solid #dbe3f0;
+  border-radius: 9px;
+  height: 34px;
+  padding: 0 10px;
+  font-size: 12px;
+  background: #fff;
+}
+
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 12px 10px; text-align: left; }
+thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #fff;
+  color: #64748b;
+  font-size: 10px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  border-bottom: 1px solid #f1f5f9;
+}
+tbody tr { border-bottom: 1px solid #f8fafc; cursor: pointer; }
+tbody tr:hover { background: #f8fbff; }
+.mono { font-family: "IBM Plex Mono", Consolas, monospace; }
+.muted { color: #64748b; font-size: 12px; }
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border: 1px solid transparent;
+}
+.pill-green { background: #dcfce7; color: #166534; border-color: #86efac; }
+.pill-amber { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
+.pill-red { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
+.source-group { display: flex; gap: 5px; }
+.source-dot { width: 10px; height: 10px; border-radius: 999px; display: inline-block; margin-right: 6px; }
+.status-green { background: #10b981; }
+.status-amber { background: #f59e0b; }
+.status-red { background: #ef4444; }
+
+.row-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.row-actions .btn { font-size: 11px; height: 30px; padding: 0 8px; }
+
+.action-queue {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+}
+.queue-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fbff;
+  padding: 10px;
+}
+.queue-item h4 { font-size: 13px; margin-bottom: 4px; }
+
+.drawer {
+  position: fixed;
+  top: 0;
+  right: -520px;
+  width: min(520px, 96vw);
+  height: 100vh;
+  background: #fff;
+  border-left: 1px solid #dbe3f0;
+  box-shadow: -16px 0 28px rgba(2, 6, 23, .16);
+  z-index: 80;
+  display: flex;
+  flex-direction: column;
+  transition: right .22s ease;
+}
+.drawer.open { right: 0; }
+.drawer-head {
+  padding: 14px;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.drawer-body { padding: 12px 14px; overflow: auto; }
+.timeline-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 9px;
+}
+.timeline-title { font-size: 13px; font-weight: 700; margin-bottom: 3px; }
+
+.toast {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 120;
+  background: #0f172a;
+  color: #f8fafc;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  display: none;
+}
+.toast.show { display: block; }
+
+@media (max-width: 1280px) {
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .filters { grid-template-columns: 1fr 1fr; }
+  .action-queue { grid-template-columns: 1fr; }
+}
+@media (max-width: 900px) {
+  .main { margin-left: 0; }
+  .sidebar { display: none; }
+}
+</style>
+<script defer src="accountant-nav.js"></script>
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <i class="fa-solid fa-shield-halved"></i>
+      <div>
+        <h1>Prospera</h1>
+        <p>Accountant Portal</p>
+      </div>
+    </div>
+    <nav class="nav">
+      <a href="dashboards.html"><i class="fa fa-chart-line"></i> Dashboard</a>
+      <a href="clients.html"><i class="fa fa-users"></i> Clients</a>
+      <a href="clients-directory.html"><i class="fa fa-address-book"></i> Directory</a>
+      <a href="documents.html"><i class="fa fa-file"></i> Documents</a>
+      <a href="review-queue.html"><i class="fa fa-clipboard-check"></i> Review Queue</a>
+      <a href="compliance-board.html" class="active"><i class="fa fa-shield-alt"></i> Compliance</a>
+      <a href="tasks.html"><i class="fa fa-tasks"></i> Tasks</a>
+      <a href="messages.html"><i class="fa fa-message"></i> Messages</a>
+      <a href="settings.html"><i class="fa fa-gear"></i> Settings</a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-box">
+        <p><strong>Accountant</strong></p>
+        <p id="sidebarEmail">-</p>
+        <p class="role">Compliance Owner</p>
+      </div>
+      <button type="button" class="logout"><i class="fa fa-sign-out"></i> Logout</button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="header">
+      <div class="header-row">
+        <div>
+          <h2>Compliance Board</h2>
+          <p>Portfolio compliance visibility with risk sorting, actions, and timelines.</p>
+        </div>
+        <div>
+          <button type="button" class="btn" id="refreshBtn"><i class="fa-solid fa-rotate"></i> Refresh</button>
+          <button type="button" class="btn btn-primary" id="runEscalationBtn"><i class="fa-solid fa-triangle-exclamation"></i> Run Escalations</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="content">
+      <section class="kpis">
+        <div class="kpi"><div class="kpi-label">Compliant Clients</div><div class="kpi-value" id="kpiCompliant">0</div></div>
+        <div class="kpi"><div class="kpi-label">At-Risk Clients</div><div class="kpi-value" id="kpiAtRisk">0</div></div>
+        <div class="kpi"><div class="kpi-label">Non-Compliant Clients</div><div class="kpi-value" id="kpiNonCompliant">0</div></div>
+        <div class="kpi"><div class="kpi-label">Overdue Obligations</div><div class="kpi-value" id="kpiOverdue">0</div></div>
+        <div class="kpi"><div class="kpi-label">Sync Failures</div><div class="kpi-value" id="kpiSyncFailures">0</div></div>
+      </section>
+
+      <section class="board-card">
+        <div class="card-head">
+          <strong>Action Queue (Top 3)</strong>
+        </div>
+        <div class="content action-queue" id="actionQueue">
+          <div class="queue-item"><h4>Loading...</h4><p class="muted">Preparing actions.</p></div>
+        </div>
+      </section>
+
+      <section class="board-card">
+        <div class="card-head">
+          <strong>Client Compliance Table</strong>
+          <div class="filters">
+            <select id="statusFilter" aria-label="Filter by status">
+              <option value="">All Statuses</option>
+              <option value="green">Green</option>
+              <option value="amber">Amber</option>
+              <option value="red">Red</option>
+            </select>
+            <select id="sourceFilter" aria-label="Filter by source">
+              <option value="">All Sources</option>
+              <option value="SARS">SARS</option>
+              <option value="CIPC">CIPC</option>
+              <option value="CSD">CSD</option>
+            </select>
+            <input id="ownerFilter" type="text" placeholder="Owner..." aria-label="Filter by owner" />
+            <select id="sortBy" aria-label="Sort by">
+              <option value="risk">Sort: Risk score</option>
+              <option value="next_due">Sort: Next due date</option>
+            </select>
+            <select id="sortDir" aria-label="Sort direction">
+              <option value="desc">Descending</option>
+              <option value="asc">Ascending</option>
+            </select>
+            <label class="btn" for="overdueOnly">
+              <input id="overdueOnly" type="checkbox" /> Overdue only
+            </label>
+          </div>
+        </div>
+        <div style="overflow:auto; max-height: 520px;">
+          <table>
+            <thead>
+              <tr>
+                <th>Client</th>
+                <th>Overall</th>
+                <th>SARS</th>
+                <th>CIPC</th>
+                <th>CSD</th>
+                <th>Overdue</th>
+                <th>Next Due Date</th>
+                <th>Last Sync</th>
+                <th>Owner</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="portfolioBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<aside class="drawer" id="timelineDrawer" aria-label="Client timeline drawer">
+  <div class="drawer-head">
+    <div>
+      <strong id="drawerTitle">Client Timeline</strong>
+      <div class="muted" id="drawerSubtitle"></div>
+    </div>
+    <button type="button" class="btn" id="closeDrawerBtn"><i class="fa-solid fa-xmark"></i> Close</button>
+  </div>
+  <div class="drawer-body">
+    <div class="filters" style="margin-bottom: 10px; grid-template-columns: 1fr 1fr auto;">
+      <select id="timelineSource" aria-label="Timeline source">
+        <option value="">All sources</option>
+        <option value="SARS">SARS</option>
+        <option value="CIPC">CIPC</option>
+        <option value="CSD">CSD</option>
+        <option value="SYSTEM">SYSTEM</option>
+      </select>
+      <select id="timelineEvent" aria-label="Timeline event type">
+        <option value="">All events</option>
+        <option value="submitted">submitted</option>
+        <option value="paid">paid</option>
+        <option value="overdue">overdue</option>
+        <option value="resolved">resolved</option>
+        <option value="evidence.uploaded">evidence uploaded</option>
+      </select>
+      <button type="button" class="btn" id="applyTimelineFiltersBtn">Apply</button>
+    </div>
+    <div id="timelineList"></div>
+  </div>
+</aside>
+
+<div class="toast" id="toast"></div>
+
+<script src="../shared/portal-config.js"></script>
+<script src="../shared/portal-auth.js"></script>
+<script>
+const API_BASE_URL = window.PortalConfig.API_BASE_URL;
+const session = window.PortalAuth.requireRole("accountant", "accountant logins/login.html");
+if (!session) throw new Error("Unauthorized");
+const { token, user } = session;
+document.getElementById("sidebarEmail").textContent = user?.email || "-";
+
+const state = { items: [], selectedClientId: "" };
+function headers() { return window.PortalAuth.authHeaders(token); }
+function qs(params) {
+  const out = new URLSearchParams();
+  Object.entries(params).forEach(([k, v]) => { if (v !== "" && v != null) out.set(k, String(v)); });
+  const query = out.toString();
+  return query ? `?${query}` : "";
+}
+function asText(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+function dt(iso) {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "-";
+  return d.toLocaleString([], { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+function pill(status) {
+  const s = String(status || "").toLowerCase();
+  if (s === "green" || s === "compliant") return "pill pill-green";
+  if (s === "red" || s === "overdue" || s === "non_compliant") return "pill pill-red";
+  return "pill pill-amber";
+}
+function showToast(text) {
+  const el = document.getElementById("toast");
+  el.textContent = text;
+  el.classList.add("show");
+  setTimeout(() => el.classList.remove("show"), 1800);
+}
+
+async function fetchPortfolio() {
+  const payload = {
+    status: document.getElementById("statusFilter").value,
+    source: document.getElementById("sourceFilter").value,
+    owner: document.getElementById("ownerFilter").value.trim(),
+    overdueOnly: document.getElementById("overdueOnly").checked ? "true" : "",
+    sortBy: document.getElementById("sortBy").value,
+    sortDir: document.getElementById("sortDir").value,
+  };
+  const response = await fetch(`${API_BASE_URL}/compliance/portfolio${qs(payload)}`, { headers: headers() });
+  if (!response.ok) throw new Error("Failed to load compliance portfolio");
+  const data = await response.json();
+  state.items = Array.isArray(data.items) ? data.items : [];
+  renderKpis(data.kpis || {});
+  renderActionQueue(state.items);
+  renderTable(state.items);
+}
+
+function renderKpis(kpis) {
+  document.getElementById("kpiCompliant").textContent = Number(kpis.compliantClients || 0);
+  document.getElementById("kpiAtRisk").textContent = Number(kpis.atRiskClients || 0);
+  document.getElementById("kpiNonCompliant").textContent = Number(kpis.nonCompliantClients || 0);
+  document.getElementById("kpiOverdue").textContent = Number(kpis.overdueObligations || 0);
+  document.getElementById("kpiSyncFailures").textContent = Number(kpis.syncFailures || 0);
+}
+
+function renderActionQueue(items) {
+  const wrap = document.getElementById("actionQueue");
+  const top = items
+    .filter((item) => item.overallStatus !== "green")
+    .slice(0, 3);
+  if (!top.length) {
+    wrap.innerHTML = `<div class="queue-item"><h4>All clients compliant</h4><p class="muted">No urgent actions right now.</p></div>`;
+    return;
+  }
+  wrap.innerHTML = top.map((item) => `
+    <div class="queue-item">
+      <h4>${asText(item.clientName)}</h4>
+      <p class="muted">Status: ${asText(item.overallStatus.toUpperCase())} | Overdue: ${Number(item.overdueCount || 0)}</p>
+      <div class="row-actions" style="margin-top:8px;">
+        <a class="btn" href="client-profile.html?clientId=${encodeURIComponent(item.clientId)}">Open Client</a>
+        <button type="button" class="btn" data-row-action="in_progress" data-alert-id="${asText(item.actionAlertId || "")}">Mark In Progress</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+function renderTable(items) {
+  const body = document.getElementById("portfolioBody");
+  if (!items.length) {
+    body.innerHTML = `<tr><td colspan="10" class="muted">No matching clients.</td></tr>`;
+    return;
+  }
+  body.innerHTML = items.map((item) => `
+    <tr data-client-id="${asText(item.clientId)}">
+      <td><strong>${asText(item.clientName)}</strong><div class="muted mono">Risk ${Number(item.riskScore || 0)}</div></td>
+      <td><span class="${pill(item.overallStatus)}">${asText(item.overallStatus.toUpperCase())}</span></td>
+      <td><span class="${pill(item.sarsStatus)}">${asText(String(item.sarsStatus || "unknown").toUpperCase())}</span></td>
+      <td><span class="${pill(item.cipcStatus)}">${asText(String(item.cipcStatus || "unknown").toUpperCase())}</span></td>
+      <td><span class="${pill(item.csdStatus)}">${asText(String(item.csdStatus || "unknown").toUpperCase())}</span></td>
+      <td>${Number(item.overdueCount || 0)}</td>
+      <td class="muted">${dt(item.nextDueDate)}</td>
+      <td class="muted">${dt(item.lastSync)}</td>
+      <td>${asText(item.ownerName || "Unassigned")}</td>
+      <td>
+        <div class="row-actions">
+          <a class="btn" href="client-profile.html?clientId=${encodeURIComponent(item.clientId)}">Open</a>
+          <button type="button" class="btn" data-row-action="assign" data-obligation-id="${asText(item.actionObligationId || "")}">Assign</button>
+          <button type="button" class="btn" data-row-action="remind" data-client-id="${asText(item.clientId)}">Send Reminder</button>
+          <button type="button" class="btn" data-row-action="in_progress" data-alert-id="${asText(item.actionAlertId || "")}">In Progress</button>
+          <button type="button" class="btn btn-primary" data-row-action="resolve" data-alert-id="${asText(item.actionAlertId || "")}">Resolve</button>
+        </div>
+      </td>
+    </tr>
+  `).join("");
+}
+
+async function loadTimeline(clientId) {
+  state.selectedClientId = clientId;
+  const source = document.getElementById("timelineSource").value;
+  const eventType = document.getElementById("timelineEvent").value;
+  const response = await fetch(`${API_BASE_URL}/compliance/client/${encodeURIComponent(clientId)}/events${qs({ source, eventType, limit: 120 })}`, { headers: headers() });
+  if (!response.ok) throw new Error("Failed to load timeline");
+  const payload = await response.json();
+  const items = Array.isArray(payload.items) ? payload.items : [];
+  const list = document.getElementById("timelineList");
+  if (!items.length) {
+    list.innerHTML = `<p class="muted">No timeline events found for current filters.</p>`;
+    return;
+  }
+  list.innerHTML = items.map((event) => `
+    <article class="timeline-item">
+      <div class="timeline-title">${asText(event.title || event.eventType || "Event")}</div>
+      <div class="muted">${asText(event.source || "-")} &middot; ${asText(event.eventType || "-")} &middot; ${dt(event.occurredAt || event.createdAt)}</div>
+      <p class="muted" style="margin-top:4px;">${asText(event.description || "")}</p>
+    </article>
+  `).join("");
+}
+
+function openDrawer(clientId) {
+  const drawer = document.getElementById("timelineDrawer");
+  const row = state.items.find((item) => item.clientId === clientId);
+  document.getElementById("drawerTitle").textContent = `${row?.clientName || "Client"} Timeline`;
+  document.getElementById("drawerSubtitle").textContent = `Events: submitted, paid, overdue, resolved, evidence uploaded`;
+  drawer.classList.add("open");
+  loadTimeline(clientId).catch((error) => {
+    console.error(error);
+    document.getElementById("timelineList").innerHTML = `<p class="muted">Unable to load timeline.</p>`;
+  });
+}
+function closeDrawer() {
+  document.getElementById("timelineDrawer").classList.remove("open");
+}
+
+async function updateAlert(alertId, status) {
+  if (!alertId) return;
+  await fetch(`${API_BASE_URL}/compliance/alerts/${encodeURIComponent(alertId)}/lifecycle`, {
+    method: "POST",
+    headers: headers(),
+    body: JSON.stringify({ status }),
+  });
+}
+async function assignToMe(obligationId) {
+  if (!obligationId) return;
+  await fetch(`${API_BASE_URL}/compliance/obligations/${encodeURIComponent(obligationId)}/assign`, {
+    method: "POST",
+    headers: headers(),
+    body: JSON.stringify({ ownerUserId: user.id }),
+  });
+}
+async function runReminders() {
+  await fetch(`${API_BASE_URL}/compliance/rules/reminders/run`, {
+    method: "POST",
+    headers: headers(),
+  });
+}
+async function runEscalations() {
+  await fetch(`${API_BASE_URL}/compliance/rules/escalations/run`, {
+    method: "POST",
+    headers: headers(),
+  });
+}
+
+document.getElementById("refreshBtn").addEventListener("click", () => fetchPortfolio().catch(console.error));
+document.getElementById("runEscalationBtn").addEventListener("click", async () => {
+  await runEscalations();
+  await fetchPortfolio();
+  showToast("Escalation rules completed.");
+});
+
+["statusFilter", "sourceFilter", "sortBy", "sortDir", "overdueOnly"].forEach((id) => {
+  document.getElementById(id).addEventListener("change", () => fetchPortfolio().catch(console.error));
+});
+document.getElementById("ownerFilter").addEventListener("input", () => fetchPortfolio().catch(console.error));
+
+document.getElementById("portfolioBody").addEventListener("click", async (event) => {
+  const action = event.target.closest("[data-row-action]");
+  if (action) {
+    event.stopPropagation();
+    const rowAction = action.getAttribute("data-row-action");
+    try {
+      if (rowAction === "assign") {
+        await assignToMe(action.getAttribute("data-obligation-id"));
+        showToast("Assigned to you.");
+      } else if (rowAction === "in_progress") {
+        await updateAlert(action.getAttribute("data-alert-id"), "in_progress");
+        showToast("Marked in progress.");
+      } else if (rowAction === "resolve") {
+        await updateAlert(action.getAttribute("data-alert-id"), "resolved");
+        showToast("Marked resolved.");
+      } else if (rowAction === "remind") {
+        await runReminders();
+        showToast("Reminder run triggered.");
+      }
+      await fetchPortfolio();
+    } catch (error) {
+      console.error(error);
+      showToast("Action failed.");
+    }
+    return;
+  }
+  const row = event.target.closest("tr[data-client-id]");
+  if (!row) return;
+  openDrawer(row.getAttribute("data-client-id"));
+});
+
+document.getElementById("actionQueue").addEventListener("click", async (event) => {
+  const action = event.target.closest("[data-row-action]");
+  if (!action) return;
+  try {
+    await updateAlert(action.getAttribute("data-alert-id"), "in_progress");
+    await fetchPortfolio();
+    showToast("Marked in progress.");
+  } catch (error) {
+    console.error(error);
+    showToast("Action failed.");
+  }
+});
+
+document.getElementById("closeDrawerBtn").addEventListener("click", closeDrawer);
+document.getElementById("applyTimelineFiltersBtn").addEventListener("click", () => {
+  if (!state.selectedClientId) return;
+  loadTimeline(state.selectedClientId).catch(console.error);
+});
+
+fetchPortfolio().catch((error) => {
+  console.error(error);
+  document.getElementById("portfolioBody").innerHTML = `<tr><td colspan="10" class="muted">Unable to load compliance board.</td></tr>`;
+});
+</script>
+</body>
+</html>

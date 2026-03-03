@@ -47,6 +47,7 @@
     { key: 'directory', href: 'clients-directory.html', icon: 'fa fa-address-book', label: 'Directory' },
     { key: 'documents', href: 'documents.html', icon: 'fa fa-file', label: 'Documents' },
     { key: 'review', href: 'review-queue.html', icon: 'fa fa-clipboard-check', label: 'Review Queue' },
+    { key: 'compliance', href: 'compliance-board.html', icon: 'fa fa-shield-alt', label: 'Compliance' },
     { key: 'tasks', href: 'tasks.html', icon: 'fa fa-tasks', label: 'Tasks' },
     { key: 'messages', href: 'messages.html', icon: 'fa fa-message', label: 'Messages' },
     { key: 'settings', href: 'settings.html', icon: 'fa fa-gear', label: 'Settings' }
@@ -61,6 +62,7 @@
     'documents.html': 'documents',
     'documentview.html': 'review',
     'review-queue.html': 'review',
+    'compliance-board.html': 'compliance',
     'tasks.html': 'tasks',
     'messages.html': 'messages',
     'settings.html': 'settings',

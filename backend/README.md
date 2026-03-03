@@ -143,6 +143,17 @@ Server default: `http://localhost:4010`
 - `GET /api/dashboard/review-queue` (accountant)
 - `POST /api/reviews/:documentId/action` (`approve`, `reject`, `request_fix`)
 
+### Compliance
+- `GET /api/compliance/overview` (client own view, accountant firm view)
+- `GET /api/compliance/portfolio` (accountant compliance board with filters/sorting)
+- `GET /api/compliance/client/:clientId/overview`
+- `GET /api/compliance/client/:clientId/events`
+- `GET /api/compliance/client/:clientId/actions`
+- `POST /api/compliance/alerts/:alertId/lifecycle`
+- `POST /api/compliance/obligations/:obligationId/assign`
+- `POST /api/compliance/rules/escalations/run`
+- `POST /api/compliance/rules/reminders/run`
+
 ## Notes
 
 - Sensitive write endpoints support idempotency via `Idempotency-Key` header.
