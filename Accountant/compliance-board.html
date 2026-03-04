@@ -7,10 +7,21 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 <link rel="stylesheet" href="../shared/accountant-theme.css" />
 <style>
+:root {
+  --cb-bg: #f2f5fa;
+  --cb-surface: #ffffff;
+  --cb-surface-soft: #f7f9fc;
+  --cb-border: #e2e8f0;
+  --cb-text: #0f172a;
+  --cb-muted: #64748b;
+  --cb-primary: #2563eb;
+  --cb-primary-strong: #1d4ed8;
+  --cb-shadow: 0 8px 20px rgba(15, 23, 42, 0.04);
+}
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: "Public Sans", "Segoe UI", sans-serif; background: #f3f6fb; color: #0f172a; }
+body { font-family: "Public Sans", "Segoe UI", sans-serif; background: var(--cb-bg); color: var(--cb-text); }
 .app-layout { display: flex; min-height: 100vh; }
-.main { margin-left: 260px; flex: 1; }
+.main { margin-left: 260px; flex: 1; min-width: 0; padding: 24px; }
 
 .sidebar {
   width: 260px;
@@ -45,184 +56,499 @@ body { font-family: "Public Sans", "Segoe UI", sans-serif; background: #f3f6fb; 
 .logout:hover { background: #1e293b; }
 
 .header {
-  position: sticky;
-  top: 0;
-  z-index: 40;
-  background: #ffffffde;
-  backdrop-filter: blur(8px);
-  border-bottom: 1px solid #e2e8f0;
-  padding: 16px 22px;
+  border: 1px solid var(--cb-border);
+  border-radius: 14px;
+  background: var(--cb-surface);
+  box-shadow: var(--cb-shadow);
+  padding: 16px 18px;
+  margin-bottom: 14px;
 }
 .header-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 10px;
+  gap: 12px;
+  flex-wrap: wrap;
 }
-.header h2 { font-size: 24px; letter-spacing: -.02em; }
-.header p { color: #64748b; margin-top: 4px; font-size: 14px; }
+.header h2 { font-size: 30px; letter-spacing: -.02em; line-height: 1.08; }
+.header p { color: var(--cb-muted); margin-top: 6px; font-size: 14px; line-height: 1.4; }
+.header-meta {
+  margin-top: 9px;
+  color: var(--cb-muted);
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.header-meta::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #10b981;
+}
+.header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.header-tools {
+  position: relative;
+}
+.header-tools summary {
+  list-style: none;
+}
+.header-tools summary::-webkit-details-marker { display: none; }
+.header-tools-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 50;
+  min-width: 220px;
+  border: 1px solid #dbe3f0;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.14);
+  padding: 8px;
+  display: grid;
+  gap: 6px;
+}
 
 .btn {
   border: 1px solid #dbe3f0;
   border-radius: 10px;
   background: #fff;
   color: #0f172a;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
-  padding: 9px 12px;
+  min-height: 36px;
+  padding: 0 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  transition: background-color .15s ease, border-color .15s ease;
+  text-decoration: none;
+}
+.btn:hover { background: #f8fafc; border-color: #cbd5e1; }
+.btn:focus-visible {
+  outline: 2px solid #93c5fd;
+  outline-offset: 2px;
+}
+.btn-primary { background: var(--cb-primary); border-color: var(--cb-primary); color: #fff; }
+.btn-primary:hover { background: var(--cb-primary-strong); border-color: var(--cb-primary-strong); }
+.btn-sm { min-height: 30px; padding: 0 9px; border-radius: 8px; font-size: 11px; }
+.btn-ghost { background: #f8fafc; border-color: #e2e8f0; color: #334155; }
+
+.content { display: grid; gap: 14px; max-width: 1520px; margin: 0 auto; }
+
+.board-card {
+  border: 1px solid var(--cb-border);
+  border-radius: 14px;
+  background: var(--cb-surface);
+  overflow: hidden;
+  box-shadow: var(--cb-shadow);
+}
+.card-head {
+  padding: 12px 14px;
+  border-bottom: 1px solid #eef2f7;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.card-title { font-size: 15px; font-weight: 800; letter-spacing: -0.01em; }
+.card-subtitle { color: var(--cb-muted); font-size: 12px; margin-top: 3px; line-height: 1.4; }
+
+.kpis { display: grid; grid-template-columns: repeat(5, minmax(120px, 1fr)); gap: 10px; }
+.kpi {
+  border: 1px solid var(--cb-border);
+  border-radius: 12px;
+  background: #fff;
+  padding: 12px 13px;
+}
+.kpi-label { color: var(--cb-muted); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; }
+.kpi-value { font-size: 25px; font-weight: 800; margin-top: 6px; line-height: 1; }
+
+.board-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 330px;
+  gap: 14px;
+  align-items: start;
+}
+.queue-card .card-head {
+  align-items: flex-start;
+  border-bottom: 1px solid #e9eef6;
+}
+.queue-card {
+  position: sticky;
+  top: 16px;
+}
+.queue-card .card-subtitle {
+  margin-top: 2px;
+}
+
+.queue-list { padding: 12px; display: grid; gap: 8px; }
+.queue-item {
+  border: 1px solid var(--cb-border);
+  border-radius: 10px;
+  background: #fff;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+.queue-main h4 { font-size: 13px; margin-bottom: 2px; }
+.queue-meta {
+  color: var(--cb-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.queue-actions { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.queue-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #b45309;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 999px;
+  padding: 3px 8px;
+}
+
+.filters {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+  max-width: none;
+}
+.filters-main {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  flex: 1;
+  min-width: 270px;
+}
+.search-wrap {
+  position: relative;
+  min-width: 220px;
+  flex: 1;
+}
+.search-wrap i {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  font-size: 12px;
+  pointer-events: none;
+}
+.search-wrap input {
+  width: 100%;
+  padding-left: 30px;
+}
+.filters input,
+.filters select {
+  border: 1px solid #dbe3f0;
+  border-radius: 10px;
+  height: 36px;
+  padding: 0 10px;
+  font-size: 12px;
+  background: #fff;
+}
+.filters input:focus,
+.filters select:focus {
+  outline: none;
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 3px rgba(147,197,253,.25);
+}
+.filter-toggle {
+  border: 1px solid #dbe3f0;
+  border-radius: 10px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+  cursor: pointer;
+}
+.filter-toggle input { width: 16px; height: 16px; margin: 0; accent-color: var(--cb-primary); }
+.advanced-filters {
+  border: 1px solid #dbe3f0;
+  border-radius: 10px;
+  background: #fff;
+  min-width: 150px;
+  padding: 8px 10px;
+}
+.advanced-filters summary {
+  list-style: none;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.advanced-filters summary::-webkit-details-marker { display: none; }
+.advanced-grid {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+.view-toggle {
+  padding: 10px 14px;
+  border-bottom: 1px solid #eef2f7;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  background: #fbfdff;
+}
+.view-btn {
+  border: 1px solid #dbe3f0;
+  border-radius: 999px;
+  background: #fff;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+  min-height: 30px;
+  padding: 0 12px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 7px;
 }
-.btn-primary { background: #1754cf; border-color: #1754cf; color: #fff; }
+.view-btn:hover { background: #f8fafc; border-color: #cbd5e1; }
+.view-btn.active {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1d4ed8;
+}
 
-.content { padding: 20px; display: grid; gap: 14px; }
-.kpis {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 12px;
+.bulk-panel {
+  border-bottom: 1px solid #eef2f7;
+  background: #f8fbff;
 }
-.kpi {
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  background: #fff;
-  padding: 14px;
-}
-.kpi-label { color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; }
-.kpi-value { font-size: 30px; font-weight: 800; margin-top: 4px; letter-spacing: -.02em; }
-
-.board-card {
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  background: #fff;
-  overflow: hidden;
-}
-.card-head {
-  padding: 14px 16px;
-  border-bottom: 1px solid #f1f5f9;
+.bulk-summary {
+  list-style: none;
+  cursor: pointer;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 10px;
+  padding: 10px 14px;
+  user-select: none;
 }
-.filters {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr auto auto auto;
+.bulk-summary::-webkit-details-marker { display: none; }
+.bulk-summary i { color: #64748b; font-size: 11px; transition: transform .15s ease; }
+.bulk-panel[open] .bulk-summary i { transform: rotate(180deg); }
+.bulk-summary-left {
+  display: inline-flex;
+  align-items: center;
   gap: 8px;
+  color: #1e293b;
+  font-size: 12px;
+  font-weight: 700;
 }
-.filters input,
-.filters select {
+.bulk-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 0 14px 12px;
+}
+.bulk-main, .bulk-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.bulk-main label {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+  color: #334155;
+}
+.bulk-row select, .reviewer-select {
   border: 1px solid #dbe3f0;
-  border-radius: 9px;
-  height: 34px;
+  border-radius: 10px;
+  min-height: 34px;
   padding: 0 10px;
   font-size: 12px;
   background: #fff;
 }
+.reviewer-select { width: 100%; margin-top: 6px; min-height: 32px; }
+.bulk-label { color: #475569; font-size: 12px; font-weight: 700; }
+.row-check { width: 16px; height: 16px; accent-color: var(--cb-primary); }
 
-table { width: 100%; border-collapse: collapse; }
-th, td { padding: 12px 10px; text-align: left; }
+.table-wrap { overflow: auto; max-height: 560px; }
+table { width: 100%; border-collapse: collapse; min-width: 780px; }
+th, td { padding: 11px 10px; text-align: left; vertical-align: top; }
 thead th {
   position: sticky;
   top: 0;
   z-index: 2;
   background: #fff;
-  color: #64748b;
+  color: var(--cb-muted);
   font-size: 10px;
   letter-spacing: .08em;
   text-transform: uppercase;
-  border-bottom: 1px solid #f1f5f9;
+  border-bottom: 1px solid #eef2f7;
+  font-weight: 800;
 }
-tbody tr { border-bottom: 1px solid #f8fafc; cursor: pointer; }
-tbody tr:hover { background: #f8fbff; }
-.mono { font-family: "IBM Plex Mono", Consolas, monospace; }
-.muted { color: #64748b; font-size: 12px; }
+tbody tr { border-bottom: 1px solid #f1f5f9; cursor: pointer; }
+tbody tr:hover { background: #f8fafc; }
+tbody tr:focus {
+  outline: 2px solid #93c5fd;
+  outline-offset: -2px;
+  background: #eff6ff;
+}
 
+.mono { font-family: "IBM Plex Mono", Consolas, monospace; }
+.muted { color: var(--cb-muted); font-size: 12px; line-height: 1.4; }
+.empty-cell { padding: 20px 14px; text-align: center; font-size: 13px; color: var(--cb-muted); }
 .pill {
   display: inline-flex;
   align-items: center;
   border-radius: 999px;
   font-size: 11px;
   font-weight: 700;
-  padding: 3px 9px;
+  padding: 4px 10px;
   border: 1px solid transparent;
 }
 .pill-green { background: #dcfce7; color: #166534; border-color: #86efac; }
 .pill-amber { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
 .pill-red { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
-.source-group { display: flex; gap: 5px; }
-.source-dot { width: 10px; height: 10px; border-radius: 999px; display: inline-block; margin-right: 6px; }
-.status-green { background: #10b981; }
-.status-amber { background: #f59e0b; }
-.status-red { background: #ef4444; }
-
-.row-actions {
+.status-summary {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
-  flex-wrap: wrap;
+  margin-top: 0;
 }
-.row-actions .btn { font-size: 11px; height: 30px; padding: 0 8px; }
-.bulk-row {
-  display: flex;
+.status-chip {
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  padding: 10px 16px;
-  border-bottom: 1px solid #eef2f7;
-  background: #f8fafc;
-}
-.bulk-row select {
+  gap: 5px;
+  border-radius: 999px;
   border: 1px solid #dbe3f0;
-  border-radius: 9px;
-  height: 32px;
-  padding: 0 8px;
-  font-size: 12px;
   background: #fff;
+  color: #334155;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 7px;
 }
-.reviewer-select {
-  width: 100%;
-  margin-top: 6px;
-  border: 1px solid #dbe3f0;
-  border-radius: 9px;
-  height: 30px;
-  padding: 0 8px;
-  font-size: 12px;
-  background: #fff;
-}
-.bulk-label {
+.status-chip span {
   color: #64748b;
-  font-size: 12px;
   font-weight: 700;
 }
-.row-check {
-  width: 16px;
-  height: 16px;
-  accent-color: #2563eb;
+.metric-cell { display: grid; gap: 3px; }
+.metric-strong { font-size: 12px; font-weight: 800; color: #0f172a; }
+.health-line {
+  color: #475569;
+  font-size: 12px;
+  line-height: 1.35;
 }
-
-.action-queue {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 10px;
+.owner-name { font-size: 12px; font-weight: 700; color: #0f172a; }
+.owner-sub {
+  color: #64748b;
+  font-size: 11px;
+  margin-top: 2px;
 }
-.queue-item {
-  border: 1px solid #e2e8f0;
+.action-cell { display: grid; gap: 6px; }
+.action-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.escalation-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+  font-size: 11px;
+  color: #991b1b;
+  font-weight: 700;
+}
+.more-menu {
+  position: relative;
+}
+.more-menu summary {
+  list-style: none;
+}
+.more-menu summary::-webkit-details-marker { display: none; }
+.more-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 40;
+  min-width: 180px;
+  border: 1px solid #dbe3f0;
   border-radius: 10px;
-  background: #f8fbff;
-  padding: 10px;
+  background: #fff;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
+  padding: 6px;
+  display: grid;
+  gap: 4px;
 }
-.queue-item h4 { font-size: 13px; margin-bottom: 4px; }
+.menu-item {
+  width: 100%;
+  border: 1px solid transparent;
+  background: #fff;
+  border-radius: 8px;
+  color: #334155;
+  cursor: pointer;
+  min-height: 32px;
+  padding: 0 9px;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  text-align: left;
+}
+.menu-item:hover {
+  background: #f8fafc;
+  border-color: #e2e8f0;
+}
+.menu-divider {
+  border-top: 1px solid #eef2f7;
+  margin: 3px 0;
+}
+.menu-label {
+  color: #64748b;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-weight: 700;
+  margin: 4px 2px 2px;
+}
+.menu-owner-select {
+  border: 1px solid #dbe3f0;
+  border-radius: 8px;
+  min-height: 30px;
+  font-size: 11px;
+  padding: 0 8px;
+  background: #fff;
+  width: 100%;
+}
 
 .drawer {
   position: fixed;
   top: 0;
-  right: -520px;
-  width: min(520px, 96vw);
+  right: -540px;
+  width: min(540px, 96vw);
   height: 100vh;
   background: #fff;
   border-left: 1px solid #dbe3f0;
-  box-shadow: -16px 0 28px rgba(2, 6, 23, .16);
+  box-shadow: -14px 0 30px rgba(2, 6, 23, .17);
   z-index: 80;
   display: flex;
   flex-direction: column;
@@ -230,20 +556,23 @@ tbody tr:hover { background: #f8fbff; }
 }
 .drawer.open { right: 0; }
 .drawer-head {
-  padding: 14px;
+  padding: 12px 14px;
   border-bottom: 1px solid #e2e8f0;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
 }
 .drawer-body { padding: 12px 14px; overflow: auto; }
+.timeline-filters { display: grid; margin-bottom: 10px; grid-template-columns: 1fr 1fr auto; }
 .timeline-item {
   border: 1px solid #e2e8f0;
   border-radius: 10px;
   padding: 10px;
-  margin-bottom: 9px;
+  margin-bottom: 8px;
 }
 .timeline-title { font-size: 13px; font-weight: 700; margin-bottom: 3px; }
+.timeline-note { margin-top: 4px; }
 
 .toast {
   position: fixed;
@@ -259,14 +588,29 @@ tbody tr:hover { background: #f8fbff; }
 }
 .toast.show { display: block; }
 
-@media (max-width: 1280px) {
+@media (max-width: 1400px) {
+  .kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .board-shell { grid-template-columns: 1fr; }
+  .queue-card { position: static; }
+}
+@media (max-width: 1080px) {
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .filters { grid-template-columns: 1fr 1fr; }
-  .action-queue { grid-template-columns: 1fr; }
+  .header-actions { width: 100%; }
 }
 @media (max-width: 900px) {
-  .main { margin-left: 0; }
+  .main { margin-left: 0; padding: 14px; }
   .sidebar { display: none; }
+  .header h2 { font-size: 24px; }
+  .filters { display: grid; width: 100%; }
+  .filters-main { display: grid; grid-template-columns: 1fr; width: 100%; }
+  .timeline-filters { grid-template-columns: 1fr; width: 100%; }
+  .advanced-filters { width: 100%; }
+  .search-wrap { min-width: 100%; }
+}
+@media (max-width: 620px) {
+  .kpis { grid-template-columns: 1fr; }
+  .header-actions .btn { width: 100%; justify-content: center; }
+  .bulk-actions { width: 100%; }
 }
 </style>
 <script defer src="accountant-nav.js"></script>
@@ -305,103 +649,142 @@ tbody tr:hover { background: #f8fbff; }
     <header class="header">
       <div class="header-row">
         <div>
-          <h2>Compliance Board</h2>
-          <p>Portfolio compliance visibility with risk sorting, actions, and timelines.</p>
+          <h2>Compliance Command Center</h2>
+          <p>Track portfolio risk, act on exceptions, and keep the workspace focused on decisions.</p>
+          <p class="header-meta" id="lastUpdatedLabel">Updated just now</p>
         </div>
-        <div>
+        <div class="header-actions">
           <button type="button" class="btn" id="refreshBtn"><i class="fa-solid fa-rotate"></i> Refresh</button>
-          <button type="button" class="btn" id="exportCsvBtn"><i class="fa-solid fa-file-csv"></i> Export CSV</button>
-          <button type="button" class="btn" id="exportPdfBtn"><i class="fa-solid fa-file-pdf"></i> Export PDF</button>
-          <button type="button" class="btn btn-primary" id="runEscalationBtn"><i class="fa-solid fa-triangle-exclamation"></i> Run Escalations</button>
+          <details class="header-tools">
+            <summary class="btn"><i class="fa-solid fa-screwdriver-wrench"></i> Tools</summary>
+            <div class="header-tools-panel">
+              <button type="button" class="menu-item" id="runEscalationBtn"><i class="fa-solid fa-triangle-exclamation"></i> Run escalations</button>
+              <button type="button" class="menu-item" id="exportCsvBtn"><i class="fa-solid fa-file-csv"></i> Export CSV</button>
+              <button type="button" class="menu-item" id="exportPdfBtn"><i class="fa-solid fa-file-pdf"></i> Export PDF</button>
+            </div>
+          </details>
         </div>
       </div>
     </header>
 
     <main class="content">
       <section class="kpis">
-        <div class="kpi"><div class="kpi-label">Compliant Clients</div><div class="kpi-value" id="kpiCompliant">0</div></div>
-        <div class="kpi"><div class="kpi-label">At-Risk Clients</div><div class="kpi-value" id="kpiAtRisk">0</div></div>
-        <div class="kpi"><div class="kpi-label">Non-Compliant Clients</div><div class="kpi-value" id="kpiNonCompliant">0</div></div>
-        <div class="kpi"><div class="kpi-label">Overdue Obligations</div><div class="kpi-value" id="kpiOverdue">0</div></div>
+        <div class="kpi"><div class="kpi-label">Compliant</div><div class="kpi-value" id="kpiCompliant">0</div></div>
+        <div class="kpi"><div class="kpi-label">At Risk</div><div class="kpi-value" id="kpiAtRisk">0</div></div>
+        <div class="kpi"><div class="kpi-label">Non-Compliant</div><div class="kpi-value" id="kpiNonCompliant">0</div></div>
+        <div class="kpi"><div class="kpi-label">Overdue</div><div class="kpi-value" id="kpiOverdue">0</div></div>
         <div class="kpi"><div class="kpi-label">Sync Failures</div><div class="kpi-value" id="kpiSyncFailures">0</div></div>
       </section>
 
-      <section class="board-card">
-        <div class="card-head">
-          <strong>Action Queue (Top 3)</strong>
-        </div>
-        <div class="content action-queue" id="actionQueue">
-          <div class="queue-item"><h4>Loading...</h4><p class="muted">Preparing actions.</p></div>
-        </div>
-      </section>
-
-      <section class="board-card">
-        <div class="card-head">
-          <strong>Client Compliance Table</strong>
-          <div class="filters">
-            <select id="statusFilter" aria-label="Filter by status">
-              <option value="">All Statuses</option>
-              <option value="green">Green</option>
-              <option value="amber">Amber</option>
-              <option value="red">Red</option>
-            </select>
-            <select id="sourceFilter" aria-label="Filter by source">
-              <option value="">All Sources</option>
-              <option value="SARS">SARS</option>
-              <option value="CIPC">CIPC</option>
-              <option value="CSD">CSD</option>
-            </select>
-            <select id="ownerFilter" aria-label="Filter by owner">
-              <option value="">All Owners</option>
-            </select>
-            <select id="sortBy" aria-label="Sort by">
-              <option value="risk">Sort: Risk score</option>
-              <option value="next_due">Sort: Next due date</option>
-            </select>
-            <select id="sortDir" aria-label="Sort direction">
-              <option value="desc">Descending</option>
-              <option value="asc">Ascending</option>
-            </select>
-            <label class="btn" for="overdueOnly">
-              <input id="overdueOnly" type="checkbox" /> Overdue only
-            </label>
+      <div class="board-shell">
+        <section class="board-card">
+          <div class="card-head">
+            <div>
+              <div class="card-title">Portfolio Table</div>
+              <div class="card-subtitle">Single source of truth for compliance triage and actions.</div>
+            </div>
+            <div class="filters">
+              <div class="filters-main">
+                <div class="search-wrap">
+                  <i class="fa-solid fa-magnifying-glass"></i>
+                  <input id="searchFilter" type="search" aria-label="Search clients" placeholder="Search client or owner" />
+                </div>
+                <select id="statusFilter" aria-label="Filter by status">
+                  <option value="">All statuses</option>
+                  <option value="green">Green</option>
+                  <option value="amber">Amber</option>
+                  <option value="red">Red</option>
+                </select>
+                <select id="ownerFilter" aria-label="Filter by owner">
+                  <option value="">All owners</option>
+                </select>
+                <label class="filter-toggle" for="overdueOnly">
+                  <input id="overdueOnly" type="checkbox" />
+                  <span>Overdue only</span>
+                </label>
+              </div>
+              <details class="advanced-filters">
+                <summary><i class="fa-solid fa-sliders"></i> Advanced</summary>
+                <div class="advanced-grid">
+                  <select id="sourceFilter" aria-label="Filter by source">
+                    <option value="">All sources</option>
+                    <option value="SARS">SARS</option>
+                    <option value="CIPC">CIPC</option>
+                    <option value="CSD">CSD</option>
+                  </select>
+                  <select id="sortBy" aria-label="Sort by">
+                    <option value="risk">Sort by risk score</option>
+                    <option value="next_due">Sort by next due date</option>
+                  </select>
+                  <select id="sortDir" aria-label="Sort direction">
+                    <option value="desc">Descending</option>
+                    <option value="asc">Ascending</option>
+                  </select>
+                  <button type="button" class="btn" id="clearFiltersBtn"><i class="fa-solid fa-eraser"></i> Clear filters</button>
+                </div>
+              </details>
+            </div>
           </div>
-        </div>
-        <div class="bulk-row">
-          <label><input id="bulkSelectAll" type="checkbox" class="row-check"> Select all visible</label>
-          <span class="bulk-label" id="bulkSelectedCount">0 selected</span>
-          <select id="bulkOwnerSelect" aria-label="Bulk owner assignment">
-            <option value="">Assign owner...</option>
-          </select>
-          <button type="button" class="btn" id="bulkAssignBtn">Assign Selected</button>
-          <button type="button" class="btn" id="bulkInProgressBtn">In Progress Selected</button>
-          <button type="button" class="btn btn-primary" id="bulkResolveBtn">Resolve Selected</button>
-          <button type="button" class="btn" id="bulkRemindBtn">Send Reminders</button>
-        </div>
-        <div style="overflow:auto; max-height: 520px;">
-          <table>
-            <thead>
-              <tr>
-                <th>Select</th>
-                <th>Client</th>
-                <th>Overall</th>
-                <th>SARS</th>
-                <th>CIPC</th>
-                <th>CSD</th>
-                <th>Overdue</th>
-                <th>Next Due Date</th>
-                <th>Last Sync</th>
-                <th>Owner</th>
-                <th>Escalation</th>
-                <th>Escalated By</th>
-                <th>Escalated At</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody id="portfolioBody"></tbody>
-          </table>
-        </div>
-      </section>
+          <div class="view-toggle" role="tablist" aria-label="Compliance views">
+            <button type="button" class="view-btn active" data-quick-view="urgent">My urgent work</button>
+            <button type="button" class="view-btn" data-quick-view="needs">Non-compliant</button>
+            <button type="button" class="view-btn" data-quick-view="all">All clients</button>
+            <button type="button" class="view-btn" data-quick-view="escalated">Escalated only</button>
+          </div>
+          <details class="bulk-panel">
+            <summary class="bulk-summary">
+              <span class="bulk-summary-left">
+                <i class="fa-solid fa-layer-group"></i>
+                Bulk actions
+              </span>
+              <span class="bulk-label" id="bulkSelectedCount">0 selected</span>
+              <i class="fa-solid fa-chevron-down"></i>
+            </summary>
+            <div class="bulk-row">
+              <div class="bulk-main">
+                <label><input id="bulkSelectAll" type="checkbox" class="row-check"> Select all visible</label>
+                <select id="bulkOwnerSelect" aria-label="Bulk owner assignment">
+                  <option value="">Assign owner...</option>
+                </select>
+              </div>
+              <div class="bulk-actions">
+                <button type="button" class="btn btn-sm" id="bulkAssignBtn">Assign</button>
+                <button type="button" class="btn btn-sm" id="bulkAssignMeBtn">Assign to me</button>
+                <button type="button" class="btn btn-sm" id="bulkInProgressBtn">In Progress</button>
+                <button type="button" class="btn btn-sm btn-primary" id="bulkResolveBtn">Resolve</button>
+                <button type="button" class="btn btn-sm btn-ghost" id="bulkRemindBtn">Remind</button>
+              </div>
+            </div>
+          </details>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Select</th>
+                  <th>Client</th>
+                  <th>Status Overview</th>
+                  <th>Due &amp; Health</th>
+                  <th>Owner</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="portfolioBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <aside class="board-card queue-card">
+          <div class="card-head">
+            <div>
+              <div class="card-title">Today&apos;s Action Queue</div>
+              <div class="card-subtitle">Immediate follow-ups that should be handled first.</div>
+            </div>
+          </div>
+          <div class="queue-list" id="actionQueue">
+            <div class="queue-item"><div class="queue-main"><h4>Loading...</h4><p class="queue-meta">Preparing priority queue.</p></div></div>
+          </div>
+        </aside>
+      </div>
     </main>
   </div>
 </div>
@@ -415,7 +798,7 @@ tbody tr:hover { background: #f8fbff; }
     <button type="button" class="btn" id="closeDrawerBtn"><i class="fa-solid fa-xmark"></i> Close</button>
   </div>
   <div class="drawer-body">
-    <div class="filters" style="margin-bottom: 10px; grid-template-columns: 1fr 1fr auto;">
+    <div class="filters timeline-filters">
       <select id="timelineSource" aria-label="Timeline source">
         <option value="">All sources</option>
         <option value="SARS">SARS</option>
@@ -448,8 +831,21 @@ if (!session) throw new Error("Unauthorized");
 const { token, user } = session;
 document.getElementById("sidebarEmail").textContent = user?.email || "-";
 
-const state = { items: [], selectedClientId: "", selectedIds: new Set(), assignableOwners: [] };
+const state = {
+  items: [],
+  visibleItems: [],
+  selectedClientId: "",
+  selectedIds: new Set(),
+  assignableOwners: [],
+  quickView: "urgent",
+};
 function headers() { return window.PortalAuth.authHeaders(token); }
+function setLastUpdated() {
+  const label = document.getElementById("lastUpdatedLabel");
+  if (!label) return;
+  const now = new Date();
+  label.textContent = `Updated ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+}
 function qs(params) {
   const out = new URLSearchParams();
   Object.entries(params).forEach(([k, v]) => { if (v !== "" && v != null) out.set(k, String(v)); });
@@ -482,6 +878,84 @@ function showToast(text) {
   el.classList.add("show");
   setTimeout(() => el.classList.remove("show"), 1800);
 }
+function normalizeStatus(status) {
+  return String(status || "").toLowerCase();
+}
+function daysUntil(isoDate) {
+  if (!isoDate) return Number.POSITIVE_INFINITY;
+  const target = new Date(isoDate);
+  if (Number.isNaN(target.getTime())) return Number.POSITIVE_INFINITY;
+  const now = new Date();
+  const diff = target.getTime() - now.getTime();
+  return Math.floor(diff / 86400000);
+}
+function isDueSoon(isoDate, maxDays = 14) {
+  const days = daysUntil(isoDate);
+  return Number.isFinite(days) && days >= 0 && days <= maxDays;
+}
+function syncAge(isoDate) {
+  if (!isoDate) return "unknown";
+  const value = new Date(isoDate);
+  if (Number.isNaN(value.getTime())) return "unknown";
+  const diffMs = Date.now() - value.getTime();
+  if (diffMs < 0) return "just now";
+  const mins = Math.floor(diffMs / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
+}
+function applyLocalViewFilters(items) {
+  const term = String(document.getElementById("searchFilter")?.value || "").trim().toLowerCase();
+  let filtered = Array.isArray(items) ? [...items] : [];
+
+  if (state.quickView === "urgent") {
+    filtered = filtered.filter((item) => {
+      const overall = normalizeStatus(item.overallStatus);
+      return overall !== "green" || Number(item.overdueCount || 0) > 0 || isDueSoon(item.nextDueDate, 14);
+    });
+  } else if (state.quickView === "needs") {
+    filtered = filtered.filter((item) => normalizeStatus(item.overallStatus) !== "green");
+  } else if (state.quickView === "escalated") {
+    filtered = filtered.filter((item) => Boolean(item.escalationFlag));
+  }
+
+  if (term) {
+    filtered = filtered.filter((item) => {
+      const client = String(item.clientName || "").toLowerCase();
+      const owner = String(item.ownerName || "").toLowerCase();
+      return client.includes(term) || owner.includes(term);
+    });
+  }
+  filtered.sort((a, b) => {
+    const overdueA = Number(a.overdueCount || 0);
+    const overdueB = Number(b.overdueCount || 0);
+    if (overdueA !== overdueB) return overdueB - overdueA;
+    const dueA = daysUntil(a.nextDueDate);
+    const dueB = daysUntil(b.nextDueDate);
+    if (dueA !== dueB) return dueA - dueB;
+    return Number(b.riskScore || 0) - Number(a.riskScore || 0);
+  });
+  return filtered;
+}
+function syncQuickViewButtons() {
+  document.querySelectorAll("[data-quick-view]").forEach((button) => {
+    const isActive = button.getAttribute("data-quick-view") === state.quickView;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-pressed", isActive ? "true" : "false");
+  });
+}
+function renderBoard() {
+  const visible = applyLocalViewFilters(state.items);
+  state.visibleItems = visible;
+  state.selectedIds = new Set(Array.from(state.selectedIds).filter((id) => visible.some((item) => item.clientId === id)));
+  const allSelected = visible.length > 0 && visible.every((item) => state.selectedIds.has(item.clientId));
+  document.getElementById("bulkSelectAll").checked = allSelected;
+  syncQuickViewButtons();
+  renderActionQueue(visible);
+  renderTable(visible);
+}
 
 function currentFilters() {
   return {
@@ -507,7 +981,7 @@ function renderOwnerSelectors() {
   const bulkOwnerSelect = document.getElementById("bulkOwnerSelect");
   const ownerFilterValue = ownerFilter.value;
   const bulkOwnerValue = bulkOwnerSelect.value;
-  ownerFilter.innerHTML = `<option value="">All Owners</option>${state.assignableOwners.map((owner) => `
+  ownerFilter.innerHTML = `<option value="">All owners</option>${state.assignableOwners.map((owner) => `
     <option value="${asText(owner.id)}">${asText(owner.name)}</option>
   `).join("")}`;
   bulkOwnerSelect.innerHTML = ownerOptions();
@@ -516,6 +990,13 @@ function renderOwnerSelectors() {
 }
 
 async function fetchPortfolio() {
+  document.getElementById("actionQueue").innerHTML = `
+    <div class="queue-item"><div class="queue-main"><h4>Updating queue...</h4><p class="queue-meta">Syncing latest compliance status.</p></div></div>
+  `;
+  document.getElementById("portfolioBody").innerHTML = `
+    <tr><td colspan="6" class="empty-cell">Loading portfolio...</td></tr>
+  `;
+
   const payload = currentFilters();
   const response = await fetch(`${API_BASE_URL}/compliance/portfolio${qs(payload)}`, { headers: headers() });
   if (!response.ok) throw new Error("Failed to load compliance portfolio");
@@ -523,12 +1004,9 @@ async function fetchPortfolio() {
   state.assignableOwners = Array.isArray(data.assignableOwners) ? data.assignableOwners : state.assignableOwners;
   renderOwnerSelectors();
   state.items = Array.isArray(data.items) ? data.items : [];
-  state.selectedIds = new Set(Array.from(state.selectedIds).filter((id) => state.items.some((item) => item.clientId === id)));
-  const allSelected = state.items.length > 0 && state.items.every((item) => state.selectedIds.has(item.clientId));
-  document.getElementById("bulkSelectAll").checked = allSelected;
   renderKpis(data.kpis || {});
-  renderActionQueue(state.items);
-  renderTable(state.items);
+  renderBoard();
+  setLastUpdated();
 }
 
 function renderKpis(kpis) {
@@ -541,20 +1019,41 @@ function renderKpis(kpis) {
 
 function renderActionQueue(items) {
   const wrap = document.getElementById("actionQueue");
+  if (!items.length) {
+    wrap.innerHTML = `<div class="queue-item"><div class="queue-main"><h4>No matching clients</h4><p class="queue-meta">Try clearing filters or search to load today&apos;s queue.</p></div></div>`;
+    return;
+  }
   const top = items
-    .filter((item) => item.overallStatus !== "green")
-    .slice(0, 3);
+    .filter((item) => {
+      const overall = normalizeStatus(item.overallStatus);
+      return overall !== "green" || Number(item.overdueCount || 0) > 0 || isDueSoon(item.nextDueDate, 14) || Boolean(item.escalationFlag);
+    })
+    .sort((a, b) => {
+      const overdueA = Number(a.overdueCount || 0);
+      const overdueB = Number(b.overdueCount || 0);
+      if (overdueA !== overdueB) return overdueB - overdueA;
+      return daysUntil(a.nextDueDate) - daysUntil(b.nextDueDate);
+    })
+    .slice(0, 4);
   if (!top.length) {
-    wrap.innerHTML = `<div class="queue-item"><h4>All clients compliant</h4><p class="muted">No urgent actions right now.</p></div>`;
+    wrap.innerHTML = `<div class="queue-item"><div class="queue-main"><h4>No urgent actions</h4><p class="queue-meta">Everything is currently in a healthy state.</p></div></div>`;
     return;
   }
   wrap.innerHTML = top.map((item) => `
     <div class="queue-item">
-      <h4>${asText(item.clientName)}</h4>
-      <p class="muted">Status: ${asText(item.overallStatus.toUpperCase())} | Overdue: ${Number(item.overdueCount || 0)}</p>
-      <div class="row-actions" style="margin-top:8px;">
-        <a class="btn" href="client-profile.html?clientId=${encodeURIComponent(item.clientId)}">Open Client</a>
-        <button type="button" class="btn" data-row-action="in_progress" data-alert-id="${asText(item.actionAlertId || "")}">Mark In Progress</button>
+      <div class="queue-main">
+        <h4>${asText(item.clientName)}</h4>
+        <p class="queue-meta">Status ${asText(item.overallStatus.toUpperCase())} | ${Number(item.overdueCount || 0)} overdue | Due ${dt(item.nextDueDate)}</p>
+        ${Number(item.overdueCount || 0) > 0
+    ? `<span class="queue-badge"><i class="fa-solid fa-triangle-exclamation"></i> Overdue</span>`
+    : isDueSoon(item.nextDueDate, 14)
+      ? `<span class="queue-badge"><i class="fa-regular fa-clock"></i> Due soon</span>`
+      : ""
+}
+      </div>
+      <div class="queue-actions">
+        <a class="btn btn-sm" href="client-profile.html?clientId=${encodeURIComponent(item.clientId)}">Open</a>
+        <button type="button" class="btn btn-sm" data-row-action="in_progress" data-alert-id="${asText(item.actionAlertId || "")}">In Progress</button>
       </div>
     </div>
   `).join("");
@@ -563,46 +1062,71 @@ function renderActionQueue(items) {
 function renderTable(items) {
   const body = document.getElementById("portfolioBody");
   if (!items.length) {
-    body.innerHTML = `<tr><td colspan="14" class="muted">No matching clients.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="6" class="empty-cell">No clients match this view. Clear filters or switch view to continue.</td></tr>`;
     state.selectedIds.clear();
     renderBulkCount();
     return;
   }
   const selected = state.selectedIds;
   body.innerHTML = items.map((item) => `
-    <tr data-client-id="${asText(item.clientId)}">
+    <tr data-client-id="${asText(item.clientId)}" tabindex="0">
       <td>
         <input type="checkbox" class="row-check" data-select-client-id="${asText(item.clientId)}" ${selected.has(item.clientId) ? "checked" : ""} aria-label="Select ${asText(item.clientName)}">
       </td>
-      <td><strong>${asText(item.clientName)}</strong><div class="muted mono">Risk ${Number(item.riskScore || 0)}</div></td>
-      <td><span class="${pill(item.overallStatus)}">${asText(item.overallStatus.toUpperCase())}</span></td>
-      <td><span class="${pill(item.sarsStatus)}">${asText(String(item.sarsStatus || "unknown").toUpperCase())}</span></td>
-      <td><span class="${pill(item.cipcStatus)}">${asText(String(item.cipcStatus || "unknown").toUpperCase())}</span></td>
-      <td><span class="${pill(item.csdStatus)}">${asText(String(item.csdStatus || "unknown").toUpperCase())}</span></td>
-      <td>${Number(item.overdueCount || 0)}</td>
-      <td class="muted">${dt(item.nextDueDate)}</td>
-      <td class="muted">${dt(item.lastSync)}</td>
       <td>
-        <div>${asText(item.ownerName || "Unassigned")}</div>
-        <select data-owner-select-client="${asText(item.clientId)}" class="reviewer-select">
-          ${ownerOptions(item.ownerUserId || "")}
-        </select>
+        <strong>${asText(item.clientName)}</strong>
+        <div class="muted mono">Risk ${Number(item.riskScore || 0)}</div>
       </td>
       <td>
-        ${item.escalationFlag
-    ? `<span class="${pill("red")}">Escalated</span><div class="muted">${asText(item.escalationReason || "-")}</div>`
-    : `<span class="${pill("green")}">No</span>`
+        <div class="status-summary">
+          <span class="${pill(item.overallStatus)}">${asText(item.overallStatus.toUpperCase())}</span>
+          <span class="status-chip"><span>SARS</span> ${asText(String(item.sarsStatus || "unknown").toUpperCase())}</span>
+          <span class="status-chip"><span>CIPC</span> ${asText(String(item.cipcStatus || "unknown").toUpperCase())}</span>
+          <span class="status-chip"><span>CSD</span> ${asText(String(item.csdStatus || "unknown").toUpperCase())}</span>
+        </div>
+      </td>
+      <td>
+        <div class="metric-cell">
+          <div class="metric-strong">${Number(item.overdueCount || 0)} overdue</div>
+          <div class="health-line">Due: ${dt(item.nextDueDate)} | Sync: ${syncAge(item.lastSync)}</div>
+          ${item.escalationFlag
+    ? `<div class="escalation-inline"><i class="fa-solid fa-triangle-exclamation"></i> Escalated</div>`
+    : ""
 }
+        </div>
       </td>
-      <td class="muted">${asText(item.escalatedByName || "-")}</td>
-      <td class="muted">${dt(item.escalatedAt)}</td>
       <td>
-        <div class="row-actions">
-          <a class="btn" href="client-profile.html?clientId=${encodeURIComponent(item.clientId)}">Open</a>
-          <button type="button" class="btn" data-row-action="assign" data-obligation-id="${asText(item.actionObligationId || "")}" data-alert-id="${asText(item.actionAlertId || "")}">Assign</button>
-          <button type="button" class="btn" data-row-action="remind" data-client-id="${asText(item.clientId)}">Send Reminder</button>
-          <button type="button" class="btn" data-row-action="in_progress" data-alert-id="${asText(item.actionAlertId || "")}">In Progress</button>
-          <button type="button" class="btn btn-primary" data-row-action="resolve" data-alert-id="${asText(item.actionAlertId || "")}">Resolve</button>
+        <div class="owner-name">${asText(item.ownerName || "Unassigned")}</div>
+        <div class="owner-sub">${item.ownerName ? "Assigned" : "Needs owner"}</div>
+      </td>
+      <td>
+        <div class="action-cell">
+          <div class="action-row">
+            <a class="btn btn-sm" href="client-profile.html?clientId=${encodeURIComponent(item.clientId)}">Open</a>
+            <button type="button" class="btn btn-sm btn-primary" data-row-action="resolve" data-alert-id="${asText(item.actionAlertId || "")}">Resolve</button>
+            <details class="more-menu">
+              <summary class="btn btn-sm btn-ghost">More</summary>
+              <div class="more-panel">
+                <button type="button" class="menu-item" data-row-action="assign_me" data-obligation-id="${asText(item.actionObligationId || "")}" data-alert-id="${asText(item.actionAlertId || "")}">
+                  <i class="fa-solid fa-user-check"></i> Assign to me
+                </button>
+                <div class="menu-label">Assign owner</div>
+                <select class="menu-owner-select" data-owner-menu-client="${asText(item.clientId)}" aria-label="Assign owner for ${asText(item.clientName)}">
+                  ${ownerOptions(item.ownerUserId || "")}
+                </select>
+                <button type="button" class="menu-item" data-row-action="assign" data-client-id="${asText(item.clientId)}" data-obligation-id="${asText(item.actionObligationId || "")}" data-alert-id="${asText(item.actionAlertId || "")}">
+                  <i class="fa-solid fa-user-pen"></i> Apply owner
+                </button>
+                <button type="button" class="menu-item" data-row-action="in_progress" data-alert-id="${asText(item.actionAlertId || "")}">
+                  <i class="fa-solid fa-spinner"></i> Mark in progress
+                </button>
+                <div class="menu-divider"></div>
+                <button type="button" class="menu-item" data-row-action="remind" data-client-id="${asText(item.clientId)}">
+                  <i class="fa-regular fa-bell"></i> Send reminder
+                </button>
+              </div>
+            </details>
+          </div>
         </div>
       </td>
     </tr>
@@ -631,7 +1155,7 @@ async function loadTimeline(clientId) {
     <article class="timeline-item">
       <div class="timeline-title">${asText(event.title || event.eventType || "Event")}</div>
       <div class="muted">${asText(event.source || "-")} &middot; ${asText(event.eventType || "-")} &middot; ${dt(event.occurredAt || event.createdAt)}</div>
-      <p class="muted" style="margin-top:4px;">${asText(event.description || "")}</p>
+      <p class="muted timeline-note">${asText(event.description || "")}</p>
     </article>
   `).join("");
 }
@@ -685,7 +1209,7 @@ async function runEscalations() {
 }
 
 async function runBulkAction(kind) {
-  const selectedRows = state.items.filter((item) => state.selectedIds.has(item.clientId));
+  const selectedRows = state.visibleItems.filter((item) => state.selectedIds.has(item.clientId));
   if (!selectedRows.length) return;
   const bulkOwnerUserId = document.getElementById("bulkOwnerSelect").value;
   for (const row of selectedRows) {
@@ -693,6 +1217,9 @@ async function runBulkAction(kind) {
       if (!bulkOwnerUserId) throw new Error("Choose owner before bulk assign.");
       if (row.actionObligationId) await assignOwner(row.actionObligationId, bulkOwnerUserId);
       else if (row.actionAlertId) await updateAlert(row.actionAlertId, "open", bulkOwnerUserId);
+    } else if (kind === "assign_me") {
+      if (row.actionObligationId) await assignOwner(row.actionObligationId, user.id);
+      else if (row.actionAlertId) await updateAlert(row.actionAlertId, "open", user.id);
     } else if (kind === "in_progress") {
       if (row.actionAlertId) await updateAlert(row.actionAlertId, "in_progress");
     } else if (kind === "resolve") {
@@ -783,16 +1310,35 @@ document.getElementById("runEscalationBtn").addEventListener("click", async () =
   document.getElementById(id).addEventListener("change", () => fetchPortfolio().catch(console.error));
 });
 document.getElementById("ownerFilter").addEventListener("change", () => fetchPortfolio().catch(console.error));
+document.getElementById("searchFilter").addEventListener("input", () => renderBoard());
+document.querySelectorAll("[data-quick-view]").forEach((button) => {
+  button.addEventListener("click", () => {
+    state.quickView = button.getAttribute("data-quick-view") || "all";
+    renderBoard();
+  });
+});
+document.getElementById("clearFiltersBtn").addEventListener("click", () => {
+  document.getElementById("statusFilter").value = "";
+  document.getElementById("ownerFilter").value = "";
+  document.getElementById("sourceFilter").value = "";
+  document.getElementById("overdueOnly").checked = false;
+  document.getElementById("sortBy").value = "risk";
+  document.getElementById("sortDir").value = "desc";
+  document.getElementById("searchFilter").value = "";
+  state.quickView = "urgent";
+  fetchPortfolio().catch(console.error);
+});
 document.getElementById("bulkSelectAll").addEventListener("change", (event) => {
   const checked = event.target.checked;
   if (checked) {
-    state.items.forEach((item) => state.selectedIds.add(item.clientId));
+    state.visibleItems.forEach((item) => state.selectedIds.add(item.clientId));
   } else {
     state.selectedIds.clear();
   }
-  renderTable(state.items);
+  renderTable(state.visibleItems);
 });
 document.getElementById("bulkAssignBtn").addEventListener("click", () => runBulkAction("assign").catch(console.error));
+document.getElementById("bulkAssignMeBtn").addEventListener("click", () => runBulkAction("assign_me").catch(console.error));
 document.getElementById("bulkInProgressBtn").addEventListener("click", () => runBulkAction("in_progress").catch(console.error));
 document.getElementById("bulkResolveBtn").addEventListener("click", () => runBulkAction("resolve").catch(console.error));
 document.getElementById("bulkRemindBtn").addEventListener("click", () => runBulkAction("remind").catch(console.error));
@@ -800,21 +1346,33 @@ document.getElementById("bulkRemindBtn").addEventListener("click", () => runBulk
 document.getElementById("portfolioBody").addEventListener("click", async (event) => {
   if (event.target.closest("[data-select-client-id]")) return;
   if (event.target.closest("a")) return;
+  if (event.target.closest("select")) return;
+  if (event.target.closest("summary")) return;
   const action = event.target.closest("[data-row-action]");
   if (action) {
     event.stopPropagation();
     const rowAction = action.getAttribute("data-row-action");
     const row = action.closest("tr[data-client-id]");
     const clientId = row?.getAttribute("data-client-id") || "";
-    const rowOwnerSelect = clientId ? document.querySelector(`[data-owner-select-client="${clientId}"]`) : null;
-    const ownerUserId = rowOwnerSelect ? rowOwnerSelect.value : "";
+    const ownerMenuSelect = clientId ? document.querySelector(`[data-owner-menu-client="${clientId}"]`) : null;
+    const ownerUserId = ownerMenuSelect ? ownerMenuSelect.value : "";
     try {
       if (rowAction === "assign") {
-        const owner = ownerUserId || user.id;
+        if (!ownerUserId) {
+          showToast("Select an owner first.");
+          return;
+        }
+        const owner = ownerUserId;
         const obligationId = action.getAttribute("data-obligation-id");
         if (obligationId) await assignOwner(obligationId, owner);
         else await updateAlert(action.getAttribute("data-alert-id"), "open", owner);
         showToast("Owner assignment updated.");
+      } else if (rowAction === "assign_me") {
+        const owner = user.id;
+        const obligationId = action.getAttribute("data-obligation-id");
+        if (obligationId) await assignOwner(obligationId, owner);
+        else await updateAlert(action.getAttribute("data-alert-id"), "open", owner);
+        showToast("Assigned to you.");
       } else if (rowAction === "in_progress") {
         await updateAlert(action.getAttribute("data-alert-id"), "in_progress");
         showToast("Marked in progress.");
@@ -825,6 +1383,8 @@ document.getElementById("portfolioBody").addEventListener("click", async (event)
         await runReminders();
         showToast("Reminder run triggered.");
       }
+      const details = action.closest("details");
+      if (details) details.removeAttribute("open");
       await fetchPortfolio();
     } catch (error) {
       console.error(error);
@@ -832,6 +1392,7 @@ document.getElementById("portfolioBody").addEventListener("click", async (event)
     }
     return;
   }
+  if (event.target.closest("details.more-menu")) return;
   const row = event.target.closest("tr[data-client-id]");
   if (!row) return;
   openDrawer(row.getAttribute("data-client-id"));
@@ -844,6 +1405,25 @@ document.getElementById("portfolioBody").addEventListener("change", (event) => {
   if (checkbox.checked) state.selectedIds.add(clientId);
   else state.selectedIds.delete(clientId);
   renderBulkCount();
+});
+document.getElementById("portfolioBody").addEventListener("keydown", (event) => {
+  const row = event.target.closest("tr[data-client-id]");
+  if (!row) return;
+  if (event.target.closest("input, select, button, summary, a, details")) return;
+  if (event.key === "Enter") {
+    event.preventDefault();
+    openDrawer(row.getAttribute("data-client-id"));
+  }
+  if (event.key === " ") {
+    event.preventDefault();
+    const checkbox = row.querySelector("[data-select-client-id]");
+    if (!checkbox) return;
+    checkbox.checked = !checkbox.checked;
+    const clientId = checkbox.getAttribute("data-select-client-id");
+    if (checkbox.checked) state.selectedIds.add(clientId);
+    else state.selectedIds.delete(clientId);
+    renderBulkCount();
+  }
 });
 
 document.getElementById("actionQueue").addEventListener("click", async (event) => {
@@ -864,10 +1444,23 @@ document.getElementById("applyTimelineFiltersBtn").addEventListener("click", () 
   if (!state.selectedClientId) return;
   loadTimeline(state.selectedClientId).catch(console.error);
 });
+document.addEventListener("click", (event) => {
+  if (!event.target.closest("details.more-menu")) {
+    document.querySelectorAll("details.more-menu[open]").forEach((el) => el.removeAttribute("open"));
+  }
+  if (!event.target.closest("details.header-tools")) {
+    document.querySelectorAll("details.header-tools[open]").forEach((el) => el.removeAttribute("open"));
+  }
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  document.querySelectorAll("details.more-menu[open], details.header-tools[open]").forEach((el) => el.removeAttribute("open"));
+  closeDrawer();
+});
 
 fetchPortfolio().catch((error) => {
   console.error(error);
-  document.getElementById("portfolioBody").innerHTML = `<tr><td colspan="14" class="muted">Unable to load compliance board.</td></tr>`;
+  document.getElementById("portfolioBody").innerHTML = `<tr><td colspan="6" class="empty-cell">Unable to load compliance board.</td></tr>`;
 });
 </script>
 </body>
