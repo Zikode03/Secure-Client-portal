@@ -109,6 +109,25 @@ body { font-family: "Public Sans", "Segoe UI", sans-serif; background: var(--cb-
   display: grid;
   gap: 6px;
 }
+.error-banner {
+  margin-top: 10px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+  border-radius: 10px;
+  padding: 8px 10px;
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.error-banner.show { display: flex; }
+.loading-mask {
+  opacity: .68;
+  pointer-events: none;
+}
 
 .btn {
   border: 1px solid #dbe3f0;
@@ -135,6 +154,11 @@ body { font-family: "Public Sans", "Segoe UI", sans-serif; background: var(--cb-
 .btn-primary:hover { background: var(--cb-primary-strong); border-color: var(--cb-primary-strong); }
 .btn-sm { min-height: 30px; padding: 0 9px; border-radius: 8px; font-size: 11px; }
 .btn-ghost { background: #f8fafc; border-color: #e2e8f0; color: #334155; }
+.btn:disabled,
+.menu-item:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
 
 .content { display: grid; gap: 14px; max-width: 1520px; margin: 0 auto; }
 
@@ -212,6 +236,36 @@ body { font-family: "Public Sans", "Segoe UI", sans-serif; background: var(--cb-
   border: 1px solid #fcd34d;
   border-radius: 999px;
   padding: 3px 8px;
+}
+.next-due-panel {
+  border-bottom: 1px solid #eef2f7;
+  padding: 10px 12px;
+  background: #fbfdff;
+}
+.next-due-title {
+  font-size: 12px;
+  color: #334155;
+  font-weight: 800;
+  margin-bottom: 8px;
+}
+.next-due-list {
+  display: grid;
+  gap: 6px;
+}
+.next-due-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+  padding: 8px;
+}
+.next-due-item strong {
+  font-size: 12px;
+  display: block;
+}
+.next-due-meta {
+  color: #64748b;
+  font-size: 11px;
+  margin-top: 2px;
 }
 
 .filters {
@@ -301,6 +355,9 @@ body { font-family: "Public Sans", "Segoe UI", sans-serif; background: var(--cb-
   display: grid;
   grid-template-columns: 1fr;
   gap: 8px;
+}
+.saved-view {
+  min-width: 170px;
 }
 .view-toggle {
   padding: 10px 14px;
@@ -449,12 +506,32 @@ tbody tr:focus {
   color: #64748b;
   font-weight: 700;
 }
+.status-chip i { font-size: 10px; }
+.status-chip-green { background: #ecfdf3; border-color: #86efac; color: #166534; }
+.status-chip-amber { background: #fffbeb; border-color: #fcd34d; color: #92400e; }
+.status-chip-red { background: #fef2f2; border-color: #fca5a5; color: #991b1b; }
 .metric-cell { display: grid; gap: 3px; }
 .metric-strong { font-size: 12px; font-weight: 800; color: #0f172a; }
 .health-line {
   color: #475569;
   font-size: 12px;
   line-height: 1.35;
+}
+.risk-row {
+  margin-top: 5px;
+  display: grid;
+  gap: 4px;
+}
+.risk-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+.risk-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981, #f59e0b, #ef4444);
+  width: 0;
 }
 .owner-name { font-size: 12px; font-weight: 700; color: #0f172a; }
 .owner-sub {
@@ -539,6 +616,61 @@ tbody tr:focus {
   background: #fff;
   width: 100%;
 }
+.evidence-link {
+  color: #1d4ed8;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 700;
+}
+.evidence-link:hover { text-decoration: underline; }
+.evidence-meta {
+  color: #64748b;
+  font-size: 11px;
+  margin-top: 3px;
+}
+.drawer-section {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px;
+  background: #fff;
+  margin-bottom: 10px;
+}
+.drawer-section h4 {
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+.risk-help-list {
+  margin: 0;
+  padding-left: 16px;
+  color: #475569;
+  font-size: 12px;
+  display: grid;
+  gap: 4px;
+}
+.sync-list {
+  display: grid;
+  gap: 6px;
+}
+.sync-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 8px;
+}
+.sync-item strong { font-size: 12px; }
+.sync-item p { color: #64748b; font-size: 11px; margin-top: 2px; }
+.note-form {
+  display: grid;
+  gap: 6px;
+}
+.note-form textarea {
+  border: 1px solid #dbe3f0;
+  border-radius: 8px;
+  min-height: 72px;
+  padding: 8px;
+  font: inherit;
+  font-size: 12px;
+  resize: vertical;
+}
 
 .drawer {
   position: fixed;
@@ -573,6 +705,7 @@ tbody tr:focus {
 }
 .timeline-title { font-size: 13px; font-weight: 700; margin-bottom: 3px; }
 .timeline-note { margin-top: 4px; }
+.timeline-group-heading { margin: 10px 0 6px; font-weight: 700; }
 
 .toast {
   position: fixed;
@@ -658,6 +791,7 @@ tbody tr:focus {
           <details class="header-tools">
             <summary class="btn"><i class="fa-solid fa-screwdriver-wrench"></i> Tools</summary>
             <div class="header-tools-panel">
+              <button type="button" class="menu-item" id="syncAllBtn"><i class="fa-solid fa-arrows-rotate"></i> Re-sync all</button>
               <button type="button" class="menu-item" id="runEscalationBtn"><i class="fa-solid fa-triangle-exclamation"></i> Run escalations</button>
               <button type="button" class="menu-item" id="exportCsvBtn"><i class="fa-solid fa-file-csv"></i> Export CSV</button>
               <button type="button" class="menu-item" id="exportPdfBtn"><i class="fa-solid fa-file-pdf"></i> Export PDF</button>
@@ -665,9 +799,13 @@ tbody tr:focus {
           </details>
         </div>
       </div>
+      <div id="errorBanner" class="error-banner" role="alert" aria-live="assertive">
+        <span id="errorBannerText">Something went wrong while loading compliance data.</span>
+        <button type="button" class="btn btn-sm" id="errorRetryBtn">Retry</button>
+      </div>
     </header>
 
-    <main class="content">
+    <main class="content" id="mainContentRoot">
       <section class="kpis">
         <div class="kpi"><div class="kpi-label">Compliant</div><div class="kpi-value" id="kpiCompliant">0</div></div>
         <div class="kpi"><div class="kpi-label">At Risk</div><div class="kpi-value" id="kpiAtRisk">0</div></div>
@@ -706,6 +844,15 @@ tbody tr:focus {
               <details class="advanced-filters">
                 <summary><i class="fa-solid fa-sliders"></i> Advanced</summary>
                 <div class="advanced-grid">
+                  <select id="savedViewSelect" class="saved-view" aria-label="Saved views">
+                    <option value="">Saved views...</option>
+                    <option value="urgent">My urgent</option>
+                    <option value="payroll">Payroll deadlines</option>
+                    <option value="vat_due">VAT due</option>
+                    <option value="cipc_due">CIPC due</option>
+                    <option value="high_risk">High risk &gt; 80</option>
+                    <option value="escalated">Escalated</option>
+                  </select>
                   <select id="sourceFilter" aria-label="Filter by source">
                     <option value="">All sources</option>
                     <option value="SARS">SARS</option>
@@ -730,6 +877,16 @@ tbody tr:focus {
             <button type="button" class="view-btn" data-quick-view="needs">Non-compliant</button>
             <button type="button" class="view-btn" data-quick-view="all">All clients</button>
             <button type="button" class="view-btn" data-quick-view="escalated">Escalated only</button>
+          </div>
+          <div class="view-toggle" role="tablist" aria-label="Compliance type">
+            <button type="button" class="view-btn active" data-compliance-type="">All types</button>
+            <button type="button" class="view-btn" data-compliance-type="VAT201">VAT201</button>
+            <button type="button" class="view-btn" data-compliance-type="EMP201">PAYE EMP201</button>
+            <button type="button" class="view-btn" data-compliance-type="EMP501">EMP501</button>
+            <button type="button" class="view-btn" data-compliance-type="IRP6">IRP6</button>
+            <button type="button" class="view-btn" data-compliance-type="ITR14">ITR14</button>
+            <button type="button" class="view-btn" data-compliance-type="CIPC Annual Return">CIPC Annual Return</button>
+            <button type="button" class="view-btn" data-compliance-type="UIF/SDL">UIF/SDL</button>
           </div>
           <details class="bulk-panel">
             <summary class="bulk-summary">
@@ -764,6 +921,7 @@ tbody tr:focus {
                   <th>Client</th>
                   <th>Status Overview</th>
                   <th>Due &amp; Health</th>
+                  <th>Evidence</th>
                   <th>Owner</th>
                   <th>Actions</th>
                 </tr>
@@ -778,6 +936,12 @@ tbody tr:focus {
             <div>
               <div class="card-title">Today&apos;s Action Queue</div>
               <div class="card-subtitle">Immediate follow-ups that should be handled first.</div>
+            </div>
+          </div>
+          <div class="next-due-panel">
+            <div class="next-due-title">Next 5 due obligations</div>
+            <div class="next-due-list" id="nextDueList">
+              <div class="next-due-item"><strong>Loading...</strong><div class="next-due-meta">Preparing due list.</div></div>
             </div>
           </div>
           <div class="queue-list" id="actionQueue">
@@ -798,6 +962,27 @@ tbody tr:focus {
     <button type="button" class="btn" id="closeDrawerBtn"><i class="fa-solid fa-xmark"></i> Close</button>
   </div>
   <div class="drawer-body">
+    <section class="drawer-section">
+      <h4>Risk score guide</h4>
+      <ul class="risk-help-list">
+        <li>Overdue obligations: highest impact</li>
+        <li>Due soon (<=14 days): medium impact</li>
+        <li>Sync failures and escalations increase risk</li>
+      </ul>
+    </section>
+    <section class="drawer-section">
+      <h4>Sync Health</h4>
+      <div id="drawerSyncHealth" class="sync-list">
+        <div class="sync-item"><strong>Loading...</strong><p>Fetching connector diagnostics.</p></div>
+      </div>
+    </section>
+    <section class="drawer-section">
+      <h4>Add Note</h4>
+      <div class="note-form">
+        <textarea id="timelineNoteInput" aria-label="Add timeline note" placeholder="Add internal note for this client..."></textarea>
+        <button type="button" class="btn btn-sm" id="addTimelineNoteBtn"><i class="fa-regular fa-note-sticky"></i> Add note</button>
+      </div>
+    </section>
     <div class="filters timeline-filters">
       <select id="timelineSource" aria-label="Timeline source">
         <option value="">All sources</option>
@@ -837,14 +1022,118 @@ const state = {
   selectedClientId: "",
   selectedIds: new Set(),
   assignableOwners: [],
+  complianceType: "",
   quickView: "urgent",
+  isLoading: false,
+  syncDiagnosticsByClient: new Map(),
+  lastRowTrigger: null,
+  drawerCleanup: null,
+  pendingOwnerUserId: "",
 };
 function headers() { return window.PortalAuth.authHeaders(token); }
+const SEARCH_DEBOUNCE_MS = 300;
+let searchDebounceTimer = null;
+
+function textSafe(value, fallback = "-") {
+  const text = String(value ?? "").trim();
+  return text || fallback;
+}
+function upperSafe(value, fallback = "UNKNOWN") {
+  return textSafe(value, fallback).toUpperCase();
+}
+function numSafe(value, fallback = 0) {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : fallback;
+}
+function normalizeStatus(status) {
+  return String(status || "").toLowerCase();
+}
+function normalizeOverallStatus(status) {
+  const v = normalizeStatus(status);
+  if (v === "green" || v === "compliant") return "green";
+  if (v === "red" || v === "non_compliant" || v === "overdue") return "red";
+  return "amber";
+}
+function normalizeObligationStatus(status) {
+  const v = normalizeStatus(status);
+  if (v === "resolved" || v === "paid" || v === "submitted") return "resolved";
+  if (v === "in_progress" || v === "in-progress" || v === "processing") return "in_progress";
+  if (v === "overdue") return "overdue";
+  return "open";
+}
+function sourceStatusMeta(status) {
+  const normalized = normalizeOverallStatus(status);
+  if (normalized === "green") {
+    return { normalized, label: "Compliant", icon: "fa-circle-check", chipClass: "status-chip status-chip-green" };
+  }
+  if (normalized === "red") {
+    return { normalized, label: "Overdue", icon: "fa-triangle-exclamation", chipClass: "status-chip status-chip-red" };
+  }
+  return { normalized, label: "Due soon", icon: "fa-clock", chipClass: "status-chip status-chip-amber" };
+}
+function renderSourceChip(sourceLabel, statusValue) {
+  const meta = sourceStatusMeta(statusValue);
+  return `<span class="${meta.chipClass}"><span>${asText(textSafe(sourceLabel, "SOURCE"))}</span><i class="fa-solid ${meta.icon}"></i> ${asText(upperSafe(meta.normalized))}</span>`;
+}
 function setLastUpdated() {
   const label = document.getElementById("lastUpdatedLabel");
   if (!label) return;
   const now = new Date();
   label.textContent = `Updated ${now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+}
+function setLoading(next) {
+  state.isLoading = Boolean(next);
+  const root = document.getElementById("mainContentRoot");
+  if (root) root.classList.toggle("loading-mask", state.isLoading);
+  const controls = [
+    "refreshBtn",
+    "syncAllBtn",
+    "runEscalationBtn",
+    "exportCsvBtn",
+    "exportPdfBtn",
+    "clearFiltersBtn",
+    "searchFilter",
+    "statusFilter",
+    "sourceFilter",
+    "ownerFilter",
+    "sortBy",
+    "sortDir",
+    "savedViewSelect",
+    "overdueOnly",
+    "bulkSelectAll",
+    "bulkOwnerSelect",
+    "bulkAssignBtn",
+    "bulkAssignMeBtn",
+    "bulkInProgressBtn",
+    "bulkResolveBtn",
+    "bulkRemindBtn",
+    "applyTimelineFiltersBtn",
+    "addTimelineNoteBtn",
+  ];
+  controls.forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.disabled = state.isLoading;
+    if (state.isLoading) el.setAttribute("aria-busy", "true");
+    else el.removeAttribute("aria-busy");
+  });
+}
+function showError(message) {
+  const banner = document.getElementById("errorBanner");
+  const text = document.getElementById("errorBannerText");
+  if (!banner || !text) return;
+  text.textContent = textSafe(message, "Something went wrong.");
+  banner.classList.add("show");
+}
+function hideError() {
+  const banner = document.getElementById("errorBanner");
+  if (!banner) return;
+  banner.classList.remove("show");
+}
+function handleError(error, message = "Unexpected error.") {
+  console.error(error);
+  showError(message);
+  showToast(message);
 }
 function qs(params) {
   const out = new URLSearchParams();
@@ -867,9 +1156,9 @@ function dt(iso) {
   return d.toLocaleString([], { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 function pill(status) {
-  const s = String(status || "").toLowerCase();
-  if (s === "green" || s === "compliant") return "pill pill-green";
-  if (s === "red" || s === "overdue" || s === "non_compliant") return "pill pill-red";
+  const s = normalizeOverallStatus(status);
+  if (s === "green") return "pill pill-green";
+  if (s === "red") return "pill pill-red";
   return "pill pill-amber";
 }
 function showToast(text) {
@@ -877,9 +1166,6 @@ function showToast(text) {
   el.textContent = text;
   el.classList.add("show");
   setTimeout(() => el.classList.remove("show"), 1800);
-}
-function normalizeStatus(status) {
-  return String(status || "").toLowerCase();
 }
 function daysUntil(isoDate) {
   if (!isoDate) return Number.POSITIVE_INFINITY;
@@ -906,42 +1192,90 @@ function syncAge(isoDate) {
   const days = Math.floor(hrs / 24);
   return `${days}d ago`;
 }
+function dueLabel(isoDate) {
+  const days = daysUntil(isoDate);
+  if (!Number.isFinite(days)) return "No due date";
+  if (days < 0) return `Overdue by ${Math.abs(days)} day${Math.abs(days) === 1 ? "" : "s"}`;
+  if (days === 0) return "Due today";
+  return `Due in ${days} day${days === 1 ? "" : "s"}`;
+}
+function mapComplianceType(raw) {
+  const text = normalizeStatus(raw);
+  if (!text) return "";
+  if (text.includes("vat")) return "VAT201";
+  if (text.includes("emp201") || (text.includes("paye") && !text.includes("emp501"))) return "EMP201";
+  if (text.includes("emp501")) return "EMP501";
+  if (text.includes("irp6") || text.includes("provisional")) return "IRP6";
+  if (text.includes("itr14") || text.includes("income")) return "ITR14";
+  if (text.includes("cipc") || text.includes("annual return")) return "CIPC Annual Return";
+  if (text.includes("uif") || text.includes("sdl")) return "UIF/SDL";
+  return textSafe(raw, "");
+}
+function statusIcon(eventType) {
+  const type = normalizeStatus(eventType);
+  if (type.includes("resolved") || type.includes("paid")) return "fa-circle-check";
+  if (type.includes("overdue") || type.includes("escalated")) return "fa-triangle-exclamation";
+  if (type.includes("submitted")) return "fa-file-arrow-up";
+  if (type.includes("evidence")) return "fa-paperclip";
+  return "fa-clock";
+}
+function clientDocumentsLink(clientId) {
+  return `documents.html?clientId=${encodeURIComponent(clientId || "")}`;
+}
 function applyLocalViewFilters(items) {
   const term = String(document.getElementById("searchFilter")?.value || "").trim().toLowerCase();
+  const overdueOnly = Boolean(document.getElementById("overdueOnly")?.checked);
   let filtered = Array.isArray(items) ? [...items] : [];
 
   if (state.quickView === "urgent") {
     filtered = filtered.filter((item) => {
-      const overall = normalizeStatus(item.overallStatus);
-      return overall !== "green" || Number(item.overdueCount || 0) > 0 || isDueSoon(item.nextDueDate, 14);
+      const overall = normalizeOverallStatus(item.overallStatus);
+      return overall !== "green" || numSafe(item.overdueCount) > 0 || isDueSoon(item.nextDueDate, 14);
     });
   } else if (state.quickView === "needs") {
-    filtered = filtered.filter((item) => normalizeStatus(item.overallStatus) !== "green");
+    filtered = filtered.filter((item) => normalizeOverallStatus(item.overallStatus) !== "green");
   } else if (state.quickView === "escalated") {
     filtered = filtered.filter((item) => Boolean(item.escalationFlag));
   }
 
+  if (overdueOnly) {
+    filtered = filtered.filter((item) => numSafe(item.overdueCount) > 0);
+  }
+
+  if (state.complianceType) {
+    filtered = filtered.filter((item) => mapComplianceType(item.actionObligationType) === state.complianceType);
+  }
+
   if (term) {
     filtered = filtered.filter((item) => {
-      const client = String(item.clientName || "").toLowerCase();
-      const owner = String(item.ownerName || "").toLowerCase();
-      return client.includes(term) || owner.includes(term);
+      const client = textSafe(item.clientName, "").toLowerCase();
+      const owner = textSafe(item.ownerName, "").toLowerCase();
+      const type = textSafe(item.actionObligationType, "").toLowerCase();
+      return client.includes(term) || owner.includes(term) || type.includes(term);
     });
   }
   filtered.sort((a, b) => {
-    const overdueA = Number(a.overdueCount || 0);
-    const overdueB = Number(b.overdueCount || 0);
+    const overdueA = numSafe(a.overdueCount);
+    const overdueB = numSafe(b.overdueCount);
     if (overdueA !== overdueB) return overdueB - overdueA;
     const dueA = daysUntil(a.nextDueDate);
     const dueB = daysUntil(b.nextDueDate);
     if (dueA !== dueB) return dueA - dueB;
-    return Number(b.riskScore || 0) - Number(a.riskScore || 0);
+    return numSafe(b.riskScore) - numSafe(a.riskScore);
   });
   return filtered;
 }
 function syncQuickViewButtons() {
   document.querySelectorAll("[data-quick-view]").forEach((button) => {
     const isActive = button.getAttribute("data-quick-view") === state.quickView;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-pressed", isActive ? "true" : "false");
+  });
+}
+function syncComplianceTypeButtons() {
+  document.querySelectorAll("[data-compliance-type]").forEach((button) => {
+    const value = button.getAttribute("data-compliance-type") || "";
+    const isActive = value === state.complianceType;
     button.classList.toggle("active", isActive);
     button.setAttribute("aria-pressed", isActive ? "true" : "false");
   });
@@ -953,6 +1287,8 @@ function renderBoard() {
   const allSelected = visible.length > 0 && visible.every((item) => state.selectedIds.has(item.clientId));
   document.getElementById("bulkSelectAll").checked = allSelected;
   syncQuickViewButtons();
+  syncComplianceTypeButtons();
+  renderNextDue(visible);
   renderActionQueue(visible);
   renderTable(visible);
 }
@@ -985,36 +1321,86 @@ function renderOwnerSelectors() {
     <option value="${asText(owner.id)}">${asText(owner.name)}</option>
   `).join("")}`;
   bulkOwnerSelect.innerHTML = ownerOptions();
-  ownerFilter.value = state.assignableOwners.some((owner) => owner.id === ownerFilterValue) ? ownerFilterValue : "";
+  const preferredOwnerValue = state.pendingOwnerUserId || ownerFilterValue;
+  ownerFilter.value = state.assignableOwners.some((owner) => owner.id === preferredOwnerValue) ? preferredOwnerValue : "";
+  state.pendingOwnerUserId = "";
   bulkOwnerSelect.value = state.assignableOwners.some((owner) => owner.id === bulkOwnerValue) ? bulkOwnerValue : "";
 }
 
 async function fetchPortfolio() {
+  hideError();
+  setLoading(true);
   document.getElementById("actionQueue").innerHTML = `
     <div class="queue-item"><div class="queue-main"><h4>Updating queue...</h4><p class="queue-meta">Syncing latest compliance status.</p></div></div>
   `;
   document.getElementById("portfolioBody").innerHTML = `
-    <tr><td colspan="6" class="empty-cell">Loading portfolio...</td></tr>
+    <tr><td colspan="7" class="empty-cell">Loading portfolio...</td></tr>
+  `;
+  document.getElementById("nextDueList").innerHTML = `
+    <div class="next-due-item"><strong>Loading...</strong><div class="next-due-meta">Refreshing obligations.</div></div>
   `;
 
-  const payload = currentFilters();
-  const response = await fetch(`${API_BASE_URL}/compliance/portfolio${qs(payload)}`, { headers: headers() });
-  if (!response.ok) throw new Error("Failed to load compliance portfolio");
-  const data = await response.json();
-  state.assignableOwners = Array.isArray(data.assignableOwners) ? data.assignableOwners : state.assignableOwners;
-  renderOwnerSelectors();
-  state.items = Array.isArray(data.items) ? data.items : [];
-  renderKpis(data.kpis || {});
-  renderBoard();
-  setLastUpdated();
+  try {
+    const payload = currentFilters();
+    const [portfolioResponse, diagnosticsResponse] = await Promise.all([
+      fetch(`${API_BASE_URL}/compliance/portfolio${qs(payload)}`, { headers: headers() }),
+      fetch(`${API_BASE_URL}/compliance/diagnostics/sync`, { headers: headers() }),
+    ]);
+    if (!portfolioResponse.ok) throw new Error("Failed to load compliance portfolio");
+    const data = await portfolioResponse.json();
+    state.assignableOwners = Array.isArray(data.assignableOwners) ? data.assignableOwners : state.assignableOwners;
+    renderOwnerSelectors();
+    state.items = Array.isArray(data.items) ? data.items : [];
+    renderKpis(data.kpis || {});
+    if (diagnosticsResponse.ok) {
+      const diagnostics = await diagnosticsResponse.json();
+      const map = new Map();
+      for (const item of Array.isArray(diagnostics.items) ? diagnostics.items : []) {
+        const key = String(item.clientId || "");
+        const list = map.get(key) || [];
+        list.push(item);
+        map.set(key, list);
+      }
+      state.syncDiagnosticsByClient = map;
+    }
+    renderBoard();
+    setLastUpdated();
+  } catch (error) {
+    showError("Failed to fetch portfolio data. Please retry.");
+    throw error;
+  } finally {
+    setLoading(false);
+  }
 }
 
 function renderKpis(kpis) {
-  document.getElementById("kpiCompliant").textContent = Number(kpis.compliantClients || 0);
-  document.getElementById("kpiAtRisk").textContent = Number(kpis.atRiskClients || 0);
-  document.getElementById("kpiNonCompliant").textContent = Number(kpis.nonCompliantClients || 0);
-  document.getElementById("kpiOverdue").textContent = Number(kpis.overdueObligations || 0);
-  document.getElementById("kpiSyncFailures").textContent = Number(kpis.syncFailures || 0);
+  document.getElementById("kpiCompliant").textContent = numSafe(kpis.compliantClients);
+  document.getElementById("kpiAtRisk").textContent = numSafe(kpis.atRiskClients);
+  document.getElementById("kpiNonCompliant").textContent = numSafe(kpis.nonCompliantClients);
+  document.getElementById("kpiOverdue").textContent = numSafe(kpis.overdueObligations);
+  document.getElementById("kpiSyncFailures").textContent = numSafe(kpis.syncFailures);
+}
+function renderNextDue(items) {
+  const wrap = document.getElementById("nextDueList");
+  const dueItems = (Array.isArray(items) ? items : [])
+    .filter((item) => Number.isFinite(daysUntil(item.nextDueDate)))
+    .sort((a, b) => daysUntil(a.nextDueDate) - daysUntil(b.nextDueDate))
+    .slice(0, 5);
+  if (!dueItems.length) {
+    wrap.innerHTML = `<div class="next-due-item"><strong>No upcoming due items</strong><div class="next-due-meta">You're clear for now.</div></div>`;
+    return;
+  }
+  wrap.innerHTML = dueItems.map((item) => `
+    <article class="next-due-item">
+      <strong>${asText(textSafe(item.clientName))}</strong>
+      <div class="next-due-meta">${asText(mapComplianceType(item.actionObligationType) || "General compliance")} | ${asText(dueLabel(item.nextDueDate))}</div>
+    </article>
+  `).join("");
+}
+function closeUtilityMenus() {
+  document.querySelectorAll("details.more-menu[open], details.header-tools[open]").forEach((el) => {
+    el.removeAttribute("open");
+  });
 }
 
 function renderActionQueue(items) {
@@ -1025,12 +1411,12 @@ function renderActionQueue(items) {
   }
   const top = items
     .filter((item) => {
-      const overall = normalizeStatus(item.overallStatus);
-      return overall !== "green" || Number(item.overdueCount || 0) > 0 || isDueSoon(item.nextDueDate, 14) || Boolean(item.escalationFlag);
+      const overall = normalizeOverallStatus(item.overallStatus);
+      return overall !== "green" || numSafe(item.overdueCount) > 0 || isDueSoon(item.nextDueDate, 14) || Boolean(item.escalationFlag);
     })
     .sort((a, b) => {
-      const overdueA = Number(a.overdueCount || 0);
-      const overdueB = Number(b.overdueCount || 0);
+      const overdueA = numSafe(a.overdueCount);
+      const overdueB = numSafe(b.overdueCount);
       if (overdueA !== overdueB) return overdueB - overdueA;
       return daysUntil(a.nextDueDate) - daysUntil(b.nextDueDate);
     })
@@ -1042,9 +1428,9 @@ function renderActionQueue(items) {
   wrap.innerHTML = top.map((item) => `
     <div class="queue-item">
       <div class="queue-main">
-        <h4>${asText(item.clientName)}</h4>
-        <p class="queue-meta">Status ${asText(item.overallStatus.toUpperCase())} | ${Number(item.overdueCount || 0)} overdue | Due ${dt(item.nextDueDate)}</p>
-        ${Number(item.overdueCount || 0) > 0
+        <h4>${asText(textSafe(item.clientName))}</h4>
+        <p class="queue-meta">Status ${asText(upperSafe(normalizeOverallStatus(item.overallStatus), "AMBER"))} | ${numSafe(item.overdueCount)} overdue | ${asText(dueLabel(item.nextDueDate))}</p>
+        ${numSafe(item.overdueCount) > 0
     ? `<span class="queue-badge"><i class="fa-solid fa-triangle-exclamation"></i> Overdue</span>`
     : isDueSoon(item.nextDueDate, 14)
       ? `<span class="queue-badge"><i class="fa-regular fa-clock"></i> Due soon</span>`
@@ -1062,7 +1448,7 @@ function renderActionQueue(items) {
 function renderTable(items) {
   const body = document.getElementById("portfolioBody");
   if (!items.length) {
-    body.innerHTML = `<tr><td colspan="6" class="empty-cell">No clients match this view. Clear filters or switch view to continue.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="7" class="empty-cell">No clients match this view. Clear filters or switch view to continue.</td></tr>`;
     state.selectedIds.clear();
     renderBulkCount();
     return;
@@ -1070,25 +1456,33 @@ function renderTable(items) {
   const selected = state.selectedIds;
   body.innerHTML = items.map((item) => `
     <tr data-client-id="${asText(item.clientId)}" tabindex="0">
-      <td>
+      <td data-no-drawer="true">
         <input type="checkbox" class="row-check" data-select-client-id="${asText(item.clientId)}" ${selected.has(item.clientId) ? "checked" : ""} aria-label="Select ${asText(item.clientName)}">
       </td>
       <td>
-        <strong>${asText(item.clientName)}</strong>
-        <div class="muted mono">Risk ${Number(item.riskScore || 0)}</div>
+        <strong>${asText(textSafe(item.clientName))}</strong>
+        <div class="muted mono">Risk ${numSafe(item.riskScore)}</div>
+        <div class="risk-row">
+          <div class="risk-bar"><div class="risk-fill" data-risk="${Math.min(100, Math.max(0, numSafe(item.riskScore)))}"></div></div>
+        </div>
       </td>
       <td>
         <div class="status-summary">
-          <span class="${pill(item.overallStatus)}">${asText(item.overallStatus.toUpperCase())}</span>
-          <span class="status-chip"><span>SARS</span> ${asText(String(item.sarsStatus || "unknown").toUpperCase())}</span>
-          <span class="status-chip"><span>CIPC</span> ${asText(String(item.cipcStatus || "unknown").toUpperCase())}</span>
-          <span class="status-chip"><span>CSD</span> ${asText(String(item.csdStatus || "unknown").toUpperCase())}</span>
+          <span class="${pill(item.overallStatus)}">${asText(upperSafe(normalizeOverallStatus(item.overallStatus), "AMBER"))}</span>
+          ${renderSourceChip("SARS", item.sarsStatus)}
+          ${renderSourceChip("CIPC", item.cipcStatus)}
+          ${renderSourceChip("CSD", item.csdStatus)}
         </div>
       </td>
       <td>
         <div class="metric-cell">
-          <div class="metric-strong">${Number(item.overdueCount || 0)} overdue</div>
-          <div class="health-line">Due: ${dt(item.nextDueDate)} | Sync: ${syncAge(item.lastSync)}</div>
+          <div class="metric-strong">${numSafe(item.overdueCount)} overdue</div>
+          <div class="health-line">${asText(dueLabel(item.nextDueDate))} | Sync ${asText(syncAge(item.lastSync))}</div>
+          <div class="health-line">Type: ${asText(mapComplianceType(item.actionObligationType) || "General compliance")}</div>
+          ${numSafe(item.overdueCount) > 0 && Number.isFinite(daysUntil(item.nextDueDate))
+    ? `<div class="health-line">Open for ${Math.abs(Math.min(0, daysUntil(item.nextDueDate)))} day${Math.abs(Math.min(0, daysUntil(item.nextDueDate))) === 1 ? "" : "s"}</div>`
+    : ""
+}
           ${item.escalationFlag
     ? `<div class="escalation-inline"><i class="fa-solid fa-triangle-exclamation"></i> Escalated</div>`
     : ""
@@ -1096,10 +1490,14 @@ function renderTable(items) {
         </div>
       </td>
       <td>
-        <div class="owner-name">${asText(item.ownerName || "Unassigned")}</div>
-        <div class="owner-sub">${item.ownerName ? "Assigned" : "Needs owner"}</div>
+        <a class="evidence-link" href="${clientDocumentsLink(item.clientId)}">View documents</a>
+        <div class="evidence-meta">${numSafe(item.evidenceCount, 0)} evidence file${numSafe(item.evidenceCount, 0) === 1 ? "" : "s"}${item.lastEvidenceAt ? ` | ${asText(dt(item.lastEvidenceAt))}` : ""}</div>
       </td>
       <td>
+        <div class="owner-name">${asText(textSafe(item.ownerName, "Unassigned"))}</div>
+        <div class="owner-sub">${item.ownerName ? "Assigned" : "Needs owner"}</div>
+      </td>
+      <td data-no-drawer="true">
         <div class="action-cell">
           <div class="action-row">
             <a class="btn btn-sm" href="client-profile.html?clientId=${encodeURIComponent(item.clientId)}">Open</a>
@@ -1124,6 +1522,18 @@ function renderTable(items) {
                 <button type="button" class="menu-item" data-row-action="remind" data-client-id="${asText(item.clientId)}">
                   <i class="fa-regular fa-bell"></i> Send reminder
                 </button>
+                <button type="button" class="menu-item" data-row-action="request_docs" data-client-id="${asText(item.clientId)}">
+                  <i class="fa-regular fa-folder-open"></i> Request docs
+                </button>
+                <button type="button" class="menu-item" data-row-action="mark_submitted" data-alert-id="${asText(item.actionAlertId || "")}">
+                  <i class="fa-solid fa-file-arrow-up"></i> Mark submitted
+                </button>
+                <button type="button" class="menu-item" data-row-action="mark_paid" data-alert-id="${asText(item.actionAlertId || "")}">
+                  <i class="fa-solid fa-sack-dollar"></i> Mark paid
+                </button>
+                <button type="button" class="menu-item" data-row-action="resync_client" data-client-id="${asText(item.clientId)}">
+                  <i class="fa-solid fa-arrows-rotate"></i> Re-sync client
+                </button>
               </div>
             </details>
           </div>
@@ -1131,6 +1541,10 @@ function renderTable(items) {
       </td>
     </tr>
   `).join("");
+  document.querySelectorAll(".risk-fill[data-risk]").forEach((el) => {
+    const value = numSafe(el.getAttribute("data-risk"), 0);
+    el.style.width = `${Math.min(100, Math.max(0, value))}%`;
+  });
   renderBulkCount();
 }
 
@@ -1145,34 +1559,126 @@ async function loadTimeline(clientId) {
   const response = await fetch(`${API_BASE_URL}/compliance/client/${encodeURIComponent(clientId)}/events${qs({ source, eventType, limit: 120 })}`, { headers: headers() });
   if (!response.ok) throw new Error("Failed to load timeline");
   const payload = await response.json();
-  const items = Array.isArray(payload.items) ? payload.items : [];
+  const serverItems = Array.isArray(payload.items) ? payload.items : [];
+  const noteKey = `complianceTimelineNotes:${clientId}`;
+  const localNotes = JSON.parse(localStorage.getItem(noteKey) || "[]")
+    .map((note, index) => ({
+      id: `local-note-${index}`,
+      title: "Manual note added",
+      source: "MANUAL",
+      eventType: "note",
+      description: String(note.text || ""),
+      occurredAt: note.createdAt,
+      createdAt: note.createdAt,
+    }));
+  const items = [...serverItems, ...localNotes].sort((a, b) => {
+    const at = new Date(a.occurredAt || a.createdAt || 0).getTime();
+    const bt = new Date(b.occurredAt || b.createdAt || 0).getTime();
+    return bt - at;
+  });
   const list = document.getElementById("timelineList");
   if (!items.length) {
     list.innerHTML = `<p class="muted">No timeline events found for current filters.</p>`;
     return;
   }
-  list.innerHTML = items.map((event) => `
+  const grouped = new Map();
+  for (const event of items) {
+    const date = new Date(event.occurredAt || event.createdAt || Date.now());
+    const key = date.toDateString();
+    const label = (function dayLabel(d) {
+      const now = new Date();
+      const dayDiff = Math.floor((new Date(now.toDateString()).getTime() - new Date(d.toDateString()).getTime()) / 86400000);
+      if (dayDiff === 0) return "Today";
+      if (dayDiff === 1) return "Yesterday";
+      return d.toLocaleDateString([], { month: "short", day: "2-digit", year: "numeric" });
+    })(date);
+    if (!grouped.has(key)) grouped.set(key, { label, items: [] });
+    grouped.get(key).items.push(event);
+  }
+  list.innerHTML = Array.from(grouped.values()).map((group) => `
+    <h4 class="muted timeline-group-heading">${asText(group.label)}</h4>
+    ${group.items.map((event) => `
     <article class="timeline-item">
-      <div class="timeline-title">${asText(event.title || event.eventType || "Event")}</div>
+      <div class="timeline-title"><i class="fa-solid ${statusIcon(event.eventType)}"></i> ${asText(textSafe(event.title, event.eventType || "Event"))}</div>
       <div class="muted">${asText(event.source || "-")} &middot; ${asText(event.eventType || "-")} &middot; ${dt(event.occurredAt || event.createdAt)}</div>
       <p class="muted timeline-note">${asText(event.description || "")}</p>
     </article>
+    `).join("")}
   `).join("");
 }
-
-function openDrawer(clientId) {
+function renderDrawerSyncHealth(clientId) {
+  const wrap = document.getElementById("drawerSyncHealth");
+  const diagnostics = state.syncDiagnosticsByClient.get(clientId) || [];
+  if (!diagnostics.length) {
+    wrap.innerHTML = `<div class="sync-item"><strong>No diagnostics</strong><p>No connector health details were returned.</p></div>`;
+    return;
+  }
+  wrap.innerHTML = diagnostics.map((item) => `
+    <article class="sync-item">
+      <strong>${asText(textSafe(item.source, "Source"))}</strong>
+      <p>Last sync: ${asText(dt(item.lastSyncedAt))}</p>
+      <p>Status: ${asText(textSafe(item.status, "unknown"))}</p>
+      <p>Error: ${asText(textSafe(item.lastError, "None"))}</p>
+    </article>
+  `).join("");
+}
+function trapFocusInDrawer(event) {
+  if (event.key !== "Tab") return;
   const drawer = document.getElementById("timelineDrawer");
+  const focusable = Array.from(drawer.querySelectorAll('button, [href], input, select, textarea, details, summary, [tabindex]:not([tabindex="-1"])'))
+    .filter((el) => !el.hasAttribute("disabled"));
+  if (!focusable.length) return;
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+function openDrawer(clientId, rowEl = null) {
+  const drawer = document.getElementById("timelineDrawer");
+  state.lastRowTrigger = rowEl || document.querySelector(`tr[data-client-id="${clientId}"]`);
   const row = state.items.find((item) => item.clientId === clientId);
-  document.getElementById("drawerTitle").textContent = `${row?.clientName || "Client"} Timeline`;
+  document.getElementById("drawerTitle").textContent = `${textSafe(row?.clientName, "Client")} Timeline`;
   document.getElementById("drawerSubtitle").textContent = `Events: submitted, paid, overdue, resolved, evidence uploaded`;
+  renderDrawerSyncHealth(clientId);
   drawer.classList.add("open");
+  const closeButton = document.getElementById("closeDrawerBtn");
+  closeButton?.focus();
+  if (state.drawerCleanup) state.drawerCleanup();
+  drawer.addEventListener("keydown", trapFocusInDrawer);
+  state.drawerCleanup = () => drawer.removeEventListener("keydown", trapFocusInDrawer);
   loadTimeline(clientId).catch((error) => {
-    console.error(error);
+    handleError(error, "Unable to load timeline.");
     document.getElementById("timelineList").innerHTML = `<p class="muted">Unable to load timeline.</p>`;
   });
 }
 function closeDrawer() {
   document.getElementById("timelineDrawer").classList.remove("open");
+  if (state.drawerCleanup) state.drawerCleanup();
+  state.drawerCleanup = null;
+  if (state.lastRowTrigger && document.body.contains(state.lastRowTrigger)) {
+    state.lastRowTrigger.focus();
+  }
+}
+function addTimelineNote() {
+  if (!state.selectedClientId) return;
+  const input = document.getElementById("timelineNoteInput");
+  const text = String(input?.value || "").trim();
+  if (!text) {
+    showToast("Enter note text first.");
+    return;
+  }
+  const key = `complianceTimelineNotes:${state.selectedClientId}`;
+  const existing = JSON.parse(localStorage.getItem(key) || "[]");
+  existing.unshift({ text, createdAt: new Date().toISOString(), author: user.email || user.id });
+  localStorage.setItem(key, JSON.stringify(existing.slice(0, 200)));
+  input.value = "";
+  loadTimeline(state.selectedClientId).catch((error) => handleError(error, "Failed to refresh timeline."));
+  showToast("Note added.");
 }
 
 async function updateAlert(alertId, status, ownerUserId = "") {
@@ -1207,40 +1713,123 @@ async function runEscalations() {
   });
   if (!response.ok) throw new Error("Escalation execution failed");
 }
+async function runSyncClient(clientId) {
+  if (!clientId) return;
+  const response = await fetch(`${API_BASE_URL}/compliance/sync/${encodeURIComponent(clientId)}`, {
+    method: "POST",
+    headers: headers(),
+  });
+  if (!response.ok) throw new Error("Client sync failed");
+}
+async function runSyncAll() {
+  for (const row of state.visibleItems) {
+    await runSyncClient(row.clientId);
+  }
+}
 
 async function runBulkAction(kind) {
   const selectedRows = state.visibleItems.filter((item) => state.selectedIds.has(item.clientId));
   if (!selectedRows.length) return;
   const bulkOwnerUserId = document.getElementById("bulkOwnerSelect").value;
-  for (const row of selectedRows) {
-    if (kind === "assign") {
-      if (!bulkOwnerUserId) throw new Error("Choose owner before bulk assign.");
-      if (row.actionObligationId) await assignOwner(row.actionObligationId, bulkOwnerUserId);
-      else if (row.actionAlertId) await updateAlert(row.actionAlertId, "open", bulkOwnerUserId);
-    } else if (kind === "assign_me") {
-      if (row.actionObligationId) await assignOwner(row.actionObligationId, user.id);
-      else if (row.actionAlertId) await updateAlert(row.actionAlertId, "open", user.id);
-    } else if (kind === "in_progress") {
-      if (row.actionAlertId) await updateAlert(row.actionAlertId, "in_progress");
-    } else if (kind === "resolve") {
-      if (row.actionAlertId) await updateAlert(row.actionAlertId, "resolved");
-    } else if (kind === "remind") {
-      await runReminders();
-      break;
+  try {
+    setLoading(true);
+    for (const row of selectedRows) {
+      if (kind === "assign") {
+        if (!bulkOwnerUserId) throw new Error("Choose owner before bulk assign.");
+        if (row.actionObligationId) await assignOwner(row.actionObligationId, bulkOwnerUserId);
+        else if (row.actionAlertId) await updateAlert(row.actionAlertId, "open", bulkOwnerUserId);
+      } else if (kind === "assign_me") {
+        if (row.actionObligationId) await assignOwner(row.actionObligationId, user.id);
+        else if (row.actionAlertId) await updateAlert(row.actionAlertId, "open", user.id);
+      } else if (kind === "in_progress") {
+        if (row.actionAlertId) await updateAlert(row.actionAlertId, normalizeObligationStatus("in_progress"));
+      } else if (kind === "resolve") {
+        if (row.actionAlertId) await updateAlert(row.actionAlertId, normalizeObligationStatus("resolved"));
+      } else if (kind === "remind") {
+        await runReminders();
+        break;
+      } else if (kind === "sync_all") {
+        await runSyncAll();
+        break;
+      }
     }
+    closeUtilityMenus();
+    showToast("Bulk action completed.");
+    await fetchPortfolio();
+  } catch (error) {
+    handleError(error, "Bulk action failed.");
+  } finally {
+    setLoading(false);
   }
-  showToast("Bulk action completed.");
-  await fetchPortfolio();
 }
 
-async function exportCsv() {
-  const response = await fetch(`${API_BASE_URL}/compliance/reports/portfolio.csv${qs(currentFilters())}`, { headers: headers() });
-  if (!response.ok) throw new Error("Export failed");
-  const blob = await response.blob();
+function csvEscape(value) {
+  const text = String(value ?? "");
+  return `"${text.replaceAll('"', '""')}"`;
+}
+function exportFilterSummary() {
+  const status = textSafe(document.getElementById("statusFilter")?.value, "all");
+  const source = textSafe(document.getElementById("sourceFilter")?.value, "all");
+  const ownerId = textSafe(document.getElementById("ownerFilter")?.value, "");
+  const ownerName = ownerId
+    ? textSafe(state.assignableOwners.find((owner) => owner.id === ownerId)?.name, ownerId)
+    : "all";
+  const overdueOnly = document.getElementById("overdueOnly")?.checked ? "true" : "false";
+  const quickView = textSafe(state.quickView, "urgent");
+  const complianceType = textSafe(state.complianceType, "all");
+  return `quickView=${quickView}; type=${complianceType}; status=${status}; source=${source}; owner=${ownerName}; overdueOnly=${overdueOnly}`;
+}
+function exportCsv() {
+  const rows = (Array.isArray(state.visibleItems) && state.visibleItems.length ? state.visibleItems : state.items).map((item) => {
+    const sars = sourceStatusMeta(item.sarsStatus).normalized;
+    const cipc = sourceStatusMeta(item.cipcStatus).normalized;
+    const csd = sourceStatusMeta(item.csdStatus).normalized;
+    return [
+      textSafe(item.clientName, "-"),
+      normalizeOverallStatus(item.overallStatus),
+      sars,
+      cipc,
+      csd,
+      mapComplianceType(item.actionObligationType) || "general",
+      numSafe(item.overdueCount, 0),
+      dueLabel(item.nextDueDate),
+      syncAge(item.lastSync),
+      numSafe(item.riskScore, 0),
+      textSafe(item.ownerName, "Unassigned"),
+      numSafe(item.evidenceCount, 0),
+      item.lastEvidenceAt ? dt(item.lastEvidenceAt) : "-",
+      item.escalationFlag ? "yes" : "no",
+    ];
+  });
+  const header = [
+    "Client",
+    "Overall Status",
+    "SARS",
+    "CIPC",
+    "CSD",
+    "Compliance Type",
+    "Overdue Count",
+    "Next Due",
+    "Last Sync",
+    "Risk Score",
+    "Owner",
+    "Evidence Count",
+    "Last Evidence Upload",
+    "Escalated",
+  ];
+  const lines = [
+    [csvEscape("Compliance Portfolio Export"), csvEscape("Current view")].join(","),
+    [csvEscape("Generated At"), csvEscape(new Date().toISOString())].join(","),
+    [csvEscape("Filters"), csvEscape(exportFilterSummary())].join(","),
+    "",
+    header.map(csvEscape).join(","),
+    ...rows.map((row) => row.map(csvEscape).join(",")),
+  ];
+  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = "compliance-portfolio.csv";
+  link.download = "compliance-portfolio-current-view.csv";
   document.body.appendChild(link);
   link.click();
   link.remove();
@@ -1250,15 +1839,15 @@ async function exportCsv() {
 function exportPdf() {
   const rows = state.items.map((item) => `
     <tr>
-      <td>${asText(item.clientName)}</td>
-      <td>${asText(item.overallStatus)}</td>
-      <td>${asText(item.sarsStatus)}</td>
-      <td>${asText(item.cipcStatus)}</td>
-      <td>${asText(item.csdStatus)}</td>
-      <td>${Number(item.overdueCount || 0)}</td>
-      <td>${asText(item.ownerName || "-")}</td>
+      <td>${asText(textSafe(item.clientName))}</td>
+      <td>${asText(upperSafe(normalizeOverallStatus(item.overallStatus), "AMBER"))}</td>
+      <td>${asText(upperSafe(sourceStatusMeta(item.sarsStatus).normalized, "AMBER"))}</td>
+      <td>${asText(upperSafe(sourceStatusMeta(item.cipcStatus).normalized, "AMBER"))}</td>
+      <td>${asText(upperSafe(sourceStatusMeta(item.csdStatus).normalized, "AMBER"))}</td>
+      <td>${numSafe(item.overdueCount, 0)}</td>
+      <td>${asText(textSafe(item.ownerName, "Unassigned"))}</td>
       <td>${item.escalationFlag ? "Yes" : "No"}</td>
-      <td>${asText(item.escalatedByName || "-")}</td>
+      <td>${asText(textSafe(item.escalatedByName, "-"))}</td>
       <td>${asText(dt(item.escalatedAt))}</td>
     </tr>
   `).join("");
@@ -1294,28 +1883,126 @@ function exportPdf() {
   win.print();
 }
 
-document.getElementById("refreshBtn").addEventListener("click", () => fetchPortfolio().catch(console.error));
-document.getElementById("exportCsvBtn").addEventListener("click", () => exportCsv().catch((error) => {
-  console.error(error);
-  showToast("CSV export failed.");
-}));
-document.getElementById("exportPdfBtn").addEventListener("click", exportPdf);
-document.getElementById("runEscalationBtn").addEventListener("click", async () => {
-  await runEscalations();
-  await fetchPortfolio();
-  showToast("Escalation rules completed.");
+async function runAsyncAction(task, successMessage = "", errorMessage = "Action failed.") {
+  try {
+    setLoading(true);
+    await task();
+    if (successMessage) showToast(successMessage);
+  } catch (error) {
+    handleError(error, errorMessage);
+  } finally {
+    closeUtilityMenus();
+    setLoading(false);
+  }
+}
+function persistViewState() {
+  const payload = {
+    quickView: state.quickView,
+    complianceType: state.complianceType,
+    status: document.getElementById("statusFilter").value,
+    ownerUserId: document.getElementById("ownerFilter").value,
+    source: document.getElementById("sourceFilter").value,
+    overdueOnly: document.getElementById("overdueOnly").checked,
+    savedView: document.getElementById("savedViewSelect").value,
+  };
+  localStorage.setItem("accountantComplianceViewState", JSON.stringify(payload));
+}
+function restoreViewState() {
+  try {
+    const raw = localStorage.getItem("accountantComplianceViewState");
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    state.quickView = textSafe(parsed.quickView, "urgent");
+    state.complianceType = textSafe(parsed.complianceType, "");
+    document.getElementById("statusFilter").value = textSafe(parsed.status, "");
+    document.getElementById("sourceFilter").value = textSafe(parsed.source, "");
+    document.getElementById("overdueOnly").checked = Boolean(parsed.overdueOnly);
+    document.getElementById("savedViewSelect").value = textSafe(parsed.savedView, "");
+    state.pendingOwnerUserId = textSafe(parsed.ownerUserId, "");
+  } catch (_error) {
+    // Ignore malformed local settings.
+  }
+}
+function applySavedView(key) {
+  if (!key) return;
+  state.quickView = "urgent";
+  state.complianceType = "";
+  document.getElementById("statusFilter").value = "";
+  document.getElementById("sourceFilter").value = "";
+  document.getElementById("overdueOnly").checked = false;
+  if (key === "payroll") {
+    state.complianceType = "EMP201";
+  } else if (key === "vat_due") {
+    state.complianceType = "VAT201";
+    document.getElementById("overdueOnly").checked = true;
+  } else if (key === "cipc_due") {
+    document.getElementById("sourceFilter").value = "CIPC";
+  } else if (key === "high_risk") {
+    state.quickView = "urgent";
+    document.getElementById("statusFilter").value = "red";
+  } else if (key === "escalated") {
+    state.quickView = "escalated";
+  }
+  persistViewState();
+  fetchPortfolio().catch((error) => handleError(error, "Failed to apply saved view."));
+}
+restoreViewState();
+
+document.getElementById("refreshBtn").addEventListener("click", () => {
+  fetchPortfolio().catch((error) => handleError(error, "Failed to refresh portfolio."));
+});
+document.getElementById("errorRetryBtn").addEventListener("click", () => {
+  fetchPortfolio().catch((error) => handleError(error, "Retry failed."));
+});
+document.getElementById("syncAllBtn").addEventListener("click", () => {
+  runAsyncAction(async () => {
+    await runSyncAll();
+    await fetchPortfolio();
+  }, "Re-sync completed.", "Re-sync all failed.");
+});
+document.getElementById("exportCsvBtn").addEventListener("click", () => {
+  runAsyncAction(() => exportCsv(), "CSV export ready.", "CSV export failed.");
+});
+document.getElementById("exportPdfBtn").addEventListener("click", () => {
+  runAsyncAction(() => Promise.resolve(exportPdf()), "", "PDF export failed.");
+});
+document.getElementById("runEscalationBtn").addEventListener("click", () => {
+  runAsyncAction(async () => {
+    await runEscalations();
+    await fetchPortfolio();
+  }, "Escalation rules completed.", "Escalation run failed.");
 });
 
 ["statusFilter", "sourceFilter", "sortBy", "sortDir", "overdueOnly"].forEach((id) => {
-  document.getElementById(id).addEventListener("change", () => fetchPortfolio().catch(console.error));
+  document.getElementById(id).addEventListener("change", () => {
+    persistViewState();
+    fetchPortfolio().catch((error) => handleError(error, "Failed to refresh filtered data."));
+  });
 });
-document.getElementById("ownerFilter").addEventListener("change", () => fetchPortfolio().catch(console.error));
-document.getElementById("searchFilter").addEventListener("input", () => renderBoard());
+document.getElementById("ownerFilter").addEventListener("change", () => {
+  persistViewState();
+  fetchPortfolio().catch((error) => handleError(error, "Failed to refresh owner filter."));
+});
+document.getElementById("searchFilter").addEventListener("input", () => {
+  clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = setTimeout(() => renderBoard(), SEARCH_DEBOUNCE_MS);
+});
 document.querySelectorAll("[data-quick-view]").forEach((button) => {
   button.addEventListener("click", () => {
     state.quickView = button.getAttribute("data-quick-view") || "all";
+    persistViewState();
     renderBoard();
   });
+});
+document.querySelectorAll("[data-compliance-type]").forEach((button) => {
+  button.addEventListener("click", () => {
+    state.complianceType = button.getAttribute("data-compliance-type") || "";
+    persistViewState();
+    renderBoard();
+  });
+});
+document.getElementById("savedViewSelect").addEventListener("change", (event) => {
+  applySavedView(String(event.target.value || ""));
 });
 document.getElementById("clearFiltersBtn").addEventListener("click", () => {
   document.getElementById("statusFilter").value = "";
@@ -1325,8 +2012,11 @@ document.getElementById("clearFiltersBtn").addEventListener("click", () => {
   document.getElementById("sortBy").value = "risk";
   document.getElementById("sortDir").value = "desc";
   document.getElementById("searchFilter").value = "";
+  document.getElementById("savedViewSelect").value = "";
   state.quickView = "urgent";
-  fetchPortfolio().catch(console.error);
+  state.complianceType = "";
+  persistViewState();
+  fetchPortfolio().catch((error) => handleError(error, "Failed to clear filters."));
 });
 document.getElementById("bulkSelectAll").addEventListener("change", (event) => {
   const checked = event.target.checked;
@@ -1337,17 +2027,14 @@ document.getElementById("bulkSelectAll").addEventListener("change", (event) => {
   }
   renderTable(state.visibleItems);
 });
-document.getElementById("bulkAssignBtn").addEventListener("click", () => runBulkAction("assign").catch(console.error));
-document.getElementById("bulkAssignMeBtn").addEventListener("click", () => runBulkAction("assign_me").catch(console.error));
-document.getElementById("bulkInProgressBtn").addEventListener("click", () => runBulkAction("in_progress").catch(console.error));
-document.getElementById("bulkResolveBtn").addEventListener("click", () => runBulkAction("resolve").catch(console.error));
-document.getElementById("bulkRemindBtn").addEventListener("click", () => runBulkAction("remind").catch(console.error));
+document.getElementById("bulkAssignBtn").addEventListener("click", () => runBulkAction("assign"));
+document.getElementById("bulkAssignMeBtn").addEventListener("click", () => runBulkAction("assign_me"));
+document.getElementById("bulkInProgressBtn").addEventListener("click", () => runBulkAction("in_progress"));
+document.getElementById("bulkResolveBtn").addEventListener("click", () => runBulkAction("resolve"));
+document.getElementById("bulkRemindBtn").addEventListener("click", () => runBulkAction("remind"));
 
 document.getElementById("portfolioBody").addEventListener("click", async (event) => {
-  if (event.target.closest("[data-select-client-id]")) return;
-  if (event.target.closest("a")) return;
-  if (event.target.closest("select")) return;
-  if (event.target.closest("summary")) return;
+  if (event.target.closest("[data-select-client-id], a, select, summary")) return;
   const action = event.target.closest("[data-row-action]");
   if (action) {
     event.stopPropagation();
@@ -1357,6 +2044,7 @@ document.getElementById("portfolioBody").addEventListener("click", async (event)
     const ownerMenuSelect = clientId ? document.querySelector(`[data-owner-menu-client="${clientId}"]`) : null;
     const ownerUserId = ownerMenuSelect ? ownerMenuSelect.value : "";
     try {
+      setLoading(true);
       if (rowAction === "assign") {
         if (!ownerUserId) {
           showToast("Select an owner first.");
@@ -1365,37 +2053,51 @@ document.getElementById("portfolioBody").addEventListener("click", async (event)
         const owner = ownerUserId;
         const obligationId = action.getAttribute("data-obligation-id");
         if (obligationId) await assignOwner(obligationId, owner);
-        else await updateAlert(action.getAttribute("data-alert-id"), "open", owner);
+        else await updateAlert(action.getAttribute("data-alert-id"), normalizeObligationStatus("open"), owner);
         showToast("Owner assignment updated.");
       } else if (rowAction === "assign_me") {
         const owner = user.id;
         const obligationId = action.getAttribute("data-obligation-id");
         if (obligationId) await assignOwner(obligationId, owner);
-        else await updateAlert(action.getAttribute("data-alert-id"), "open", owner);
+        else await updateAlert(action.getAttribute("data-alert-id"), normalizeObligationStatus("open"), owner);
         showToast("Assigned to you.");
       } else if (rowAction === "in_progress") {
-        await updateAlert(action.getAttribute("data-alert-id"), "in_progress");
+        await updateAlert(action.getAttribute("data-alert-id"), normalizeObligationStatus("in_progress"));
         showToast("Marked in progress.");
       } else if (rowAction === "resolve") {
-        await updateAlert(action.getAttribute("data-alert-id"), "resolved");
+        await updateAlert(action.getAttribute("data-alert-id"), normalizeObligationStatus("resolved"));
         showToast("Marked resolved.");
       } else if (rowAction === "remind") {
         await runReminders();
         showToast("Reminder run triggered.");
+      } else if (rowAction === "request_docs") {
+        closeUtilityMenus();
+        window.location.href = `messages.html?clientId=${encodeURIComponent(clientId)}&template=request-docs`;
+        return;
+      } else if (rowAction === "mark_submitted") {
+        await updateAlert(action.getAttribute("data-alert-id"), normalizeObligationStatus("in_progress"));
+        showToast("Marked submitted.");
+      } else if (rowAction === "mark_paid") {
+        await updateAlert(action.getAttribute("data-alert-id"), normalizeObligationStatus("resolved"));
+        showToast("Marked paid.");
+      } else if (rowAction === "resync_client") {
+        await runSyncClient(clientId);
+        showToast("Client re-sync completed.");
       }
-      const details = action.closest("details");
-      if (details) details.removeAttribute("open");
       await fetchPortfolio();
     } catch (error) {
-      console.error(error);
-      showToast("Action failed.");
+      handleError(error, "Action failed.");
+    } finally {
+      closeUtilityMenus();
+      setLoading(false);
     }
     return;
   }
-  if (event.target.closest("details.more-menu")) return;
+  const clickedCell = event.target.closest("td");
+  if (!clickedCell || clickedCell.hasAttribute("data-no-drawer")) return;
   const row = event.target.closest("tr[data-client-id]");
   if (!row) return;
-  openDrawer(row.getAttribute("data-client-id"));
+  openDrawer(row.getAttribute("data-client-id"), row);
 });
 
 document.getElementById("portfolioBody").addEventListener("change", (event) => {
@@ -1412,7 +2114,7 @@ document.getElementById("portfolioBody").addEventListener("keydown", (event) => 
   if (event.target.closest("input, select, button, summary, a, details")) return;
   if (event.key === "Enter") {
     event.preventDefault();
-    openDrawer(row.getAttribute("data-client-id"));
+    openDrawer(row.getAttribute("data-client-id"), row);
   }
   if (event.key === " ") {
     event.preventDefault();
@@ -1430,37 +2132,35 @@ document.getElementById("actionQueue").addEventListener("click", async (event) =
   const action = event.target.closest("[data-row-action]");
   if (!action) return;
   try {
-    await updateAlert(action.getAttribute("data-alert-id"), "in_progress");
+    setLoading(true);
+    await updateAlert(action.getAttribute("data-alert-id"), normalizeObligationStatus("in_progress"));
     await fetchPortfolio();
     showToast("Marked in progress.");
   } catch (error) {
-    console.error(error);
-    showToast("Action failed.");
+    handleError(error, "Queue action failed.");
+  } finally {
+    setLoading(false);
   }
 });
 
 document.getElementById("closeDrawerBtn").addEventListener("click", closeDrawer);
 document.getElementById("applyTimelineFiltersBtn").addEventListener("click", () => {
   if (!state.selectedClientId) return;
-  loadTimeline(state.selectedClientId).catch(console.error);
+  loadTimeline(state.selectedClientId).catch((error) => handleError(error, "Failed to refresh timeline."));
 });
+document.getElementById("addTimelineNoteBtn").addEventListener("click", addTimelineNote);
 document.addEventListener("click", (event) => {
-  if (!event.target.closest("details.more-menu")) {
-    document.querySelectorAll("details.more-menu[open]").forEach((el) => el.removeAttribute("open"));
-  }
-  if (!event.target.closest("details.header-tools")) {
-    document.querySelectorAll("details.header-tools[open]").forEach((el) => el.removeAttribute("open"));
-  }
+  if (!event.target.closest("details.more-menu") && !event.target.closest("details.header-tools")) closeUtilityMenus();
 });
 document.addEventListener("keydown", (event) => {
   if (event.key !== "Escape") return;
-  document.querySelectorAll("details.more-menu[open], details.header-tools[open]").forEach((el) => el.removeAttribute("open"));
+  closeUtilityMenus();
   closeDrawer();
 });
 
 fetchPortfolio().catch((error) => {
-  console.error(error);
-  document.getElementById("portfolioBody").innerHTML = `<tr><td colspan="6" class="empty-cell">Unable to load compliance board.</td></tr>`;
+  handleError(error, "Unable to load compliance board.");
+  document.getElementById("portfolioBody").innerHTML = `<tr><td colspan="7" class="empty-cell">Unable to load compliance board.</td></tr>`;
 });
 </script>
 </body>
