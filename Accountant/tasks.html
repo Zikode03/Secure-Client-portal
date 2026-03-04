@@ -777,8 +777,16 @@
 <script src="../shared/client-ui.js"></script>
 <script>
 const API_BASE_URL = window.PortalConfig.API_BASE_URL;
-const session = window.PortalAuth.requireRole("accountant", "accountant logins/login.html");
-if (!session) { throw new Error("Unauthorized"); }
+const session = window.PortalAuth.getSession();
+if (!session?.token || !session?.user) {
+  window.location.href = "accountant logins/login.html";
+  throw new Error("Unauthorized");
+}
+const pageRole = String(session.user.role || "").toLowerCase();
+if (pageRole !== "accountant_admin") {
+  window.location.href = "dashboards.html";
+  throw new Error("Forbidden");
+}
 const { token } = session;
 
 function authHeaders() {

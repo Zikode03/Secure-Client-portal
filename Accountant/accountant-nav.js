@@ -13,10 +13,17 @@
 
   const allowedRoles = ["accountant", "accountant_admin", "accountant_manager"];
   const role = String(user?.role || "").toLowerCase();
+  const isTaskAdmin = role === "accountant_admin";
   if (!token || !user || !allowedRoles.includes(role)) {
     window.localStorage.removeItem("authToken");
     window.localStorage.removeItem("authUser");
     window.location.href = LOGIN_PATH;
+    return;
+  }
+
+  const page = window.location.pathname.split("/").pop().toLowerCase();
+  if (page === "tasks.html" && !isTaskAdmin) {
+    window.location.href = "dashboards.html";
     return;
   }
 
@@ -26,10 +33,12 @@
     { key: "documents", href: "documents.html", icon: "fa fa-file", label: "Documents" },
     { key: "review", href: "review-queue.html", icon: "fa fa-clipboard-check", label: "Review Queue" },
     { key: "compliance", href: "compliance-board.html", icon: "fa fa-shield-alt", label: "Compliance" },
-    { key: "tasks", href: "tasks.html", icon: "fa fa-tasks", label: "Tasks" },
     { key: "messages", href: "messages.html", icon: "fa fa-message", label: "Messages" },
     { key: "settings", href: "settings.html", icon: "fa fa-gear", label: "Settings" },
   ];
+  if (isTaskAdmin) {
+    NAV_ITEMS.splice(5, 0, { key: "tasks", href: "tasks.html", icon: "fa fa-tasks", label: "Tasks" });
+  }
 
   const activeMap = {
     "dashboards.html": "dashboard",
@@ -46,7 +55,6 @@
     "set.html": "settings",
     "preference.html": "settings",
   };
-  const page = window.location.pathname.split("/").pop().toLowerCase();
   const activeKey = activeMap[page] || "dashboard";
 
   function navMarkup() {

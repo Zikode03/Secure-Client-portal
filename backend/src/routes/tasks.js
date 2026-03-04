@@ -16,6 +16,16 @@ const PRIORITIES = ["low", "medium", "high"];
 const DEPENDENCY_TYPES = ["none", "document", "review", "compliance"];
 const RECURRENCE_RULES = ["none", "weekly", "monthly", "quarterly"];
 
+function requireTaskAdmin(req, res, next) {
+  const role = String(req.user?.role || "").toLowerCase();
+  if (role !== "accountant_admin") {
+    return res.status(403).json({ error: "Task manager is admin-only" });
+  }
+  return next();
+}
+
+router.use(requireTaskAdmin);
+
 function toIso(value) {
   if (!value) return null;
   const date = new Date(value);

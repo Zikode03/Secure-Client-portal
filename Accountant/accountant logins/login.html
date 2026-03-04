@@ -455,7 +455,8 @@ document.getElementById("loginForm").addEventListener("submit", async (event) =>
       throw new Error(data.error || "Login failed");
     }
 
-    if (data.user?.role !== "accountant") {
+    const accountantRoles = ["accountant", "accountant_admin", "accountant_manager"];
+    if (!accountantRoles.includes(String(data.user?.role || "").toLowerCase())) {
       throw new Error("This account is not an accountant account.");
     }
 
