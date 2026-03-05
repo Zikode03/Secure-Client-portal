@@ -98,6 +98,13 @@ body {
 .btn:active { transform: translateY(0); }
 .btn-primary { background: #1754cf; border-color: #1754cf; color: #fff; }
 .btn-primary:hover { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
+.btn-thin {
+  min-height: 26px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 8px;
+}
 .btn-primary:focus-visible,
 .btn:focus-visible,
 .mini-refresh:focus-visible {
@@ -173,6 +180,13 @@ body {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
 }
+.compliance-stats .stat-icon {
+  width: 40px;
+  height: 40px;
+}
+.compliance-stats .stat-kpi {
+  font-size: 27px;
+}
 .stat {
   padding: 18px;
   display: grid;
@@ -200,7 +214,7 @@ body {
 }
 .grid-bottom {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
 }
 .grid-bottom > .card::before {
@@ -342,6 +356,183 @@ tbody tr:hover { background: #f8fbff; }
 .action-priority.high { background: #fee2e2; color: #991b1b; }
 .action-priority.medium { background: #fef3c7; color: #92400e; }
 .action-priority.low { background: #dcfce7; color: #166534; }
+.table-empty {
+  padding: 18px 10px;
+  text-align: center;
+  color: #64748b;
+  font-size: 13px;
+}
+.client-row {
+  cursor: pointer;
+}
+.client-row td {
+  vertical-align: middle;
+}
+.client-main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.client-compliance {
+  display: grid;
+  gap: 7px;
+  min-width: 210px;
+}
+.status-pill-mini {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  border: 1px solid transparent;
+  width: fit-content;
+}
+.status-pill-mini .status-label {
+  font-size: 9px;
+  letter-spacing: .05em;
+  opacity: .8;
+  margin-right: 4px;
+}
+.status-pill-mini.good { color: #166534; background: #ecfdf3; border-color: #86efac; }
+.status-pill-mini.attention { color: #92400e; background: #fffbeb; border-color: #fcd34d; }
+.status-pill-mini.critical { color: #991b1b; background: #fef2f2; border-color: #fca5a5; }
+.compliance-sources {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.compliance-source {
+  min-height: 22px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  padding: 2px 7px;
+  font-size: 10px;
+  font-weight: 800;
+  border: 1px solid transparent;
+}
+.compliance-source.good { color: #166534; background: #ecfdf3; border-color: #86efac; }
+.compliance-source.attention { color: #92400e; background: #fffbeb; border-color: #fcd34d; }
+.compliance-source.critical { color: #991b1b; background: #fef2f2; border-color: #fca5a5; }
+.compliance-source .source-name {
+  font-size: 9px;
+  letter-spacing: .05em;
+  opacity: .85;
+}
+.workload-grid {
+  display: grid;
+  gap: 10px;
+}
+.workload-item {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fbfdff;
+  padding: 10px;
+}
+.workload-item-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.workload-item-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f172a;
+}
+.workload-item-value {
+  font-size: 14px;
+  font-weight: 800;
+  color: #1d4ed8;
+}
+.workload-item-note {
+  font-size: 11px;
+  color: #64748b;
+}
+.workload-item-progress {
+  margin-top: 7px;
+  height: 5px;
+  border-radius: 999px;
+  background: #e2e8f0;
+  overflow: hidden;
+}
+.workload-item-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #3b82f6 0%, #1754cf 100%);
+}
+.next-due-label {
+  font-size: 11px;
+  font-weight: 700;
+}
+.next-due-label.danger { color: #991b1b; }
+.next-due-label.warn { color: #92400e; }
+.next-due-label.good { color: #166534; }
+.csd-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.csd-kpi {
+  border: 1px solid #e2e8f0;
+  background: #fbfdff;
+  border-radius: 10px;
+  padding: 10px;
+}
+.csd-kpi .k {
+  font-size: 11px;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.csd-kpi .v {
+  margin-top: 5px;
+  font-size: 21px;
+  font-weight: 800;
+}
+.error-inline {
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+  border-radius: 10px;
+  padding: 10px;
+  font-size: 12px;
+}
+.btn.loading,
+.mini-refresh.loading {
+  opacity: .6;
+  pointer-events: none;
+}
+.toast {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 120;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  background: #0f172a;
+  box-shadow: 0 8px 16px rgba(15, 23, 42, .18);
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity .2s ease, transform .2s ease;
+  pointer-events: none;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+.toast.success { background: #166534; }
+.toast.error { background: #991b1b; }
 
 .skeleton {
   height: 50px;
@@ -355,7 +546,7 @@ tbody tr:hover { background: #f8fbff; }
 @media (max-width: 1200px) {
   .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .grid-top { grid-template-columns: 1fr; }
-  .grid-bottom { grid-template-columns: 1fr; }
+  .grid-bottom { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .grid-bottom .card-head-right { flex-wrap: wrap; }
 }
 @media (max-width: 900px) {
@@ -363,6 +554,10 @@ tbody tr:hover { background: #f8fbff; }
   .sidebar { display: none; }
   .header { padding: 14px; }
   .content { padding: 14px; }
+}
+@media (max-width: 760px) {
+  .grid-bottom { grid-template-columns: 1fr; }
+  .csd-grid { grid-template-columns: 1fr; }
 }
 </style>
 <script defer src="accountant-nav.js"></script>
@@ -382,7 +577,6 @@ tbody tr:hover { background: #f8fbff; }
       <a href="dashboards.html" class="active"><i class="fa fa-chart-line"></i> Dashboard</a>
       <a href="clients.html"><i class="fa fa-users"></i> Clients</a>
       <a href="documents.html"><i class="fa fa-file"></i> Documents</a>
-      <a href="tasks.html"><i class="fa fa-tasks"></i> Tasks</a>
       <a href="messages.html"><i class="fa fa-message"></i> Messages</a>
       <a href="settings.html"><i class="fa fa-gear"></i> Settings</a>
     </nav>
@@ -401,47 +595,51 @@ tbody tr:hover { background: #f8fbff; }
     <header class="header">
       <div>
         <h2>Accountant Dashboard</h2>
-        <p id="headerSubtitle">You have items requiring attention.</p>
+        <p id="headerSubtitle">Compliance and review priorities are loading.</p>
       </div>
       <div class="header-actions">
+        <a class="btn btn-primary" id="openComplianceBtn" href="compliance-board.html"><i class="fa-solid fa-shield-halved"></i> Open Compliance Board</a>
+        <button type="button" class="btn" id="runRemindersBtn"><i class="fa-solid fa-bell"></i> Run reminders</button>
+        <a class="btn" href="review-queue.html" id="openReviewQueueBtn"><i class="fa-solid fa-clipboard-check"></i> Review Queue</a>
         <a class="btn" href="documents.html"><i class="fa-solid fa-paper-plane"></i> Request Document</a>
-        <a class="btn btn-primary" href="review-queue.html"><i class="fa-solid fa-filter"></i> Filters</a>
+        <a class="btn" href="clients.html"><i class="fa-solid fa-user-plus"></i> Add Client</a>
+        <a class="btn" href="tasks.html" id="createTaskQuickAction"><i class="fa-solid fa-plus"></i> Create Task</a>
       </div>
     </header>
 
     <main class="content">
-      <section class="stats">
+      <section class="stats compliance-stats">
         <article class="card stat">
           <div class="stat-top">
-            <div class="stat-icon" style="background:#dbeafe;color:#3b82f6;"><i class="fa-solid fa-users"></i></div>
-            <span class="trend up" id="trendActive"><i class="fa-solid fa-arrow-trend-up"></i> +0</span>
+            <div class="stat-icon" style="background:#fee2e2;color:#ef4444;"><i class="fa-solid fa-triangle-exclamation"></i></div>
+            <span class="trend danger" id="trendOverdue"><i class="fa-solid fa-circle-exclamation"></i> Live</span>
           </div>
-          <div class="stat-kpi" id="kpiActive">0</div>
-          <div class="stat-label">Active Clients</div>
+          <div class="stat-kpi" id="kpiOverdueObligations">0</div>
+          <div class="stat-label">Overdue Obligations</div>
         </article>
         <article class="card stat">
           <div class="stat-top">
             <div class="stat-icon" style="background:#fef3c7;color:#f59e0b;"><i class="fa-solid fa-clock"></i></div>
-            <span class="trend warn" id="trendPending"><i class="fa-solid fa-arrow-trend-down"></i> 0</span>
+            <span class="trend warn" id="trendDueSoon"><i class="fa-solid fa-hourglass-half"></i> Live</span>
           </div>
-          <div class="stat-kpi" id="kpiPending">0</div>
-          <div class="stat-label">Pending Reviews</div>
+          <div class="stat-kpi" id="kpiDue7">0</div>
+          <div class="stat-label">Due In 7 Days</div>
         </article>
         <article class="card stat">
           <div class="stat-top">
-            <div class="stat-icon" style="background:#fee2e2;color:#ef4444;"><i class="fa-solid fa-triangle-exclamation"></i></div>
-            <span class="trend danger" id="trendMissing"><i class="fa-solid fa-circle-exclamation"></i> Needs attention</span>
+            <div class="stat-icon" style="background:#fef2f2;color:#b91c1c;"><i class="fa-solid fa-ban"></i></div>
+            <span class="trend danger" id="trendCsdBlocked"><i class="fa-solid fa-triangle-exclamation"></i> Tender risk</span>
           </div>
-          <div class="stat-kpi" id="kpiMissing">0</div>
-          <div class="stat-label">Missing Documents</div>
+          <div class="stat-kpi" id="kpiCsdBlocked">0</div>
+          <div class="stat-label">CSD Not Eligible</div>
         </article>
         <article class="card stat">
           <div class="stat-top">
-            <div class="stat-icon" style="background:#dcfce7;color:#10b981;"><i class="fa-solid fa-circle-check"></i></div>
-            <span class="trend up" id="trendCompleted"><i class="fa-solid fa-arrow-trend-up"></i> +0</span>
+            <div class="stat-icon" style="background:#dbeafe;color:#1d4ed8;"><i class="fa-solid fa-arrows-rotate"></i></div>
+            <span class="trend warn" id="trendSyncFailures"><i class="fa-solid fa-circle-info"></i> Connectors</span>
           </div>
-          <div class="stat-kpi" id="kpiCompleted">0</div>
-          <div class="stat-label">Critical Tasks</div>
+          <div class="stat-kpi" id="kpiSyncFailures">0</div>
+          <div class="stat-label">Sync Failures</div>
         </article>
       </section>
 
@@ -465,12 +663,13 @@ tbody tr:hover { background: #f8fbff; }
                   <th>Client</th>
                   <th>Health</th>
                   <th>Pending</th>
-                  <th>Status</th>
+                  <th>Compliance</th>
+                  <th>Next Due</th>
                   <th>Last Active</th>
                 </tr>
               </thead>
               <tbody id="clientOverviewBody">
-                <tr><td colspan="5"><div class="skeleton"></div></td></tr>
+                <tr><td colspan="6"><div class="skeleton"></div></td></tr>
               </tbody>
             </table>
           </div>
@@ -478,7 +677,7 @@ tbody tr:hover { background: #f8fbff; }
 
         <article class="card">
           <div class="card-head">
-            <h3>Weekly Workload</h3>
+            <h3>Weekly Workload (Outcomes)</h3>
             <div class="card-head-right">
               <span class="muted" id="workloadUpdatedAt">Updated -</span>
               <button type="button" class="mini-refresh" id="refreshWorkloadBtn"><i class="fa-solid fa-rotate"></i></button>
@@ -516,7 +715,7 @@ tbody tr:hover { background: #f8fbff; }
             <div class="card-head-right">
               <span class="muted" id="approvalsUpdatedAt">Updated -</span>
               <button type="button" class="mini-refresh" id="refreshApprovalsBtn"><i class="fa-solid fa-rotate"></i></button>
-              <a class="btn" href="review-queue.html"><i class="fa-solid fa-arrow-up-right-from-square"></i> View all</a>
+              <a class="btn btn-thin" href="review-queue.html"><i class="fa-solid fa-arrow-up-right-from-square"></i> View all</a>
             </div>
           </div>
           <div class="card-body">
@@ -544,27 +743,115 @@ tbody tr:hover { background: #f8fbff; }
             </div>
           </div>
         </article>
+
+        <article class="card">
+          <div class="card-head">
+            <h3>CSD Tender Readiness</h3>
+            <div class="card-head-right">
+              <span class="muted" id="csdUpdatedAt">Updated -</span>
+              <button type="button" class="mini-refresh" id="refreshCsdBtn"><i class="fa-solid fa-rotate"></i></button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="csd-grid">
+              <div class="csd-kpi">
+                <div class="k">Eligible</div>
+                <div class="v" id="csdEligibleCount">0</div>
+              </div>
+              <div class="csd-kpi">
+                <div class="k">Not Eligible</div>
+                <div class="v" id="csdNotEligibleCount">0</div>
+              </div>
+              <div class="csd-kpi">
+                <div class="k">Expiring 30d</div>
+                <div class="v" id="csdExpiringCount">0</div>
+              </div>
+            </div>
+            <div class="list" id="csdBlockedList">
+              <div class="skeleton"></div>
+            </div>
+          </div>
+        </article>
       </section>
     </main>
   </div>
 </div>
 
+<div class="toast" id="pageToast" role="status" aria-live="polite"></div>
+
 <script src="../shared/portal-config.js"></script>
 <script src="../shared/portal-auth.js"></script>
 <script>
 const API_BASE_URL = window.PortalConfig.API_BASE_URL;
-const session = window.PortalAuth.requireRole("accountant", "accountant logins/login.html");
-if (!session) { throw new Error("Unauthorized"); }
+const session = window.PortalAuth.getSession();
+const role = String(session?.user?.role || "").toLowerCase();
+const allowedRoles = ["accountant", "accountant_admin", "accountant_manager"];
+if (!session?.token || !session?.user || !allowedRoles.includes(role)) {
+  window.PortalAuth.clearSession();
+  window.location.href = "accountant logins/login.html";
+  throw new Error("Unauthorized");
+}
 const { token, user } = session;
 
 const state = {
+  summaryStats: {},
+  kpiContract: {},
   clients: [],
   reviewQueue: [],
   messages: [],
-  lastUpdatedAt: null
+  complianceItems: [],
+  compliancePortfolio: [],
+  tasks: [],
+  missingDocs: 0,
+  searchQuery: "",
 };
 
 function authHeaders() { return window.PortalAuth.authHeaders(token); }
+function safeNum(value, fallback = 0) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+function normalizeStatus(value) {
+  return String(value || "").trim().toLowerCase();
+}
+function isGreenStatus(value) {
+  const v = normalizeStatus(value);
+  return ["green", "compliant", "eligible", "active"].includes(v);
+}
+function isRedStatus(value) {
+  const v = normalizeStatus(value);
+  return ["red", "overdue", "non_compliant", "non-compliant", "not_eligible", "not-eligible", "blocked", "critical"].includes(v);
+}
+function sourceTone(value) {
+  if (isGreenStatus(value)) return "good";
+  if (isRedStatus(value)) return "critical";
+  return "attention";
+}
+function statusText(value) {
+  const v = normalizeStatus(value);
+  if (!v) return "UNKNOWN";
+  if (["good", "attention", "critical"].includes(v)) return v.toUpperCase();
+  if (v.includes("_")) return v.replaceAll("_", " ").toUpperCase();
+  if (v.includes("-")) return v.replaceAll("-", " ").toUpperCase();
+  return v.toUpperCase();
+}
+
+let toastTimer = null;
+function showToast(message, tone = "success") {
+  const toast = document.getElementById("pageToast");
+  if (!toast) return;
+  toast.textContent = String(message || "");
+  toast.className = `toast ${tone}`;
+  clearTimeout(toastTimer);
+  requestAnimationFrame(() => toast.classList.add("show"));
+  toastTimer = setTimeout(() => toast.classList.remove("show"), 2200);
+}
+
+function setButtonLoading(button, isLoading) {
+  if (!button) return;
+  button.classList.toggle("loading", Boolean(isLoading));
+  button.disabled = Boolean(isLoading);
+}
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -579,6 +866,20 @@ function shortTime(iso) {
   if (!iso) return "-";
   return new Date(iso).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
+function daysUntil(iso) {
+  if (!iso) return Number.POSITIVE_INFINITY;
+  const ts = new Date(iso).getTime();
+  if (Number.isNaN(ts)) return Number.POSITIVE_INFINITY;
+  return Math.ceil((ts - Date.now()) / (1000 * 60 * 60 * 24));
+}
+function dueLabel(iso) {
+  const days = daysUntil(iso);
+  if (!Number.isFinite(days)) return { text: "No due date", tone: "good" };
+  if (days < 0) return { text: `Overdue by ${Math.abs(days)}d`, tone: "danger" };
+  if (days === 0) return { text: "Due today", tone: "warn" };
+  if (days <= 7) return { text: `Due in ${days}d`, tone: "warn" };
+  return { text: `Due in ${days}d`, tone: "good" };
+}
 
 function updatedLabel(iso) {
   if (!iso) return "Updated -";
@@ -588,15 +889,19 @@ function updatedLabel(iso) {
   return `Updated ${mins} mins ago`;
 }
 
-function applyFreshness(iso) {
+function setFreshness(ids, iso) {
   const label = updatedLabel(iso);
-  ["clientsUpdatedAt", "workloadUpdatedAt", "actionsUpdatedAt", "approvalsUpdatedAt", "messagesUpdatedAt"].forEach((id) => {
+  ids.forEach((id) => {
     const el = document.getElementById(id);
     if (el) el.textContent = label;
   });
 }
 
 function healthScore(client) {
+  const provided = safeNum(client.complianceHealth, NaN);
+  if (Number.isFinite(provided) && provided > 0) {
+    return Math.max(0, Math.min(100, provided));
+  }
   const pending = Number(client.pendingItems || 0);
   const status = String(client.status || "").toLowerCase();
   if (status.includes("late")) return Math.max(25, 60 - pending * 8);
@@ -614,21 +919,29 @@ function statusTone(score) {
 function initials(name) {
   return String(name || "NA").split(" ").map((part) => part[0]).slice(0, 2).join("").toUpperCase();
 }
+function filteredClients() {
+  const q = String(state.searchQuery || "").trim().toLowerCase();
+  if (!q) return state.clients;
+  return state.clients.filter((client) => String(client.name || "").toLowerCase().includes(q));
+}
 
 function renderClients(clients) {
   const body = document.getElementById("clientOverviewBody");
+  const complianceMap = new Map(state.compliancePortfolio.map((item) => [item.clientId, item]));
   if (!clients.length) {
-    body.innerHTML = `<tr><td colspan="5" class="muted">No clients assigned yet.</td></tr>`;
+    body.innerHTML = `<tr><td colspan="6" class="table-empty">No clients assigned yet.</td></tr>`;
     return;
   }
 
   body.innerHTML = clients.map((client) => {
+    const compliance = complianceMap.get(client.id) || {};
     const score = healthScore(client);
     const tone = statusTone(score);
+    const due = dueLabel(compliance.nextDueDate);
     return `
-      <tr>
+      <tr class="client-row" data-client-id="${escapeHtml(client.id)}" tabindex="0" role="button" aria-label="Open ${escapeHtml(client.name)} profile">
         <td>
-          <div style="display:flex;align-items:center;gap:10px;">
+          <div class="client-main">
             <div class="avatar">${escapeHtml(initials(client.name))}</div>
             <span class="item-title">${escapeHtml(client.name)}</span>
           </div>
@@ -640,35 +953,61 @@ function renderClients(clients) {
           </div>
         </td>
         <td><span class="item-title">${Number(client.pendingItems || 0)}</span></td>
-        <td><span class="pill ${tone.cls}">${tone.label}</span></td>
+        <td>
+          <div class="client-compliance">
+            <span class="status-pill-mini ${sourceTone(compliance.overallStatus || tone.label)}"><span class="status-label">OVERALL</span>${escapeHtml(statusText(compliance.overallStatus || tone.label))}</span>
+            <div class="compliance-sources">
+              <span class="compliance-source ${sourceTone(compliance.sarsStatus)}" title="SARS ${escapeHtml(statusText(compliance.sarsStatus || "unknown"))}">
+                <span class="source-name">SARS</span><span>${escapeHtml(statusText(compliance.sarsStatus || "unknown"))}</span>
+              </span>
+              <span class="compliance-source ${sourceTone(compliance.cipcStatus)}" title="CIPC ${escapeHtml(statusText(compliance.cipcStatus || "unknown"))}">
+                <span class="source-name">CIPC</span><span>${escapeHtml(statusText(compliance.cipcStatus || "unknown"))}</span>
+              </span>
+              <span class="compliance-source ${sourceTone(compliance.csdStatus)}" title="CSD ${escapeHtml(statusText(compliance.csdStatus || "unknown"))}">
+                <span class="source-name">CSD</span><span>${escapeHtml(statusText(compliance.csdStatus || "unknown"))}</span>
+              </span>
+            </div>
+          </div>
+        </td>
+        <td>
+          <div class="next-due-label ${due.tone}">${escapeHtml(due.text)}</div>
+          <div class="muted">${escapeHtml(compliance.actionObligationType || "General compliance")}</div>
+        </td>
         <td><span class="muted">${shortTime(client.lastActivity)}</span></td>
       </tr>
     `;
   }).join("");
 }
 
-function weekdayBuckets(items) {
-  const keys = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-  const counts = Object.fromEntries(keys.map((k) => [k, 0]));
-  items.forEach((item) => {
-    const dt = item?.uploadedAt ? new Date(item.uploadedAt) : null;
-    if (!dt || Number.isNaN(dt.getTime())) return;
-    const key = keys[(dt.getDay() + 6) % 7];
-    counts[key] += 1;
-  });
-  return keys.map((k) => ({ day: k, value: counts[k] }));
-}
-
-function renderWorkload(items) {
+function renderWorkload() {
   const wrap = document.getElementById("workloadWrap");
-  const data = weekdayBuckets(items);
-  const max = Math.max(1, ...data.map((d) => d.value));
-  wrap.innerHTML = data.map((d) => `
-    <div class="workload-row">
-      <span class="muted mono">${d.day}</span>
-      <div class="workload-bar-bg"><div class="workload-bar-fill" style="width:${Math.round((d.value / max) * 100)}%;"></div></div>
-      <span class="mono muted">${d.value}</span>
-    </div>
+  const overdueObligations = state.complianceItems.reduce((sum, item) => sum + safeNum(item.overdueCount), 0);
+  const dueSoonObligations = state.compliancePortfolio.filter((item) => {
+    const due = daysUntil(item.nextDueDate);
+    return Number.isFinite(due) && due >= 0 && due <= 7;
+  }).length;
+  const overdueTasks = state.tasks.filter((task) => normalizeStatus(task.status) === "overdue" || safeNum(task.dueInDays, 9999) < 0).length;
+  const dueTasksWeek = state.tasks.filter((task) => {
+    const due = safeNum(task.dueInDays, 9999);
+    return due >= 0 && due <= 7 && normalizeStatus(task.status) !== "completed";
+  }).length;
+  const data = [
+    { label: "Reviews Due This Week", value: state.reviewQueue.length, note: "Pending review queue" },
+    { label: "Compliance Due This Week", value: dueSoonObligations, note: "SARS / CIPC / CSD due soon" },
+    { label: "Overdue Items", value: overdueObligations + overdueTasks, note: `${overdueObligations} obligations + ${overdueTasks} tasks` },
+    { label: "Tasks Due This Week", value: dueTasksWeek, note: "Operational task load" },
+  ];
+  const maxValue = Math.max(1, ...data.map((item) => safeNum(item.value)));
+  wrap.className = "workload-grid";
+  wrap.innerHTML = data.map((item) => `
+    <article class="workload-item">
+      <div class="workload-item-head">
+        <span class="workload-item-title">${escapeHtml(item.label)}</span>
+        <span class="workload-item-value">${item.value}</span>
+      </div>
+      <div class="workload-item-note">${escapeHtml(item.note)}</div>
+      <div class="workload-item-progress"><span style="width:${Math.max(6, Math.round((safeNum(item.value) / maxValue) * 100))}%;"></span></div>
+    </article>
   `).join("");
 }
 
@@ -732,7 +1071,7 @@ function renderApprovals(reviewQueue) {
         <div class="item-sub">${escapeHtml(item.clientName || "-")} &middot; ${shortTime(item.uploadedAt)}</div>
       </div>
       <button type="button" class="btn btn-primary spacer" data-approve-id="${escapeHtml(item.id)}" aria-label="Approve document">
-        <i class="fa-solid fa-circle-check"></i>
+        <i class="fa-solid fa-circle-check"></i> Approve
       </button>
     </div>
   `).join("");
@@ -767,95 +1106,339 @@ function renderMessages(threads) {
   }).join("");
 }
 
-function updateKpis(stats, clients, reviewQueue, kpiContract) {
-  const missing = clients.filter((client) => Number(client.pendingItems || 0) > 0).length;
-  const completedToday = reviewQueue.filter((item) => {
-    if (!item.uploadedAt) return false;
-    const d = new Date(item.uploadedAt);
-    const now = new Date();
-    return d.toDateString() === now.toDateString() && String(item.status || "").toLowerCase() === "approved";
+function renderCsdPanel() {
+  const eligible = state.complianceItems.filter((item) => isGreenStatus(item.csdStatus)).length;
+  const blocked = state.complianceItems.filter((item) => isRedStatus(item.csdStatus)).length;
+  const expiring = state.compliancePortfolio.filter((item) => {
+    const status = normalizeStatus(item.csdStatus);
+    const due = daysUntil(item.nextDueDate);
+    return status === "amber" || (Number.isFinite(due) && due >= 0 && due <= 30 && !isGreenStatus(status));
   }).length;
+  document.getElementById("csdEligibleCount").textContent = String(eligible);
+  document.getElementById("csdNotEligibleCount").textContent = String(blocked);
+  document.getElementById("csdExpiringCount").textContent = String(expiring);
 
-  document.getElementById("kpiActive").textContent = Number((kpiContract?.stats?.activeClients ?? stats.activeClients) || clients.length || 0);
-  document.getElementById("kpiPending").textContent = Number((kpiContract?.stats?.pendingReviews ?? stats.pendingReviews) || reviewQueue.length || 0);
-  document.getElementById("kpiMissing").textContent = missing;
-  document.getElementById("kpiCompleted").textContent = Number((kpiContract?.stats?.criticalTasks ?? completedToday) || 0);
-
-  document.getElementById("trendActive").innerHTML = `<i class="fa-solid fa-arrow-trend-up"></i> +${Math.max(1, Math.round((clients.length || 1) * 0.08))} this month`;
-  document.getElementById("trendPending").innerHTML = `<i class="fa-solid fa-arrow-trend-down"></i> ${Math.max(0, Number((kpiContract?.stats?.pendingReviews ?? stats.pendingReviews) || 0) - completedToday)} left`;
-  document.getElementById("trendCompleted").innerHTML = `<i class="fa-solid fa-arrow-trend-up"></i> ${Number((kpiContract?.stats?.upcomingDeadlines ?? 0) || 0)} due in 7d`;
-  document.getElementById("headerSubtitle").textContent = `You have ${Number((kpiContract?.stats?.pendingReviews ?? stats.pendingReviews) || 0)} items requiring attention.`;
+  const list = document.getElementById("csdBlockedList");
+  const blockedClients = [...state.compliancePortfolio]
+    .filter((item) => !isGreenStatus(item.csdStatus))
+    .sort((a, b) => (safeNum(b.overdueCount) - safeNum(a.overdueCount)) || (safeNum(b.riskScore) - safeNum(a.riskScore)))
+    .slice(0, 3);
+  if (!blockedClients.length) {
+    list.innerHTML = `<div class="muted">All visible clients are currently CSD-eligible.</div>`;
+    return;
+  }
+  list.innerHTML = blockedClients.map((item) => {
+    const reason = safeNum(item.overdueCount) > 0 ? `${safeNum(item.overdueCount)} overdue obligations` : dueLabel(item.nextDueDate).text;
+    return `
+      <div class="list-item">
+        <div class="icon-chip chip-amber"><i class="fa-solid fa-briefcase"></i></div>
+        <div>
+          <div class="item-title">${escapeHtml(item.clientName || item.clientId)}</div>
+          <div class="item-sub">${escapeHtml(String(item.csdStatus || "unknown").toUpperCase())} &middot; ${escapeHtml(reason)}</div>
+        </div>
+      </div>
+    `;
+  }).join("");
 }
 
-async function loadMessages() {
-  const response = await fetch(`${API_BASE_URL}/messages/threads`, { headers: authHeaders() });
-  if (!response.ok) return [];
-  const payload = await response.json();
-  return Array.isArray(payload.items) ? payload.items : [];
+function updateKpis(stats, clients, reviewQueue, kpiContract) {
+  const overdueObligations = state.complianceItems.reduce((sum, item) => sum + safeNum(item.overdueCount), 0);
+  const due7 = state.compliancePortfolio.filter((item) => {
+    const due = daysUntil(item.nextDueDate);
+    return Number.isFinite(due) && due >= 0 && due <= 7;
+  }).length;
+  const csdBlocked = state.complianceItems.filter((item) => isRedStatus(item.csdStatus)).length;
+  const syncFailures = state.compliancePortfolio.reduce((sum, item) => sum + safeNum(item.syncFailures), 0);
+  const redClients = state.complianceItems.filter((item) => normalizeStatus(item.status) === "red").length;
+  const amberClients = state.complianceItems.filter((item) => normalizeStatus(item.status) === "amber").length;
+
+  const criticalOverdue = state.tasks.filter((task) => normalizeStatus(task.status) === "overdue" || safeNum(task.dueInDays, 9999) < 0).length;
+  const criticalSoon = state.tasks.filter((task) => {
+    const due = safeNum(task.dueInDays, 9999);
+    return due >= 0 && due <= 7 && normalizeStatus(task.status) !== "completed";
+  }).length;
+  const fallbackCritical = overdueObligations + due7;
+  const criticalTasks = state.tasks.length ? (criticalOverdue + criticalSoon) : fallbackCritical;
+
+  document.getElementById("kpiOverdueObligations").textContent = String(overdueObligations);
+  document.getElementById("kpiDue7").textContent = String(due7);
+  document.getElementById("kpiCsdBlocked").textContent = String(csdBlocked);
+  document.getElementById("kpiSyncFailures").textContent = String(syncFailures);
+  document.getElementById("trendOverdue").innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> ${redClients} red clients`;
+  document.getElementById("trendDueSoon").innerHTML = `<i class="fa-solid fa-hourglass-half"></i> ${amberClients} amber clients`;
+  document.getElementById("trendCsdBlocked").innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${csdBlocked} blocked`;
+  document.getElementById("trendSyncFailures").innerHTML = `<i class="fa-solid fa-arrows-rotate"></i> ${syncFailures} connector issues`;
+
+  document.getElementById("openReviewQueueBtn").innerHTML = `<i class="fa-solid fa-clipboard-check"></i> Review Queue (${reviewQueue.length})`;
+  document.getElementById("headerSubtitle").textContent = `Overdue obligations: ${overdueObligations} | Pending reviews: ${reviewQueue.length} | Critical tasks: ${criticalTasks}.`;
 }
 
-async function loadDashboard() {
-  const [summaryRes, kpisRes] = await Promise.all([
-    fetch(`${API_BASE_URL}/dashboard/summary`, { headers: authHeaders() }),
-    fetch(`${API_BASE_URL}/dashboard/kpis`, { headers: authHeaders() }),
+async function fetchJson(url, options = {}, fallback = "Request failed") {
+  const response = await fetch(url, options);
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload.error || fallback);
+  }
+  return response.json();
+}
+
+async function loadSummaryData() {
+  const [summary, kpis] = await Promise.all([
+    fetchJson(`${API_BASE_URL}/dashboard/summary`, { headers: authHeaders() }, "Failed to load dashboard summary"),
+    fetchJson(`${API_BASE_URL}/dashboard/kpis`, { headers: authHeaders() }, "Failed to load KPI contract").catch(() => ({})),
   ]);
-  if (!summaryRes.ok) throw new Error("Failed to load dashboard");
-  const data = await summaryRes.json();
-  const kpiContract = kpisRes.ok ? await kpisRes.json().catch(() => ({})) : {};
-  state.clients = Array.isArray(data.assignedClients) ? data.assignedClients : [];
-  state.reviewQueue = Array.isArray(data.reviewQueue) ? data.reviewQueue : [];
-  state.messages = await loadMessages();
-  state.lastUpdatedAt = data.generatedAt || kpiContract.generatedAt || new Date().toISOString();
+  state.summaryStats = summary.stats || {};
+  state.kpiContract = kpis || {};
+  state.clients = Array.isArray(summary.assignedClients) ? summary.assignedClients : [];
+  state.reviewQueue = Array.isArray(summary.reviewQueue) ? summary.reviewQueue : [];
+  return summary.generatedAt || kpis.generatedAt || new Date().toISOString();
+}
 
-  updateKpis(data.stats || {}, state.clients, state.reviewQueue, kpiContract);
-  renderClients(state.clients);
-  renderWorkload(state.reviewQueue);
+async function loadComplianceData() {
+  const [overview, portfolio] = await Promise.all([
+    fetchJson(`${API_BASE_URL}/compliance/firm/overview`, { headers: authHeaders() }, "Failed to load compliance overview"),
+    fetchJson(`${API_BASE_URL}/compliance/portfolio`, { headers: authHeaders() }, "Failed to load compliance portfolio"),
+  ]);
+  state.complianceItems = Array.isArray(overview.items) ? overview.items : [];
+  state.compliancePortfolio = Array.isArray(portfolio.items) ? portfolio.items : [];
+  return new Date().toISOString();
+}
+
+async function loadTasksData() {
+  try {
+    const payload = await fetchJson(`${API_BASE_URL}/tasks`, { headers: authHeaders() }, "Failed to load tasks");
+    state.tasks = Array.isArray(payload.items) ? payload.items : [];
+  } catch (error) {
+    state.tasks = [];
+  }
+  return new Date().toISOString();
+}
+
+async function loadMessagesData() {
+  const payload = await fetchJson(`${API_BASE_URL}/messages/threads`, { headers: authHeaders() }, "Failed to load messages");
+  state.messages = Array.isArray(payload.items) ? payload.items : [];
+  return new Date().toISOString();
+}
+
+async function loadMissingDocsData() {
+  const [requestFix, rejected] = await Promise.all([
+    fetchJson(`${API_BASE_URL}/documents?status=request-fix`, { headers: authHeaders() }, "Failed to load request-fix docs").catch(() => ({ items: [] })),
+    fetchJson(`${API_BASE_URL}/documents?status=rejected`, { headers: authHeaders() }, "Failed to load rejected docs").catch(() => ({ items: [] })),
+  ]);
+  state.missingDocs = (Array.isArray(requestFix.items) ? requestFix.items.length : 0) + (Array.isArray(rejected.items) ? rejected.items.length : 0);
+  return new Date().toISOString();
+}
+
+function renderAll() {
+  updateKpis(state.summaryStats || {}, state.clients, state.reviewQueue, state.kpiContract || {});
+  renderClients(filteredClients());
+  renderWorkload();
   renderActionQueue(state.reviewQueue);
   renderApprovals(state.reviewQueue);
   renderMessages(state.messages);
-  applyFreshness(state.lastUpdatedAt);
+  renderCsdPanel();
+}
+
+async function runReminders(button = null) {
+  setButtonLoading(button, true);
+  try {
+    const payload = await fetchJson(`${API_BASE_URL}/compliance/rules/reminders/run`, {
+      method: "POST",
+      headers: authHeaders(),
+    }, "Failed to run reminders");
+    const refreshedAt = await loadComplianceData();
+    updateKpis(state.summaryStats || {}, state.clients, state.reviewQueue, state.kpiContract || {});
+    renderCsdPanel();
+    renderClients(filteredClients());
+    setFreshness(["csdUpdatedAt"], refreshedAt);
+    const count = safeNum(payload.remindersCreated);
+    showToast(`Reminders triggered (${count}).`, "success");
+  } catch (error) {
+    showToast(error.message || "Reminder execution failed.", "error");
+  } finally {
+    setButtonLoading(button, false);
+  }
+}
+
+async function refreshClientsSection(button = null) {
+  setButtonLoading(button, true);
+  try {
+    const refreshedAt = await Promise.all([loadSummaryData(), loadComplianceData()]).then(() => new Date().toISOString());
+    updateKpis(state.summaryStats || {}, state.clients, state.reviewQueue, state.kpiContract || {});
+    renderClients(filteredClients());
+    renderCsdPanel();
+    setFreshness(["clientsUpdatedAt"], refreshedAt);
+    showToast("Client overview refreshed.", "success");
+  } catch (error) {
+    document.getElementById("clientOverviewBody").innerHTML = `<tr><td colspan="6" class="table-empty">Unable to refresh client overview.</td></tr>`;
+    showToast(error.message || "Failed to refresh clients.", "error");
+  } finally {
+    setButtonLoading(button, false);
+  }
+}
+
+async function refreshWorkloadSection(button = null) {
+  setButtonLoading(button, true);
+  try {
+    const refreshedAt = await Promise.all([loadSummaryData(), loadComplianceData(), loadTasksData()]).then(() => new Date().toISOString());
+    updateKpis(state.summaryStats || {}, state.clients, state.reviewQueue, state.kpiContract || {});
+    renderWorkload();
+    setFreshness(["workloadUpdatedAt"], refreshedAt);
+    showToast("Workload refreshed.", "success");
+  } catch (error) {
+    document.getElementById("workloadWrap").innerHTML = `<div class="error-inline">Unable to refresh workload.</div>`;
+    showToast(error.message || "Failed to refresh workload.", "error");
+  } finally {
+    setButtonLoading(button, false);
+  }
+}
+
+async function refreshActionsSection(button = null) {
+  setButtonLoading(button, true);
+  try {
+    const refreshedAt = await loadSummaryData();
+    updateKpis(state.summaryStats || {}, state.clients, state.reviewQueue, state.kpiContract || {});
+    renderActionQueue(state.reviewQueue);
+    setFreshness(["actionsUpdatedAt"], refreshedAt);
+    showToast("Action queue refreshed.", "success");
+  } catch (error) {
+    document.getElementById("actionQueueList").innerHTML = `<div class="error-inline">Unable to refresh action queue.</div>`;
+    showToast(error.message || "Failed to refresh actions.", "error");
+  } finally {
+    setButtonLoading(button, false);
+  }
+}
+
+async function refreshApprovalsSection(button = null) {
+  setButtonLoading(button, true);
+  try {
+    const refreshedAt = await loadSummaryData();
+    updateKpis(state.summaryStats || {}, state.clients, state.reviewQueue, state.kpiContract || {});
+    renderApprovals(state.reviewQueue);
+    setFreshness(["approvalsUpdatedAt"], refreshedAt);
+    showToast("Approvals refreshed.", "success");
+  } catch (error) {
+    document.getElementById("approvalsList").innerHTML = `<div class="error-inline">Unable to refresh pending approvals.</div>`;
+    showToast(error.message || "Failed to refresh approvals.", "error");
+  } finally {
+    setButtonLoading(button, false);
+  }
+}
+
+async function refreshMessagesSection(button = null) {
+  setButtonLoading(button, true);
+  try {
+    const refreshedAt = await loadMessagesData();
+    renderMessages(state.messages);
+    setFreshness(["messagesUpdatedAt"], refreshedAt);
+    showToast("Messages refreshed.", "success");
+  } catch (error) {
+    document.getElementById("messagesList").innerHTML = `<div class="error-inline">Unable to refresh messages.</div>`;
+    showToast(error.message || "Failed to refresh messages.", "error");
+  } finally {
+    setButtonLoading(button, false);
+  }
+}
+
+async function refreshCsdSection(button = null) {
+  setButtonLoading(button, true);
+  try {
+    const refreshedAt = await loadComplianceData();
+    updateKpis(state.summaryStats || {}, state.clients, state.reviewQueue, state.kpiContract || {});
+    renderCsdPanel();
+    renderClients(filteredClients());
+    setFreshness(["csdUpdatedAt"], refreshedAt);
+    showToast("CSD readiness refreshed.", "success");
+  } catch (error) {
+    document.getElementById("csdBlockedList").innerHTML = `<div class="error-inline">Unable to refresh CSD readiness.</div>`;
+    showToast(error.message || "Failed to refresh CSD panel.", "error");
+  } finally {
+    setButtonLoading(button, false);
+  }
 }
 
 document.getElementById("clientSearch").addEventListener("input", (event) => {
-  const query = String(event.target.value || "").trim().toLowerCase();
-  const filtered = !query ? state.clients : state.clients.filter((client) =>
-    String(client.name || "").toLowerCase().includes(query)
-  );
-  renderClients(filtered);
+  state.searchQuery = String(event.target.value || "").trim().toLowerCase();
+  renderClients(filteredClients());
 });
 
-["refreshClientsBtn", "refreshWorkloadBtn", "refreshActionsBtn", "refreshApprovalsBtn", "refreshMessagesBtn"].forEach((id) => {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.addEventListener("click", () => {
-    loadDashboard().catch((error) => console.error(error));
-  });
+document.getElementById("clientOverviewBody").addEventListener("click", (event) => {
+  const row = event.target.closest("tr[data-client-id]");
+  if (!row) return;
+  const clientId = row.getAttribute("data-client-id");
+  if (!clientId) return;
+  window.location.href = `client-profile.html?clientId=${encodeURIComponent(clientId)}`;
+});
+document.getElementById("clientOverviewBody").addEventListener("keydown", (event) => {
+  const row = event.target.closest("tr[data-client-id]");
+  if (!row || event.key !== "Enter") return;
+  event.preventDefault();
+  const clientId = row.getAttribute("data-client-id");
+  if (!clientId) return;
+  window.location.href = `client-profile.html?clientId=${encodeURIComponent(clientId)}`;
+});
+
+document.getElementById("refreshClientsBtn").addEventListener("click", (event) => refreshClientsSection(event.currentTarget));
+document.getElementById("refreshWorkloadBtn").addEventListener("click", (event) => refreshWorkloadSection(event.currentTarget));
+document.getElementById("refreshActionsBtn").addEventListener("click", (event) => refreshActionsSection(event.currentTarget));
+document.getElementById("refreshApprovalsBtn").addEventListener("click", (event) => refreshApprovalsSection(event.currentTarget));
+document.getElementById("refreshMessagesBtn").addEventListener("click", (event) => refreshMessagesSection(event.currentTarget));
+document.getElementById("refreshCsdBtn").addEventListener("click", (event) => refreshCsdSection(event.currentTarget));
+document.getElementById("runRemindersBtn").addEventListener("click", (event) => runReminders(event.currentTarget));
+
+document.getElementById("openComplianceBtn").addEventListener("click", () => {
+  const urgentView = {
+    quickView: "urgent",
+    complianceType: "",
+    status: "",
+    source: "",
+    ownerUserId: "",
+    overdueOnly: true,
+    savedView: "urgent",
+  };
+  localStorage.setItem("accountantComplianceViewState", JSON.stringify(urgentView));
 });
 
 document.addEventListener("click", async (event) => {
   const approveBtn = event.target.closest("[data-approve-id]");
   if (!approveBtn) return;
-  approveBtn.disabled = true;
+  setButtonLoading(approveBtn, true);
   try {
     await runReviewAction(approveBtn.getAttribute("data-approve-id"), "approve");
-    await loadDashboard();
+    await Promise.all([loadSummaryData(), loadMissingDocsData()]);
+    updateKpis(state.summaryStats || {}, state.clients, state.reviewQueue, state.kpiContract || {});
+    renderActionQueue(state.reviewQueue);
+    renderApprovals(state.reviewQueue);
+    setFreshness(["actionsUpdatedAt", "approvalsUpdatedAt"], new Date().toISOString());
+    showToast("Approved.", "success");
   } catch (error) {
-    console.error(error);
+    showToast(error.message || "Approval failed.", "error");
   } finally {
-    approveBtn.disabled = false;
+    setButtonLoading(approveBtn, false);
   }
 });
 
 document.getElementById("sidebarUserEmail").textContent = user?.email || "-";
+if (role !== "accountant_admin") {
+  const createTaskQuickAction = document.getElementById("createTaskQuickAction");
+  if (createTaskQuickAction) createTaskQuickAction.style.display = "none";
+}
 
-loadDashboard().catch((error) => {
-  console.error(error);
-  document.getElementById("clientOverviewBody").innerHTML = `<tr><td colspan="5" class="muted">Unable to load dashboard data.</td></tr>`;
-  document.getElementById("workloadWrap").innerHTML = `<div class="muted">Unable to load workload.</div>`;
-  document.getElementById("actionQueueList").innerHTML = `<div class="muted">Unable to load action queue.</div>`;
-  document.getElementById("approvalsList").innerHTML = `<div class="muted">Unable to load pending approvals.</div>`;
-  document.getElementById("messagesList").innerHTML = `<div class="muted">Unable to load messages.</div>`;
-});
+Promise.all([loadSummaryData(), loadComplianceData(), loadTasksData(), loadMessagesData(), loadMissingDocsData()])
+  .then(() => {
+    renderAll();
+    const nowIso = new Date().toISOString();
+    setFreshness(["clientsUpdatedAt", "workloadUpdatedAt", "actionsUpdatedAt", "approvalsUpdatedAt", "messagesUpdatedAt", "csdUpdatedAt"], nowIso);
+  })
+  .catch((error) => {
+    document.getElementById("clientOverviewBody").innerHTML = `<tr><td colspan="6" class="table-empty">Unable to load dashboard data.</td></tr>`;
+    document.getElementById("workloadWrap").innerHTML = `<div class="error-inline">Unable to load workload.</div>`;
+    document.getElementById("actionQueueList").innerHTML = `<div class="error-inline">Unable to load action queue.</div>`;
+    document.getElementById("approvalsList").innerHTML = `<div class="error-inline">Unable to load pending approvals.</div>`;
+    document.getElementById("messagesList").innerHTML = `<div class="error-inline">Unable to load messages.</div>`;
+    document.getElementById("csdBlockedList").innerHTML = `<div class="error-inline">Unable to load CSD readiness.</div>`;
+    showToast(error.message || "Failed to load dashboard.", "error");
+  });
 </script>
 </body>
 </html>

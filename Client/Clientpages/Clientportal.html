@@ -202,7 +202,7 @@
     .kpis {
       display: grid;
       gap: 12px;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
     }
 
     .card {
@@ -680,14 +680,14 @@
       <section class="content">
         <div class="kpis">
           <div class="card">
-            <div class="kpi-head"><span><i class="fa fa-file-alt"></i></span><span id="kpi-total-docs-note">docs</span></div>
-            <div class="kpi-value" id="kpi-total-docs">0</div>
-            <div class="kpi-title">Total Documents</div>
+            <div class="kpi-head"><span><i class="fa fa-users"></i></span><span id="kpi-active-note">linked</span></div>
+            <div class="kpi-value" id="kpi-active-clients">0</div>
+            <div class="kpi-title">Active Clients</div>
           </div>
           <div class="card">
-            <div class="kpi-head"><span><i class="fa fa-clock"></i></span><span id="kpi-pending-note">pending</span></div>
-            <div class="kpi-value" id="kpi-pending-docs">0</div>
-            <div class="kpi-title">Pending Documents</div>
+            <div class="kpi-head"><span><i class="fa fa-clock"></i></span><span id="kpi-pending-reviews-note">queue</span></div>
+            <div class="kpi-value" id="kpi-pending-reviews">0</div>
+            <div class="kpi-title">Pending Reviews</div>
           </div>
           <div class="card">
             <div class="kpi-head"><span><i class="fa fa-exclamation-circle"></i></span><span id="kpi-missing-note">action</span></div>
@@ -695,14 +695,9 @@
             <div class="kpi-title">Missing Documents</div>
           </div>
           <div class="card">
-            <div class="kpi-head"><span><i class="fa fa-file-invoice-dollar"></i></span><span id="kpi-invoice-note">invoice docs</span></div>
-            <div class="kpi-value" id="kpi-invoices">0</div>
-            <div class="kpi-title">Total Invoices</div>
-          </div>
-          <div class="card">
-            <div class="kpi-head"><span><i class="fa fa-calendar-clock"></i></span><span id="kpi-expiring-note">30 days</span></div>
-            <div class="kpi-value" id="kpi-expiring">0</div>
-            <div class="kpi-title">Expiring Soon</div>
+            <div class="kpi-head"><span><i class="fa fa-triangle-exclamation"></i></span><span id="kpi-critical-note">urgent</span></div>
+            <div class="kpi-value" id="kpi-critical-tasks">0</div>
+            <div class="kpi-title">Critical Tasks</div>
           </div>
         </div>
 
@@ -796,11 +791,14 @@
     const SIDEBAR_DEFAULT_WIDTH = 260;
     const SIDEBAR_STORAGE_KEY = "clientportalSidebarWidth";
 
-    const totalDocsEl = document.getElementById("kpi-total-docs");
-    const pendingDocsEl = document.getElementById("kpi-pending-docs");
+    const activeClientsEl = document.getElementById("kpi-active-clients");
+    const pendingReviewsEl = document.getElementById("kpi-pending-reviews");
     const missingDocsEl = document.getElementById("kpi-missing-docs");
-    const invoicesEl = document.getElementById("kpi-invoices");
-    const expiringEl = document.getElementById("kpi-expiring");
+    const criticalTasksEl = document.getElementById("kpi-critical-tasks");
+    const kpiActiveNoteEl = document.getElementById("kpi-active-note");
+    const kpiPendingReviewsNoteEl = document.getElementById("kpi-pending-reviews-note");
+    const kpiMissingNoteEl = document.getElementById("kpi-missing-note");
+    const kpiCriticalNoteEl = document.getElementById("kpi-critical-note");
 
     const statusWrap = document.getElementById("status-wrap");
     const chartWrap = document.getElementById("upload-chart");
@@ -1322,24 +1320,23 @@
 
       const pendingDocs = sortedDocs.filter((doc) => normalizeStatus(doc.status) === "pending").length;
       const missingDocs = requests.filter((request) => String(request.status || "").toLowerCase() === "pending").length;
-      const invoiceCount = sortedDocs.filter((doc) => {
-        const category = String(doc.category || "").toLowerCase();
-        const name = String(doc.name || "").toLowerCase();
-        return category.includes("invoice") || name.includes("invoice") || /^inv[-_ ]?/i.test(name);
-      }).length;
-      const now = new Date();
-      const expiringSoon = requests.filter((request) => {
-        const due = safeDate(request.dueDate);
-        if (!due) return false;
-        const days = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-        return days >= 0 && days <= 30 && String(request.status || "").toLowerCase() !== "completed";
-      }).length;
+      const activeClients = Array.isArray(user.clientIds) && user.clientIds.length
+        ? user.clientIds.length
+        : (activeClientId ? 1 : 0);
+      const dueSoonCompliance = Number(complianceOverview?.counts?.dueSoon || 0);
+      const overdueCompliance = Number(complianceOverview?.counts?.overdue || 0);
+      const criticalTasks = overdueCompliance + dueSoonCompliance;
+      const pendingReviews = pendingDocs;
 
-      totalDocsEl.textContent = String(sortedDocs.length);
-      pendingDocsEl.textContent = String(pendingDocs);
+      activeClientsEl.textContent = String(activeClients);
+      pendingReviewsEl.textContent = String(pendingReviews);
       missingDocsEl.textContent = String(missingDocs);
-      invoicesEl.textContent = String(invoiceCount);
-      expiringEl.textContent = String(expiringSoon);
+      criticalTasksEl.textContent = String(criticalTasks);
+
+      kpiActiveNoteEl.textContent = activeClients === 1 ? "linked client" : "linked clients";
+      kpiPendingReviewsNoteEl.textContent = pendingReviews > 0 ? "awaiting review" : "clear";
+      kpiMissingNoteEl.textContent = missingDocs > 0 ? "action required" : "up to date";
+      kpiCriticalNoteEl.textContent = overdueCompliance > 0 ? `${overdueCompliance} overdue` : `${dueSoonCompliance} due soon`;
 
       renderStatusRows(counts, sortedDocs.length);
       renderUploadChart(sortedDocs);
