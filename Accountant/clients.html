@@ -14,6 +14,7 @@ body { margin: 0; background: #f6f8fc; color: #0f172a; font-family: "Public Sans
 .page-header { display: flex; justify-content: space-between; align-items: end; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
 .page-header h1 { margin: 0; font-size: 30px; letter-spacing: -0.02em; }
 .page-header p { margin: 6px 0 0; color: #64748b; line-height: 1.45; }
+.page-header-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
 .filters-card {
   background: #fff;
@@ -69,7 +70,7 @@ body { margin: 0; background: #f6f8fc; color: #0f172a; font-family: "Public Sans
 
 .bulk-row {
   display: grid;
-  grid-template-columns: auto minmax(160px, 170px) minmax(240px, 1fr) auto;
+  grid-template-columns: auto minmax(160px, 170px) minmax(260px, 1fr) auto;
   gap: 8px;
   align-items: center;
   margin-bottom: 12px;
@@ -80,6 +81,23 @@ body { margin: 0; background: #f6f8fc; color: #0f172a; font-family: "Public Sans
   box-shadow: 0 6px 16px rgba(15,23,42,.05);
 }
 .bulk-row .count { font-size: 12px; color: #64748b; font-weight: 700; margin-right: 4px; }
+.bulk-input-wrap { min-width: 0; }
+.bulk-input-wrap .input,
+.bulk-input-wrap .select { width: 100%; }
+.bulk-hidden { display: none !important; }
+.bulk-archive-confirm {
+  height: 42px;
+  border: 1px dashed #dbe3f0;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  color: #334155;
+  font-size: 13px;
+  background: #fcfdff;
+}
+.bulk-archive-confirm input { width: 16px; height: 16px; accent-color: #1d4ed8; }
 .pager { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 14px; border-top: 1px solid #e2e8f0; background: #fff; }
 .pager .meta { color: #64748b; font-size: 12px; }
 .chk { width: 16px; height: 16px; accent-color: #1d4ed8; }
@@ -117,19 +135,43 @@ body { margin: 0; background: #f6f8fc; color: #0f172a; font-family: "Public Sans
 .card-head h2 { margin: 0; font-size: 16px; }
 .card-head p { margin: 3px 0 0; color: #64748b; font-size: 13px; }
 .table-wrap { overflow: auto; max-height: calc(100vh - 340px); }
-table { width: 100%; border-collapse: collapse; min-width: 860px; }
+table { width: 100%; border-collapse: collapse; min-width: 1100px; }
 thead th { position: sticky; top: 0; z-index: 2; background: #f8fafc; color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid #dbe3f0; padding: 12px 14px; text-align: left; }
 tbody td { border-bottom: 1px solid #eef2f7; padding: 12px 14px; font-size: 14px; }
 tbody tr:hover { background: #f8fbff; }
+.client-row { cursor: pointer; }
 .client-id { color:#64748b; font-size:12px; }
 .pill { border-radius: 999px; padding: 4px 10px; font-size: 11px; font-weight: 700; }
 .pill.active { background: #dcfce7; color: #166534; }
 .pill.pending { background: #fef3c7; color: #92400e; }
 .pill.risk { background: #fee2e2; color: #b91c1c; }
+.pill.unknown { background: #eef2ff; color: #475569; }
 .row-actions { display: flex; gap: 6px; }
 .icon-btn { width: 34px; height: 34px; border: 1px solid #dbe3f0; border-radius: 8px; background: #fff; cursor: pointer; }
 .icon-btn:hover { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
 .empty { padding: 40px; text-align: center; color: #64748b; }
+.empty h3 { margin: 0 0 8px; color: #0f172a; font-size: 18px; }
+.empty p { margin: 0 0 14px; }
+.empty-actions { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+.owner-cell { display: grid; gap: 2px; }
+.owner-name { font-weight: 700; color: #0f172a; }
+.owner-role { color: #64748b; font-size: 12px; }
+.next-due-label { font-size: 12px; font-weight: 700; }
+.next-due-label.good { color: #166534; }
+.next-due-label.warn { color: #92400e; }
+.next-due-label.risk { color: #b91c1c; }
+.loading-cell { padding: 10px 14px; }
+.loading-line {
+  height: 14px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #eef2f7 0%, #e2e8f0 50%, #eef2f7 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.1s linear infinite;
+}
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
 .modal-backdrop { position: fixed; inset: 0; background: rgba(2,6,23,.45); display: none; align-items: center; justify-content: center; z-index: 1000; }
 .modal { width: min(560px,92vw); background: #fff; border-radius: 14px; border: 1px solid #dbe3f0; box-shadow: 0 20px 50px rgba(2,6,23,.25); }
 .modal header { padding: 14px 16px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
@@ -148,6 +190,7 @@ tbody tr:hover { background: #f8fbff; }
   .filters-advanced { grid-template-columns: 1fr 1fr; }
   .bulk-row { grid-template-columns: 1fr; }
   .modal-actions { flex-wrap: wrap; }
+  .page-header-actions { width: 100%; }
 }
 </style>
 <script defer src="accountant-nav.js"></script>
@@ -163,7 +206,10 @@ tbody tr:hover { background: #f8fbff; }
         <h1>Clients</h1>
         <p>Manage client records and quickly act on at-risk accounts.</p>
       </div>
-      <button class="btn primary" id="openCreateClient" type="button"><i class="fa-solid fa-plus"></i> Add Client</button>
+      <div class="page-header-actions">
+        <button class="btn" id="exportCsvBtn" type="button"><i class="fa-solid fa-file-export"></i> Export CSV</button>
+        <button class="btn primary" id="openCreateClient" type="button"><i class="fa-solid fa-plus"></i> Add Client</button>
+      </div>
     </section>
 
     <section class="filters-card">
@@ -194,9 +240,6 @@ tbody tr:hover { background: #f8fbff; }
       <div class="filters-advanced hidden" id="advancedFilters">
         <select class="select" id="industryFilter" aria-label="Filter industry">
           <option value="">All Industries</option>
-          <option value="Technology">Technology</option>
-          <option value="General">General</option>
-          <option value="Finance">Finance</option>
         </select>
         <select class="select" id="riskBandFilter" aria-label="Filter risk band">
           <option value="">Any Risk Band</option>
@@ -231,7 +274,22 @@ tbody tr:hover { background: #f8fbff; }
         <option value="assign_owner">Assign Owner</option>
         <option value="archive">Archive</option>
       </select>
-      <input class="input" id="bulkActionValue" placeholder="Value (status or owner user id)" aria-label="Bulk value">
+      <div class="bulk-input-wrap" id="bulkInputWrap">
+        <input class="input" id="bulkActionValue" placeholder="Choose an action first" aria-label="Bulk value" disabled>
+        <select class="select bulk-hidden" id="bulkStatusValue" aria-label="Bulk status value">
+          <option value="">Select status</option>
+          <option value="active">Active</option>
+          <option value="pending">Pending</option>
+          <option value="at-risk">At Risk</option>
+        </select>
+        <select class="select bulk-hidden" id="bulkOwnerValue" aria-label="Bulk owner value">
+          <option value="">Select owner</option>
+        </select>
+        <label class="bulk-archive-confirm bulk-hidden" id="bulkArchiveConfirmWrap">
+          <input type="checkbox" id="bulkArchiveConfirm">
+          Confirm archive selected clients
+        </label>
+      </div>
       <button class="btn primary" id="bulkApplyBtn" type="button">Apply to Selected</button>
     </section>
 
@@ -256,8 +314,10 @@ tbody tr:hover { background: #f8fbff; }
               <th>Email</th>
               <th>Status</th>
               <th>Risk</th>
+              <th title="Date of nearest open obligation">Next Due</th>
+              <th title="CSD supplier/tax compliance state">CSD</th>
               <th>Owner</th>
-              <th>Health</th>
+              <th title="Compliance health percentage score">Health</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -271,7 +331,15 @@ tbody tr:hover { background: #f8fbff; }
           <button class="btn" id="nextPageBtn" type="button">Next</button>
         </div>
       </div>
-      <div id="emptyState" class="empty" hidden>No clients found for current filters.</div>
+      <div id="emptyState" class="empty" hidden>
+        <h3>No clients found</h3>
+        <p id="emptyStateText">Try adjusting filters or add a new client.</p>
+        <div class="empty-actions">
+          <button class="btn" id="emptyClearFiltersBtn" type="button">Clear filters</button>
+          <button class="btn" id="emptyViewAllBtn" type="button">View all clients</button>
+          <button class="btn primary" id="emptyAddClientBtn" type="button">Add client</button>
+        </div>
+      </div>
     </section>
   </main>
 </div>
@@ -314,27 +382,252 @@ tbody tr:hover { background: #f8fbff; }
 <script src="../shared/portal-auth.js"></script>
 <script>
 const API_BASE_URL = window.PortalConfig?.API_BASE_URL || "http://127.0.0.1:4010/api";
-const session = window.PortalAuth.requireRole("accountant", "accountant logins/login.html");
-if (!session) throw new Error("Unauthorized");
+const activeSession = window.PortalAuth.getSession();
+const role = String(activeSession?.user?.role || "").toLowerCase();
+const allowedRoles = ["accountant", "accountant_admin", "accountant_manager"];
+if (!activeSession?.token || !activeSession?.user || !allowedRoles.includes(role)) {
+  window.PortalAuth.clearSession();
+  window.location.href = "accountant logins/login.html";
+  throw new Error("Unauthorized");
+}
 
-const state = { clients: [], selected: new Set(), page: 1, pageSize: 20, sortBy: "lastActivity", sortDir: "desc", meta: null };
+const DEFAULT_SAVED_VIEWS = [
+  { key: "at-risk", label: "At Risk", mode: "server" },
+  { key: "no-activity-30d", label: "No Activity 30d", mode: "server" },
+  { key: "due-in-7d", label: "Due in 7 days", mode: "local" },
+  { key: "csd-not-eligible", label: "CSD not eligible", mode: "local" },
+  { key: "missing-documents", label: "Missing documents", mode: "local" },
+  { key: "unassigned-owner", label: "Unassigned owner", mode: "local" },
+  { key: "high-risk-80", label: "High risk (>=80)", mode: "local" },
+];
+const SAVED_VIEWS_STORAGE_KEY = "accountantClientsSavedViewsV1";
+const LAST_SAVED_VIEW_STORAGE_KEY = "accountantClientsLastSavedViewV1";
+const SEARCH_DEBOUNCE_MS = 320;
+
+const state = {
+  clients: [],
+  selected: new Set(),
+  page: 1,
+  pageSize: 20,
+  sortBy: "lastActivity",
+  sortDir: "desc",
+  meta: null,
+  loading: false,
+  complianceByClient: new Map(),
+  ownersById: new Map(),
+  owners: [],
+  savedViews: [],
+  industryOptions: new Set(),
+  localViewApplied: false,
+};
+
 const tableBody = document.getElementById("clientsTableBody");
 const emptyState = document.getElementById("emptyState");
+const emptyStateText = document.getElementById("emptyStateText");
 const kpiGrid = document.getElementById("kpiGrid");
 const searchInput = document.getElementById("searchInput");
 const statusFilter = document.getElementById("statusFilter");
+const industryFilter = document.getElementById("industryFilter");
+const riskBandFilter = document.getElementById("riskBandFilter");
+const complianceStatusFilter = document.getElementById("complianceStatusFilter");
+const savedViewFilter = document.getElementById("savedViewFilter");
+const sortByFilter = document.getElementById("sortByFilter");
+const sortDirFilter = document.getElementById("sortDirFilter");
+const selectAllClients = document.getElementById("selectAllClients");
+const selectedClientsCount = document.getElementById("selectedClientsCount");
+const bulkActionSelect = document.getElementById("bulkActionSelect");
+const bulkActionValue = document.getElementById("bulkActionValue");
+const bulkStatusValue = document.getElementById("bulkStatusValue");
+const bulkOwnerValue = document.getElementById("bulkOwnerValue");
+const bulkArchiveConfirmWrap = document.getElementById("bulkArchiveConfirmWrap");
+const bulkArchiveConfirm = document.getElementById("bulkArchiveConfirm");
+const bulkApplyBtn = document.getElementById("bulkApplyBtn");
+const clientsMeta = document.getElementById("clientsMeta");
+const clientsSubhead = document.getElementById("clientsSubhead");
+const tableUpdatedAt = document.getElementById("tableUpdatedAt");
+const refreshBtn = document.getElementById("refreshBtn");
+const prevPageBtn = document.getElementById("prevPageBtn");
+const nextPageBtn = document.getElementById("nextPageBtn");
+const saveCreateClientBtn = document.getElementById("saveCreateClient");
+const createClientMessage = document.getElementById("createClientMessage");
 
-function authHeaders() { return window.PortalAuth.authHeaders(session.token); }
+function authHeaders() { return window.PortalAuth.authHeaders(activeSession.token); }
 function esc(v) { return String(v || "").replace(/[&<>"']/g, (m) => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m])); }
+function toIsoDate(value) {
+  if (!value) return null;
+  const parsed = new Date(value);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+function roleLabel(value) {
+  const roleKey = String(value || "").toLowerCase();
+  if (roleKey === "accountant_admin") return "Admin Accountant";
+  if (roleKey === "accountant_manager") return "Manager Accountant";
+  if (roleKey === "accountant") return "Primary Accountant";
+  return "Unassigned";
+}
+function normalizeStatus(value) { return String(value || "").trim().toLowerCase(); }
+function isGreenStatus(value) { return ["green", "compliant", "eligible", "active"].includes(normalizeStatus(value)); }
+function isRedStatus(value) { return ["red", "overdue", "non_compliant", "non-compliant", "not_eligible", "not-eligible", "blocked", "critical"].includes(normalizeStatus(value)); }
+function nextDueLabel(value) {
+  const due = toIsoDate(value);
+  if (!due) return { text: "No due date", cls: "good" };
+  const days = Math.ceil((due.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+  if (days < 0) return { text: `Overdue ${Math.abs(days)}d`, cls: "risk" };
+  if (days === 0) return { text: "Due today", cls: "warn" };
+  if (days <= 7) return { text: `Due in ${days}d`, cls: "warn" };
+  return { text: `Due in ${days}d`, cls: "good" };
+}
 function healthPill(v) { return Number(v || 0) >= 80 ? "active" : Number(v || 0) >= 50 ? "pending" : "risk"; }
 function statusPill(v) { const s = String(v || "").toLowerCase(); return s === "active" ? "active" : s === "pending" ? "pending" : "risk"; }
 function riskPill(v) { return String(v || "").toLowerCase() === "low" ? "active" : String(v || "").toLowerCase() === "medium" ? "pending" : "risk"; }
+function csdPill(value) {
+  if (isGreenStatus(value)) return { cls: "active", text: "Eligible" };
+  if (isRedStatus(value)) return { cls: "risk", text: "Not eligible" };
+  return { cls: "pending", text: "Unknown" };
+}
+function debounce(callback, delayMs) {
+  let timeoutId = null;
+  return (...args) => {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => callback(...args), delayMs);
+  };
+}
+function toCsvCell(value) {
+  const text = String(value ?? "");
+  return `"${text.replaceAll('"', '""')}"`;
+}
+function setLoading(loading) {
+  state.loading = Boolean(loading);
+  refreshBtn.disabled = state.loading;
+  prevPageBtn.disabled = state.loading;
+  nextPageBtn.disabled = state.loading;
+  bulkApplyBtn.disabled = state.loading;
+  if (state.loading) {
+    const loadingRows = Array.from({ length: 6 }).map(() => `<tr><td class="loading-cell" colspan="12"><div class="loading-line"></div></td></tr>`).join("");
+    tableBody.innerHTML = loadingRows;
+    emptyState.hidden = true;
+  }
+}
+function updateSelectedStateUi() {
+  const onPage = state.clients.filter((client) => state.selected.has(client.id)).length;
+  const total = state.selected.size;
+  const offPage = Math.max(0, total - onPage);
+  selectedClientsCount.textContent = offPage > 0 ? `${total} selected (${offPage} on other pages)` : `${total} selected`;
+  selectAllClients.checked = state.clients.length > 0 && onPage === state.clients.length;
+  selectAllClients.indeterminate = onPage > 0 && onPage < state.clients.length;
+}
+function getSavedViewConfig(viewKey) {
+  return state.savedViews.find((view) => view.key === viewKey) || null;
+}
+function applySavedViewLocally(items, viewKey) {
+  const localViews = new Set(["due-in-7d", "csd-not-eligible", "missing-documents", "unassigned-owner", "high-risk-80"]);
+  state.localViewApplied = localViews.has(viewKey);
+  if (!state.localViewApplied) return items;
+  return items.filter((client) => {
+    const compliance = state.complianceByClient.get(client.id) || {};
+    if (viewKey === "due-in-7d") {
+      const due = toIsoDate(compliance.nextDueDate);
+      if (!due) return false;
+      const days = Math.ceil((due.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+      return days >= 0 && days <= 7;
+    }
+    if (viewKey === "csd-not-eligible") return isRedStatus(compliance.csdStatus);
+    if (viewKey === "missing-documents") return Number(client.pendingDocs || 0) > 0;
+    if (viewKey === "unassigned-owner") return !String(compliance.ownerUserId || client.assignedAccountantId || "").trim();
+    if (viewKey === "high-risk-80") {
+      const riskScore = Number(compliance.riskPercentV2 ?? compliance.scoreV2);
+      if (Number.isFinite(riskScore)) return riskScore >= 80;
+      return normalizeStatus(client.riskBand) === "high";
+    }
+    return true;
+  });
+}
+function renderSavedViews() {
+  const current = savedViewFilter.value;
+  const options = ['<option value="">Saved Views</option>'].concat(state.savedViews.map((view) => `<option value="${esc(view.key)}">${esc(view.label)}</option>`));
+  savedViewFilter.innerHTML = options.join("");
+  if (current && state.savedViews.some((view) => view.key === current)) {
+    savedViewFilter.value = current;
+    return;
+  }
+  const last = localStorage.getItem(LAST_SAVED_VIEW_STORAGE_KEY) || "";
+  if (last && state.savedViews.some((view) => view.key === last)) savedViewFilter.value = last;
+}
+function loadSavedViews() {
+  let custom = [];
+  try {
+    const parsed = JSON.parse(localStorage.getItem(SAVED_VIEWS_STORAGE_KEY) || "[]");
+    if (Array.isArray(parsed)) custom = parsed;
+  } catch (_error) {
+    custom = [];
+  }
+  const normalizedCustom = custom
+    .filter((item) => item && typeof item.key === "string" && typeof item.label === "string")
+    .map((item) => ({ key: item.key.trim(), label: item.label.trim(), mode: item.mode === "server" ? "server" : "local" }))
+    .filter((item) => item.key && item.label);
+  const merged = new Map(DEFAULT_SAVED_VIEWS.map((item) => [item.key, item]));
+  normalizedCustom.forEach((item) => {
+    if (!merged.has(item.key)) merged.set(item.key, item);
+  });
+  state.savedViews = Array.from(merged.values());
+  renderSavedViews();
+}
+function syncIndustryOptions(items) {
+  items.forEach((item) => {
+    const industry = String(item.industry || "").trim();
+    if (industry) state.industryOptions.add(industry);
+  });
+  const current = industryFilter.value;
+  const options = ['<option value="">All Industries</option>'].concat(
+    Array.from(state.industryOptions).sort((a, b) => a.localeCompare(b)).map((industry) => `<option value="${esc(industry)}">${esc(industry)}</option>`)
+  );
+  industryFilter.innerHTML = options.join("");
+  if (current && state.industryOptions.has(current)) industryFilter.value = current;
+}
+async function loadOwners() {
+  const response = await fetch(`${API_BASE_URL}/settings/team`, { headers: authHeaders() });
+  if (!response.ok) throw new Error("Failed to load team owners");
+  const payload = await response.json().catch(() => ({}));
+  state.owners = Array.isArray(payload.items) ? payload.items : [];
+  state.ownersById = new Map(state.owners.map((owner) => [owner.id, owner]));
+  bulkOwnerValue.innerHTML = '<option value="">Select owner</option>' + state.owners.map((owner) => `<option value="${esc(owner.id)}">${esc(owner.fullName || owner.email || owner.id)}</option>`).join("");
+}
+async function loadCompliancePortfolio() {
+  const response = await fetch(`${API_BASE_URL}/compliance/portfolio`, { headers: authHeaders() });
+  if (!response.ok) throw new Error("Failed to load compliance portfolio");
+  const payload = await response.json().catch(() => ({}));
+  const items = Array.isArray(payload.items) ? payload.items : [];
+  state.complianceByClient = new Map(items.map((item) => [item.clientId, item]));
+}
+async function ensureSupportData(force = false) {
+  const jobs = [];
+  if (force || state.owners.length === 0) {
+    jobs.push(loadOwners().catch(() => {
+      state.owners = [];
+      state.ownersById = new Map();
+      bulkOwnerValue.innerHTML = '<option value="">Select owner</option>';
+    }));
+  }
+  if (force || state.complianceByClient.size === 0) {
+    jobs.push(loadCompliancePortfolio().catch(() => {
+      state.complianceByClient = new Map();
+    }));
+  }
+  if (jobs.length) await Promise.all(jobs);
+}
+function ownerDisplay(client, compliance) {
+  const ownerId = String(compliance.ownerUserId || client.assignedAccountantId || "").trim();
+  const ownerFromMap = ownerId ? state.ownersById.get(ownerId) : null;
+  const ownerName = compliance.ownerName || ownerFromMap?.fullName || ownerFromMap?.email || (ownerId || "Unassigned");
+  const ownerRole = ownerFromMap ? roleLabel(ownerFromMap.role) : (ownerId ? "Assigned" : "Unassigned");
+  return { name: ownerName, role: ownerRole };
+}
 
 function renderKpi(items) {
   const total = items.length;
-  const active = items.filter((c) => String(c.status).toLowerCase() === "active").length;
-  const pending = items.filter((c) => String(c.status).toLowerCase() === "pending").length;
-  const atRisk = items.filter((c) => String(c.status).toLowerCase() === "at-risk").length;
+  const active = items.filter((client) => normalizeStatus(client.status) === "active").length;
+  const pending = items.filter((client) => normalizeStatus(client.status) === "pending").length;
+  const atRisk = items.filter((client) => normalizeStatus(client.status) === "at-risk" || normalizeStatus(client.riskBand) === "high").length;
   kpiGrid.innerHTML = `
     <article class="kpi"><div class="label">Total Clients</div><div class="value">${total}</div></article>
     <article class="kpi"><div class="label">Active</div><div class="value">${active}</div></article>
@@ -343,45 +636,113 @@ function renderKpi(items) {
   `;
 }
 
+function renderEmptyState(text) {
+  emptyState.hidden = false;
+  emptyStateText.textContent = text || "No clients found for current filters.";
+}
+
 function renderTable() {
   const items = state.clients;
   renderKpi(items);
   tableBody.innerHTML = "";
   emptyState.hidden = items.length > 0;
-  if (!items.length) return;
+  if (!items.length) {
+    renderEmptyState(state.localViewApplied
+      ? "No clients matched this saved view on the current page. Try previous/next page or clear filters."
+      : "No clients found for current filters.");
+    clientsMeta.textContent = state.meta
+      ? `Page ${state.meta.page}/${state.meta.totalPages} | ${state.meta.total} total`
+      : "Page 1";
+    clientsSubhead.textContent = "No clients on this page";
+    updateSelectedStateUi();
+    return;
+  }
 
-  tableBody.innerHTML = items.map((client) => `
-    <tr>
-      <td><input class="chk" type="checkbox" data-select-client="${esc(client.id)}" ${state.selected.has(client.id) ? "checked" : ""}></td>
-      <td><strong>${esc(client.name)}</strong><br><span class="client-id">${esc(client.id)}</span></td>
-      <td>${esc(client.entityType)}</td>
-      <td>${esc(client.primaryContact)}</td>
-      <td>${esc(client.email)}</td>
-      <td><span class="pill ${statusPill(client.status)}">${esc(client.status)}</span></td>
-      <td><span class="pill ${riskPill(client.riskBand)}">${esc(client.riskBand || "-")}</span></td>
-      <td>${esc(client.assignedAccountantId || "-")}</td>
-      <td><span class="pill ${healthPill(client.complianceHealth)}">${Number(client.complianceHealth || 0)}%</span></td>
-      <td>
-        <div class="row-actions">
-          <button class="icon-btn" type="button" data-open-client="${esc(client.id)}" title="Open client profile"><i class="fa-solid fa-user"></i></button>
-          <button class="icon-btn" type="button" data-open-docs="${esc(client.id)}" title="Open documents"><i class="fa-solid fa-file-lines"></i></button>
-          <button class="icon-btn" type="button" data-open-msg="${esc(client.id)}" title="Open messages"><i class="fa-solid fa-message"></i></button>
-        </div>
-      </td>
-    </tr>
-  `).join("");
-  document.getElementById("clientsMeta").textContent = state.meta
+  tableBody.innerHTML = items.map((client) => {
+    const compliance = state.complianceByClient.get(client.id) || {};
+    const due = nextDueLabel(compliance.nextDueDate);
+    const csd = csdPill(compliance.csdStatus);
+    const owner = ownerDisplay(client, compliance);
+    return `
+      <tr class="client-row" data-open-client="${esc(client.id)}">
+        <td><input class="chk" type="checkbox" data-select-client="${esc(client.id)}" ${state.selected.has(client.id) ? "checked" : ""}></td>
+        <td><strong>${esc(client.name)}</strong><br><span class="client-id">${esc(client.id)}</span></td>
+        <td>${esc(client.entityType)}</td>
+        <td>${esc(client.primaryContact)}</td>
+        <td>${esc(client.email)}</td>
+        <td><span class="pill ${statusPill(client.status)}">${esc(client.status)}</span></td>
+        <td><span class="pill ${riskPill(client.riskBand)}">${esc(client.riskBand || "-")}</span></td>
+        <td><span class="next-due-label ${due.cls}">${esc(due.text)}</span></td>
+        <td><span class="pill ${csd.cls}">${esc(csd.text)}</span></td>
+        <td><div class="owner-cell"><span class="owner-name">${esc(owner.name)}</span><span class="owner-role">${esc(owner.role)}</span></div></td>
+        <td><span class="pill ${healthPill(client.complianceHealth)}">${Number(client.complianceHealth || 0)}%</span></td>
+        <td>
+          <div class="row-actions">
+            <button class="icon-btn" type="button" data-open-client="${esc(client.id)}" title="Open client profile"><i class="fa-solid fa-user"></i></button>
+            <button class="icon-btn" type="button" data-open-docs="${esc(client.id)}" title="Open documents"><i class="fa-solid fa-file-lines"></i></button>
+            <button class="icon-btn" type="button" data-open-msg="${esc(client.id)}" title="Open messages"><i class="fa-solid fa-message"></i></button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join("");
+  clientsMeta.textContent = state.meta
     ? `Page ${state.meta.page}/${state.meta.totalPages} | ${state.meta.total} total`
     : "Page 1";
-  document.getElementById("clientsSubhead").textContent = state.meta
-    ? `Showing ${items.length} clients on this page (${state.meta.total} total)`
+  clientsSubhead.textContent = state.meta
+    ? (state.localViewApplied
+      ? `Showing ${items.length} clients on this page (${state.meta.total} total before local view)`
+      : `Showing ${items.length} clients on this page (${state.meta.total} total)`)
     : `Showing ${items.length} clients`;
-  document.getElementById("tableUpdatedAt").textContent = `Updated ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
-  document.getElementById("selectAllClients").checked = items.length > 0 && items.every((c) => state.selected.has(c.id));
-  document.getElementById("selectedClientsCount").textContent = `${state.selected.size} selected`;
+  tableUpdatedAt.textContent = `Updated ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+  updateSelectedStateUi();
 }
 
-async function loadClients() {
+function updateBulkActionInput() {
+  const action = bulkActionSelect.value;
+  bulkActionValue.classList.add("bulk-hidden");
+  bulkStatusValue.classList.add("bulk-hidden");
+  bulkOwnerValue.classList.add("bulk-hidden");
+  bulkArchiveConfirmWrap.classList.add("bulk-hidden");
+  bulkArchiveConfirm.checked = false;
+
+  if (!action) {
+    bulkActionValue.classList.remove("bulk-hidden");
+    bulkActionValue.disabled = true;
+    bulkActionValue.value = "";
+    bulkActionValue.placeholder = "Choose an action first";
+    bulkApplyBtn.textContent = "Apply to Selected";
+    return;
+  }
+  if (action === "status") {
+    bulkStatusValue.classList.remove("bulk-hidden");
+    bulkApplyBtn.textContent = "Update Status";
+    return;
+  }
+  if (action === "assign_owner") {
+    bulkOwnerValue.classList.remove("bulk-hidden");
+    bulkApplyBtn.textContent = "Assign Owner";
+    return;
+  }
+  if (action === "archive") {
+    bulkArchiveConfirmWrap.classList.remove("bulk-hidden");
+    bulkApplyBtn.textContent = "Archive Selected";
+  }
+}
+
+function getBulkActionValue() {
+  const action = bulkActionSelect.value;
+  if (action === "status") return bulkStatusValue.value.trim();
+  if (action === "assign_owner") return bulkOwnerValue.value.trim();
+  return "";
+}
+
+async function loadClients(options = {}) {
+  const forceSupportData = Boolean(options.forceSupportData);
+  setLoading(true);
+  try {
+    await ensureSupportData(forceSupportData);
+
   const params = new URLSearchParams();
   params.set("page", String(state.page));
   params.set("pageSize", String(state.pageSize));
@@ -391,27 +752,32 @@ async function loadClients() {
   if (q) params.set("search", q);
   const s = statusFilter.value.trim();
   if (s) params.set("status", s);
-  const industry = document.getElementById("industryFilter")?.value?.trim();
-  const riskBand = document.getElementById("riskBandFilter")?.value?.trim();
-  const complianceStatus = document.getElementById("complianceStatusFilter")?.value?.trim();
-  const savedView = document.getElementById("savedViewFilter")?.value?.trim();
+  const industry = industryFilter.value.trim();
+  const riskBand = riskBandFilter.value.trim();
+  const complianceStatus = complianceStatusFilter.value.trim();
+  const savedView = savedViewFilter.value.trim();
+  const viewConfig = getSavedViewConfig(savedView);
   if (industry) params.set("industry", industry);
   if (riskBand) params.set("riskBand", riskBand);
   if (complianceStatus) params.set("complianceStatus", complianceStatus);
-  if (savedView) params.set("view", savedView);
+  if (savedView && viewConfig?.mode === "server") params.set("view", savedView);
 
   const response = await fetch(`${API_BASE_URL}/clients?${params.toString()}`, { headers: authHeaders() });
   if (!response.ok) throw new Error("Failed to load clients");
   const payload = await response.json().catch(() => ({}));
-  state.clients = Array.isArray(payload.items) ? payload.items : [];
+  const fetchedItems = Array.isArray(payload.items) ? payload.items : [];
+  syncIndustryOptions(fetchedItems);
   state.meta = payload.meta || null;
-  state.selected = new Set(Array.from(state.selected).filter((id) => state.clients.some((client) => client.id === id)));
+  state.clients = applySavedViewLocally(fetchedItems, savedView);
   renderTable();
+  } finally {
+    setLoading(false);
+  }
 }
 
 function openCreateClientModal(open) {
   document.getElementById("createClientModal").style.display = open ? "flex" : "none";
-  if (!open) document.getElementById("createClientMessage").textContent = "";
+  if (!open) createClientMessage.textContent = "";
 }
 
 async function createClient() {
@@ -419,52 +785,129 @@ async function createClient() {
   const entityType = document.getElementById("newEntityType").value.trim();
   const primaryContact = document.getElementById("newPrimaryContact").value.trim();
   const email = document.getElementById("newClientEmail").value.trim();
-  const msg = document.getElementById("createClientMessage");
+  const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   if (!name || !entityType || !primaryContact || !email) {
-    msg.className = "message error";
-    msg.textContent = "All fields are required.";
+    createClientMessage.className = "message error";
+    createClientMessage.textContent = "All fields are required.";
+    return;
+  }
+  if (!emailOk) {
+    createClientMessage.className = "message error";
+    createClientMessage.textContent = "Enter a valid email address.";
     return;
   }
 
-  const response = await fetch(`${API_BASE_URL}/clients`, {
-    method: "POST",
-    headers: authHeaders(),
-    body: JSON.stringify({ name, entityType, primaryContact, email }),
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || "Failed to create client");
-  openCreateClientModal(false);
-  await loadClients();
+  saveCreateClientBtn.disabled = true;
+  saveCreateClientBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Creating...';
+  try {
+    const response = await fetch(`${API_BASE_URL}/clients`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ name, entityType, primaryContact, email }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || "Failed to create client");
+    document.getElementById("newClientName").value = "";
+    document.getElementById("newEntityType").value = "";
+    document.getElementById("newPrimaryContact").value = "";
+    document.getElementById("newClientEmail").value = "";
+    createClientMessage.className = "message ok";
+    createClientMessage.textContent = "Client created successfully.";
+    openCreateClientModal(false);
+    await loadClients({ forceSupportData: true });
+  } finally {
+    saveCreateClientBtn.disabled = false;
+    saveCreateClientBtn.textContent = "Create Client";
+  }
 }
 
 function onFiltersChanged() {
   state.page = 1;
-  state.sortBy = document.getElementById("sortByFilter").value;
-  state.sortDir = document.getElementById("sortDirFilter").value;
-  loadClients().catch(console.error);
+  state.sortBy = sortByFilter.value;
+  state.sortDir = sortDirFilter.value;
+  loadClients().catch((error) => {
+    tableBody.innerHTML = "";
+    renderEmptyState(error.message || "Failed to load clients.");
+    renderKpi([]);
+  });
 }
 
 function clearFilters() {
   searchInput.value = "";
   statusFilter.value = "";
-  document.getElementById("industryFilter").value = "";
-  document.getElementById("riskBandFilter").value = "";
-  document.getElementById("complianceStatusFilter").value = "";
-  document.getElementById("savedViewFilter").value = "";
-  document.getElementById("sortByFilter").value = "lastActivity";
-  document.getElementById("sortDirFilter").value = "desc";
+  industryFilter.value = "";
+  riskBandFilter.value = "";
+  complianceStatusFilter.value = "";
+  savedViewFilter.value = "";
+  sortByFilter.value = "lastActivity";
+  sortDirFilter.value = "desc";
+  localStorage.removeItem(LAST_SAVED_VIEW_STORAGE_KEY);
   onFiltersChanged();
 }
 
-searchInput.addEventListener("input", onFiltersChanged);
+function exportCurrentViewCsv() {
+  if (!state.clients.length) return;
+  const headers = [
+    "Client ID",
+    "Client Name",
+    "Entity Type",
+    "Primary Contact",
+    "Email",
+    "Status",
+    "Risk Band",
+    "Next Due",
+    "CSD",
+    "Owner Name",
+    "Owner Role",
+    "Health",
+  ];
+  const rows = state.clients.map((client) => {
+    const compliance = state.complianceByClient.get(client.id) || {};
+    const due = nextDueLabel(compliance.nextDueDate).text;
+    const csd = csdPill(compliance.csdStatus).text;
+    const owner = ownerDisplay(client, compliance);
+    return [
+      client.id,
+      client.name,
+      client.entityType,
+      client.primaryContact,
+      client.email,
+      client.status,
+      client.riskBand,
+      due,
+      csd,
+      owner.name,
+      owner.role,
+      Number(client.complianceHealth || 0),
+    ];
+  });
+  const csv = [headers, ...rows].map((row) => row.map(toCsvCell).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `clients-view-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+const debouncedSearch = debounce(onFiltersChanged, SEARCH_DEBOUNCE_MS);
+searchInput.addEventListener("input", debouncedSearch);
 statusFilter.addEventListener("change", onFiltersChanged);
-document.getElementById("industryFilter").addEventListener("change", onFiltersChanged);
-document.getElementById("riskBandFilter").addEventListener("change", onFiltersChanged);
-document.getElementById("complianceStatusFilter").addEventListener("change", onFiltersChanged);
-document.getElementById("savedViewFilter").addEventListener("change", onFiltersChanged);
-document.getElementById("sortByFilter").addEventListener("change", onFiltersChanged);
-document.getElementById("sortDirFilter").addEventListener("change", onFiltersChanged);
-document.getElementById("refreshBtn").addEventListener("click", () => loadClients().catch(console.error));
+industryFilter.addEventListener("change", onFiltersChanged);
+riskBandFilter.addEventListener("change", onFiltersChanged);
+complianceStatusFilter.addEventListener("change", onFiltersChanged);
+savedViewFilter.addEventListener("change", () => {
+  localStorage.setItem(LAST_SAVED_VIEW_STORAGE_KEY, savedViewFilter.value || "");
+  onFiltersChanged();
+});
+sortByFilter.addEventListener("change", onFiltersChanged);
+sortDirFilter.addEventListener("change", onFiltersChanged);
+document.getElementById("refreshBtn").addEventListener("click", () => loadClients({ forceSupportData: true }).catch((error) => {
+  tableBody.innerHTML = "";
+  renderEmptyState(error.message || "Failed to load clients.");
+  renderKpi([]);
+}));
 document.getElementById("clearFiltersBtn").addEventListener("click", clearFilters);
 document.getElementById("toggleAdvancedFilters").addEventListener("click", () => {
   const panel = document.getElementById("advancedFilters");
@@ -477,26 +920,39 @@ document.getElementById("openCreateClient").addEventListener("click", () => open
 document.getElementById("closeCreateClient").addEventListener("click", () => openCreateClientModal(false));
 document.getElementById("cancelCreateClient").addEventListener("click", () => openCreateClientModal(false));
 document.getElementById("saveCreateClient").addEventListener("click", () => createClient().catch((error) => {
-  const msg = document.getElementById("createClientMessage");
-  msg.className = "message error";
-  msg.textContent = error.message || "Failed to create client";
+  createClientMessage.className = "message error";
+  createClientMessage.textContent = error.message || "Failed to create client";
 }));
+document.getElementById("emptyClearFiltersBtn").addEventListener("click", clearFilters);
+document.getElementById("emptyViewAllBtn").addEventListener("click", () => {
+  savedViewFilter.value = "";
+  clearFilters();
+});
+document.getElementById("emptyAddClientBtn").addEventListener("click", () => openCreateClientModal(true));
+document.getElementById("exportCsvBtn").addEventListener("click", exportCurrentViewCsv);
+bulkActionSelect.addEventListener("change", updateBulkActionInput);
 
-document.addEventListener("click", (event) => {
-  const openClient = event.target.closest("[data-open-client]");
+tableBody.addEventListener("click", (event) => {
+  const target = event.target;
+  const openClient = target.closest("[data-open-client]");
   if (openClient) {
     window.location.href = `client-profile.html?id=${encodeURIComponent(openClient.getAttribute("data-open-client"))}`;
     return;
   }
-  const openDocs = event.target.closest("[data-open-docs]");
+  const openDocs = target.closest("[data-open-docs]");
   if (openDocs) {
     window.location.href = `documents.html?clientId=${encodeURIComponent(openDocs.getAttribute("data-open-docs"))}`;
     return;
   }
-  const openMsg = event.target.closest("[data-open-msg]");
+  const openMsg = target.closest("[data-open-msg]");
   if (openMsg) {
     window.location.href = `messages.html?clientId=${encodeURIComponent(openMsg.getAttribute("data-open-msg"))}`;
+    return;
   }
+  const row = target.closest("tr[data-open-client]");
+  if (!row) return;
+  if (target.closest("button,input,a,select,label")) return;
+  window.location.href = `client-profile.html?id=${encodeURIComponent(row.getAttribute("data-open-client"))}`;
 });
 
 document.addEventListener("change", (event) => {
@@ -505,50 +961,76 @@ document.addEventListener("change", (event) => {
     const id = rowCheck.getAttribute("data-select-client");
     if (rowCheck.checked) state.selected.add(id);
     else state.selected.delete(id);
-    renderTable();
+    updateSelectedStateUi();
     return;
   }
 });
 
-document.getElementById("selectAllClients").addEventListener("change", (event) => {
+selectAllClients.addEventListener("change", (event) => {
   const checked = event.target.checked;
   if (checked) state.clients.forEach((client) => state.selected.add(client.id));
   else state.clients.forEach((client) => state.selected.delete(client.id));
+  updateSelectedStateUi();
   renderTable();
 });
 
 document.getElementById("prevPageBtn").addEventListener("click", () => {
-  if (state.page <= 1) return;
+  if (state.page <= 1 || state.loading) return;
   state.page -= 1;
-  loadClients().catch(console.error);
+  loadClients().catch((error) => {
+    tableBody.innerHTML = "";
+    renderEmptyState(error.message || "Failed to load clients.");
+    renderKpi([]);
+  });
 });
 document.getElementById("nextPageBtn").addEventListener("click", () => {
   const totalPages = state.meta?.totalPages || 1;
-  if (state.page >= totalPages) return;
+  if (state.page >= totalPages || state.loading) return;
   state.page += 1;
-  loadClients().catch(console.error);
+  loadClients().catch((error) => {
+    tableBody.innerHTML = "";
+    renderEmptyState(error.message || "Failed to load clients.");
+    renderKpi([]);
+  });
 });
 
 document.getElementById("bulkApplyBtn").addEventListener("click", async () => {
-  const action = document.getElementById("bulkActionSelect").value;
-  const value = document.getElementById("bulkActionValue").value.trim();
+  const action = bulkActionSelect.value;
   const clientIds = Array.from(state.selected);
+  const value = getBulkActionValue();
   if (!action || !clientIds.length) return;
-  const response = await fetch(`${API_BASE_URL}/clients/bulk`, {
-    method: "POST",
-    headers: authHeaders(),
-    body: JSON.stringify({ action, value, clientIds }),
-  });
-  if (!response.ok) return;
-  state.selected.clear();
-  await loadClients();
+  if (action === "status" && !value) return;
+  if (action === "assign_owner" && !value) return;
+  if (action === "archive") {
+    if (!bulkArchiveConfirm.checked) return;
+    const confirmed = window.confirm(`Archive ${clientIds.length} clients? This hides them from active lists.`);
+    if (!confirmed) return;
+  }
+  bulkApplyBtn.disabled = true;
+  bulkApplyBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Applying...';
+  try {
+    const response = await fetch(`${API_BASE_URL}/clients/bulk`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ action, value, clientIds }),
+    });
+    if (!response.ok) return;
+    state.selected.clear();
+    updateSelectedStateUi();
+    await loadClients({ forceSupportData: action === "assign_owner" });
+  } finally {
+    bulkApplyBtn.disabled = false;
+    bulkApplyBtn.textContent = action === "archive" ? "Archive Selected" : "Apply to Selected";
+  }
 });
 
-loadClients().catch((error) => {
+loadSavedViews();
+updateBulkActionInput();
+loadClients({ forceSupportData: true }).catch((error) => {
   tableBody.innerHTML = "";
-  emptyState.hidden = false;
-  emptyState.textContent = error.message || "Failed to load clients.";
+  renderEmptyState(error.message || "Failed to load clients.");
   renderKpi([]);
+  setLoading(false);
 });
 </script>
 </body>

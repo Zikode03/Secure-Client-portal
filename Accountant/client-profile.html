@@ -22,11 +22,18 @@ body{
   font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   background:#f3f4f6;
   color:#1f2937;
+  overflow-x:hidden;
+}
+
+:root{
+  --profile-max-width: 1120px;
+  --profile-side-col-min: 270px;
+  --profile-gap: clamp(16px, 2vw, 24px);
 }
 
 .wrapper{
-  padding: 24px 32px;
-  max-width: 1440px;
+  width: min(100%, var(--profile-max-width));
+  padding: 24px clamp(16px, 2.2vw, 28px);
   margin: 0 auto;
 }
 
@@ -64,8 +71,9 @@ body{
 
 .main-grid{
   display:grid;
-  grid-template-columns: 2.5fr 1fr;
-  gap:24px;
+  grid-template-columns: minmax(0, 1.7fr) minmax(var(--profile-side-col-min), 1fr);
+  gap: var(--profile-gap);
+  align-items:start;
 }
 
 .card{
@@ -91,12 +99,15 @@ body{
   display:flex;
   justify-content:space-between;
   align-items:flex-start;
+  gap:14px;
+  flex-wrap:wrap;
 }
 
 .profile-left{
   display:flex;
   gap:20px;
   align-items:center;
+  min-width:0;
 }
 
 .logo-box{
@@ -127,6 +138,7 @@ body{
   color:#6b7280;
   font-size:14px;
   margin-top:5px;
+  overflow-wrap:anywhere;
 }
 
 .edit-btn{
@@ -264,6 +276,8 @@ body{
   align-items:center;
   margin-top:20px;
   margin-bottom:15px;
+  gap:10px;
+  flex-wrap:wrap;
 }
 
 .primary-btn{
@@ -279,6 +293,7 @@ body{
 .contact-table{
   width:100%;
   border-collapse:collapse;
+  table-layout:fixed;
 }
 
 .contact-table th{
@@ -293,6 +308,8 @@ body{
   padding:14px 12px;
   border-bottom:1px solid #f1f5f9;
   font-size:14px;
+  overflow-wrap:anywhere;
+  word-break:break-word;
 }
 
 .contact-row{
@@ -330,11 +347,14 @@ body{
   justify-content:space-between;
   align-items:center;
   margin:20px 0;
+  gap:10px;
+  flex-wrap:wrap;
 }
 
 .timeline-filters{
   display:flex;
   gap:10px;
+  flex-wrap:wrap;
 }
 
 .timeline-filters select,
@@ -606,6 +626,19 @@ body{
   }
   .stats{
     grid-template-columns:repeat(2,1fr);
+  }
+}
+
+@media (max-width: 1320px){
+  :root{
+    --profile-max-width: 1040px;
+    --profile-side-col-min: 250px;
+  }
+}
+
+@media (max-width: 1180px){
+  .main-grid{
+    grid-template-columns:1fr;
   }
 }
 
