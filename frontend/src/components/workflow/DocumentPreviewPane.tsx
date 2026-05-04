@@ -1,0 +1,67 @@
+import type { DocumentRecord } from "../../types/portal";
+import { formatDateTimeLabel } from "../../utils/formatters";
+import { StatusBadge } from "../ui/StatusBadge";
+import { SurfaceCard } from "../ui/SurfaceCard";
+
+interface DocumentPreviewPaneProps {
+  document: DocumentRecord;
+}
+
+export function DocumentPreviewPane({ document }: DocumentPreviewPaneProps) {
+  return (
+    <SurfaceCard className="overflow-hidden p-0">
+      <div className="border-b border-slate-200 bg-slate-50 px-6 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-slate-500">{document.documentType}</p>
+            <h3 className="mt-1 text-xl font-semibold text-slate-950">{document.fileName}</h3>
+          </div>
+          <StatusBadge status={document.status} />
+        </div>
+      </div>
+
+      <div className="space-y-6 p-6">
+        <div className="rounded-[1.75rem] border border-slate-200 bg-gradient-to-br from-slate-900 to-slate-700 p-6 text-white shadow-inner">
+          <div className="mx-auto max-w-md rounded-[1.75rem] bg-white p-6 text-slate-900 shadow-lg">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">
+                    Preview
+                  </p>
+                  <p className="mt-1 text-lg font-semibold">{document.documentType}</p>
+                </div>
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+                  {document.sizeLabel}
+                </span>
+              </div>
+              <div className="space-y-2 rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                <div className="h-3 w-2/3 rounded-full bg-slate-200" />
+                <div className="h-3 w-5/6 rounded-full bg-slate-100" />
+                <div className="h-3 w-4/6 rounded-full bg-slate-100" />
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-3xl border border-slate-200 p-4">
+                  <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Uploaded</p>
+                  <p className="mt-2 text-sm font-medium text-slate-900">
+                    {formatDateTimeLabel(document.uploadedAt)}
+                  </p>
+                </div>
+                <div className="rounded-3xl border border-slate-200 p-4">
+                  <p className="text-xs uppercase tracking-[0.18em] text-slate-400">Reviewed</p>
+                  <p className="mt-2 text-sm font-medium text-slate-900">
+                    {document.reviewedAt ? formatDateTimeLabel(document.reviewedAt) : "Waiting"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-[1.75rem] border border-brand-100 bg-brand-50 p-4 text-sm leading-6 text-brand-700">
+          This preview keeps the review context visible, but the real integration point later can swap this shell for a proper PDF or image renderer without changing the page structure.
+        </div>
+      </div>
+    </SurfaceCard>
+  );
+}

@@ -241,7 +241,7 @@ router.post("/forgot-password", idempotency, async (req, res) => {
     ok: true,
     message: "If this account exists, reset instructions have been generated.",
     resetToken: rawToken,
-    resetPath: `/Accountant/accountant logins/verification.html?token=${encodeURIComponent(rawToken)}`,
+    resetPath: `/invite-setup?token=${encodeURIComponent(rawToken)}`,
   });
 });
 

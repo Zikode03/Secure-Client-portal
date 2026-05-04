@@ -45,31 +45,9 @@ async function callApi(name, token, endpoint, expectedStatuses) {
 }
 
 async function runNavChecks() {
-  const accountantPages = [
-    "Accountant/dashboards.html",
-    "Accountant/clients.html",
-    "Accountant/documents.html",
-    "Accountant/review-queue.html",
-    "Accountant/compliance-board.html",
-    "Accountant/tasks.html",
-    "Accountant/messages.html",
-    "Accountant/settings.html",
-  ];
-  for (const page of accountantPages) {
-    await mustContain(page, "accountant-nav.js", "Accountant nav script linked");
-  }
-
-  const clientPages = [
-    "Client/Clientpages/Clientportal.html",
-    "Client/Clientpages/documents.html",
-    "Client/Clientpages/upload.html",
-    "Client/Clientpages/clientrequest.html",
-    "Client/Clientpages/messages.html",
-    "Client/Clientpages/settings.html",
-  ];
-  for (const page of clientPages) {
-    await mustContain(page, "client-nav.js", "Client nav script linked");
-  }
+  await mustContain("frontend/src/app/App.tsx", 'path="/client"', "Client routes wired");
+  await mustContain("frontend/src/app/App.tsx", 'path="/accountant"', "Accountant routes wired");
+  await mustContain("frontend/src/layouts/WorkspaceLayout.tsx", "Accounting Document Control", "Workspace shell wired");
 }
 
 async function runRoleChecks() {

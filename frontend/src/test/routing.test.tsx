@@ -1,0 +1,82 @@
+import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import { AuthProvider } from "../app/auth";
+import App from "../app/App";
+import { PortalProvider } from "../app/portal";
+import type { SessionUser } from "../types/portal";
+
+const STORAGE_KEY = "accounting-document-control-session";
+
+function renderAppAt(path: string, user: SessionUser) {
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
+
+  return render(
+    <MemoryRouter initialEntries={[path]}>
+      <PortalProvider>
+        <AuthProvider>
+          <App />
+        </AuthProvider>
+      </PortalProvider>
+    </MemoryRouter>,
+  );
+}
+
+function createUser(role: SessionUser["role"]): SessionUser {
+  if (role === "accountant") {
+    return {
+      id: "user-accountant-1",
+      name: "Daniel",
+      fullName: "Daniel Mokoena",
+      email: "accountant@example.com",
+      role,
+      title: "Senior Accountant",
+      company: "Finwell Advisory",
+      initials: "DM",
+      clientIds: [],
+    };
+  }
+
+  if (role === "admin") {
+    return {
+      id: "user-admin-1",
+      name: "Priya",
+      fullName: "Priya Naidoo",
+      email: "admin@example.com",
+      role,
+      title: "Operations Lead",
+      company: "Finwell Advisory",
+      initials: "PN",
+      clientIds: [],
+    };
+  }
+
+  return {
+    id: "user-client-1",
+    name: "Sarah",
+    fullName: "Sarah Jacobs",
+    email: "client@example.com",
+    role,
+    title: "Finance Manager",
+    company: "Apex Trading Ltd",
+    initials: "SJ",
+    clientIds: ["client-apex"],
+  };
+}
+
+describe("role-based route access", () => {
+  it("client cannot access accountant routes", async () => {
+    renderAppAt("/accountant/dashboard", createUser("client"));
+
+    expect(
+      await screen.findByText("You do not have permission to open this workspace."),
+    ).toBeInTheDocument();
+  });
+
+  it("accountant cannot access admin routes", async () => {
+    renderAppAt("/admin/dashboard", createUser("accountant"));
+
+    expect(
+      await screen.findByText("You do not have permission to open this workspace."),
+    ).toBeInTheDocument();
+  });
+});
