@@ -328,7 +328,7 @@ const clientComplianceDocuments: ComplianceDocumentRecord[] = [
   },
   {
     id: "comp-14",
-    name: "Sales Invoice Pack",
+    name: "Invoice Pack",
     category: "monthly_accounting",
     issueDate: "2026-05-01T00:00:00.000Z",
     expiryDate: "2026-05-06T17:00:00.000Z",
@@ -342,7 +342,7 @@ const clientComplianceDocuments: ComplianceDocumentRecord[] = [
     ],
     isLocked: true,
     versionHistory: versions(
-      "ApexTrading_SalesInvoices_April_2026.pdf",
+      "ApexTrading_Invoices_April_2026.pdf",
       "Sarah Jacobs",
       "2026-05-01T08:40:00.000Z",
     ),
@@ -350,7 +350,7 @@ const clientComplianceDocuments: ComplianceDocumentRecord[] = [
   },
   {
     id: "comp-15",
-    name: "Expense Invoice Pack",
+    name: "Compliance Record",
     category: "monthly_accounting",
     issueDate: "2026-04-29T00:00:00.000Z",
     expiryDate: "2026-05-06T17:00:00.000Z",
@@ -366,7 +366,7 @@ const clientComplianceDocuments: ComplianceDocumentRecord[] = [
     versionHistory: [
       {
         id: "expense-v1",
-        fileName: "ApexTrading_ExpenseInvoices_April_2026.pdf",
+        fileName: "ApexTrading_ComplianceRecord_April_2026.pdf",
         uploadedBy: "Sarah Jacobs",
         uploadedAt: "2026-04-29T15:25:00.000Z",
         status: "rejected",
@@ -382,14 +382,14 @@ const clientComplianceAudit: ComplianceAuditEvent[] = [
     action: "uploaded",
     actor: "Sarah Jacobs",
     timestamp: "2026-05-01T08:40:00.000Z",
-    detail: "Uploaded April sales invoice pack into the secure vault.",
+    detail: "Uploaded the April invoice pack into the secure vault.",
   },
   {
     id: "audit-2",
     action: "reviewed",
     actor: "Daniel Mokoena",
     timestamp: "2026-05-02T11:15:00.000Z",
-    detail: "Reviewed April sales invoice pack and kept it under review.",
+    detail: "Reviewed the April invoice pack and kept it under review.",
   },
   {
     id: "audit-3",
@@ -410,7 +410,7 @@ const clientComplianceAudit: ComplianceAuditEvent[] = [
     action: "new_version",
     actor: "Sarah Jacobs",
     timestamp: "2026-05-04T07:50:00.000Z",
-    detail: "Prepared a replacement version for the rejected expense invoice pack.",
+    detail: "Prepared a replacement version for the rejected compliance record.",
   },
 ];
 
@@ -434,9 +434,9 @@ const missingRequiredDocuments = [
   },
   {
     id: "missing-asset",
-    documentType: "Asset Register Update",
+    documentType: "Compliance Record",
     monthLabel: "April 2026",
-    description: "Required asset register update is still missing for the month close.",
+    description: "Required compliance evidence is still incomplete for the current month close.",
     isRequired: true,
     status: "missing" as const,
   },

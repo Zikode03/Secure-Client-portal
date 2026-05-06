@@ -8,20 +8,31 @@ interface RejectedDocumentsPanelProps {
   items: RejectedDocumentItem[];
   actionLabel?: string;
   onActionItem?: (item: RejectedDocumentItem) => void;
+  headerActionLabel?: string;
+  onHeaderAction?: () => void;
 }
 
 export function RejectedDocumentsPanel({
   actionLabel,
+  headerActionLabel,
   items,
   onActionItem,
+  onHeaderAction,
 }: RejectedDocumentsPanelProps) {
   return (
     <SurfaceCard className="space-y-5">
-      <div>
-        <h2 className="text-xl font-semibold text-slate-950">Rejected Documents</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Anything rejected stays in view until the corrected upload is back in the workflow.
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold text-slate-950">Rejected Documents</h2>
+          <p className="mt-1 text-[0.82rem] text-slate-500">
+            Anything rejected stays in view until the corrected upload is back in the workflow.
+          </p>
+        </div>
+        {headerActionLabel && onHeaderAction ? (
+          <Button onClick={onHeaderAction} size="sm" variant="ghost">
+            {headerActionLabel}
+          </Button>
+        ) : null}
       </div>
 
       <div className="space-y-3">

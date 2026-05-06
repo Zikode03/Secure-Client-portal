@@ -10,7 +10,8 @@ export type SlotStatus =
   | "pending_signature"
   | "under_review"
   | "accepted"
-  | "rejected";
+  | "rejected"
+  | "filed";
 
 export type LifecycleStatus =
   | "uploaded"
@@ -84,6 +85,7 @@ export interface MonthlyDocumentSlot {
   dueDate?: string;
   supportsExpiryDate?: boolean;
   lastSubmission?: string;
+  rejectionReason?: string;
 }
 
 export type MonthlyPackSubmissionStatus =
@@ -180,6 +182,8 @@ export interface ActivityItem {
   detail: string;
   timestamp: string;
   tone: Tone;
+  actor?: string;
+  relatedLabel?: string;
 }
 
 export interface LatestRecordItem {
@@ -213,6 +217,9 @@ export interface MissingDocumentItem {
   isRequired: boolean;
   status: SlotStatus;
   clientName?: string;
+  dueDate?: string;
+  lastSubmission?: string;
+  rejectionReason?: string;
 }
 
 export interface RejectedDocumentItem {
@@ -401,6 +408,7 @@ export interface BusinessProfile {
 
 export interface PortfolioRow {
   id: string;
+  clientId: string;
   clientName: string;
   monthLabel: string;
   progressPercent: number;

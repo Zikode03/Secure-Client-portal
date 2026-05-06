@@ -12,6 +12,8 @@ interface LatestRecordsTableProps {
   onDownload: (recordName: string) => void;
   onComment?: (recordName: string) => void;
   onFinaliseInvoice?: (invoiceId: string) => void;
+  headerActionLabel?: string;
+  onHeaderAction?: () => void;
 }
 
 function canFinalise(status: InvoiceStatus) {
@@ -24,19 +26,28 @@ export function LatestRecordsTable({
   onComment,
   onDownload,
   onFinaliseInvoice,
+  onHeaderAction,
   onView,
   title,
+  headerActionLabel,
 }: LatestRecordsTableProps) {
   return (
     <SurfaceCard>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold text-slate-950">{title}</h2>
-          <p className="mt-1 text-sm text-slate-500">{description}</p>
+          <h2 className="text-base font-semibold text-slate-950">{title}</h2>
+          <p className="mt-1 text-[0.82rem] text-slate-500">{description}</p>
         </div>
-        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
-          {items.length} items
-        </span>
+        <div className="flex items-center gap-2">
+          {headerActionLabel && onHeaderAction ? (
+            <Button onClick={onHeaderAction} size="sm" variant="ghost">
+              {headerActionLabel}
+            </Button>
+          ) : null}
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+            {items.length} items
+          </span>
+        </div>
       </div>
 
       <div className="mt-6 overflow-x-auto">

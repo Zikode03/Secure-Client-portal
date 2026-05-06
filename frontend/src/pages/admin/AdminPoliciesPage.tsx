@@ -61,7 +61,7 @@ export function AdminPoliciesPage() {
 
           <TextAreaField
             label="Required document details"
-            placeholder="Bank statement, sales invoices, expense invoices, signed filing authorisation, VAT working papers..."
+            placeholder="Bank statement, invoices, signed documents, compliance record..."
           />
 
           <TextAreaField

@@ -8,20 +8,31 @@ interface ExpiringDocumentsPanelProps {
   items: ExpiringDocumentItem[];
   actionLabel?: string;
   onActionItem?: (item: ExpiringDocumentItem) => void;
+  headerActionLabel?: string;
+  onHeaderAction?: () => void;
 }
 
 export function ExpiringDocumentsPanel({
   actionLabel,
+  headerActionLabel,
   items,
   onActionItem,
+  onHeaderAction,
 }: ExpiringDocumentsPanelProps) {
   return (
     <SurfaceCard className="space-y-5">
-      <div>
-        <h2 className="text-xl font-semibold text-slate-950">Expiring Documents</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Expiry-sensitive records are tracked here before they become compliance failures.
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold text-slate-950">Expiring Documents</h2>
+          <p className="mt-1 text-[0.82rem] text-slate-500">
+            Expiry-sensitive records are tracked here before they become compliance failures.
+          </p>
+        </div>
+        {headerActionLabel && onHeaderAction ? (
+          <Button onClick={onHeaderAction} size="sm" variant="ghost">
+            {headerActionLabel}
+          </Button>
+        ) : null}
       </div>
 
       <div className="space-y-3">

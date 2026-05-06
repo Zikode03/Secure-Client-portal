@@ -78,7 +78,7 @@ const initialRequests: WorkflowRequest[] = [
     id: "request-1",
     clientId: "client-apex",
     clientName: "Apex Trading Ltd",
-    title: "Re-upload expense invoices with readable VAT details",
+    title: "Re-upload invoice support with readable VAT details",
     description:
       "Three supplier receipts are cropped and two VAT numbers cannot be read clearly enough for review.",
     monthLabel: "April 2026",
@@ -96,7 +96,7 @@ const initialRequests: WorkflowRequest[] = [
         author: "Daniel Mokoena",
         role: "accountant",
         message:
-          "Please upload the corrected stationery and fuel invoices into the same April expense slot.",
+          "Please upload the corrected stationery and fuel invoice support into the same April invoices slot.",
         createdAt: "2026-04-30T09:15:00.000Z",
       },
     ],
@@ -106,7 +106,7 @@ const initialRequests: WorkflowRequest[] = [
         status: "Follow-up sent",
         actor: "Daniel Mokoena",
         timestamp: "2026-04-30T09:15:00.000Z",
-        note: "Requested corrected supplier evidence for the rejected April expense batch.",
+        note: "Requested corrected supplier evidence for the rejected April invoice support file.",
       },
     ],
   },
@@ -281,6 +281,7 @@ interface PortalContextValue {
     message: string,
   ) => PortalActionResult;
   createFollowUpRequest: (payload: FollowUpRequestPayload) => PortalActionResult;
+  resolveRequest: (requestId: string, actorName: string) => PortalActionResult;
   updateBusinessProfile: (profile: BusinessProfile) => PortalActionResult;
   assignClientAccountant: (clientId: string, accountantName: string) => PortalActionResult;
   updateClientDeadlinePolicy: (clientId: string, deadlinePolicy: string) => PortalActionResult;
@@ -300,6 +301,8 @@ function appendActivity(
   title: string,
   detail: string,
   tone: ClientWorkflowSeed["activity"][number]["tone"],
+  actor?: string,
+  relatedLabel?: string,
 ) {
   return [
     {
@@ -308,6 +311,8 @@ function appendActivity(
       detail,
       timestamp: new Date().toISOString(),
       tone,
+      actor,
+      relatedLabel,
     },
     ...current,
   ].slice(0, 12);
@@ -553,6 +558,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     }
 
     const actorName = actor.fullName || actor.name;
+    const wasRejected = targetSlot.status === "rejected";
 
     setMonthPack((current) =>
       recalculatePack({
@@ -565,6 +571,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
                 status: "uploaded",
                 progress: 100,
                 lastSubmission: uploadedAt,
+                rejectionReason: undefined,
               }
             : slot,
         ),
@@ -629,15 +636,23 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     setActivity((current) =>
       appendActivity(
         current,
-        `${targetSlot.documentType} uploaded`,
-        `A new file was placed into the controlled ${targetSlot.documentType} slot for ${targetSlot.month} ${targetSlot.year}.`,
+        wasRejected
+          ? `${targetSlot.documentType} corrected and re-uploaded`
+          : `${targetSlot.documentType} uploaded`,
+        wasRejected
+          ? `A corrected version was uploaded into the ${targetSlot.documentType} slot for ${targetSlot.month} ${targetSlot.year}.`
+          : `A new file was placed into the controlled ${targetSlot.documentType} slot for ${targetSlot.month} ${targetSlot.year}.`,
         "success",
+        actorName,
+        targetSlot.documentType,
       ),
     );
 
     return {
       ok: true,
-      message: `Upload prepared for ${submission.autoName}. The file is now tied to the ${targetSlot.documentType} checklist slot.`,
+      message: wasRejected
+        ? `${targetSlot.documentType} re-uploaded successfully. The corrected version is now back in the workflow.`
+        : `${targetSlot.documentType} uploaded successfully. The file is now tied to the correct checklist slot.`,
     };
   }
 
@@ -663,6 +678,8 @@ export function PortalProvider({ children }: { children: ReactNode }) {
         `${nextPack.monthLabel} submitted`,
         `${actorName} submitted the month pack for accountant review.`,
         "success",
+        actorName,
+        nextPack.monthLabel,
       ),
     );
 
@@ -689,6 +706,8 @@ export function PortalProvider({ children }: { children: ReactNode }) {
         `${invoice.invoiceNumber} sent to accountant`,
         "The finalised invoice moved into the accountant review queue automatically.",
         "success",
+        clientProfile.primaryContact,
+        invoice.invoiceNumber,
       ),
     );
 
@@ -764,12 +783,13 @@ export function PortalProvider({ children }: { children: ReactNode }) {
             slot.documentType === targetDocument.documentType &&
             `${slot.month} ${slot.year}` === targetDocument.monthLabel
               ? {
-                  ...slot,
-                  status: action,
-                  progress:
-                    action === "accepted" ? 100 : action === "under_review" ? 80 : 35,
-                }
-              : slot,
+                ...slot,
+                status: action,
+                progress:
+                  action === "accepted" ? 100 : action === "under_review" ? 80 : 35,
+                rejectionReason: action === "rejected" ? reason?.trim() : undefined,
+              }
+            : slot,
           ),
         }),
       );
@@ -907,6 +927,48 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     return { ok: true, message: "Follow-up request added to the client workflow." };
   }
 
+  function resolveRequest(requestId: string, actorName: string): PortalActionResult {
+    const targetRequest = requests.find((request) => request.id === requestId);
+    if (!targetRequest) {
+      return { ok: false, message: "The selected request could not be found." };
+    }
+
+    const resolvedAt = new Date().toISOString();
+    setRequests((current) =>
+      current.map((request) =>
+        request.id === requestId
+          ? {
+              ...request,
+              status: "resolved",
+              auditTrail: [
+                {
+                  id: `${requestId}-audit-${request.auditTrail.length + 1}`,
+                  status: "Resolved",
+                  actor: actorName,
+                  timestamp: resolvedAt,
+                  note: "Client marked this workflow request as resolved.",
+                },
+                ...request.auditTrail,
+              ],
+            }
+          : request,
+      ),
+    );
+
+    setActivity((current) =>
+      appendActivity(
+        current,
+        `${targetRequest.title} resolved`,
+        `${actorName} marked the follow-up request as resolved.`,
+        "success",
+        actorName,
+        targetRequest.title,
+      ),
+    );
+
+    return { ok: true, message: "Request marked as resolved." };
+  }
+
   function updateBusinessProfile(profile: BusinessProfile): PortalActionResult {
     setClientProfile(profile);
     return { ok: true, message: "Business profile updated for the client workspace." };
@@ -1003,6 +1065,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     const apexMissingDocuments = buildMissingDocuments(monthPack, clientProfile.legalName);
     const apexPortfolioRow = {
       id: "portfolio-1",
+      clientId: "firm-client-1",
       clientName: clientProfile.legalName,
       monthLabel: monthPack.monthLabel,
       progressPercent: monthPack.progressPercent,
@@ -1039,37 +1102,50 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       )
       .slice(0, 15);
     const reviewQueue = getReviewQueue();
+    const onTrackCount = portfolio.filter((row) => row.status === "on_track").length;
+    const attentionCount = portfolio.filter((row) => row.status === "attention").length;
+    const overdueCount = portfolio.filter((row) => row.status === "overdue").length;
+    const missingClientCount = portfolio.filter((row) => row.missingCount > 0).length;
+    const averageProgress = Math.round(
+      portfolio.reduce((sum, row) => sum + row.progressPercent, 0) / portfolio.length,
+    );
+    const underReviewCount = reviewQueue.filter(
+      (item) => item.status === "under_review",
+    ).length;
+    const newSubmissionCount = reviewQueue.length - underReviewCount;
+    const combinedExceptionCount = expiringDocuments.length + rejectedDocuments.length;
 
     return {
       ...baseAccountantDashboard,
       summaryMetrics: [
         {
           id: "acc-metric-1",
-          label: "Total clients",
-          value: String(portfolio.length),
-          helper: "Active clients with structured monthly workflows.",
+          label: "Portfolio completion",
+          value: `${averageProgress}%`,
+          helper: `${onTrackCount} of ${portfolio.length} clients are currently on track.`,
           tone: "info",
+          progress: averageProgress,
         },
         {
           id: "acc-metric-2",
-          label: "Clients missing documents",
-          value: String(portfolio.filter((row) => row.missingCount > 0).length),
-          helper: "Required slots are still open across these clients.",
-          tone: "danger",
+          label: "Needs follow-up",
+          value: String(attentionCount + overdueCount),
+          helper: `${overdueCount} overdue and ${missingClientCount} clients still missing required documents.`,
+          tone: attentionCount + overdueCount > 0 ? "danger" : "success",
         },
         {
           id: "acc-metric-3",
-          label: "Overdue submissions",
-          value: String(portfolio.filter((row) => row.status === "overdue").length),
-          helper: "Deadline has passed and follow-up is required today.",
-          tone: "warning",
+          label: "Review workload",
+          value: String(reviewQueue.length),
+          helper: `${underReviewCount} already under review and ${newSubmissionCount} newly submitted.`,
+          tone: reviewQueue.length > 0 ? "warning" : "success",
         },
         {
           id: "acc-metric-4",
-          label: "Pending review",
-          value: String(reviewQueue.length),
-          helper: "Documents and invoices waiting for accountant action.",
-          tone: "success",
+          label: "Compliance exceptions",
+          value: String(combinedExceptionCount),
+          helper: `${expiringDocuments.length} expiring items and ${rejectedDocuments.length} rejected records need action.`,
+          tone: combinedExceptionCount > 0 ? "warning" : "success",
         },
       ],
       portfolio,
@@ -1143,6 +1219,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       addDocumentComment,
       addRequestComment,
       createFollowUpRequest,
+      resolveRequest,
       updateBusinessProfile,
       assignClientAccountant,
       updateClientDeadlinePolicy,
@@ -1173,6 +1250,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       previousMonthComparison,
       previousMonthDocuments,
       reconciliationIssues,
+      resolveRequest,
       rejectedDocuments,
       requests,
       smartAlerts,

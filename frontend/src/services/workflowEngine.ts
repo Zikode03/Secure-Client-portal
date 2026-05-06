@@ -19,7 +19,7 @@ import type {
   UnifiedSearchResult,
 } from "../types/portal";
 
-const slotReadyStatuses = new Set<SlotStatus>(["uploaded", "under_review", "accepted"]);
+const slotReadyStatuses = new Set<SlotStatus>(["uploaded", "under_review", "accepted", "filed"]);
 const slotBlockingStatuses = new Set<SlotStatus>([
   "missing",
   "partial",
@@ -93,6 +93,9 @@ export function buildMissingDocuments(
       isRequired: slot.isRequired,
       status: slot.status,
       clientName,
+      dueDate: slot.dueDate,
+      lastSubmission: slot.lastSubmission,
+      rejectionReason: slot.rejectionReason,
     }));
 }
 
@@ -406,43 +409,64 @@ export function createSummaryMetrics(
   expiringDocuments: ExpiringDocumentItem[],
   latestActivityDate: string,
 ): SummaryMetric[] {
+  const rejectedCount = pack.slots.filter((slot) => slot.status === "rejected").length;
+  const missingCount = pack.slots.filter((slot) => slot.status === "missing").length;
+  const reviewCount = pack.slots.filter((slot) => slot.status === "under_review").length;
+  const submissionLabel =
+    pack.submissionStatus === "under_accountant_review"
+      ? "In review"
+      : pack.canComplete
+        ? "Ready"
+        : "Open";
+
   return [
     {
       id: "metric-1",
-      label: "Monthly Progress",
-      value: `${pack.completedCount} / ${pack.totalCount}`,
-      helper: "Structured month-pack slots that are upload-ready or review-ready.",
-      tone: "info",
+      label: "Pack completion",
+      value: `${pack.progressPercent}%`,
+      helper: `${pack.completedCount} of ${pack.totalCount} checklist slots are workflow-ready.`,
+      tone: pack.progressPercent >= 85 ? "success" : pack.progressPercent >= 60 ? "info" : "warning",
       progress: pack.progressPercent,
     },
     {
       id: "metric-2",
-      label: "Missing Documents",
+      label: "Blocking items",
       value: String(missingRequiredDocuments.length),
-      helper: "Required slots still blocking month submission.",
+      helper:
+        missingRequiredDocuments.length > 0
+          ? `${missingCount} missing and ${rejectedCount} rejected required items still block submission.`
+          : "No required items are blocking submission right now.",
       tone: missingRequiredDocuments.length > 0 ? "danger" : "success",
     },
     {
       id: "metric-3",
-      label: "Deadline Status",
-      value: pack.canComplete ? "Ready to submit" : "Due / blocked",
-      helper: pack.canComplete
-        ? "All required documents are present for the current month."
-        : "Submission is blocked until every required slot is in place.",
-      tone: pack.canComplete ? "success" : "warning",
+      label: "Submission state",
+      value: submissionLabel,
+      helper:
+        pack.submissionStatus === "under_accountant_review"
+          ? `${reviewCount} checklist items are currently with the accountant for review.`
+          : pack.canComplete
+            ? "All required documents are present and the month can move forward."
+            : "The month is still open because required evidence is incomplete.",
+      tone:
+        pack.submissionStatus === "under_accountant_review"
+          ? "info"
+          : pack.canComplete
+            ? "success"
+            : "warning",
     },
     {
       id: "metric-4",
-      label: "Last Submission Date",
-      value: new Intl.DateTimeFormat("en-ZA", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      }).format(new Date(latestActivityDate)),
+      label: "Compliance attention",
+      value: String(expiringDocuments.length),
       helper:
         expiringDocuments.length > 0
           ? expiringDocuments[0].alertMessage
-          : "No expiring documents need attention today.",
+          : `No compliance expiries need action. Last upload was ${new Intl.DateTimeFormat("en-ZA", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            }).format(new Date(latestActivityDate))}.`,
       tone: expiringDocuments.length > 0 ? expiringDocuments[0].tone : "success",
     },
   ];
@@ -563,6 +587,8 @@ export function buildUnifiedSearchResults(args: {
         ? "bank_statement"
         : document.documentType === "Signed Documents"
           ? "signed_document"
+          : document.documentType === "Compliance Record"
+            ? "compliance_document"
           : document.expiryDate
             ? "compliance_document"
             : "document",

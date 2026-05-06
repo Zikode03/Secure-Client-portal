@@ -30,10 +30,10 @@ const monthOptions = [
 ];
 
 const baseDocumentTypes = [
-  "Invoice",
+  "Invoices",
   "Bank Statement",
-  "Signed Document",
-  "Tax Document",
+  "Signed Documents",
+  "Compliance Record",
 ];
 
 const allowedTypes = [

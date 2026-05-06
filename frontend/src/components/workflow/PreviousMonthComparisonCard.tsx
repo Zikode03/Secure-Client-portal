@@ -4,25 +4,42 @@ import { SurfaceCard } from "../ui/SurfaceCard";
 
 interface PreviousMonthComparisonCardProps {
   comparison: PreviousMonthComparison;
+  actionLabel?: string;
+  onAction?: () => void;
+  title?: string;
 }
 
 export function PreviousMonthComparisonCard({
+  actionLabel,
   comparison,
+  onAction,
+  title = "Month over month comparison",
 }: PreviousMonthComparisonCardProps) {
   return (
     <SurfaceCard className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-semibold text-slate-950">Previous Month Comparison</h2>
+          <h2 className="text-base font-semibold text-slate-950">{title}</h2>
           <p className="mt-1 text-sm text-slate-500">
             Invoice volume is compared month over month to surface unusual changes early.
           </p>
         </div>
-        <span
-          className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset ${toneToAccentClass(comparison.tone)}`}
-        >
-          {comparison.delta >= 0 ? `+${comparison.delta}` : comparison.delta}
-        </span>
+        <div className="flex items-center gap-3">
+          {actionLabel && onAction ? (
+            <button
+              className="text-sm font-medium text-brand-600 transition hover:text-brand-700"
+              onClick={onAction}
+              type="button"
+            >
+              {actionLabel}
+            </button>
+          ) : null}
+          <span
+            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset ${toneToAccentClass(comparison.tone)}`}
+          >
+            {comparison.delta >= 0 ? `+${comparison.delta}` : comparison.delta}
+          </span>
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">

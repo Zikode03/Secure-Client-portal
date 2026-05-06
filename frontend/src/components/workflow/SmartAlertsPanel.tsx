@@ -6,11 +6,15 @@ interface SmartAlertsPanelProps {
   items: SmartAlertItem[];
   title?: string;
   description?: string;
+  headerActionLabel?: string;
+  onHeaderAction?: () => void;
 }
 
 export function SmartAlertsPanel({
   description = "These alerts are generated from workflow patterns, not just calendar reminders.",
+  headerActionLabel,
   items,
+  onHeaderAction,
   title = "Smart Alerts",
 }: SmartAlertsPanelProps) {
   function formatCategory(value: SmartAlertItem["category"]) {
@@ -19,9 +23,22 @@ export function SmartAlertsPanel({
 
   return (
     <SurfaceCard className="space-y-5">
-      <div>
-        <h2 className="text-xl font-semibold text-slate-950">{title}</h2>
-        <p className="mt-1 text-sm text-slate-500">{description}</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="text-base font-semibold text-slate-950">{title}</h2>
+          <p className="mt-1 text-[0.82rem] text-slate-500">{description}</p>
+        </div>
+        {headerActionLabel && onHeaderAction ? (
+          <span>
+            <button
+              className="inline-flex items-center rounded-xl px-3 py-2 text-sm font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+              onClick={onHeaderAction}
+              type="button"
+            >
+              {headerActionLabel}
+            </button>
+          </span>
+        ) : null}
       </div>
 
       <div className="space-y-3">
