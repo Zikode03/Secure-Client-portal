@@ -31,6 +31,20 @@ function PortalMark() {
   );
 }
 
+function SupportIcon() {
+  return (
+    <svg className="h-[1.05rem] w-[1.05rem]" fill="none" viewBox="0 0 24 24">
+      <path
+        d="M5.5 12a6.5 6.5 0 1 1 13 0v4.25a1.75 1.75 0 0 1-1.75 1.75H15.5v-4.75h3M5.5 13.25h3V18H7.25A1.75 1.75 0 0 1 5.5 16.25V12Zm6.5 6h2.5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
+}
+
 function NavIcon({ icon }: { icon: NavigationIcon }) {
   const common = "h-[1.05rem] w-[1.05rem]";
 
@@ -158,48 +172,38 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
   return (
     <div className="min-h-screen bg-slate-100">
       <div className="flex min-h-screen flex-col lg:flex-row">
-        <aside className="border-b border-slate-800 bg-[linear-gradient(180deg,#151b34_0%,#10162c_100%)] px-4 py-5 text-white shadow-[8px_0_30px_rgba(15,23,42,0.18)] lg:w-[284px] lg:border-b-0 lg:border-r lg:border-slate-800 lg:px-3 lg:py-3">
-          <div className="rounded-[1.35rem] border border-white/6 bg-[linear-gradient(180deg,rgba(255,255,255,0.03)_0%,rgba(255,255,255,0.015)_100%)] px-4 py-4 lg:min-h-[calc(100vh-1.5rem)]">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-indigo-500/10 ring-1 ring-indigo-400/20">
-                <PortalMark />
-              </div>
-              <div>
-                <p className="text-[1.02rem] font-semibold leading-5 text-white">Compliance</p>
-                <p className="text-[1.02rem] font-semibold leading-5 text-white/96">Portal</p>
-              </div>
-            </div>
-
-            <div className="mt-5 rounded-[1.2rem] border border-white/6 bg-white/[0.04] px-3.5 py-3.5">
-              <div className="flex items-start gap-3">
-                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-500 text-sm font-semibold text-white shadow-[0_8px_20px_rgba(79,70,229,0.28)]">
-                  {user?.initials}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[0.92rem] font-semibold text-white">{user?.name}</p>
-                  <p className="mt-0.5 truncate text-[0.74rem] text-slate-300">{user?.title}</p>
-                  <p className="mt-0.5 truncate text-[0.74rem] text-slate-300">{user?.company}</p>
+        <aside className="border-b border-slate-900 bg-[linear-gradient(180deg,#131a33_0%,#0d1327_100%)] px-4 py-5 text-white shadow-[8px_0_30px_rgba(15,23,42,0.18)] lg:w-[258px] lg:border-b-0 lg:border-r lg:border-slate-900 lg:px-3 lg:py-3">
+          <div className="flex flex-col rounded-[1.4rem] border border-white/6 bg-[linear-gradient(180deg,rgba(255,255,255,0.028)_0%,rgba(255,255,255,0.012)_100%)] px-3.5 py-3.5 lg:min-h-[calc(100vh-1.5rem)]">
+            <div className="rounded-[1.15rem] border border-white/7 bg-white/[0.025] px-3.5 py-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-500/10 ring-1 ring-indigo-400/20">
+                  <PortalMark />
                 </div>
-                <span className="mt-1 text-slate-400">...</span>
+                <div className="min-w-0">
+                  <p className="text-[0.98rem] font-semibold leading-5 text-white">Compliance Portal</p>
+                  <p className="mt-0.5 text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                    {role} workspace
+                  </p>
+                </div>
               </div>
             </div>
 
-            <div className="mt-5 space-y-5">
+            <div className="mt-5 flex-1 space-y-5">
               {Object.entries(groupedNavigation).map(([section, items]) => (
                 <div key={section}>
-                  <p className="px-2 text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  <p className="px-3 text-[0.62rem] font-semibold uppercase tracking-[0.18em] text-slate-500">
                     {section}
                   </p>
-                  <div className="mt-2 space-y-1">
+                  <div className="mt-2 space-y-1.5">
                     {items.map((item) => (
                       <NavLink
                         key={item.to}
                         className={({ isActive }) =>
                           cn(
-                            "flex items-center gap-3 rounded-[0.95rem] px-3 py-2.5 transition",
+                            "group relative flex items-center gap-3 overflow-hidden rounded-[1rem] px-3 py-2.5 transition-all duration-150",
                             isActive
-                              ? "bg-white/8 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
-                              : "text-slate-300 hover:bg-white/5 hover:text-white",
+                              ? "bg-[linear-gradient(135deg,rgba(84,66,255,0.22),rgba(84,66,255,0.11))] text-white ring-1 ring-white/8 shadow-[0_12px_24px_rgba(15,23,42,0.18)]"
+                              : "text-slate-300 hover:bg-white/[0.045] hover:text-white",
                           )
                         }
                         to={item.to}
@@ -208,19 +212,25 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
                           <>
                             <span
                               className={cn(
-                                "flex h-8 w-8 items-center justify-center rounded-xl",
+                                "absolute bottom-2 top-2 left-0 w-1 rounded-r-full transition",
+                                isActive ? "bg-indigo-400" : "bg-transparent group-hover:bg-white/10",
+                              )}
+                            />
+                            <span
+                              className={cn(
+                                "relative flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition",
                                 isActive
-                                  ? "bg-indigo-500/18 text-indigo-300"
-                                  : "text-slate-400",
+                                  ? "bg-indigo-500/18 text-indigo-200"
+                                  : "text-slate-400 group-hover:bg-white/[0.04] group-hover:text-slate-200",
                               )}
                             >
                               <NavIcon icon={item.icon} />
                             </span>
-                            <span className="min-w-0 flex-1 text-[0.86rem] font-medium">
+                            <span className="min-w-0 flex-1 text-[0.85rem] font-medium">
                               {item.label}
                             </span>
                             {item.badge ? (
-                              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-indigo-500 px-1.5 text-[0.68rem] font-semibold text-white">
+                              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-indigo-500 px-1.5 text-[0.66rem] font-semibold text-white shadow-[0_4px_10px_rgba(79,70,229,0.25)]">
                                 {item.badge}
                               </span>
                             ) : null}
@@ -233,36 +243,45 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
               ))}
             </div>
 
-            <div className="mt-6 rounded-[1rem] border border-white/6 bg-white/[0.04] px-3.5 py-3.5">
-              <div className="flex items-start gap-3">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/6 text-slate-200">
-                  <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
-                    <path
-                      d="M8 11V8a4 4 0 1 1 8 0v3m-9 9h10a1 1 0 0 0 1-1v-7a1 1 0 0 0-1-1H7a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1Z"
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="1.8"
-                    />
-                  </svg>
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[0.78rem] font-semibold text-white">Your data is safe</p>
-                  <p className="mt-1 text-[0.72rem] leading-5 text-slate-400">
-                    256-bit encrypted and audit-ready.
-                  </p>
+            <div className="mt-5 border-t border-white/8 pt-4">
+              <div className="rounded-[1.15rem] border border-white/7 bg-[linear-gradient(180deg,rgba(255,255,255,0.05)_0%,rgba(255,255,255,0.03)_100%)] px-3.5 py-3.5 shadow-[0_14px_26px_rgba(15,23,42,0.16)]">
+                <div className="flex items-center gap-3">
+                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,#5e4bff,#6f59ff)] text-sm font-semibold text-white shadow-[0_8px_20px_rgba(79,70,229,0.28)]">
+                    {user?.initials}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[0.9rem] font-semibold text-white">{user?.name}</p>
+                    <p className="mt-0.5 truncate text-[0.73rem] text-slate-300">{user?.title}</p>
+                    <p className="mt-0.5 truncate text-[0.73rem] text-slate-400">{user?.company}</p>
+                  </div>
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/[0.04] text-slate-500">
+                    ...
+                  </span>
                 </div>
-                <span className="text-slate-500">{">"}</span>
               </div>
-            </div>
 
-            <button
-              className="mt-4 flex w-full items-center justify-center rounded-[0.95rem] border border-white/8 px-3 py-2.5 text-[0.84rem] font-medium text-slate-200 transition hover:bg-white/6"
-              onClick={logout}
-              type="button"
-            >
-              Sign out
-            </button>
+              <button
+                className="mt-3 flex w-full items-center gap-3 rounded-[1rem] px-3 py-3 text-left text-slate-300 transition hover:bg-white/[0.045] hover:text-white"
+                type="button"
+              >
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/[0.04] text-slate-200">
+                  <SupportIcon />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[0.82rem] font-medium">Need help?</span>
+                  <span className="mt-0.5 block text-[0.72rem] text-slate-400">Contact support</span>
+                </span>
+                <span className="text-slate-500">{">"}</span>
+              </button>
+
+              <button
+                className="mt-3 flex w-full items-center justify-center rounded-[0.95rem] border border-white/8 bg-white/[0.02] px-3 py-2.5 text-[0.82rem] font-medium text-slate-200 transition hover:bg-white/[0.06]"
+                onClick={logout}
+                type="button"
+              >
+                Sign out
+              </button>
+            </div>
           </div>
         </aside>
 

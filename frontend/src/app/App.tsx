@@ -25,7 +25,6 @@ import { AdminUsersPage } from "../pages/admin/AdminUsersPage";
 import { ClientComplianceCentrePage } from "../pages/client/ClientComplianceCentrePage";
 import { ClientDashboardPage } from "../pages/client/ClientDashboardPage";
 import { ClientDocumentsPage } from "../pages/client/ClientDocumentsPage";
-import { ClientMessagesPage } from "../pages/client/ClientMessagesPage";
 import { ClientMonthlyPacksPage } from "../pages/client/ClientMonthlyPacksPage";
 import { ClientNotificationsPage } from "../pages/client/ClientNotificationsPage";
 import { ClientRequestsPage } from "../pages/client/ClientRequestsPage";
@@ -129,9 +128,10 @@ export default function App() {
         <Route element={<ClientMonthlyPacksPage />} path="packs" />
         <Route element={<ClientRequestsPage />} path="requests" />
         <Route element={<ClientDocumentsPage />} path="documents" />
+        <Route element={<Navigate replace to="/client/documents" />} path="invoices" />
         <Route element={<ClientComplianceCentrePage />} path="compliance" />
         <Route element={<ClientNotificationsPage />} path="notifications" />
-        <Route element={<ClientMessagesPage />} path="messages" />
+        <Route element={<Navigate replace to="/client/requests" />} path="messages" />
         <Route element={<ClientSettingsPage />} path="settings" />
       </Route>
 

@@ -10,13 +10,25 @@ interface CommentThreadProps {
   currentRole: Role;
   currentAuthor: string;
   onSubmitComment?: (message: string) => { ok: boolean; message: string };
+  composerLabel?: string;
+  composerPlaceholder?: string;
+  emptyDescription?: string;
+  emptyTitle?: string;
+  helperText?: string;
+  submitLabel?: string;
 }
 
 export function CommentThread({
   comments,
+  composerLabel = "Add a document-specific comment",
+  composerPlaceholder = "Keep the feedback tied to the file so the next person in the workflow has the full context.",
   currentAuthor,
   currentRole,
+  emptyDescription = "No one has commented on this document yet. Any note left here stays attached to the exact file being reviewed.",
+  emptyTitle = "No comments yet",
+  helperText,
   onSubmitComment,
+  submitLabel = "Post comment",
 }: CommentThreadProps) {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -45,7 +57,8 @@ export function CommentThread({
     <div className="space-y-4">
       {emptyState ? (
         <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">
-          No one has commented on this document yet. Any note left here stays attached to the exact file being reviewed.
+          <p className="font-medium text-slate-700">{emptyTitle}</p>
+          <p className="mt-1">{emptyDescription}</p>
         </div>
       ) : (
         comments.map((comment) => (
@@ -75,16 +88,16 @@ export function CommentThread({
       <div className="space-y-4 rounded-[1.75rem] border border-slate-200 bg-slate-50 p-5">
         <TextAreaField
           error={error}
-          label="Add a document-specific comment"
+          label={composerLabel}
           onChange={(event) => setMessage(event.target.value)}
-          placeholder="Keep the feedback tied to the file so the next person in the workflow has the full context."
+          placeholder={composerPlaceholder}
           value={message}
         />
         <div className="flex items-center justify-between gap-3">
           <p className="text-sm text-slate-500">
-            Posting as {currentAuthor} ({currentRole})
+            {helperText ?? `Posting as ${currentAuthor} (${currentRole})`}
           </p>
-          <Button onClick={handleSubmit}>Post comment</Button>
+          <Button onClick={handleSubmit}>{submitLabel}</Button>
         </div>
       </div>
     </div>

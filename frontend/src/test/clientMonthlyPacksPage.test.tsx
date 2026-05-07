@@ -147,6 +147,15 @@ function buildWorkflowState(overrides: Record<string, unknown> = {}) {
     documents: [{ id: "doc-1002", documentType: "Invoices" }],
     feedbackNotice: null,
     monthPack: createBasePack(),
+    previousMonthComparison: {
+      currentMonthLabel: "April 2026",
+      previousMonthLabel: "March 2026",
+      currentInvoiceCount: 8,
+      previousInvoiceCount: 6,
+      delta: 2,
+      message: "April invoice coverage is ahead of last month.",
+      tone: "success",
+    },
     replyToRequest: vi.fn(() => ({ ok: true, message: "Reply added to request." })),
     requests: [createRequest()],
     resolveRequest: vi.fn(() => ({ ok: true, message: "Request marked as resolved." })),
@@ -173,6 +182,7 @@ function renderPage(workflowOverrides: Record<string, unknown> = {}) {
     },
     login: vi.fn(),
     completeInvite: vi.fn(),
+    changePassword: vi.fn(),
     logout: vi.fn(),
   });
 
@@ -241,6 +251,7 @@ describe("ClientMonthlyPacksPage", () => {
   it("opens the upload modal for the correct slot when a blocker action is clicked", () => {
     renderPage();
 
+    fireEvent.click(screen.getAllByRole("button", { name: /open actions for invoices/i })[0]);
     fireEvent.click(screen.getAllByRole("button", { name: "Re-upload" })[0]);
 
     const dialog = screen.getByRole("dialog", { name: "Smart document upload" });
@@ -250,8 +261,11 @@ describe("ClientMonthlyPacksPage", () => {
     expect(within(dialog).getAllByText("Invoices").length).toBeGreaterThan(0);
   });
 
-  it("shows the rejection reason for blocked rejected documents", () => {
+  it("shows the rejection reason when the review note is opened", () => {
     renderPage();
+
+    fireEvent.click(screen.getAllByRole("button", { name: /open actions for invoices/i })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: /view review note/i })[0]);
 
     expect(
       screen.getAllByText(/invoice support is incomplete because three receipt scans are cropped/i)
@@ -259,13 +273,13 @@ describe("ClientMonthlyPacksPage", () => {
     ).toBeGreaterThan(0);
   });
 
-  it("opens request details on the same page instead of showing a placeholder message", () => {
+  it("lets the user open the review note from the action menu", () => {
     renderPage();
 
-    fireEvent.click(screen.getAllByRole("button", { name: "Open" })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: /open actions for invoices/i })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: /view review note/i })[0]);
 
-    expect(screen.getAllByText("Re-upload invoice support with readable VAT details")[0]).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Upload requested document" })).toBeInTheDocument();
+    expect(screen.getAllByText("Accountant note").length).toBeGreaterThan(0);
   });
 
   it("lets the user dismiss contextual feedback messages", () => {

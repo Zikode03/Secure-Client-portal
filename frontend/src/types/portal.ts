@@ -163,6 +163,21 @@ export interface InvoiceRecord {
   supplierName?: string;
   extractedText?: string;
   rejectionReason?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+  comments?: DocumentComment[];
+  auditTrail?: AuditTrailEntry[];
+}
+
+export type NotificationState = "unread" | "reviewed" | "resolved" | "snoozed";
+
+export interface NotificationActivityEntry {
+  id: string;
+  title: string;
+  detail: string;
+  timestamp: string;
+  tone: Tone;
+  actor?: string;
 }
 
 export interface NotificationItem {
@@ -171,9 +186,17 @@ export interface NotificationItem {
   title: string;
   message: string;
   createdAt: string;
+  dueDate?: string;
   tone: Tone;
   actionLabel: string;
   actionHref: string;
+  linkedRecordLabel?: string;
+  linkedWorkspace?: "monthly_packs" | "documents" | "requests" | "compliance";
+  impactLabel?: string;
+  blockingLabel?: string;
+  nextStep?: string;
+  state?: NotificationState;
+  activity?: NotificationActivityEntry[];
 }
 
 export interface ActivityItem {
@@ -404,6 +427,51 @@ export interface BusinessProfile {
   addressLine: string;
   city: string;
   country: string;
+}
+
+export interface ClientNotificationPreferences {
+  deadlineAlerts: boolean;
+  rejectionAlerts: boolean;
+  complianceAlerts: boolean;
+  weeklySummary: boolean;
+  browserAlerts: boolean;
+}
+
+export interface ClientSecuritySession {
+  id: string;
+  label: string;
+  lastActiveAt: string;
+  location: string;
+  isCurrent: boolean;
+}
+
+export interface ClientSecuritySettings {
+  mfaEnabled: boolean;
+  passwordLastChangedAt: string;
+  recoveryEmail: string;
+  activeSessions: ClientSecuritySession[];
+}
+
+export interface ClientDocumentPreferences {
+  structuredUploadsOnly: boolean;
+  autoNamingLocked: boolean;
+  retentionMode: "audit_ready" | "standard";
+  preferredExport: "pdf" | "csv";
+  acceptedFormats: string[];
+}
+
+export interface ClientSettingsState {
+  notificationPreferences: ClientNotificationPreferences;
+  security: ClientSecuritySettings;
+  documentPreferences: ClientDocumentPreferences;
+}
+
+export interface ScheduledReport {
+  id: string;
+  frequency: "weekly" | "monthly";
+  nextRunAt: string;
+  recipients: string[];
+  lastScheduledAt: string;
 }
 
 export interface PortfolioRow {

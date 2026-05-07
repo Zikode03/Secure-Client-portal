@@ -1,6 +1,7 @@
 import {
   createContext,
   type ReactNode,
+  useEffect,
   useContext,
   useMemo,
   useState,
@@ -25,8 +26,13 @@ import {
 } from "../services/workflowEngine";
 import type {
   AccountantDashboardData,
+  ActivityItem,
   AuditTrailEntry,
   BusinessProfile,
+  ClientDocumentPreferences,
+  ClientNotificationPreferences,
+  ClientSecuritySettings,
+  ClientSettingsState,
   ClientWorkflowSeed,
   ComplianceCentreData,
   DocumentComment,
@@ -36,11 +42,15 @@ import type {
   InvoiceRecord,
   ManagedAccountant,
   MonthlyPack,
+  NotificationActivityEntry,
   NotificationItem,
+  NotificationState,
   PortfolioStatus,
   ReviewQueueItem,
   Role,
+  ScheduledReport,
   SessionUser,
+  Tone,
   UnifiedSearchFilters,
   UnifiedSearchResult,
   UploadSubmission,
@@ -195,6 +205,194 @@ const initialUsers: UserAccountRecord[] = [
   },
 ];
 
+const CLIENT_PORTAL_STORAGE_KEY = "accounting-document-control-client-portal";
+
+function createInitialMonthPack(seed: ClientWorkflowSeed) {
+  return recalculatePack({
+    ...clone(seed.monthPack),
+    submissionStatus: "open" as const,
+    slots: clone(seed.monthPack.slots).map((slot) => ({
+      ...slot,
+      assignedOwner: slot.assignedOwner ?? "Client",
+      dueDate: slot.dueDate ?? seed.monthPack.dueDate,
+    })),
+  });
+}
+
+function createInitialClientSettings(
+  profile: BusinessProfile = initialProfile,
+): ClientSettingsState {
+  return {
+    notificationPreferences: {
+      deadlineAlerts: true,
+      rejectionAlerts: true,
+      complianceAlerts: true,
+      weeklySummary: false,
+      browserAlerts: true,
+    },
+    security: {
+      mfaEnabled: false,
+      passwordLastChangedAt: "2026-04-19T09:00:00.000Z",
+      recoveryEmail: profile.financeEmail,
+      activeSessions: [
+        {
+          id: "session-current-browser",
+          label: "Chrome on Windows",
+          lastActiveAt: "2026-05-07T07:45:00.000Z",
+          location: "Johannesburg, South Africa",
+          isCurrent: true,
+        },
+        {
+          id: "session-mobile",
+          label: "Safari on iPhone",
+          lastActiveAt: "2026-05-06T18:20:00.000Z",
+          location: "Johannesburg, South Africa",
+          isCurrent: false,
+        },
+      ],
+    },
+    documentPreferences: {
+      structuredUploadsOnly: true,
+      autoNamingLocked: true,
+      retentionMode: "audit_ready",
+      preferredExport: "pdf",
+      acceptedFormats: ["PDF", "CSV", "XLSX"],
+    },
+  };
+}
+
+const defaultScheduledReports: ScheduledReport[] = [
+  {
+    id: "client-report-monthly",
+    frequency: "monthly",
+    nextRunAt: "2026-06-01T06:00:00.000Z",
+    recipients: ["finance@apextrading.co.za"],
+    lastScheduledAt: "2026-05-01T09:00:00.000Z",
+  },
+];
+
+interface PersistedClientPortalState {
+  monthPack: MonthlyPack;
+  documents: DocumentRecord[];
+  invoices: InvoiceRecord[];
+  notifications: NotificationItem[];
+  activity: ActivityItem[];
+  requests: WorkflowRequest[];
+  clientProfile: BusinessProfile;
+  clientSettings: ClientSettingsState;
+  scheduledReports: ScheduledReport[];
+  complianceAuditTrail: ComplianceCentreData["auditTrail"];
+  reportGeneratedAt: string;
+}
+
+function createInitialNotifications(seed: ClientWorkflowSeed) {
+  return clone(seed.notifications).map((notification) => ({
+    ...notification,
+    state: notification.state ?? "unread",
+    activity: clone(notification.activity ?? []),
+  }));
+}
+
+function createInitialClientPortalState(
+  seed: ClientWorkflowSeed,
+  compliance: ComplianceCentreData,
+): PersistedClientPortalState {
+  return {
+    monthPack: createInitialMonthPack(seed),
+    documents: clone(seed.documents),
+    invoices: clone(seed.invoices),
+    notifications: createInitialNotifications(seed),
+    activity: clone(seed.activity),
+    requests: clone(initialRequests),
+    clientProfile: clone(initialProfile),
+    clientSettings: createInitialClientSettings(),
+    scheduledReports: clone(defaultScheduledReports),
+    complianceAuditTrail: clone(compliance.auditTrail),
+    reportGeneratedAt: compliance.reportGeneratedAt,
+  };
+}
+
+function readPersistedClientPortalState(
+  seed: ClientWorkflowSeed,
+  compliance: ComplianceCentreData,
+): PersistedClientPortalState {
+  const fallback = createInitialClientPortalState(seed, compliance);
+
+  if (typeof window === "undefined") {
+    return fallback;
+  }
+
+  const storedValue = window.localStorage.getItem(CLIENT_PORTAL_STORAGE_KEY);
+  if (!storedValue) {
+    return fallback;
+  }
+
+  try {
+    const parsed = JSON.parse(storedValue) as Partial<PersistedClientPortalState>;
+    const persistedProfile = parsed.clientProfile
+      ? { ...fallback.clientProfile, ...parsed.clientProfile }
+      : fallback.clientProfile;
+
+    return {
+      monthPack: parsed.monthPack ? recalculatePack(parsed.monthPack) : fallback.monthPack,
+      documents: parsed.documents ? clone(parsed.documents) : fallback.documents,
+      invoices: parsed.invoices
+        ? clone(parsed.invoices).map((invoice) => ({
+            ...invoice,
+            comments: clone(invoice.comments ?? []),
+            auditTrail: clone(invoice.auditTrail ?? []),
+          }))
+        : fallback.invoices,
+      notifications: parsed.notifications
+        ? clone(parsed.notifications).map((notification) => ({
+            ...notification,
+            state: notification.state ?? "unread",
+            activity: clone(notification.activity ?? []),
+          }))
+        : fallback.notifications,
+      activity: parsed.activity ? clone(parsed.activity) : fallback.activity,
+      requests: parsed.requests ? clone(parsed.requests) : fallback.requests,
+      clientProfile: persistedProfile,
+      clientSettings: parsed.clientSettings
+        ? {
+            notificationPreferences: {
+              ...fallback.clientSettings.notificationPreferences,
+              ...parsed.clientSettings.notificationPreferences,
+            },
+            security: {
+              ...fallback.clientSettings.security,
+              ...parsed.clientSettings.security,
+              activeSessions: parsed.clientSettings.security?.activeSessions
+                ? clone(parsed.clientSettings.security.activeSessions)
+                : fallback.clientSettings.security.activeSessions,
+            },
+            documentPreferences: {
+              ...fallback.clientSettings.documentPreferences,
+              ...parsed.clientSettings.documentPreferences,
+            },
+          }
+        : createInitialClientSettings(persistedProfile),
+      scheduledReports: parsed.scheduledReports
+        ? clone(parsed.scheduledReports)
+        : fallback.scheduledReports,
+      complianceAuditTrail: parsed.complianceAuditTrail
+        ? clone(parsed.complianceAuditTrail)
+        : fallback.complianceAuditTrail,
+      reportGeneratedAt: parsed.reportGeneratedAt ?? fallback.reportGeneratedAt,
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+function writePersistedClientPortalState(state: PersistedClientPortalState) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(CLIENT_PORTAL_STORAGE_KEY, JSON.stringify(state));
+}
+
 export interface PortalActionResult {
   ok: boolean;
   message: string;
@@ -233,6 +431,8 @@ interface FollowUpRequestPayload {
 
 interface PortalContextValue {
   clientProfile: BusinessProfile;
+  clientSettings: ClientSettingsState;
+  scheduledReports: ScheduledReport[];
   clientWorkflow: {
     seed: ClientWorkflowSeed;
     monthPack: MonthlyPack;
@@ -274,6 +474,11 @@ interface PortalContextValue {
     role: Role,
     message: string,
   ) => PortalActionResult;
+  updateNotificationState: (
+    notificationId: string,
+    state: NotificationState,
+    actorName: string,
+  ) => PortalActionResult;
   addRequestComment: (
     requestId: string,
     author: string,
@@ -283,6 +488,21 @@ interface PortalContextValue {
   createFollowUpRequest: (payload: FollowUpRequestPayload) => PortalActionResult;
   resolveRequest: (requestId: string, actorName: string) => PortalActionResult;
   updateBusinessProfile: (profile: BusinessProfile) => PortalActionResult;
+  updateClientNotificationPreferences: (
+    preferences: ClientNotificationPreferences,
+  ) => PortalActionResult;
+  updateClientDocumentPreferences: (
+    preferences: ClientDocumentPreferences,
+  ) => PortalActionResult;
+  updateClientSecuritySettings: (
+    security: ClientSecuritySettings,
+  ) => PortalActionResult;
+  downloadComplianceReport: (actorName: string) => PortalActionResult;
+  scheduleComplianceReport: (
+    frequency: ScheduledReport["frequency"],
+    recipients: string[],
+    actorName: string,
+  ) => PortalActionResult;
   assignClientAccountant: (clientId: string, accountantName: string) => PortalActionResult;
   updateClientDeadlinePolicy: (clientId: string, deadlinePolicy: string) => PortalActionResult;
   filterSearchResults: (
@@ -316,6 +536,26 @@ function appendActivity(
     },
     ...current,
   ].slice(0, 12);
+}
+
+function appendNotificationActivity(
+  current: NotificationActivityEntry[] | undefined,
+  title: string,
+  detail: string,
+  tone: Tone,
+  actor?: string,
+) {
+  return [
+    {
+      id: `notification-activity-${(current?.length ?? 0) + 1}-${Date.now()}`,
+      title,
+      detail,
+      timestamp: new Date().toISOString(),
+      tone,
+      actor,
+    },
+    ...(current ?? []),
+  ].slice(0, 8);
 }
 
 function buildTemplateWorkspace(client: FirmClientAccount, source: ClientWorkspaceView): ClientWorkspaceView {
@@ -380,7 +620,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
   const baseAccountantDashboard = useMemo(() => portalService.getAccountantDashboard(), []);
   const baseAdminClients = useMemo(() => portalService.getAdminClients(), []);
   const baseAdminPolicies = useMemo(() => portalService.getAdminPolicies(), []);
-  const clientComplianceCentre = useMemo(
+  const baseClientComplianceCentre = useMemo(
     () => portalService.getClientComplianceCentre(),
     [],
   );
@@ -388,27 +628,74 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     () => portalService.getAccountantComplianceCentre(),
     [],
   );
-  const [monthPack, setMonthPack] = useState(() =>
-    recalculatePack({
-      ...clone(clientSeed.monthPack),
-      submissionStatus: "open" as const,
-      slots: clone(clientSeed.monthPack.slots).map((slot) => ({
-        ...slot,
-        assignedOwner: slot.assignedOwner ?? "Client",
-        dueDate: slot.dueDate ?? clientSeed.monthPack.dueDate,
-      })),
-    }),
+  const initialClientState = useMemo(
+    () => readPersistedClientPortalState(clientSeed, baseClientComplianceCentre),
+    [baseClientComplianceCentre, clientSeed],
   );
-  const [documents, setDocuments] = useState(() => clone(clientSeed.documents));
-  const [invoices, setInvoices] = useState(() => clone(clientSeed.invoices));
-  const [notifications] = useState(() => clone(clientSeed.notifications));
-  const [activity, setActivity] = useState(() => clone(clientSeed.activity));
-  const [requests, setRequests] = useState(() => clone(initialRequests));
-  const [clientProfile, setClientProfile] = useState(() => clone(initialProfile));
+  const [monthPack, setMonthPack] = useState(() => initialClientState.monthPack);
+  const [documents, setDocuments] = useState(() => initialClientState.documents);
+  const [invoices, setInvoices] = useState(() => initialClientState.invoices);
+  const [notifications, setNotifications] = useState(() => initialClientState.notifications);
+  const [activity, setActivity] = useState(() => initialClientState.activity);
+  const [requests, setRequests] = useState(() => initialClientState.requests);
+  const [clientProfile, setClientProfile] = useState(() => initialClientState.clientProfile);
+  const [clientSettings, setClientSettings] = useState(
+    () => initialClientState.clientSettings,
+  );
+  const [scheduledReports, setScheduledReports] = useState(
+    () => initialClientState.scheduledReports,
+  );
+  const [complianceAuditTrail, setComplianceAuditTrail] = useState(
+    () => initialClientState.complianceAuditTrail,
+  );
+  const [reportGeneratedAt, setReportGeneratedAt] = useState(
+    () => initialClientState.reportGeneratedAt,
+  );
   const [adminClients, setAdminClients] = useState(() => clone(baseAdminClients));
   const [adminPolicies] = useState(() => clone(baseAdminPolicies));
   const [managedAccountants] = useState(() => clone(initialAccountants));
   const [userAccounts] = useState(() => clone(initialUsers));
+
+  useEffect(() => {
+    writePersistedClientPortalState({
+      monthPack,
+      documents,
+      invoices,
+      notifications,
+      activity,
+      requests,
+      clientProfile,
+      clientSettings,
+      scheduledReports,
+      complianceAuditTrail,
+      reportGeneratedAt,
+    });
+  }, [
+    activity,
+    clientProfile,
+    clientSettings,
+    complianceAuditTrail,
+    documents,
+    invoices,
+    monthPack,
+    notifications,
+    reportGeneratedAt,
+    requests,
+    scheduledReports,
+  ]);
+
+  const clientComplianceCentre = useMemo(
+    () => ({
+      ...baseClientComplianceCentre,
+      auditTrail: complianceAuditTrail,
+      reportGeneratedAt,
+      retentionNote:
+        clientSettings.documentPreferences.retentionMode === "audit_ready"
+          ? baseClientComplianceCentre.retentionNote
+          : "Standard retention is active. Expired records remain visible until they are manually replaced and archived.",
+    }),
+    [baseClientComplianceCentre, clientSettings.documentPreferences.retentionMode, complianceAuditTrail, reportGeneratedAt],
+  );
 
   const missingRequiredDocuments = useMemo(
     () => buildMissingDocuments(monthPack),
@@ -802,7 +1089,29 @@ export function PortalProvider({ children }: { children: ReactNode }) {
             ? {
                 ...invoice,
                 status: action,
+                reviewedBy: reviewer,
+                reviewedAt,
                 rejectionReason: action === "rejected" ? reason?.trim() : undefined,
+                auditTrail: [
+                  {
+                    id: `invoice-audit-${(invoice.auditTrail?.length ?? 0) + 1}`,
+                    status:
+                      action === "accepted"
+                        ? "Accepted"
+                        : action === "under_review"
+                          ? "Under Review"
+                          : "Rejected",
+                    actor: reviewer,
+                    timestamp: reviewedAt,
+                    note:
+                      action === "rejected"
+                        ? reason!.trim()
+                        : action === "accepted"
+                          ? "Accepted and locked into the workflow."
+                          : "Moved into under review while checks continue.",
+                  },
+                  ...(invoice.auditTrail ?? []),
+                ],
               }
             : invoice,
         ),
@@ -832,30 +1141,111 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     }
 
     const targetDocument = documents.find((document) => document.id === recordId);
-    if (!targetDocument) {
+    if (targetDocument) {
+      const nextComment: DocumentComment = {
+        id: `comment-${targetDocument.comments.length + 100}`,
+        author,
+        role,
+        message: trimmedMessage,
+        createdAt: new Date().toISOString(),
+      };
+
+      setDocuments((current) =>
+        current.map((document) =>
+          document.id === recordId
+            ? {
+                ...document,
+                comments: [...document.comments, nextComment],
+              }
+            : document,
+        ),
+      );
+
+      return { ok: true, message: "Comment added to the document thread." };
+    }
+
+    const targetInvoice = invoices.find((invoice) => invoice.id === recordId);
+    if (!targetInvoice) {
       return { ok: false, message: "The selected document thread could not be found." };
     }
 
     const nextComment: DocumentComment = {
-      id: `comment-${targetDocument.comments.length + 100}`,
+      id: `invoice-comment-${(targetInvoice.comments?.length ?? 0) + 1}`,
       author,
       role,
       message: trimmedMessage,
       createdAt: new Date().toISOString(),
     };
 
-    setDocuments((current) =>
-      current.map((document) =>
-        document.id === recordId
+    setInvoices((current) =>
+      current.map((invoice) =>
+        invoice.id === recordId
           ? {
-              ...document,
-              comments: [...document.comments, nextComment],
+              ...invoice,
+              comments: [...(invoice.comments ?? []), nextComment],
+              auditTrail: [
+                {
+                  id: `invoice-audit-${(invoice.auditTrail?.length ?? 0) + 1}`,
+                  status: "Comment added",
+                  actor: author,
+                  timestamp: nextComment.createdAt,
+                  note: trimmedMessage,
+                },
+                ...(invoice.auditTrail ?? []),
+              ],
             }
-          : document,
+          : invoice,
       ),
     );
 
-    return { ok: true, message: "Comment added to the document thread." };
+    return { ok: true, message: "Comment added to the invoice thread." };
+  }
+
+  function updateNotificationState(
+    notificationId: string,
+    state: NotificationState,
+    actorName: string,
+  ): PortalActionResult {
+    const targetNotification = notifications.find((notification) => notification.id === notificationId);
+    if (!targetNotification) {
+      return { ok: false, message: "The selected notification could not be found." };
+    }
+
+    setNotifications((current) =>
+      current.map((notification) =>
+        notification.id === notificationId
+          ? {
+              ...notification,
+              state,
+              activity: appendNotificationActivity(
+                notification.activity,
+                state === "resolved"
+                  ? "Notification resolved"
+                  : state === "reviewed"
+                    ? "Notification reviewed"
+                    : "Notification snoozed",
+                state === "resolved"
+                  ? `${actorName} completed the required action for this notification.`
+                  : state === "reviewed"
+                    ? `${actorName} reviewed this notification.`
+                    : `${actorName} snoozed this notification for later follow-up.`,
+                state === "resolved" ? "success" : "info",
+                actorName,
+              ),
+            }
+          : notification,
+      ),
+    );
+
+    return {
+      ok: true,
+      message:
+        state === "resolved"
+          ? "Notification marked as resolved."
+          : state === "reviewed"
+            ? "Notification marked as reviewed."
+            : "Notification snoozed for later review.",
+    };
   }
 
   function addRequestComment(
@@ -971,7 +1361,129 @@ export function PortalProvider({ children }: { children: ReactNode }) {
 
   function updateBusinessProfile(profile: BusinessProfile): PortalActionResult {
     setClientProfile(profile);
+    setClientSettings((current) => ({
+      ...current,
+      security: {
+        ...current.security,
+        recoveryEmail: profile.financeEmail,
+      },
+    }));
     return { ok: true, message: "Business profile updated for the client workspace." };
+  }
+
+  function updateClientNotificationPreferences(
+    preferences: ClientNotificationPreferences,
+  ): PortalActionResult {
+    setClientSettings((current) => ({
+      ...current,
+      notificationPreferences: preferences,
+    }));
+
+    return {
+      ok: true,
+      message: "Notification preferences saved for this client workspace.",
+    };
+  }
+
+  function updateClientDocumentPreferences(
+    preferences: ClientDocumentPreferences,
+  ): PortalActionResult {
+    setClientSettings((current) => ({
+      ...current,
+      documentPreferences: preferences,
+    }));
+
+    return {
+      ok: true,
+      message: "Document preferences updated. Structured upload and retention rules are now current.",
+    };
+  }
+
+  function updateClientSecuritySettings(
+    security: ClientSecuritySettings,
+  ): PortalActionResult {
+    setClientSettings((current) => ({
+      ...current,
+      security,
+    }));
+
+    return {
+      ok: true,
+      message: "Security settings updated for the active client account.",
+    };
+  }
+
+  function downloadComplianceReport(actorName: string): PortalActionResult {
+    const generatedAt = new Date().toISOString();
+    setReportGeneratedAt(generatedAt);
+    setComplianceAuditTrail((current) => [
+      {
+        id: `compliance-audit-${current.length + 1}`,
+        action: "downloaded",
+        actor: actorName,
+        timestamp: generatedAt,
+        detail: "Downloaded the latest client compliance report.",
+      },
+      ...current,
+    ]);
+
+    return {
+      ok: true,
+      message: "Compliance report regenerated and prepared for download.",
+    };
+  }
+
+  function scheduleComplianceReport(
+    frequency: ScheduledReport["frequency"],
+    recipients: string[],
+    actorName: string,
+  ): PortalActionResult {
+    const nextRunAt =
+      frequency === "weekly" ? "2026-05-14T06:00:00.000Z" : "2026-06-01T06:00:00.000Z";
+    const scheduledAt = new Date().toISOString();
+
+    setScheduledReports((current) => {
+      const existing = current.find((report) => report.frequency === frequency);
+      if (existing) {
+        return current.map((report) =>
+          report.frequency === frequency
+            ? {
+                ...report,
+                recipients,
+                nextRunAt,
+                lastScheduledAt: scheduledAt,
+              }
+            : report,
+        );
+      }
+
+      return [
+        ...current,
+        {
+          id: `scheduled-report-${frequency}`,
+          frequency,
+          recipients,
+          nextRunAt,
+          lastScheduledAt: scheduledAt,
+        },
+      ];
+    });
+
+    setComplianceAuditTrail((current) => [
+      {
+        id: `compliance-audit-${current.length + 1}`,
+        action: "reviewed",
+        actor: actorName,
+        timestamp: scheduledAt,
+        detail: `Scheduled ${frequency} compliance reporting for ${recipients.join(", ")}.`,
+      },
+      ...current,
+    ]);
+
+    return {
+      ok: true,
+      message: `${frequency === "weekly" ? "Weekly" : "Monthly"} compliance reporting has been scheduled.`,
+    };
   }
 
   function assignClientAccountant(
@@ -1184,6 +1696,8 @@ export function PortalProvider({ children }: { children: ReactNode }) {
   const value = useMemo<PortalContextValue>(
     () => ({
       clientProfile,
+      clientSettings,
+      scheduledReports,
       clientWorkflow: {
         seed: clientSeed,
         monthPack,
@@ -1217,10 +1731,16 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       finaliseInvoice,
       reviewRecord,
       addDocumentComment,
+      updateNotificationState,
       addRequestComment,
       createFollowUpRequest,
       resolveRequest,
       updateBusinessProfile,
+      updateClientNotificationPreferences,
+      updateClientDocumentPreferences,
+      updateClientSecuritySettings,
+      downloadComplianceReport,
+      scheduleComplianceReport,
       assignClientAccountant,
       updateClientDeadlinePolicy,
       filterSearchResults: filterUnifiedSearchResults,
@@ -1235,9 +1755,11 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       adminClients,
       adminPolicies,
       clientComplianceCentre,
+      clientSettings,
       clientProfile,
       clientSeed,
       documents,
+      downloadComplianceReport,
       expiringDocuments,
       invoices,
       latestInvoices,
@@ -1250,12 +1772,18 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       previousMonthComparison,
       previousMonthDocuments,
       reconciliationIssues,
+      scheduleComplianceReport,
+      scheduledReports,
       resolveRequest,
       rejectedDocuments,
       requests,
       smartAlerts,
       summaryMetrics,
       unifiedSearchResults,
+      updateClientDocumentPreferences,
+      updateClientNotificationPreferences,
+      updateClientSecuritySettings,
+      updateNotificationState,
       userAccounts,
     ],
   );

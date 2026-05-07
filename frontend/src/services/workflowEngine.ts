@@ -497,6 +497,9 @@ export function buildInvoiceReviewQueue(
 }
 
 export function buildReviewDocumentFromInvoice(invoice: InvoiceRecord): DocumentRecord {
+  const invoiceComments = invoice.comments ?? [];
+  const invoiceAuditTrail = invoice.auditTrail ?? [];
+
   return {
     id: invoice.id,
     clientId: invoice.clientId,
@@ -515,13 +518,15 @@ export function buildReviewDocumentFromInvoice(invoice: InvoiceRecord): Document
             : "uploaded",
     uploadedBy: invoice.clientName,
     uploadedAt: invoice.uploadedAt,
+    reviewedBy: invoice.reviewedBy,
+    reviewedAt: invoice.reviewedAt,
     sizeLabel: invoice.amountLabel,
     keywordTags: invoice.keywordTags,
     supplierName: invoice.supplierName,
     amountLabel: invoice.amountLabel,
     extractedText: invoice.extractedText,
     rejectionReason: invoice.rejectionReason,
-    comments: [],
+    comments: invoiceComments,
     auditTrail: [
       {
         id: `${invoice.id}-audit-1`,
@@ -537,6 +542,7 @@ export function buildReviewDocumentFromInvoice(invoice: InvoiceRecord): Document
         timestamp: invoice.uploadedAt,
         note: `Invoice is currently ${invoice.status.replace(/_/g, " ")}.`,
       },
+      ...invoiceAuditTrail,
     ],
   };
 }
@@ -634,7 +640,7 @@ export function buildUnifiedSearchResults(args: {
     amountLabel: invoice.amountLabel,
     supplierName: invoice.supplierName,
     uploadedBy: invoice.clientName,
-    commentCount: 0,
+    commentCount: invoice.comments?.length ?? 0,
     keywordText: [
       invoice.invoiceNumber,
       invoice.fileName,

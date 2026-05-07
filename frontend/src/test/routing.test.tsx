@@ -79,4 +79,25 @@ describe("role-based route access", () => {
       await screen.findByText("You do not have permission to open this workspace."),
     ).toBeInTheDocument();
   });
+
+  it("client navigation no longer shows standalone messages or invoices items", async () => {
+    renderAppAt("/client/dashboard", createUser("client"));
+
+    expect(await screen.findByText("Monthly Document Control")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Documents" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Invoices" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Messages" })).not.toBeInTheDocument();
+  });
+
+  it("legacy client messages route redirects users to contextual workspaces", async () => {
+    renderAppAt("/client/messages", createUser("client"));
+
+    expect(await screen.findByText("My requests and tasks")).toBeInTheDocument();
+  });
+
+  it("legacy client invoices route redirects to the document workspace", async () => {
+    renderAppAt("/client/invoices", createUser("client"));
+
+    expect(await screen.findByText("Document workspace")).toBeInTheDocument();
+  });
 });

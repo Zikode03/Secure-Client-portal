@@ -9,6 +9,7 @@ import {
 import type { Role, SessionUser } from "../types/portal";
 
 const STORAGE_KEY = "accounting-document-control-session";
+const CREDENTIALS_KEY = "accounting-document-control-credentials";
 
 interface LoginPayload {
   email: string;
@@ -32,6 +33,7 @@ interface AuthContextValue {
   user: SessionUser | null;
   login: (payload: LoginPayload) => AuthResult;
   completeInvite: (payload: InviteSetupPayload) => AuthResult;
+  changePassword: (currentPassword: string, nextPassword: string) => AuthResult;
   logout: () => void;
 }
 
@@ -73,6 +75,12 @@ const mockUsersByEmail: Record<string, SessionUser> = {
   },
 };
 
+const defaultCredentialsByEmail: Record<string, string> = {
+  "client@example.com": "Client@2026",
+  "accountant@example.com": "Accountant@2026",
+  "admin@example.com": "Admin@2026",
+};
+
 function createInitials(fullName: string) {
   const initials = fullName
     .split(/\s+/)
@@ -86,6 +94,36 @@ function createInitials(fullName: string) {
 
 function getMockUserByEmail(email: string) {
   return mockUsersByEmail[email.trim().toLowerCase()];
+}
+
+function readCredentials() {
+  if (typeof window === "undefined") {
+    return defaultCredentialsByEmail;
+  }
+
+  const storedCredentials = window.localStorage.getItem(CREDENTIALS_KEY);
+  if (!storedCredentials) {
+    window.localStorage.setItem(CREDENTIALS_KEY, JSON.stringify(defaultCredentialsByEmail));
+    return defaultCredentialsByEmail;
+  }
+
+  try {
+    return {
+      ...defaultCredentialsByEmail,
+      ...(JSON.parse(storedCredentials) as Record<string, string>),
+    };
+  } catch {
+    window.localStorage.setItem(CREDENTIALS_KEY, JSON.stringify(defaultCredentialsByEmail));
+    return defaultCredentialsByEmail;
+  }
+}
+
+function writeCredentials(credentials: Record<string, string>) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(CREDENTIALS_KEY, JSON.stringify(credentials));
 }
 
 export function defaultPathForRole(role: Role) {
@@ -135,6 +173,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login({ email, password }) {
         const trimmedEmail = email.trim().toLowerCase();
         const matchedUser = getMockUserByEmail(trimmedEmail);
+        const credentials = readCredentials();
 
         if (!trimmedEmail.includes("@")) {
           return { ok: false, message: "Use the email tied to your portal account." };
@@ -152,6 +191,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return {
             ok: false,
             message: "Use a password with at least 8 characters to continue.",
+          };
+        }
+
+        if (credentials[trimmedEmail] !== password) {
+          return {
+            ok: false,
+            message: "The password does not match this portal account.",
           };
         }
 
@@ -182,9 +228,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           name: fullName.trim().split(/\s+/)[0] ?? matchedUser.name,
           initials: createInitials(fullName.trim()),
         };
+        const credentials = readCredentials();
+        credentials[trimmedEmail] = password.trim();
+        writeCredentials(credentials);
         setUser(nextUser);
 
         return { ok: true, user: nextUser };
+      },
+      changePassword(currentPassword, nextPassword) {
+        if (!user) {
+          return { ok: false, message: "You need an active session before changing the password." };
+        }
+
+        if (nextPassword.trim().length < 8) {
+          return { ok: false, message: "Use a new password with at least 8 characters." };
+        }
+
+        const credentials = readCredentials();
+        const currentCredential = credentials[user.email.toLowerCase()];
+
+        if (currentCredential !== currentPassword) {
+          return { ok: false, message: "Your current password is incorrect." };
+        }
+
+        credentials[user.email.toLowerCase()] = nextPassword.trim();
+        writeCredentials(credentials);
+        return { ok: true, message: "Password updated for this portal account." };
       },
       logout() {
         setUser(null);

@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../app/auth";
+import { usePortal } from "../../app/portal";
 import { DocumentUploadModal } from "../../components/workflow/DocumentUploadModal";
-import { MonthlyPackChecklist } from "../../components/workflow/MonthlyPackChecklist";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
@@ -20,7 +20,7 @@ import type {
   WorkflowRequest,
 } from "../../types/portal";
 import { cn } from "../../utils/cn";
-import { formatDateLabel, formatDateTimeLabel } from "../../utils/formatters";
+import { formatDateLabel, formatDateTimeLabel, formatStatusLabel } from "../../utils/formatters";
 
 const readyStatuses = new Set<MonthlyDocumentSlot["status"]>([
   "uploaded",
@@ -94,29 +94,6 @@ function ChevronRightIcon() {
     <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24">
       <path
         d="m9 6 6 6-6 6"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
-}
-
-function CalendarIcon() {
-  return (
-    <svg aria-hidden="true" className="h-4.5 w-4.5 text-slate-600" fill="none" viewBox="0 0 24 24">
-      <rect
-        height="14"
-        rx="2.5"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        width="16"
-        x="4"
-        y="6.5"
-      />
-      <path
-        d="M8 4.5v4m8-4v4M4 10.5h16"
         stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -254,18 +231,6 @@ function AlertListIcon({ tone }: { tone: Tone }) {
       </svg>
     </div>
   );
-}
-
-function statusPillClasses(tone: "warning" | "success" | "info") {
-  if (tone === "success") {
-    return "bg-emerald-50 text-emerald-700";
-  }
-
-  if (tone === "info") {
-    return "bg-brand-50 text-brand-700";
-  }
-
-  return "bg-rose-50 text-rose-600";
 }
 
 function bannerClasses(tone: "warning" | "success" | "info") {
@@ -458,8 +423,105 @@ function NextActionsCard({
   );
 }
 
+function slotTone(status: MonthlyDocumentSlot["status"]) {
+  if (status === "accepted" || status === "filed" || status === "under_review" || status === "uploaded") {
+    return "border-emerald-100 bg-emerald-50 text-emerald-700";
+  }
+
+  if (status === "rejected") {
+    return "border-rose-100 bg-rose-50 text-rose-700";
+  }
+
+  if (status === "pending_signature" || status === "partial" || status === "pending") {
+    return "border-amber-100 bg-amber-50 text-amber-700";
+  }
+
+  return "border-slate-200 bg-slate-50 text-slate-600";
+}
+
+function MonthlyPackPreviewCard({
+  pack,
+  onOpenPack,
+}: {
+  pack: MonthlyPack;
+  onOpenPack: () => void;
+}) {
+  const previewSlots = pack.slots.filter(
+    (slot) => slot.documentType === "Bank Statement" || slot.documentType === "Invoices",
+  );
+
+  return (
+    <SurfaceCard className="rounded-[1.5rem] border border-slate-200/80 bg-white p-0 shadow-[0_20px_45px_rgba(15,23,42,0.05)]">
+      <div className="border-b border-slate-100 px-5 pb-4 pt-5">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-[1rem] font-semibold text-slate-950">Monthly pack snapshot</h2>
+            <p className="mt-1 text-[0.82rem] text-slate-500">
+              Quick view only. Open the pack workspace to upload, correct, and submit.
+            </p>
+          </div>
+          <button
+            className="text-sm font-medium text-brand-600 transition hover:text-brand-700"
+            onClick={onOpenPack}
+            type="button"
+          >
+            Open workspace
+          </button>
+        </div>
+      </div>
+
+      <div className="grid gap-4 px-5 py-5 lg:grid-cols-[minmax(0,0.82fr)_minmax(220px,0.18fr)]">
+        <div className="space-y-3">
+          {previewSlots.map((slot) => (
+            <div
+              className="flex items-center justify-between gap-4 rounded-[1.2rem] border border-slate-200 bg-slate-50/80 px-4 py-3"
+              key={slot.id}
+            >
+              <div className="min-w-0">
+                <p className="text-[0.95rem] font-semibold text-slate-950">{slot.documentType}</p>
+                <p className="mt-1 text-[0.82rem] text-slate-500">
+                  {slot.month} {slot.year}
+                  {slot.lastSubmission ? ` • Updated ${formatDateLabel(slot.lastSubmission)}` : " • No upload yet"}
+                </p>
+              </div>
+              <span
+                className={cn(
+                  "inline-flex shrink-0 rounded-full border px-2.5 py-1 text-[0.72rem] font-semibold",
+                  slotTone(slot.status),
+                )}
+              >
+                {formatStatusLabel(slot.status)}
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <div className="rounded-[1.2rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#fbfbff_100%)] px-4 py-4">
+          <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-slate-400">
+            Pack status
+          </p>
+          <p className="mt-2 text-[1.28rem] font-semibold tracking-tight text-slate-950">
+            {pack.completedCount} / {pack.totalCount}
+          </p>
+          <p className="mt-1 text-[0.84rem] text-slate-500">{pack.progressPercent}% complete</p>
+          <div className="mt-3 h-2 rounded-full bg-slate-100">
+            <div
+              className="h-2 rounded-full bg-brand-500"
+              style={{ width: `${pack.progressPercent}%` }}
+            />
+          </div>
+          <p className="mt-4 text-[0.8rem] leading-6 text-slate-500">
+            Due {formatDateLabel(pack.dueDate)}
+          </p>
+        </div>
+      </div>
+    </SurfaceCard>
+  );
+}
+
 export function ClientDashboardPage() {
   const { user } = useAuth();
+  const portal = usePortal();
   const navigate = useNavigate();
   const uploadModal = useDisclosure(false);
   const [selectedSlot, setSelectedSlot] = useState<MonthlyDocumentSlot | null>(null);
@@ -511,15 +573,6 @@ export function ClientDashboardPage() {
   const latestRecordsPreview = useMemo(
     () => latestOverallDocuments.slice(0, 5),
     [latestOverallDocuments],
-  );
-  const dashboardPackPreview = useMemo(
-    () => ({
-      ...monthPack,
-      slots: monthPack.slots.filter(
-        (slot) => slot.documentType === "Bank Statement" || slot.documentType === "Invoices",
-      ),
-    }),
-    [monthPack],
   );
   const nextActions = useMemo<NextActionItem[]>(() => {
     const items: NextActionItem[] = [];
@@ -600,6 +653,20 @@ export function ClientDashboardPage() {
     return items.slice(0, 3);
   }, [blockingSlots, expiringDocuments, monthPack.canComplete, monthPack.submissionStatus, navigate, requests, submitMonth]);
 
+  const openRequestsCount = useMemo(
+    () => requests.filter((request) => request.status !== "resolved" && request.status !== "closed").length,
+    [requests],
+  );
+
+  const waitingOnClientCount = useMemo(
+    () => requests.filter((request) => request.status === "awaiting_client").length,
+    [requests],
+  );
+
+  const complianceHealth = portal.clientComplianceCentre.overallScore;
+  const expiredComplianceCount = portal.clientComplianceCentre.expiredDocuments.length;
+  const expiringComplianceCount = portal.clientComplianceCentre.expiringDocuments.length;
+
   const submissionState = useMemo(() => {
     if (monthPack.submissionStatus === "under_accountant_review") {
       return {
@@ -644,14 +711,6 @@ export function ClientDashboardPage() {
     navigate("/client/packs#pack-checklist");
     setOptionsOpen(false);
   }
-
-  const lastSubmittedText = monthPack.submittedAt
-    ? formatDateLabel(monthPack.submittedAt)
-    : "Not submitted";
-
-  const lastSubmittedHelper = monthPack.submittedAt
-    ? "Submitted to accountant review"
-    : "This month not submitted yet";
 
   return (
     <div className="mx-auto max-w-[1180px] space-y-4">
@@ -769,7 +828,53 @@ export function ClientDashboardPage() {
         <div className="grid md:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-2 px-5 py-4 lg:border-r lg:border-slate-100">
             <p className="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-slate-500">
-              Progress
+              Compliance Health
+            </p>
+            <p className="text-[1.38rem] font-semibold tracking-tight text-slate-950">
+              {complianceHealth}%
+            </p>
+            <p className="text-[0.86rem] text-slate-500">
+              {expiredComplianceCount} expired / {expiringComplianceCount} expiring soon
+            </p>
+            <div className="h-2 rounded-full bg-slate-100">
+              <div
+                className="h-2 rounded-full bg-emerald-500"
+                style={{ width: `${complianceHealth}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2 px-5 py-4 lg:border-r lg:border-slate-100">
+            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-slate-500">
+              Requests
+            </p>
+            <p className="text-[1.38rem] font-semibold tracking-tight text-slate-950">
+              {openRequestsCount}
+            </p>
+            <p className="text-[0.86rem] text-slate-500">
+              {waitingOnClientCount > 0
+                ? `${waitingOnClientCount} waiting on you`
+                : "No requests waiting on you"}
+            </p>
+          </div>
+
+          <div className="space-y-2 px-5 py-4 lg:border-r lg:border-slate-100">
+            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-slate-500">
+              Documents Missing
+            </p>
+            <p className="text-[1.38rem] font-semibold tracking-tight text-slate-950">
+              {missingRequiredCount}
+            </p>
+            <p className="text-[0.86rem] text-slate-500">
+              {rejectedRequiredCount > 0
+                ? `${rejectedRequiredCount} rejected still need correction`
+                : "Required checklist blockers"}
+            </p>
+          </div>
+
+          <div className="space-y-2 px-5 py-4">
+            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-slate-500">
+              Pack Progress
             </p>
             <p className="text-[1.38rem] font-semibold tracking-tight text-slate-950">
               {monthPack.completedCount} of {monthPack.totalCount}
@@ -777,67 +882,16 @@ export function ClientDashboardPage() {
             <p className="text-[0.86rem] text-slate-500">{monthPack.progressPercent}% complete</p>
             <div className="h-2 rounded-full bg-slate-100">
               <div
-                className="h-2 rounded-full bg-emerald-500"
+                className="h-2 rounded-full bg-brand-500"
                 style={{ width: `${monthPack.progressPercent}%` }}
               />
             </div>
-          </div>
-
-          <div className="space-y-2 px-5 py-4 lg:border-r lg:border-slate-100">
-            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-slate-500">
-              Due Date
-            </p>
-            <div className="flex items-center gap-2.5 text-[1.38rem] font-semibold tracking-tight text-slate-950">
-              <CalendarIcon />
-              <span>{formatDateLabel(monthPack.dueDate)}</span>
-            </div>
-            <p className="text-[0.86rem] text-slate-500">Client side deadline</p>
-          </div>
-
-          <div className="space-y-2 px-5 py-4 lg:border-r lg:border-slate-100">
-            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-slate-500">
-              Status
-            </p>
-            <span
-              className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[0.82rem] font-semibold ${statusPillClasses(
-                submissionState.tone,
-              )}`}
-            >
-              <span
-                className={`h-2.5 w-2.5 rounded-full ${
-                  submissionState.tone === "success"
-                    ? "bg-emerald-500"
-                    : submissionState.tone === "info"
-                      ? "bg-brand-500"
-                      : "bg-rose-500"
-                }`}
-              />
-              {submissionState.label}
-            </span>
-            <p className="text-[0.86rem] text-slate-500">{submissionState.statusHelper}</p>
-          </div>
-
-          <div className="space-y-2 px-5 py-4">
-            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-slate-500">
-              Last Submitted
-            </p>
-            <p className="text-[1.38rem] font-semibold tracking-tight text-slate-950">{lastSubmittedText}</p>
-            <p className="text-[0.86rem] text-slate-500">{lastSubmittedHelper}</p>
           </div>
         </div>
       </SurfaceCard>
 
       <section>
-        <MonthlyPackChecklist
-          headerActionLabel="View full pack"
-          onDownload={(slot) => triggerDownload(slot.autoName)}
-          onHeaderAction={handleOpenWorkspace}
-          onUpload={handleOpenUpload}
-          onView={() => handleOpenWorkspace()}
-          pack={dashboardPackPreview}
-          showFooterMeta={false}
-          showSlotCount={false}
-        />
+        <MonthlyPackPreviewCard onOpenPack={handleOpenWorkspace} pack={monthPack} />
       </section>
 
       <section className="grid gap-5 lg:grid-cols-3">

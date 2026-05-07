@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../app/auth";
 import { DocumentUploadModal } from "../../components/workflow/DocumentUploadModal";
 import { AuditTrail } from "../../components/workflow/AuditTrail";
+import { CommentThread } from "../../components/workflow/CommentThread";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
@@ -16,7 +17,25 @@ import type {
   RequestStatus,
   WorkflowRequest,
 } from "../../types/portal";
-import { formatDateLabel, formatDateTimeLabel } from "../../utils/formatters";
+import { formatDateLabel } from "../../utils/formatters";
+
+type RequestDetailTab = "overview" | "comments" | "audit" | "documents";
+type RequestListFilter = "all" | "open" | "waiting" | "overdue" | "resolved";
+
+function SearchIcon() {
+  return (
+    <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
+      <circle cx="11" cy="11" r="6.25" stroke="currentColor" strokeWidth="1.8" />
+      <path
+        d="m16 16 3.75 3.75"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
+}
 
 function UploadIcon() {
   return (
@@ -32,33 +51,23 @@ function UploadIcon() {
   );
 }
 
-function MessageIcon() {
+function DocumentIcon() {
   return (
     <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24">
       <path
-        d="M7.75 5.75h8.5a2 2 0 0 1 2 2v6.5a2 2 0 0 1-2 2H11l-3.75 3v-3H7.75a2 2 0 0 1-2-2v-6.5a2 2 0 0 1 2-2Z"
+        d="M8 3.75h6l4.25 4.25v10.25a2 2 0 0 1-2 2H8A2.25 2.25 0 0 1 5.75 18V6A2.25 2.25 0 0 1 8 3.75Z"
         stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeWidth="1.8"
       />
       <path
-        d="M9.5 9.5h5M9.5 12.5h3.5"
+        d="M13.75 3.75V8h4.25"
         stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeWidth="1.8"
       />
-    </svg>
-  );
-}
-
-function MoreIcon() {
-  return (
-    <svg aria-hidden="true" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-      <circle cx="5" cy="12" r="1.7" />
-      <circle cx="12" cy="12" r="1.7" />
-      <circle cx="19" cy="12" r="1.7" />
     </svg>
   );
 }
@@ -100,27 +109,6 @@ function CalendarIcon() {
   );
 }
 
-function DocumentMetaIcon() {
-  return (
-    <svg aria-hidden="true" className="h-4.5 w-4.5 text-slate-500" fill="none" viewBox="0 0 24 24">
-      <path
-        d="M8 3.75h6l4.25 4.25v10.25a2 2 0 0 1-2 2H8A2.25 2.25 0 0 1 5.75 18V6A2.25 2.25 0 0 1 8 3.75Z"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-      <path
-        d="M13.75 3.75V8h4.25"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
-}
-
 function UserIcon() {
   return (
     <svg aria-hidden="true" className="h-4.5 w-4.5 text-slate-500" fill="none" viewBox="0 0 24 24">
@@ -150,18 +138,18 @@ function PriorityIcon() {
   );
 }
 
-function SummaryIcon({ kind }: { kind: "open" | "waiting" | "due" | "resolved" }) {
+function SummaryIcon({ kind }: { kind: "open" | "waiting" | "overdue" | "resolved" }) {
   const classes =
     kind === "resolved"
       ? "bg-emerald-50 text-emerald-600 ring-emerald-100"
-      : kind === "due"
+      : kind === "overdue"
         ? "bg-rose-50 text-rose-500 ring-rose-100"
         : kind === "waiting"
           ? "bg-amber-50 text-amber-500 ring-amber-100"
           : "bg-brand-50 text-brand-600 ring-brand-100";
 
   return (
-    <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ring-1 ${classes}`}>
+    <div className={`flex h-11 w-11 items-center justify-center rounded-2xl ring-1 ${classes}`}>
       {kind === "resolved" ? (
         <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
           <path
@@ -173,8 +161,16 @@ function SummaryIcon({ kind }: { kind: "open" | "waiting" | "due" | "resolved" }
           />
           <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
         </svg>
-      ) : kind === "due" ? (
-        <CalendarIcon />
+      ) : kind === "overdue" ? (
+        <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
+          <path
+            d="M12 8.5v4m0 3h.01M10.26 4.76 2.9 17.5a1.5 1.5 0 0 0 1.3 2.25H18.8a1.5 1.5 0 0 0 1.3-2.25L12.74 4.76a1.5 1.5 0 0 0-2.48 0Z"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+        </svg>
       ) : kind === "waiting" ? (
         <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
           <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="1.8" />
@@ -187,19 +183,50 @@ function SummaryIcon({ kind }: { kind: "open" | "waiting" | "due" | "resolved" }
           />
         </svg>
       ) : (
-        <MessageIcon />
+        <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
+          <path
+            d="M7.75 5.75h8.5a2 2 0 0 1 2 2v6.5a2 2 0 0 1-2 2H11l-3.75 3v-3H7.75a2 2 0 0 1-2-2v-6.5a2 2 0 0 1 2-2Z"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+        </svg>
       )}
     </div>
   );
 }
 
-function getInitials(value: string) {
-  return value
-    .split(" ")
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((word) => word[0]?.toUpperCase() ?? "")
-    .join("");
+function RequestTypeIcon({ documentType }: { documentType: string }) {
+  const classes =
+    documentType === "Bank Statement"
+      ? "bg-sky-50 text-sky-600 ring-sky-100"
+      : documentType === "Invoices"
+        ? "bg-rose-50 text-rose-500 ring-rose-100"
+        : documentType === "Signed Documents"
+          ? "bg-amber-50 text-amber-500 ring-amber-100"
+          : "bg-brand-50 text-brand-600 ring-brand-100";
+
+  return (
+    <div className={`flex h-11 w-11 items-center justify-center rounded-2xl ring-1 ${classes}`}>
+      <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
+        <path
+          d="M8 3.75h6l4.25 4.25v10.25a2 2 0 0 1-2 2H8A2.25 2.25 0 0 1 5.75 18V6A2.25 2.25 0 0 1 8 3.75Z"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="1.8"
+        />
+        <path
+          d="M13.75 3.75V8h4.25"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="1.8"
+        />
+      </svg>
+    </div>
+  );
 }
 
 function daysUntilDue(dateValue: string) {
@@ -209,30 +236,62 @@ function daysUntilDue(dateValue: string) {
   return Math.ceil(difference / (1000 * 60 * 60 * 24));
 }
 
-function requestStatusMeta(status: RequestStatus) {
+function dueLabel(dateValue: string) {
+  const days = daysUntilDue(dateValue);
+
+  if (days < 0) {
+    return `Overdue by ${Math.abs(days)} day${Math.abs(days) === 1 ? "" : "s"}`;
+  }
+
+  if (days === 0) {
+    return "Due today";
+  }
+
+  if (days === 1) {
+    return "Due in 1 day";
+  }
+
+  return `Due in ${days} days`;
+}
+
+function requestStatusMeta(status: RequestStatus, dueDate: string) {
+  const overdue = daysUntilDue(dueDate) < 0 && !["resolved", "closed"].includes(status);
+  if (overdue) {
+    return {
+      filter: "overdue" as const,
+      label: "Overdue",
+      badge: "bg-rose-50 text-rose-700 ring-rose-200",
+    };
+  }
+
   switch (status) {
     case "awaiting_client":
       return {
-        label: "Waiting on you",
+        filter: "waiting" as const,
+        label: "Waiting on me",
         badge: "bg-amber-50 text-amber-700 ring-amber-200",
       };
     case "client_replied":
       return {
-        label: "Client replied",
+        filter: "open" as const,
+        label: "Waiting on accountant",
         badge: "bg-brand-50 text-brand-700 ring-brand-200",
       };
     case "resolved":
       return {
+        filter: "resolved" as const,
         label: "Resolved",
         badge: "bg-emerald-50 text-emerald-700 ring-emerald-200",
       };
     case "closed":
       return {
-        label: "Closed",
+        filter: "resolved" as const,
+        label: "Resolved",
         badge: "bg-slate-100 text-slate-600 ring-slate-200",
       };
     default:
       return {
+        filter: "open" as const,
         label: "Open",
         badge: "bg-rose-50 text-rose-700 ring-rose-200",
       };
@@ -242,43 +301,19 @@ function requestStatusMeta(status: RequestStatus) {
 function priorityMeta(priority: RequestPriority) {
   switch (priority) {
     case "high":
-      return "text-rose-600";
+      return "bg-rose-50 text-rose-700 ring-rose-200";
     case "medium":
-      return "text-amber-600";
+      return "bg-amber-50 text-amber-700 ring-amber-200";
     default:
-      return "text-emerald-600";
+      return "bg-emerald-50 text-emerald-700 ring-emerald-200";
   }
 }
 
-function requestTypeMeta(documentType: string) {
-  if (documentType === "Bank Statement") {
-    return {
-      iconClass: "bg-sky-50 text-sky-600 ring-sky-100",
-      label: "Bank Statement",
-    };
-  }
-
-  if (documentType === "Invoices") {
-    return {
-      iconClass: "bg-rose-50 text-rose-500 ring-rose-100",
-      label: "Invoices",
-    };
-  }
-
-  if (documentType === "Signed Documents") {
-    return {
-      iconClass: "bg-amber-50 text-amber-500 ring-amber-100",
-      label: "Signed Documents",
-    };
-  }
-
-  return {
-    iconClass: "bg-brand-50 text-brand-600 ring-brand-100",
-    label: "Compliance Record",
-  };
-}
-
-function inferSlotFromRequest(request: WorkflowRequest, slots: MonthlyDocumentSlot[], documents: DocumentRecord[]) {
+function inferSlotFromRequest(
+  request: WorkflowRequest,
+  slots: MonthlyDocumentSlot[],
+  documents: DocumentRecord[],
+) {
   if (request.relatedDocumentId) {
     const relatedDocument = documents.find((document) => document.id === request.relatedDocumentId);
     if (relatedDocument) {
@@ -350,32 +385,81 @@ function relatedRecordLabel(
   return request.monthLabel;
 }
 
-function RequestTypeIcon({ documentType }: { documentType: string }) {
-  const meta = requestTypeMeta(documentType);
+function primaryActionForRequest(
+  request: WorkflowRequest,
+  relatedSlot: MonthlyDocumentSlot | null,
+) {
+  if (["resolved", "closed"].includes(request.status)) {
+    return {
+      kind: "view" as const,
+      label: "View resolved request",
+      listLabel: "View resolved request",
+      helper: "Review the completed task history and related records.",
+    };
+  }
 
-  return (
-    <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ring-1 ${meta.iconClass}`}>
-      <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
-        <path
-          d="M8 3.75h6l4.25 4.25v10.25a2 2 0 0 1-2 2H8A2.25 2.25 0 0 1 5.75 18V6A2.25 2.25 0 0 1 8 3.75Z"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="1.8"
-        />
-        <path
-          d="M13.75 3.75V8h4.25"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="1.8"
-        />
-      </svg>
-    </div>
-  );
+  if (relatedSlot?.status === "rejected") {
+    return {
+      kind: "reupload" as const,
+      label: `Re-upload ${relatedSlot.documentType}`,
+      listLabel: "Re-upload corrected file",
+      helper: "Upload the corrected version through the structured slot.",
+    };
+  }
+
+  if (relatedSlot?.status === "missing") {
+    return {
+      kind: "upload" as const,
+      label: `Upload ${relatedSlot.documentType}`,
+      listLabel: "Upload required document",
+      helper: "Provide the missing document through the correct workflow slot.",
+    };
+  }
+
+  if (request.status === "awaiting_client") {
+    return {
+      kind: "reply" as const,
+      label: "Reply to accountant",
+      listLabel: "Reply",
+      helper: "Add context or confirm progress for your accountant.",
+    };
+  }
+
+  if (relatedSlot) {
+    return {
+      kind: "open-pack" as const,
+      label: "Open Monthly Pack",
+      listLabel: "Open monthly pack",
+      helper: "Open the structured checklist item linked to this request.",
+    };
+  }
+
+  return {
+    kind: "reply" as const,
+    label: "Reply to accountant",
+    listLabel: "Reply",
+    helper: "Respond inside this request thread with the relevant context.",
+  };
 }
 
-type RequestDetailTab = "comments" | "audit" | "documents";
+function requestSearchText(
+  request: WorkflowRequest,
+  documents: DocumentRecord[],
+  slots: MonthlyDocumentSlot[],
+) {
+  return [
+    request.title,
+    request.description,
+    request.requestedBy,
+    request.monthLabel,
+    request.priority,
+    request.status,
+    relatedRecordLabel(request, documents, slots),
+    requestStatusMeta(request.status, request.dueDate).label,
+  ]
+    .join(" ")
+    .toLowerCase();
+}
 
 export function ClientRequestsPage() {
   const { user } = useAuth();
@@ -383,10 +467,9 @@ export function ClientRequestsPage() {
   const uploadModal = useDisclosure(false);
   const [selectedRequestId, setSelectedRequestId] = useState("");
   const [selectedSlot, setSelectedSlot] = useState<MonthlyDocumentSlot | null>(null);
-  const [activeTab, setActiveTab] = useState<RequestDetailTab>("comments");
-  const [commentDraft, setCommentDraft] = useState("");
-  const [commentError, setCommentError] = useState("");
-  const [detailMenuOpen, setDetailMenuOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<RequestDetailTab>("overview");
+  const [activeFilter, setActiveFilter] = useState<RequestListFilter>("all");
+  const [searchValue, setSearchValue] = useState("");
 
   const {
     clientName,
@@ -405,9 +488,21 @@ export function ClientRequestsPage() {
     uploadedBy: user?.fullName ?? user?.name,
   });
 
-  const sortedRequests = useMemo(
-    () =>
-      [...requests].sort((left, right) => {
+  const filteredRequests = useMemo(() => {
+    const normalisedSearch = searchValue.trim().toLowerCase();
+
+    return [...requests]
+      .filter((request) => {
+        const meta = requestStatusMeta(request.status, request.dueDate);
+        const matchesFilter =
+          activeFilter === "all" || meta.filter === activeFilter;
+        const matchesSearch =
+          !normalisedSearch ||
+          requestSearchText(request, documents, monthPack.slots).includes(normalisedSearch);
+
+        return matchesFilter && matchesSearch;
+      })
+      .sort((left, right) => {
         const leftResolved = ["resolved", "closed"].includes(left.status);
         const rightResolved = ["resolved", "closed"].includes(right.status);
 
@@ -416,17 +511,32 @@ export function ClientRequestsPage() {
         }
 
         return new Date(left.dueDate).getTime() - new Date(right.dueDate).getTime();
-      }),
-    [requests],
-  );
+      });
+  }, [activeFilter, documents, monthPack.slots, requests, searchValue]);
 
   const selectedRequest = useMemo(
     () =>
-      sortedRequests.find((request) => request.id === selectedRequestId) ??
-      sortedRequests[0] ??
+      filteredRequests.find((request) => request.id === selectedRequestId) ??
+      filteredRequests[0] ??
       null,
-    [selectedRequestId, sortedRequests],
+    [filteredRequests, selectedRequestId],
   );
+
+  useEffect(() => {
+    if (!filteredRequests.length) {
+      setSelectedRequestId("");
+      return;
+    }
+
+    const hasSelection = filteredRequests.some((request) => request.id === selectedRequestId);
+    if (!hasSelection) {
+      setSelectedRequestId(filteredRequests[0].id);
+    }
+  }, [filteredRequests, selectedRequestId]);
+
+  useEffect(() => {
+    setActiveTab("overview");
+  }, [selectedRequestId]);
 
   const selectedRequestRelatedSlot = useMemo(
     () =>
@@ -452,20 +562,26 @@ export function ClientRequestsPage() {
     [documents, monthPack.slots, selectedRequest],
   );
 
+  const topUploadSlot = useMemo(() => {
+    const referenceRequest = selectedRequest ?? filteredRequests[0] ?? null;
+    return referenceRequest
+      ? inferSlotFromRequest(referenceRequest, monthPack.slots, documents)
+      : null;
+  }, [documents, filteredRequests, monthPack.slots, selectedRequest]);
+
   const summaryMetrics = useMemo(() => {
     const unresolvedRequests = requests.filter(
       (request) => !["resolved", "closed"].includes(request.status),
     );
-    const waitingOnYouCount = requests.filter(
-      (request) => request.status === "awaiting_client",
+    const openCount = unresolvedRequests.filter(
+      (request) => requestStatusMeta(request.status, request.dueDate).filter === "open",
     ).length;
-    const openCount = requests.filter(
-      (request) => request.status === "open" || request.status === "client_replied",
+    const waitingOnYouCount = unresolvedRequests.filter(
+      (request) => requestStatusMeta(request.status, request.dueDate).filter === "waiting",
     ).length;
-    const dueSoonCount = unresolvedRequests.filter((request) => {
-      const remainingDays = daysUntilDue(request.dueDate);
-      return remainingDays >= 0 && remainingDays <= 7;
-    }).length;
+    const overdueCount = unresolvedRequests.filter(
+      (request) => requestStatusMeta(request.status, request.dueDate).filter === "overdue",
+    ).length;
     const resolvedCount = requests.filter((request) =>
       ["resolved", "closed"].includes(request.status),
     ).length;
@@ -473,46 +589,41 @@ export function ClientRequestsPage() {
     return [
       {
         id: "open",
-        title: "Open",
+        label: "Open requests",
         value: openCount,
-        helper: "Workflow requests in progress",
+        helper: "Still in progress",
         icon: "open" as const,
       },
       {
         id: "waiting",
-        title: "Waiting on you",
+        label: "Waiting on me",
         value: waitingOnYouCount,
-        helper: "Awaiting your response",
+        helper: "Needs your action",
         icon: "waiting" as const,
       },
       {
-        id: "due",
-        title: "Due soon",
-        value: dueSoonCount,
-        helper: "Due in next 7 days",
-        icon: "due" as const,
+        id: "overdue",
+        label: "Overdue",
+        value: overdueCount,
+        helper: "Past due date",
+        icon: "overdue" as const,
       },
       {
         id: "resolved",
-        title: "Resolved",
+        label: "Resolved",
         value: resolvedCount,
-        helper: "Completed requests",
+        helper: "Completed tasks",
         icon: "resolved" as const,
       },
     ];
   }, [requests]);
-
-  const topUploadSlot = useMemo(
-    () => selectedRequestRelatedSlot ?? inferSlotFromRequest(sortedRequests[0] ?? null as never, monthPack.slots, documents),
-    [documents, monthPack.slots, selectedRequestRelatedSlot, sortedRequests],
-  );
 
   function handleOpenUpload(slot: MonthlyDocumentSlot | null) {
     if (!slot) {
       showFeedbackNotice(
         "warning",
         "No upload slot available",
-        "This request does not map to a structured upload slot yet. Open Monthly Packs and choose the right checklist item.",
+        "This request does not map to a structured upload slot yet. Open Monthly Packs and choose the correct checklist item.",
       );
       return;
     }
@@ -521,43 +632,56 @@ export function ClientRequestsPage() {
     uploadModal.open();
   }
 
-  function handleSubmitComment() {
+  function handlePrimaryAction(request: WorkflowRequest) {
+    const relatedSlot = inferSlotFromRequest(request, monthPack.slots, documents);
+    const action = primaryActionForRequest(request, relatedSlot);
+
+    if (action.kind === "upload" || action.kind === "reupload") {
+      handleOpenUpload(relatedSlot);
+      return;
+    }
+
+    if (action.kind === "open-pack") {
+      navigate("/client/packs#pack-checklist");
+      return;
+    }
+
+    if (action.kind === "view") {
+      setActiveTab("audit");
+      return;
+    }
+
+    setActiveTab("comments");
+  }
+
+  function handleSubmitComment(message: string) {
     if (!selectedRequest || !user) {
-      setCommentError("Select a request before sending a reply.");
-      return;
+      return { ok: false, message: "Select a request before replying." };
     }
 
-    const trimmed = commentDraft.trim();
-    if (!trimmed) {
-      setCommentError("Write a clear message before sending it.");
-      return;
-    }
-
-    const result = replyToRequest(selectedRequest.id, user.role, user.fullName, trimmed);
-    if (!result.ok) {
-      setCommentError(result.message);
-      return;
-    }
-
-    setCommentDraft("");
-    setCommentError("");
+    return replyToRequest(selectedRequest.id, user.role, user.fullName, message);
   }
 
   function handleResolveCurrentRequest() {
-    if (!selectedRequest || !user) {
+    if (!selectedRequest) {
       return;
     }
 
     resolveRequest(selectedRequest.id);
-    setDetailMenuOpen(false);
   }
 
-  const detailActionLabel = selectedRequestRelatedSlot
-    ? `Upload ${selectedRequestRelatedSlot.documentType.toLowerCase()}`
-    : "Open monthly pack";
+  const selectedStatusMeta = selectedRequest
+    ? requestStatusMeta(selectedRequest.status, selectedRequest.dueDate)
+    : null;
+  const selectedPrimaryAction = selectedRequest
+    ? primaryActionForRequest(selectedRequest, selectedRequestRelatedSlot)
+    : null;
+  const canResolveCurrent = Boolean(
+    selectedRequest && !["resolved", "closed"].includes(selectedRequest.status),
+  );
 
   return (
-    <div className="mx-auto max-w-[1260px] space-y-5">
+    <div className="mx-auto max-w-[1240px] space-y-5">
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
         <div className="space-y-1.5">
           <div className="text-sm font-semibold uppercase tracking-[0.12em] text-brand-600">
@@ -567,7 +691,8 @@ export function ClientRequestsPage() {
             My requests and tasks
           </h1>
           <p className="max-w-3xl text-[0.94rem] leading-7 text-slate-500">
-            Requests are task-based and document-based. They tell you exactly what your accountant needs and when it is due.
+            Requests show what your accountant needs from you, when it is due, and what action
+            must be taken.
           </p>
         </div>
 
@@ -582,10 +707,10 @@ export function ClientRequestsPage() {
           </Button>
           <Button
             className="h-11 rounded-xl bg-[linear-gradient(135deg,#5442ff,#6f59ff)] px-5 text-sm shadow-[0_14px_28px_rgba(84,66,255,0.18)] hover:bg-[linear-gradient(135deg,#4a38ef,#6650ff)]"
-            onClick={() => navigate("/client/messages")}
+            onClick={() => navigate("/client/documents")}
           >
-            <MessageIcon />
-            <span>New message</span>
+            <DocumentIcon />
+            <span>Open document workspace</span>
           </Button>
         </div>
       </div>
@@ -599,191 +724,199 @@ export function ClientRequestsPage() {
         />
       ) : null}
 
-      <SurfaceCard className="overflow-hidden rounded-[1.5rem] border border-slate-200/80 bg-white p-0 shadow-[0_18px_40px_rgba(15,23,42,0.05)]">
+      <SurfaceCard className="overflow-hidden rounded-[1.45rem] border border-slate-200/80 bg-white p-0 shadow-[0_18px_40px_rgba(15,23,42,0.05)]">
         <div className="grid lg:grid-cols-4">
           {summaryMetrics.map((metric, index) => (
             <div
-              className={`flex items-center gap-4 px-5 py-5 ${
+              className={`flex items-center gap-4 px-5 py-4 ${
                 index !== summaryMetrics.length - 1 ? "lg:border-r lg:border-slate-100" : ""
               }`}
               key={metric.id}
             >
               <SummaryIcon kind={metric.icon} />
               <div className="space-y-0.5">
-                <p className="text-sm font-medium text-slate-500">{metric.title}</p>
-                <p className="text-[1.6rem] font-semibold tracking-tight text-slate-950">{metric.value}</p>
-                <p className="text-[0.84rem] text-slate-500">{metric.helper}</p>
+                <p className="text-sm font-medium text-slate-500">{metric.label}</p>
+                <p className="text-[1.45rem] font-semibold tracking-tight text-slate-950">
+                  {metric.value}
+                </p>
+                <p className="text-[0.82rem] text-slate-500">{metric.helper}</p>
               </div>
             </div>
           ))}
         </div>
       </SurfaceCard>
 
-      <section className="grid gap-5 xl:grid-cols-[minmax(0,0.39fr)_minmax(0,0.61fr)] xl:items-start">
-        <SurfaceCard className="rounded-[1.5rem] border border-slate-200/80 bg-white p-0 shadow-[0_20px_45px_rgba(15,23,42,0.05)]">
-          <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 pb-4 pt-5">
-            <h2 className="text-[1.08rem] font-semibold text-slate-950">Open workflow requests</h2>
-            <button className="text-sm font-medium text-slate-500" type="button">
-              Sort: Due date
-            </button>
+      <section className="grid gap-5 xl:grid-cols-[minmax(0,0.4fr)_minmax(0,0.6fr)] xl:items-start">
+        <SurfaceCard className="rounded-[1.45rem] border border-slate-200/80 bg-white p-0 shadow-[0_20px_45px_rgba(15,23,42,0.05)]">
+          <div className="space-y-4 border-b border-slate-100 px-5 pb-4 pt-5">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-[1.04rem] font-semibold text-slate-950">Request list</h2>
+              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[0.72rem] font-semibold text-slate-500">
+                {filteredRequests.length} shown
+              </span>
+            </div>
+
+            <div className="flex h-11 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 text-slate-500">
+              <SearchIcon />
+              <input
+                className="w-full border-none bg-transparent text-sm text-slate-900 outline-none placeholder:text-slate-400"
+                onChange={(event) => setSearchValue(event.target.value)}
+                placeholder="Search by title, document, accountant, month, or status..."
+                value={searchValue}
+              />
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {[
+                { id: "all" as const, label: "All" },
+                { id: "open" as const, label: "Open" },
+                { id: "waiting" as const, label: "Waiting on me" },
+                { id: "overdue" as const, label: "Overdue" },
+                { id: "resolved" as const, label: "Resolved" },
+              ].map((item) => (
+                <button
+                  className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
+                    activeFilter === item.id
+                      ? "bg-slate-950 text-white"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
+                  key={item.id}
+                  onClick={() => setActiveFilter(item.id)}
+                  type="button"
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
           </div>
 
-          {sortedRequests.length > 0 ? (
-            <>
-              <div className="divide-y divide-slate-100">
-                {sortedRequests.map((request) => {
-                  const meta = requestStatusMeta(request.status);
-                  const relatedSlot = inferSlotFromRequest(request, monthPack.slots, documents);
-                  const relatedType = relatedSlot?.documentType ?? "Compliance Record";
-                  const isSelected = selectedRequest?.id === request.id;
+          {filteredRequests.length > 0 ? (
+            <div className="divide-y divide-slate-100">
+              {filteredRequests.map((request) => {
+                const relatedSlot = inferSlotFromRequest(request, monthPack.slots, documents);
+                const relatedType = relatedSlot?.documentType ?? "Compliance Record";
+                const isSelected = selectedRequest?.id === request.id;
+                const statusMeta = requestStatusMeta(request.status, request.dueDate);
+                const actionMeta = primaryActionForRequest(request, relatedSlot);
 
-                  return (
-                    <button
-                      className={`w-full px-4 py-4 text-left transition ${
-                        isSelected
-                          ? "bg-brand-50/40 ring-1 ring-inset ring-brand-200"
-                          : "hover:bg-slate-50"
-                      }`}
-                      key={request.id}
-                      onClick={() => {
-                        setSelectedRequestId(request.id);
-                        setActiveTab("comments");
-                      }}
-                      type="button"
-                    >
-                      <div className="flex items-start gap-3">
-                        <RequestTypeIcon documentType={relatedType} />
-                        <div className="min-w-0 flex-1 space-y-1">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <p className="text-[1rem] font-medium leading-6 text-slate-950">
-                                {request.title}
-                              </p>
-                              <p className="text-[0.86rem] text-slate-500">
-                                Related to: {relatedRecordLabel(request, documents, monthPack.slots)}
-                              </p>
-                            </div>
-                            <ChevronRightIcon />
+                return (
+                  <button
+                    className={`w-full px-5 py-4 text-left transition ${
+                      isSelected
+                        ? "bg-brand-50/35 ring-1 ring-inset ring-brand-200"
+                        : "hover:bg-slate-50"
+                    }`}
+                    key={request.id}
+                    onClick={() => setSelectedRequestId(request.id)}
+                    type="button"
+                  >
+                    <div className="flex items-start gap-3">
+                      <RequestTypeIcon documentType={relatedType} />
+                      <div className="min-w-0 flex-1 space-y-2">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-[0.98rem] font-medium leading-6 text-slate-950">
+                              {request.title}
+                            </p>
+                            <p className="text-[0.84rem] text-slate-500">
+                              Linked item: {relatedRecordLabel(request, documents, monthPack.slots)}
+                            </p>
                           </div>
-
-                          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-1">
-                            <div className="flex items-center gap-2 text-[0.84rem] text-slate-500">
-                              <CalendarIcon />
-                              <span>Due {formatDateLabel(request.dueDate)}</span>
-                            </div>
-                            <span className={`inline-flex rounded-full px-2.5 py-1 text-[0.72rem] font-semibold ring-1 ring-inset ${meta.badge}`}>
-                              {meta.label}
-                            </span>
-                          </div>
+                          <ChevronRightIcon />
                         </div>
+
+                        <div className="flex flex-wrap items-center gap-2.5">
+                          <span
+                            className={`inline-flex rounded-full px-2.5 py-1 text-[0.72rem] font-semibold ring-1 ring-inset ${statusMeta.badge}`}
+                          >
+                            {statusMeta.label}
+                          </span>
+                          <span
+                            className={`inline-flex rounded-full px-2.5 py-1 text-[0.72rem] font-semibold ring-1 ring-inset ${priorityMeta(
+                              request.priority,
+                            )}`}
+                          >
+                            {request.priority}
+                          </span>
+                        </div>
+
+                        <div className="grid gap-2 text-[0.82rem] text-slate-500 sm:grid-cols-2">
+                          <p>Due {formatDateLabel(request.dueDate)}</p>
+                          <p>Requested by {request.requestedBy}</p>
+                        </div>
+
+                        <p className="text-[0.84rem] font-medium text-brand-600">
+                          {actionMeta.listLabel}
+                        </p>
                       </div>
-                    </button>
-                  );
-                })}
-              </div>
-              <button
-                className="flex w-full items-center justify-between border-t border-slate-100 px-5 py-3 text-left text-sm font-medium text-brand-600 transition hover:bg-brand-50/60"
-                onClick={() => navigate("/client/requests")}
-                type="button"
-              >
-                <span>View all requests</span>
-                <ChevronRightIcon />
-              </button>
-            </>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           ) : (
             <div className="px-5 py-6">
               <EmptyState
-                description="Requests will appear here when your accountant needs a correction, missing document, or clarification."
-                title="No workflow requests"
+                description="No open requests. You are up to date."
+                title="No requests found"
               />
             </div>
           )}
         </SurfaceCard>
 
-        <SurfaceCard className="rounded-[1.5rem] border border-slate-200/80 bg-white p-0 shadow-[0_20px_45px_rgba(15,23,42,0.05)]">
+        <SurfaceCard className="rounded-[1.45rem] border border-slate-200/80 bg-white p-0 shadow-[0_20px_45px_rgba(15,23,42,0.05)]">
           {selectedRequest ? (
             <>
               <div className="space-y-5 border-b border-slate-100 px-5 pb-5 pt-5">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                   <div className="space-y-3">
-                    <span
-                      className={`inline-flex rounded-full px-2.5 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.12em] ring-1 ring-inset ${requestStatusMeta(selectedRequest.status).badge}`}
-                    >
-                      {requestStatusMeta(selectedRequest.status).label}
-                    </span>
-                    <h2 className="text-[1.55rem] font-semibold tracking-tight text-slate-950">
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <span
+                        className={`inline-flex rounded-full px-2.5 py-1 text-[0.72rem] font-semibold ring-1 ring-inset ${selectedStatusMeta?.badge}`}
+                      >
+                        {selectedStatusMeta?.label}
+                      </span>
+                      <span
+                        className={`inline-flex rounded-full px-2.5 py-1 text-[0.72rem] font-semibold capitalize ring-1 ring-inset ${priorityMeta(
+                          selectedRequest.priority,
+                        )}`}
+                      >
+                        {selectedRequest.priority} priority
+                      </span>
+                    </div>
+                    <h2 className="text-[1.5rem] font-semibold tracking-tight text-slate-950">
                       {selectedRequest.title}
                     </h2>
                   </div>
 
-                  <div className="relative flex items-center gap-2.5">
+                  <div className="flex flex-wrap items-center gap-2.5">
                     <Button
                       className="h-10 rounded-xl border border-brand-200 bg-white px-4 text-sm text-brand-600 hover:bg-brand-50"
-                      onClick={() =>
-                        selectedRequestRelatedSlot
-                          ? handleOpenUpload(selectedRequestRelatedSlot)
-                          : navigate("/client/packs#pack-checklist")
-                      }
+                      onClick={() => handlePrimaryAction(selectedRequest)}
                       variant="secondary"
                     >
                       <UploadIcon />
-                      <span>{detailActionLabel}</span>
+                      <span>{selectedPrimaryAction?.label}</span>
                     </Button>
-                    <button
-                      aria-label="Open request actions"
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
-                      onClick={() => setDetailMenuOpen((current) => !current)}
-                      type="button"
-                    >
-                      <MoreIcon />
-                    </button>
-
-                    {detailMenuOpen ? (
-                      <div className="absolute right-0 top-[calc(100%+0.6rem)] z-20 min-w-[220px] rounded-xl border border-slate-200 bg-white p-2 shadow-[0_18px_38px_rgba(15,23,42,0.12)]">
-                        <button
-                          className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
-                          onClick={() => {
-                            navigate("/client/packs#pack-checklist");
-                            setDetailMenuOpen(false);
-                          }}
-                          type="button"
-                        >
-                          Open monthly pack
-                          <ChevronRightIcon />
-                        </button>
-                        <button
-                          className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
-                          onClick={() => {
-                            navigate("/client/documents");
-                            setDetailMenuOpen(false);
-                          }}
-                          type="button"
-                        >
-                          Open documents
-                          <ChevronRightIcon />
-                        </button>
-                        {selectedRequest.status !== "resolved" && selectedRequest.status !== "closed" ? (
-                          <button
-                            className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
-                            onClick={handleResolveCurrentRequest}
-                            type="button"
-                          >
-                            Mark as resolved
-                            <ChevronRightIcon />
-                          </button>
-                        ) : null}
-                      </div>
+                    {canResolveCurrent ? (
+                      <Button
+                        className="h-10 rounded-xl px-4"
+                        onClick={handleResolveCurrentRequest}
+                        variant="ghost"
+                      >
+                        Mark as resolved
+                      </Button>
                     ) : null}
                   </div>
                 </div>
 
-                <div className="grid gap-4 rounded-[1.3rem] border border-slate-200 bg-slate-50 p-4 md:grid-cols-2 xl:grid-cols-4">
+                <div className="grid gap-4 rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4 md:grid-cols-2 xl:grid-cols-4">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 text-[0.82rem] font-medium text-slate-500">
-                      <DocumentMetaIcon />
-                      <span>Related to</span>
+                      <DocumentIcon />
+                      <span>Linked record</span>
                     </div>
-                    <p className="text-[0.98rem] font-semibold text-brand-700">{selectedRequestLabel}</p>
+                    <p className="text-[0.95rem] font-semibold text-brand-700">{selectedRequestLabel}</p>
                   </div>
 
                   <div className="space-y-1">
@@ -791,10 +924,10 @@ export function ClientRequestsPage() {
                       <UserIcon />
                       <span>Requested by</span>
                     </div>
-                    <p className="text-[0.98rem] font-semibold text-slate-950">{selectedRequest.requestedBy}</p>
-                    <p className="text-[0.82rem] text-slate-500">
-                      {selectedRequest.requestedByRole === "accountant" ? "Accountant" : "Client"}
+                    <p className="text-[0.95rem] font-semibold text-slate-950">
+                      {selectedRequest.requestedBy}
                     </p>
+                    <p className="text-[0.82rem] text-slate-500">Accountant</p>
                   </div>
 
                   <div className="space-y-1">
@@ -802,32 +935,44 @@ export function ClientRequestsPage() {
                       <CalendarIcon />
                       <span>Due date</span>
                     </div>
-                    <p className="text-[0.98rem] font-semibold text-rose-600">{formatDateLabel(selectedRequest.dueDate)}</p>
+                    <p className="text-[0.95rem] font-semibold text-slate-950">
+                      {formatDateLabel(selectedRequest.dueDate)}
+                    </p>
+                    <p className="text-[0.82rem] text-slate-500">{dueLabel(selectedRequest.dueDate)}</p>
                   </div>
 
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 text-[0.82rem] font-medium text-slate-500">
                       <PriorityIcon />
-                      <span>Priority</span>
+                      <span>Status owner</span>
                     </div>
-                    <p className={`text-[0.98rem] font-semibold capitalize ${priorityMeta(selectedRequest.priority)}`}>
-                      {selectedRequest.priority}
+                    <p className="text-[0.95rem] font-semibold text-slate-950">
+                      {selectedStatusMeta?.label}
                     </p>
+                    <p className="text-[0.82rem] text-slate-500">{selectedPrimaryAction?.helper}</p>
                   </div>
-                </div>
-
-                <div className="rounded-[1.3rem] border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-sm font-semibold text-slate-950">Request details</p>
-                  <p className="mt-2 text-[0.92rem] leading-7 text-slate-600">{selectedRequest.description}</p>
                 </div>
               </div>
 
               <div className="border-b border-slate-100 px-5">
                 <div className="flex flex-wrap items-center gap-6">
                   {[
-                    { id: "comments" as const, label: "Comments", count: selectedRequest.comments.length },
-                    { id: "audit" as const, label: "Audit trail", count: selectedRequest.auditTrail.length },
-                    { id: "documents" as const, label: "Related documents", count: selectedRequestRelatedDocuments.length },
+                    { id: "overview" as const, label: "Overview", count: null },
+                    {
+                      id: "comments" as const,
+                      label: "Comments",
+                      count: selectedRequest.comments.length,
+                    },
+                    {
+                      id: "audit" as const,
+                      label: "Audit trail",
+                      count: selectedRequest.auditTrail.length,
+                    },
+                    {
+                      id: "documents" as const,
+                      label: "Related documents",
+                      count: selectedRequestRelatedDocuments.length,
+                    },
                   ].map((item) => (
                     <button
                       className={`flex items-center gap-2 border-b-2 px-1 py-3 text-sm font-medium transition ${
@@ -840,102 +985,104 @@ export function ClientRequestsPage() {
                       type="button"
                     >
                       <span>{item.label}</span>
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[0.72rem] font-semibold text-slate-500">
-                        {item.count}
-                      </span>
+                      {item.count !== null ? (
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[0.72rem] font-semibold text-slate-500">
+                          {item.count}
+                        </span>
+                      ) : null}
                     </button>
                   ))}
                 </div>
               </div>
 
               <div className="px-5 py-5">
-                {activeTab === "comments" ? (
-                  <div className="space-y-5">
-                    <div className="flex items-start gap-3 rounded-[1.3rem] border border-slate-200 bg-slate-50 p-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,#5442ff,#6f59ff)] text-sm font-semibold text-white">
-                        {getInitials(user?.fullName ?? "Client user")}
+                {activeTab === "overview" ? (
+                  <div className="grid gap-5 xl:grid-cols-[minmax(0,0.58fr)_minmax(0,0.42fr)]">
+                    <div className="space-y-4 rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-950">Request description</p>
+                        <p className="mt-2 text-[0.92rem] leading-7 text-slate-600">
+                          {selectedRequest.description}
+                        </p>
                       </div>
-                      <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-end">
-                        <div className="min-w-0 flex-1">
-                          <textarea
-                            className="min-h-[54px] w-full resize-none rounded-xl border border-slate-200 bg-white px-3 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-400 focus:ring-4 focus:ring-brand-100"
-                            onChange={(event) => setCommentDraft(event.target.value)}
-                            placeholder="Write a comment..."
-                            value={commentDraft}
-                          />
-                          {commentError ? (
-                            <p className="mt-2 text-sm text-rose-600">{commentError}</p>
-                          ) : null}
-                        </div>
-                        <Button
-                          className="h-11 rounded-xl bg-[linear-gradient(135deg,#5442ff,#6f59ff)] px-4 shadow-[0_12px_24px_rgba(84,66,255,0.18)]"
-                          onClick={handleSubmitComment}
-                        >
-                          <MessageIcon />
-                          <span>Send</span>
-                        </Button>
+
+                      <div>
+                        <p className="text-sm font-semibold text-slate-950">Why it matters</p>
+                        <p className="mt-2 text-[0.92rem] leading-7 text-slate-600">
+                          Your accountant needs this item to complete the {selectedRequest.monthLabel} review and keep the month pack audit-ready.
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="text-sm font-semibold text-slate-950">What you need to do</p>
+                        <p className="mt-2 text-[0.92rem] leading-7 text-slate-600">
+                          {selectedPrimaryAction?.helper}
+                        </p>
                       </div>
                     </div>
 
-                    {selectedRequest.comments.length > 0 ? (
-                      <div className="divide-y divide-slate-100 rounded-[1.3rem] border border-slate-200 bg-white">
-                        {[...selectedRequest.comments].reverse().map((comment) => (
-                          <div className="flex items-start gap-3 px-4 py-4" key={comment.id}>
-                            <div
-                              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white ${
-                                comment.role === "accountant"
-                                  ? "bg-emerald-500"
-                                  : "bg-[linear-gradient(135deg,#5442ff,#6f59ff)]"
-                              }`}
-                            >
-                              {getInitials(comment.author)}
-                            </div>
-                            <div className="min-w-0 flex-1 space-y-1">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <p className="text-sm font-semibold text-slate-950">
-                                  {comment.author}
-                                  {comment.author === user?.fullName ? " (You)" : ""}
-                                </p>
-                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[0.72rem] font-medium text-slate-500">
-                                  {comment.role === "accountant" ? "Accountant" : "Client"}
-                                </span>
-                                <span className="text-[0.82rem] text-slate-400">
-                                  {formatDateTimeLabel(comment.createdAt)}
-                                </span>
-                              </div>
-                              <p className="text-[0.92rem] leading-7 text-slate-600">{comment.message}</p>
-                            </div>
-                            <button
-                              aria-label="Comment options"
-                              className="text-slate-300 transition hover:text-slate-500"
-                              type="button"
-                            >
-                              <MoreIcon />
-                            </button>
-                          </div>
-                        ))}
+                    <div className="rounded-[1.25rem] border border-slate-200 bg-white p-4">
+                      <p className="text-sm font-semibold text-slate-950">Task summary</p>
+                      <div className="mt-4 space-y-4 text-sm">
+                        <div className="grid grid-cols-[120px_minmax(0,1fr)] gap-4 border-b border-slate-100 pb-4">
+                          <span className="text-slate-500">Linked item</span>
+                          <span className="font-medium text-slate-900">{selectedRequestLabel}</span>
+                        </div>
+                        <div className="grid grid-cols-[120px_minmax(0,1fr)] gap-4 border-b border-slate-100 pb-4">
+                          <span className="text-slate-500">Due date</span>
+                          <span className="font-medium text-slate-900">
+                            {formatDateLabel(selectedRequest.dueDate)}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-[120px_minmax(0,1fr)] gap-4 border-b border-slate-100 pb-4">
+                          <span className="text-slate-500">Status</span>
+                          <span className="font-medium text-slate-900">{selectedStatusMeta?.label}</span>
+                        </div>
+                        <div className="grid grid-cols-[120px_minmax(0,1fr)] gap-4 border-b border-slate-100 pb-4">
+                          <span className="text-slate-500">Priority</span>
+                          <span className="font-medium capitalize text-slate-900">
+                            {selectedRequest.priority}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-[120px_minmax(0,1fr)] gap-4 border-b border-slate-100 pb-4">
+                          <span className="text-slate-500">Requested by</span>
+                          <span className="font-medium text-slate-900">
+                            {selectedRequest.requestedBy}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-[120px_minmax(0,1fr)] gap-4">
+                          <span className="text-slate-500">Created</span>
+                          <span className="font-medium text-slate-900">
+                            {formatDateLabel(selectedRequest.createdAt)}
+                          </span>
+                        </div>
                       </div>
-                    ) : (
-                      <EmptyState
-                        description="Reply here when you have corrected the request or need more context from your accountant."
-                        title="No comments yet"
-                      />
-                    )}
+                    </div>
+                  </div>
+                ) : null}
 
-                    <button
-                      className="text-sm font-medium text-brand-600 transition hover:text-brand-700"
-                      onClick={() => navigate("/client/messages")}
-                      type="button"
-                    >
-                      View all comments
-                    </button>
+                {activeTab === "comments" ? (
+                  <div className="space-y-4">
+                    <div className="rounded-[1.15rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600">
+                      Files must be uploaded through the structured document slot so they can be named, tracked, and reviewed properly.
+                    </div>
+                    <CommentThread
+                      comments={selectedRequest.comments}
+                      composerLabel="Reply to this request"
+                      composerPlaceholder="Add context for your accountant about this exact task."
+                      currentAuthor={user?.fullName ?? "Client user"}
+                      currentRole="client"
+                      emptyDescription="No comments yet. Add a message when you need to give context to your accountant."
+                      emptyTitle="No comments yet"
+                      helperText="Files must be uploaded through the structured document slot so they can be named, tracked, and reviewed properly."
+                      onSubmitComment={handleSubmitComment}
+                      submitLabel="Send reply"
+                    />
                   </div>
                 ) : null}
 
                 {activeTab === "audit" ? (
-                  <div className="space-y-4">
-                    <AuditTrail entries={selectedRequest.auditTrail} />
-                  </div>
+                  <AuditTrail entries={selectedRequest.auditTrail} />
                 ) : null}
 
                 {activeTab === "documents" ? (
@@ -952,23 +1099,62 @@ export function ClientRequestsPage() {
                               {document.documentType} / {document.monthLabel}
                             </p>
                             <p className="text-[0.84rem] text-slate-400">
-                              {formatDateLabel(document.uploadedAt)} / {document.status}
+                              Updated {formatDateLabel(document.reviewedAt ?? document.uploadedAt)} / {document.status}
                             </p>
                           </div>
-                          <Button
-                            className="h-9 rounded-xl px-3"
-                            onClick={() => navigate("/client/documents")}
-                            size="sm"
-                            variant="secondary"
-                          >
-                            Open
-                          </Button>
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              className="h-9 rounded-xl px-3"
+                              onClick={() => navigate("/client/documents")}
+                              size="sm"
+                              variant="secondary"
+                            >
+                              View
+                            </Button>
+                            {document.status === "rejected" ? (
+                              <Button
+                                className="h-9 rounded-xl px-3"
+                                onClick={() => handleOpenUpload(selectedRequestRelatedSlot)}
+                                size="sm"
+                                variant="secondary"
+                              >
+                                Re-upload
+                              </Button>
+                            ) : null}
+                          </div>
                         </div>
                       ))}
                     </div>
+                  ) : selectedRequestRelatedSlot ? (
+                    <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 px-4 py-4">
+                      <p className="text-sm font-semibold text-slate-950">
+                        {selectedRequestRelatedSlot.documentType}
+                      </p>
+                      <p className="mt-1 text-[0.84rem] text-slate-500">
+                        {selectedRequest.monthLabel} / {selectedRequestRelatedSlot.status}
+                      </p>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <Button
+                          className="h-9 rounded-xl px-3"
+                          onClick={() => handleOpenUpload(selectedRequestRelatedSlot)}
+                          size="sm"
+                          variant="secondary"
+                        >
+                          Upload
+                        </Button>
+                        <Button
+                          className="h-9 rounded-xl px-3"
+                          onClick={() => navigate("/client/documents")}
+                          size="sm"
+                          variant="secondary"
+                        >
+                          Open document workspace
+                        </Button>
+                      </div>
+                    </div>
                   ) : (
                     <EmptyState
-                      description="This request is currently attached to a missing or not-yet-uploaded record, so there is no related file to review here."
+                      description="No related documents linked to this request yet."
                       title="No related documents"
                     />
                   )
@@ -978,7 +1164,7 @@ export function ClientRequestsPage() {
           ) : (
             <div className="px-5 py-8">
               <EmptyState
-                description="Choose a workflow request from the left to review the task, comments, audit trail, and related documents."
+                description="Select a request to view details, comments, and audit history."
                 title="No request selected"
               />
             </div>

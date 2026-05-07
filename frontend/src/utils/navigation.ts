@@ -70,13 +70,6 @@ export const navigationByRole: Record<Role, NavigationItem[]> = {
       icon: "documents",
     },
     {
-      label: "Messages",
-      to: "/client/messages",
-      description: "Comment on documents and requests only",
-      section: "Documents",
-      icon: "messages",
-    },
-    {
       label: "Compliance Centre",
       to: "/client/compliance",
       description: "Track expiries, reminders, and retained records",
