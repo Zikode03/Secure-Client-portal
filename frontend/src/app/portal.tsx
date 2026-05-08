@@ -509,6 +509,7 @@ interface PortalContextValue {
     results: UnifiedSearchResult[],
     filters: UnifiedSearchFilters,
   ) => UnifiedSearchResult[];
+  resetClientPortalDemoState: () => PortalActionResult;
   getClientWorkspace: (clientId: string) => ClientWorkspaceView;
   getReviewQueue: () => ReviewQueueItem[];
   getReviewRecord: (recordId: string) => DocumentRecord;
@@ -556,6 +557,133 @@ function appendNotificationActivity(
     },
     ...(current ?? []),
   ].slice(0, 8);
+}
+
+function buildFallbackReviewDescription(documentType: string) {
+  const normalized = documentType.toLowerCase();
+
+  if (normalized.includes("bank")) {
+    return "Operating account bank statement submitted for reconciliation and month-end verification.";
+  }
+
+  if (normalized.includes("invoice")) {
+    return "Invoice evidence bundle submitted for accountant review and filing checks.";
+  }
+
+  if (normalized.includes("payroll")) {
+    return "Payroll summary and statutory deduction schedule submitted for month-end review.";
+  }
+
+  if (normalized.includes("vat")) {
+    return "VAT working papers and supporting calculations submitted for tax review.";
+  }
+
+  if (normalized.includes("signed")) {
+    return "Signed approvals and authorisation documents submitted for completeness checks.";
+  }
+
+  if (normalized.includes("supplier")) {
+    return "Supplier statement submitted to support balance confirmation and reconciliations.";
+  }
+
+  if (normalized.includes("proof")) {
+    return "Updated proof of address submitted for compliance verification.";
+  }
+
+  if (normalized.includes("credit")) {
+    return "Credit note submitted to support invoice adjustments and revenue corrections.";
+  }
+
+  if (normalized.includes("purchase")) {
+    return "Purchase order submitted as source support for supplier billing and approvals.";
+  }
+
+  if (normalized.includes("delivery")) {
+    return "Delivery note submitted as proof of fulfilment for billed goods or services.";
+  }
+
+  if (normalized.includes("receipt")) {
+    return "Expense receipt batch submitted to support business purchases and VAT claims.";
+  }
+
+  return "Client-submitted support document waiting for accountant review.";
+}
+
+function buildFallbackReviewFileName(clientName: string, documentType: string, monthLabel: string) {
+  const normalized = documentType.toLowerCase();
+  const extension =
+    normalized.includes("payroll") || normalized.includes("working papers") ? "xlsx" : "pdf";
+
+  const clientToken = clientName.replace(/[^A-Za-z0-9]+/g, "");
+  const typeToken = documentType.replace(/[^A-Za-z0-9]+/g, "");
+  const monthToken = monthLabel.replace(/[^A-Za-z0-9]+/g, "_");
+
+  return `${clientToken}_${typeToken}_${monthToken}.${extension}`;
+}
+
+function buildFallbackReviewRecord(item: ReviewQueueItem): DocumentRecord {
+  const description = buildFallbackReviewDescription(item.documentType);
+  const fileName = buildFallbackReviewFileName(
+    item.clientName,
+    item.documentType,
+    item.monthLabel,
+  );
+  const uploadedBy = `${item.clientName} Finance Team`;
+  const extractedText = [
+    `${item.documentType} review pack for ${item.clientName}.`,
+    `${item.monthLabel} submission routed to ${item.assignedAccountant}.`,
+    description,
+  ].join(" ");
+
+  return {
+    id: item.id,
+    clientId: item.clientName.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+    clientName: item.clientName,
+    documentType: item.documentType,
+    fileName,
+    monthLabel: item.monthLabel,
+    description,
+    status: item.status,
+    uploadedBy,
+    uploadedAt: item.submittedAt,
+    reviewedBy: item.status === "under_review" ? item.assignedAccountant : undefined,
+    reviewedAt: item.status === "under_review" ? item.submittedAt : undefined,
+    sizeLabel: fileName.endsWith(".xlsx") ? "540 KB" : "1.8 MB",
+    keywordTags: item.documentType.toLowerCase().split(/\s+/),
+    extractedText,
+    comments:
+      item.status === "under_review"
+        ? [
+            {
+              id: `${item.id}-comment-1`,
+              author: item.assignedAccountant,
+              role: "accountant",
+              message: `${item.documentType} is under review for ${item.monthLabel}.`,
+              createdAt: item.submittedAt,
+            },
+          ]
+        : [],
+    auditTrail: [
+      {
+        id: `${item.id}-audit-1`,
+        status: "Uploaded",
+        actor: uploadedBy,
+        timestamp: item.submittedAt,
+        note: `${item.documentType} was submitted into the accountant review queue.`,
+      },
+      ...(item.status === "under_review"
+        ? [
+            {
+              id: `${item.id}-audit-2`,
+              status: "Under Review",
+              actor: item.assignedAccountant,
+              timestamp: item.submittedAt,
+              note: `${item.assignedAccountant} started the first-pass review.`,
+            },
+          ]
+        : []),
+    ],
+  };
 }
 
 function buildTemplateWorkspace(client: FirmClientAccount, source: ClientWorkspaceView): ClientWorkspaceView {
@@ -1511,10 +1639,28 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     return { ok: true, message: "Deadline policy updated." };
   }
 
+  function resetClientPortalDemoState(): PortalActionResult {
+    const fresh = createInitialClientPortalState(clientSeed, baseClientComplianceCentre);
+
+    setMonthPack(fresh.monthPack);
+    setDocuments(fresh.documents);
+    setInvoices(fresh.invoices);
+    setNotifications(fresh.notifications);
+    setActivity(fresh.activity);
+    setRequests(fresh.requests);
+    setClientProfile(fresh.clientProfile);
+    setClientSettings(fresh.clientSettings);
+    setScheduledReports(fresh.scheduledReports);
+    setComplianceAuditTrail(fresh.complianceAuditTrail);
+    setReportGeneratedAt(fresh.reportGeneratedAt);
+
+    return {
+      ok: true,
+      message: "Demo workflow state has been restored, including review queue records.",
+    };
+  }
+
   function getReviewQueue() {
-    const staticQueue = baseAccountantDashboard.reviewQueue.filter(
-      (item) => item.clientName !== "Apex Trading Ltd",
-    );
     const dynamicDocumentQueue = documents
       .filter((document) => ["uploaded", "under_review"].includes(document.status))
       .map<ReviewQueueItem>((document) => ({
@@ -1530,8 +1676,18 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       invoices,
       assignedAccountantForApex,
     );
+    const dynamicQueue = [...dynamicDocumentQueue, ...dynamicInvoiceQueue];
+    const dynamicIds = new Set(dynamicQueue.map((item) => item.id));
+    const seededFirmQueue = baseAccountantDashboard.reviewQueue.filter(
+      (item) => !dynamicIds.has(item.id),
+    );
 
-    return [...dynamicDocumentQueue, ...dynamicInvoiceQueue, ...staticQueue].slice(0, 15);
+    return [...dynamicQueue, ...seededFirmQueue]
+      .sort(
+        (left, right) =>
+          new Date(right.submittedAt).getTime() - new Date(left.submittedAt).getTime(),
+      )
+      .slice(0, 15);
   }
 
   function getReviewRecord(recordId: string) {
@@ -1547,14 +1703,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
 
     const fallback = baseAccountantDashboard.reviewQueue.find((item) => item.id === recordId);
     if (fallback) {
-      const seedDocument = portalService.getDocumentById("doc-1001");
-      return {
-        ...seedDocument,
-        id: fallback.id,
-        clientName: fallback.clientName,
-        documentType: fallback.documentType,
-        monthLabel: fallback.monthLabel,
-      };
+      return buildFallbackReviewRecord(fallback);
     }
 
     return documents[0];
@@ -1744,6 +1893,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       assignClientAccountant,
       updateClientDeadlinePolicy,
       filterSearchResults: filterUnifiedSearchResults,
+      resetClientPortalDemoState,
       getClientWorkspace,
       getReviewQueue,
       getReviewRecord,
@@ -1772,6 +1922,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       previousMonthComparison,
       previousMonthDocuments,
       reconciliationIssues,
+      resetClientPortalDemoState,
       scheduleComplianceReport,
       scheduledReports,
       resolveRequest,

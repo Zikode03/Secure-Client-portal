@@ -1,20 +1,29 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
-import { ExpiringDocumentsPanel } from "../../components/workflow/ExpiringDocumentsPanel";
-import { LatestRecordsTable } from "../../components/workflow/LatestRecordsTable";
-import { MissingDocumentsPanel } from "../../components/workflow/MissingDocumentsPanel";
-import { ReconciliationAssistantPanel } from "../../components/workflow/ReconciliationAssistantPanel";
-import { RejectedDocumentsPanel } from "../../components/workflow/RejectedDocumentsPanel";
-import { SmartAlertsPanel } from "../../components/workflow/SmartAlertsPanel";
 import { Button } from "../../components/ui/Button";
-import { MetricCard } from "../../components/ui/MetricCard";
-import { PageHeader } from "../../components/ui/PageHeader";
-import { ProgressBar } from "../../components/ui/ProgressBar";
-import { StatusBadge } from "../../components/ui/StatusBadge";
+import { EmptyState } from "../../components/ui/EmptyState";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
-import type { PortfolioRow } from "../../types/portal";
+import type { DeadlineItem, PortfolioRow, ReviewQueueItem, Tone } from "../../types/portal";
+import { cn } from "../../utils/cn";
 import { formatDateLabel } from "../../utils/formatters";
+
+const accountantDashboardDate = "2026-05-07T08:00:00.000Z";
+
+type QueueTab = "deadlines" | "followups" | "reviews";
+type QueueTone = "brand" | "emerald" | "orange" | "rose";
+
+interface WorkQueueItem {
+  id: string;
+  title: string;
+  subtitle: string;
+  meta: string;
+  priority: "high" | "medium" | "low";
+  tone: QueueTone;
+  tab: QueueTab;
+  onOpen: () => void;
+}
 
 function downloadCsv(fileName: string, rows: string[][]) {
   const csv = rows
@@ -30,15 +39,412 @@ function downloadCsv(fileName: string, rows: string[][]) {
 }
 
 function portfolioRank(row: PortfolioRow) {
-  const statusScore =
-    row.status === "overdue" ? 3 : row.status === "attention" ? 2 : 1;
+  const statusScore = row.status === "overdue" ? 3 : row.status === "attention" ? 2 : 1;
   return statusScore * 100 + row.missingCount * 10 + row.overdueCount;
 }
 
+function getInitials(value: string) {
+  return value
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
+function dayDifference(dateValue: string) {
+  const currentDate = new Date(accountantDashboardDate);
+  const targetDate = new Date(dateValue);
+  const difference = targetDate.getTime() - currentDate.getTime();
+  return Math.ceil(difference / (1000 * 60 * 60 * 24));
+}
+
+function rowDueMeta(row: PortfolioRow) {
+  if (row.status === "on_track" && row.progressPercent >= 95) {
+    return {
+      label: "On track",
+      textClass: "text-emerald-600",
+      detail: row.deadline === "—" ? "No immediate deadline" : row.deadline,
+    };
+  }
+
+  const difference = dayDifference(row.deadline);
+
+  if (difference < 0) {
+    return {
+      label: `Overdue by ${Math.abs(difference)} day${Math.abs(difference) === 1 ? "" : "s"}`,
+      textClass: "text-rose-600",
+      detail: row.deadline,
+    };
+  }
+
+  if (difference === 0) {
+    return {
+      label: "Due today",
+      textClass: "text-rose-600",
+      detail: row.deadline,
+    };
+  }
+
+  if (difference === 1) {
+    return {
+      label: "Due tomorrow",
+      textClass: "text-rose-600",
+      detail: row.deadline,
+    };
+  }
+
+  return {
+    label: `Due in ${difference} days`,
+    textClass: "text-slate-700",
+    detail: row.deadline,
+  };
+}
+
+function rowRiskMeta(row: PortfolioRow) {
+  if (row.status === "overdue" || row.overdueCount > 0) {
+    return {
+      label: "High",
+      className: "bg-rose-50 text-rose-600 ring-rose-200",
+    };
+  }
+
+  if (row.status === "attention" || row.missingCount > 0) {
+    return {
+      label: "Medium",
+      className: "bg-amber-50 text-amber-600 ring-amber-200",
+    };
+  }
+
+  return {
+    label: "Low",
+    className: "bg-emerald-50 text-emerald-600 ring-emerald-200",
+  };
+}
+
+function packBarClass(status: PortfolioRow["status"]) {
+  if (status === "overdue") {
+    return "bg-rose-500";
+  }
+
+  if (status === "attention") {
+    return "bg-amber-500";
+  }
+
+  return "bg-emerald-500";
+}
+
+function queuePriorityMeta(priority: WorkQueueItem["priority"]) {
+  if (priority === "high") {
+    return "bg-rose-50 text-rose-600 ring-rose-200";
+  }
+
+  if (priority === "medium") {
+    return "bg-amber-50 text-amber-600 ring-amber-200";
+  }
+
+  return "bg-brand-50 text-brand-600 ring-brand-200";
+}
+
+function queueToneClasses(tone: QueueTone) {
+  switch (tone) {
+    case "rose":
+      return {
+        border: "bg-rose-500",
+        icon: "bg-rose-50 text-rose-500 ring-rose-100",
+      };
+    case "orange":
+      return {
+        border: "bg-amber-500",
+        icon: "bg-amber-50 text-amber-500 ring-amber-100",
+      };
+    case "emerald":
+      return {
+        border: "bg-emerald-500",
+        icon: "bg-emerald-50 text-emerald-500 ring-emerald-100",
+      };
+    default:
+      return {
+        border: "bg-brand-500",
+        icon: "bg-brand-50 text-brand-600 ring-brand-100",
+      };
+  }
+}
+
+function toneTextClass(tone: Tone) {
+  if (tone === "danger") {
+    return "text-rose-600";
+  }
+
+  if (tone === "warning") {
+    return "text-amber-600";
+  }
+
+  return "text-brand-600";
+}
+
+function FocusIcon({ tone }: { tone: QueueTone }) {
+  const classes = queueToneClasses(tone);
+
+  return (
+    <div className={cn("flex h-12 w-12 items-center justify-center rounded-2xl ring-1", classes.icon)}>
+      {tone === "rose" ? (
+        <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
+          <path
+            d="M12 7.5v4m0 4h.01M7 4.75h10l2.25 2.25v10L17 19.25H7L4.75 17V7L7 4.75Z"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+        </svg>
+      ) : tone === "orange" ? (
+        <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="1.8" />
+          <path
+            d="M12 8v4l2.5 2.5"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+        </svg>
+      ) : tone === "brand" ? (
+        <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
+          <path
+            d="M7.75 5.75h8.5a2 2 0 0 1 2 2v6.5a2 2 0 0 1-2 2H11l-3.75 3v-3H7.75a2 2 0 0 1-2-2v-6.5a2 2 0 0 1 2-2Z"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+        </svg>
+      ) : (
+        <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
+          <path
+            d="m7.5 12.5 2.75 2.75L16.5 9"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+          />
+          <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
+        </svg>
+      )}
+    </div>
+  );
+}
+
+function CalendarIcon() {
+  return (
+    <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
+      <rect height="14" rx="2.5" stroke="currentColor" strokeWidth="1.8" width="16" x="4" y="6.5" />
+      <path
+        d="M8 4.5v4m8-4v4M4 10.5h16"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
+}
+
+function BellIcon() {
+  return (
+    <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
+      <path
+        d="M8 18.5h8m-9-2V11a5 5 0 1 1 10 0v5.5l1.5 2H5.5l1.5-2Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
+}
+
+function ChevronDownIcon() {
+  return (
+    <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24">
+      <path
+        d="m6 9 6 6 6-6"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
+}
+
+function ChevronRightIcon() {
+  return (
+    <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24">
+      <path
+        d="m9 6 6 6-6 6"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
+}
+
+function MoreIcon() {
+  return (
+    <svg aria-hidden="true" className="h-4.5 w-4.5" fill="currentColor" viewBox="0 0 24 24">
+      <circle cx="5" cy="12" r="1.7" />
+      <circle cx="12" cy="12" r="1.7" />
+      <circle cx="19" cy="12" r="1.7" />
+    </svg>
+  );
+}
+
+function QueueIcon({ tone }: { tone: QueueTone }) {
+  const classes = queueToneClasses(tone);
+
+  return (
+    <div className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ring-1", classes.icon)}>
+      {tone === "rose" ? (
+        <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
+          <path
+            d="M8 3.75h6l4.25 4.25v10.25a2 2 0 0 1-2 2H8A2.25 2.25 0 0 1 5.75 18V6A2.25 2.25 0 0 1 8 3.75Z"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+          <path
+            d="M13.75 3.75V8h4.25"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+        </svg>
+      ) : tone === "orange" ? (
+        <CalendarIcon />
+      ) : tone === "emerald" ? (
+        <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
+          <path
+            d="m7.5 12.5 2.75 2.75L16.5 9"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="2"
+          />
+          <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
+        </svg>
+      ) : (
+        <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
+          <path
+            d="M7.75 5.75h8.5a2 2 0 0 1 2 2v6.5a2 2 0 0 1-2 2H11l-3.75 3v-3H7.75a2 2 0 0 1-2-2v-6.5a2 2 0 0 1 2-2Z"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+        </svg>
+      )}
+    </div>
+  );
+}
+
+function ExceptionIcon({ tone }: { tone: QueueTone }) {
+  const classes = queueToneClasses(tone);
+
+  return (
+    <div className={cn("flex h-12 w-12 items-center justify-center rounded-2xl ring-1", classes.icon)}>
+      {tone === "brand" ? (
+        <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
+          <path
+            d="M6 15.5 9.5 12l2.75 2.75L18 9"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+          <path
+            d="M18 14V9h-5"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+        </svg>
+      ) : tone === "orange" ? (
+        <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="1.8" />
+          <path
+            d="M12 8v4l2.5 2.5"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+        </svg>
+      ) : (
+        <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
+          <path
+            d="M8 3.75h6l4.25 4.25v10.25a2 2 0 0 1-2 2H8A2.25 2.25 0 0 1 5.75 18V6A2.25 2.25 0 0 1 8 3.75Z"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+          <path
+            d="M13.75 3.75V8h4.25"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth="1.8"
+          />
+        </svg>
+      )}
+    </div>
+  );
+}
+
+function buildReviewQueueItems(
+  items: ReviewQueueItem[],
+  onOpen: () => void,
+): WorkQueueItem[] {
+  return items.map((item) => ({
+    id: item.id,
+    title: `${item.documentType} review`,
+    subtitle: `${item.clientName} • ${item.monthLabel}`,
+    meta: `Submitted ${formatDateLabel(item.submittedAt)}`,
+    priority: item.status === "under_review" ? "high" : "medium",
+    tone: item.status === "under_review" ? "rose" : "orange",
+    tab: "reviews",
+    onOpen,
+  }));
+}
+
+function buildDeadlineQueueItems(
+  items: DeadlineItem[],
+  onOpen: () => void,
+): WorkQueueItem[] {
+  return items.map((item) => ({
+    id: item.id,
+    title: item.label,
+    subtitle: `Owner: ${item.owner}`,
+    meta: `Due ${formatDateLabel(item.dueDate)}`,
+    priority: item.tone === "danger" ? "high" : item.tone === "warning" ? "medium" : "low",
+    tone: item.tone === "danger" ? "rose" : item.tone === "warning" ? "orange" : "brand",
+    tab: "deadlines",
+    onOpen,
+  }));
+}
+
 export function AccountantDashboardPage() {
+  const { user } = useAuth();
   const portal = usePortal();
   const data = portal.accountantDashboard;
   const navigate = useNavigate();
+  const [activeQueueTab, setActiveQueueTab] = useState<QueueTab>("reviews");
 
   const priorityClients = useMemo(
     () =>
@@ -48,12 +454,109 @@ export function AccountantDashboardPage() {
     [data.portfolio],
   );
 
-  const reviewQueuePreview = useMemo(() => data.reviewQueue.slice(0, 4), [data.reviewQueue]);
-  const deadlinePreview = useMemo(() => data.deadlines.slice(0, 4), [data.deadlines]);
-  const recentRecords = useMemo(
-    () => data.latestOverallDocuments.slice(0, 6),
-    [data.latestOverallDocuments],
+  const assignedClients = useMemo(() => {
+    const accountantName = user?.fullName ?? user?.name;
+    const directAssignments = priorityClients.filter(
+      (row) => row.assignedAccountant === accountantName,
+    );
+
+    return directAssignments.length >= 4 ? directAssignments : priorityClients;
+  }, [priorityClients, user?.fullName, user?.name]);
+
+  const reviewQueueItems = useMemo(
+    () => buildReviewQueueItems(data.reviewQueue.slice(0, 5), () => navigate("/accountant/review")),
+    [data.reviewQueue, navigate],
   );
+
+  const followUpQueueItems = useMemo(
+    () => {
+      const missingItems: WorkQueueItem[] = data.missingDocuments.slice(0, 3).map((item) => ({
+        id: `followup-missing-${item.id}`,
+        title: `Follow up - missing ${item.documentType.toLowerCase()}`,
+        subtitle: `${item.clientName ?? "Client"} • ${item.monthLabel}`,
+        meta: "Client upload still required",
+        priority: item.isRequired ? "high" : "medium",
+        tone: item.isRequired ? "brand" : "orange",
+        tab: "followups",
+        onOpen: () => navigate("/accountant/follow-ups"),
+      }));
+
+      const rejectedItems: WorkQueueItem[] = data.rejectedDocuments.slice(0, 2).map((item) => ({
+        id: `followup-rejected-${item.id}`,
+        title: `Follow up - rejected ${item.type.toLowerCase()}`,
+        subtitle: `${item.clientName ?? "Client"} • Needs corrected version`,
+        meta: formatDateLabel(item.date),
+        priority: "high",
+        tone: "rose",
+        tab: "followups",
+        onOpen: () => navigate("/accountant/follow-ups"),
+      }));
+
+      return [...missingItems, ...rejectedItems].slice(0, 5);
+    },
+    [data.missingDocuments, data.rejectedDocuments, navigate],
+  );
+
+  const deadlineQueueItems = useMemo(
+    () => buildDeadlineQueueItems(data.deadlines.slice(0, 5), () => navigate("/accountant/follow-ups")),
+    [data.deadlines, navigate],
+  );
+
+  const workQueueByTab = useMemo<Record<QueueTab, WorkQueueItem[]>>(
+    () => ({
+      reviews: reviewQueueItems,
+      followups: followUpQueueItems,
+      deadlines: deadlineQueueItems,
+    }),
+    [deadlineQueueItems, followUpQueueItems, reviewQueueItems],
+  );
+
+  const queueCounts = useMemo(
+    () => ({
+      reviews: reviewQueueItems.length,
+      followups: followUpQueueItems.length,
+      deadlines: deadlineQueueItems.length,
+    }),
+    [deadlineQueueItems.length, followUpQueueItems.length, reviewQueueItems.length],
+  );
+
+  const focusMetrics = useMemo(() => {
+    const overdueClients = data.portfolio.filter((row) => row.status === "overdue").length;
+    const reviewsWaiting = data.reviewQueue.length;
+    const followUpsDue = followUpQueueItems.length;
+    const clientsOnTrack = data.portfolio.filter((row) => row.status === "on_track").length;
+
+    return [
+      {
+        id: "focus-overdue",
+        value: overdueClients,
+        label: "Overdue clients",
+        helper: "Require action",
+        tone: "rose" as const,
+      },
+      {
+        id: "focus-reviews",
+        value: reviewsWaiting,
+        label: "Reviews waiting",
+        helper: "Need your review",
+        tone: "orange" as const,
+      },
+      {
+        id: "focus-followups",
+        value: followUpsDue,
+        label: "Follow-ups due",
+        helper: "Awaiting response",
+        tone: "brand" as const,
+      },
+      {
+        id: "focus-track",
+        value: clientsOnTrack,
+        label: "Clients on track",
+        helper: "Everything good",
+        tone: "emerald" as const,
+      },
+    ];
+  }, [data.portfolio, data.reviewQueue.length, followUpQueueItems.length]);
 
   function handleExportView() {
     downloadCsv("accountant-portfolio-view.csv", [
@@ -73,230 +576,373 @@ export function AccountantDashboardPage() {
   }
 
   return (
-    <div className="space-y-5">
-      <PageHeader
-        actions={
-          <>
-            <Button onClick={() => navigate("/accountant/review")}>Review queue</Button>
-            <Button onClick={() => navigate("/accountant/follow-ups")} variant="secondary">
-              Follow-ups
-            </Button>
-          </>
-        }
-        description="Triage the portfolio, act on review work, and clear the exceptions that block month-end progress."
-        eyebrow="Accountant operations"
-        title="Portfolio triage"
-      />
+    <div className="mx-auto max-w-[1280px] space-y-5">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+        <div className="space-y-1.5">
+          <h1 className="text-[2.05rem] font-semibold tracking-tight text-slate-950">
+            Accountant workspace
+          </h1>
+          <p className="max-w-3xl text-[0.96rem] leading-7 text-slate-500">
+            Focus on the clients and tasks that need your attention.
+          </p>
+        </div>
 
-      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        {data.summaryMetrics.map((metric) => (
-          <MetricCard key={metric.id} metric={metric} />
-        ))}
-      </section>
+        <div className="flex flex-wrap items-center gap-2.5 lg:justify-end">
+          <button
+            className="inline-flex h-12 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-800 shadow-[0_10px_30px_rgba(15,23,42,0.04)] transition hover:bg-slate-50"
+            onClick={() => undefined}
+            type="button"
+          >
+            <CalendarIcon />
+            <span>{formatDateLabel(accountantDashboardDate)}</span>
+            <ChevronDownIcon />
+          </button>
+          <button
+            aria-label="Open accountant alerts"
+            className="relative inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-[0_10px_30px_rgba(15,23,42,0.04)] transition hover:bg-slate-50"
+            onClick={() => navigate("/accountant/follow-ups")}
+            type="button"
+          >
+            <BellIcon />
+            <span className="absolute right-3 top-3 h-2.5 w-2.5 rounded-full bg-rose-500" />
+          </button>
+        </div>
+      </div>
 
-      <section className="grid gap-5 xl:grid-cols-[1.18fr_0.82fr]">
-        <SurfaceCard className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+      <SurfaceCard className="overflow-hidden rounded-[1.75rem] border border-slate-200/90 bg-white px-0 py-0 shadow-[0_18px_42px_rgba(15,23,42,0.05)]">
+        <div className="space-y-5 px-6 pb-6 pt-6">
+          <div>
+            <h2 className="text-[1.35rem] font-semibold text-slate-950">Today&apos;s focus</h2>
+          </div>
+          <div className="grid gap-5 lg:grid-cols-4">
+            {focusMetrics.map((metric, index) => (
+              <div
+                className={cn(
+                  "flex items-center gap-4",
+                  index !== focusMetrics.length - 1 && "lg:border-r lg:border-slate-100 lg:pr-5",
+                )}
+                key={metric.id}
+              >
+                <FocusIcon tone={metric.tone} />
+                <div className="space-y-1">
+                  <p className="text-[1.9rem] font-semibold tracking-tight text-slate-950">
+                    {metric.value}
+                  </p>
+                  <p className="text-[0.9rem] font-medium text-slate-800">{metric.label}</p>
+                  <p className="text-[0.82rem] text-slate-500">{metric.helper}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </SurfaceCard>
+
+      <section className="grid gap-5 xl:grid-cols-[minmax(0,1.12fr)_minmax(360px,0.88fr)] xl:items-start">
+        <SurfaceCard className="overflow-hidden rounded-[1.75rem] border border-slate-200/90 bg-white p-0 shadow-[0_18px_42px_rgba(15,23,42,0.05)]">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 pb-5 pt-5">
             <div>
-              <h2 className="text-base font-semibold text-slate-950">Priority client queue</h2>
-              <p className="mt-1 text-[0.84rem] text-slate-500">
-                Focus the team on the clients with the highest completeness and deadline risk.
+              <h2 className="text-[1.2rem] font-semibold text-slate-950">My assigned clients</h2>
+              <p className="mt-1 text-[0.86rem] text-slate-500">
+                Overview of your clients and pack progress.
               </p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Button onClick={() => navigate("/accountant/clients")} size="sm" variant="secondary">
-                Open portfolio
+            <div className="flex items-center gap-2.5">
+              <Button
+                className="h-10 rounded-xl px-4 text-brand-600"
+                onClick={() => navigate("/accountant/clients")}
+                variant="secondary"
+              >
+                <span>View all clients</span>
+                <ChevronRightIcon />
               </Button>
-              <Button onClick={handleExportView} size="sm" variant="ghost">
+              <Button className="h-10 rounded-xl px-4" onClick={handleExportView} variant="ghost">
                 Export CSV
               </Button>
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left">
-              <thead>
-                <tr className="border-b border-slate-200 text-[0.68rem] uppercase tracking-[0.16em] text-slate-400">
-                  <th className="pb-3 font-medium">Client</th>
-                  <th className="pb-3 font-medium">Pack health</th>
-                  <th className="pb-3 font-medium">Due</th>
-                  <th className="pb-3 font-medium">Owner</th>
-                </tr>
-              </thead>
-              <tbody>
-                {priorityClients.map((row) => (
-                  <tr
-                    className="cursor-pointer border-b border-slate-100 last:border-b-0 hover:bg-slate-50"
-                    key={row.id}
-                    onClick={() => openClientWorkspace(row)}
-                  >
-                    <td className="py-3.5 pr-4 align-top">
-                      <p className="text-[0.9rem] font-semibold text-slate-950">{row.clientName}</p>
-                      <p className="mt-1 text-[0.8rem] text-slate-500">
-                        {row.missingCount} missing / {row.overdueCount} overdue
-                      </p>
-                    </td>
-                    <td className="py-3.5 pr-4">
-                      <div className="min-w-[170px] space-y-2">
-                        <div className="flex items-center justify-between text-[0.8rem] text-slate-600">
-                          <span>{row.monthLabel}</span>
+          {assignedClients.length > 0 ? (
+            <>
+              <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(180px,1fr)_minmax(160px,0.8fr)_auto] gap-4 border-b border-slate-100 px-5 py-3 text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                <div>Client</div>
+                <div>Pack progress</div>
+                <div>Due date</div>
+                <div>Risk</div>
+              </div>
+
+              <div className="divide-y divide-slate-100">
+                {assignedClients.map((row) => {
+                  const due = rowDueMeta(row);
+                  const risk = rowRiskMeta(row);
+
+                  return (
+                    <button
+                      className="grid w-full grid-cols-[minmax(0,1.4fr)_minmax(180px,1fr)_minmax(160px,0.8fr)_auto] gap-4 px-5 py-4 text-left transition hover:bg-slate-50"
+                      key={row.id}
+                      onClick={() => openClientWorkspace(row)}
+                      type="button"
+                    >
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-700">
+                          {getInitials(row.clientName)}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-[0.95rem] font-semibold text-slate-950">
+                            {row.clientName}
+                          </p>
+                          <p className="mt-1 text-[0.82rem] text-slate-500">
+                            {row.monthLabel} Pack
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 pt-0.5">
+                        <div className="flex items-center justify-between text-[0.88rem] font-semibold text-slate-900">
                           <span>{row.progressPercent}%</span>
                         </div>
-                        <ProgressBar value={row.progressPercent} />
-                        <StatusBadge status={row.status} />
+                        <div className="h-2 rounded-full bg-slate-100">
+                          <div
+                            className={cn("h-2 rounded-full transition-all", packBarClass(row.status))}
+                            style={{ width: `${Math.min(Math.max(row.progressPercent, 0), 100)}%` }}
+                          />
+                        </div>
+                        <p className="text-[0.78rem] text-slate-500">
+                          {row.missingCount} missing <span className="text-slate-300">•</span>{" "}
+                          <span className={row.overdueCount > 0 ? "text-rose-600" : "text-slate-500"}>
+                            {row.overdueCount} overdue
+                          </span>
+                        </p>
                       </div>
-                    </td>
-                    <td className="py-3.5 pr-4 text-[0.84rem] text-slate-500">
-                      {row.deadline}
-                    </td>
-                    <td className="py-3.5 text-[0.84rem] text-slate-500">
-                      {row.assignedAccountant}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+
+                      <div className="space-y-1 pt-0.5">
+                        <p className={cn("text-[0.88rem] font-semibold", due.textClass)}>{due.label}</p>
+                        <p className="text-[0.8rem] text-slate-500">{due.detail}</p>
+                      </div>
+
+                      <div className="flex items-start justify-end gap-3 pt-0.5">
+                        <span
+                          className={cn(
+                            "inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset",
+                            risk.className,
+                          )}
+                        >
+                          {risk.label}
+                        </span>
+                        <span className="pt-1 text-slate-300">
+                          <MoreIcon />
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                className="flex w-full items-center gap-2 px-5 py-4 text-left text-sm font-medium text-brand-600 transition hover:bg-brand-50/50"
+                onClick={() => navigate("/accountant/clients")}
+                type="button"
+              >
+                <span>View all clients</span>
+                <ChevronRightIcon />
+              </button>
+            </>
+          ) : (
+            <div className="px-5 py-8">
+              <EmptyState
+                description="Assigned clients will appear here once work is routed to your accountant workspace."
+                title="No clients assigned"
+              />
+            </div>
+          )}
         </SurfaceCard>
 
-        <div className="space-y-5">
-          <SurfaceCard className="space-y-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-base font-semibold text-slate-950">Review queue</h2>
-                <p className="mt-1 text-[0.84rem] text-slate-500">
-                  Work waiting for an accountant decision right now.
-                </p>
-              </div>
-              <Button onClick={() => navigate("/accountant/review")} size="sm" variant="ghost">
-                Open
-              </Button>
+        <SurfaceCard className="overflow-hidden rounded-[1.75rem] border border-slate-200/90 bg-white p-0 shadow-[0_18px_42px_rgba(15,23,42,0.05)]">
+          <div className="space-y-4 border-b border-slate-100 px-5 pb-5 pt-5">
+            <div>
+              <h2 className="text-[1.2rem] font-semibold text-slate-950">My work queue</h2>
+              <p className="mt-1 text-[0.86rem] text-slate-500">Tasks that need your attention.</p>
             </div>
-            <div className="space-y-2.5">
-              {reviewQueuePreview.map((item) => (
+            <div className="flex flex-wrap items-center gap-5">
+              {[
+                { id: "reviews" as const, label: "Reviews", count: queueCounts.reviews },
+                { id: "followups" as const, label: "Follow-ups", count: queueCounts.followups },
+                { id: "deadlines" as const, label: "Deadlines", count: queueCounts.deadlines },
+              ].map((item) => (
                 <button
-                  className="w-full rounded-[1.1rem] border border-slate-200 bg-slate-50 p-3.5 text-left transition hover:border-brand-200 hover:bg-brand-50"
+                  className={cn(
+                    "flex items-center gap-2 border-b-2 px-0.5 pb-2 text-sm font-medium transition",
+                    activeQueueTab === item.id
+                      ? "border-brand-500 text-brand-600"
+                      : "border-transparent text-slate-500 hover:text-slate-700",
+                  )}
                   key={item.id}
-                  onClick={() => navigate("/accountant/review")}
+                  onClick={() => setActiveQueueTab(item.id)}
                   type="button"
                 >
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="text-[0.88rem] font-semibold text-slate-950">
-                        {item.clientName}
-                      </p>
-                      <p className="mt-1 text-[0.8rem] text-slate-500">
-                        {item.documentType} / {item.monthLabel}
-                      </p>
-                    </div>
-                    <StatusBadge status={item.status} />
-                  </div>
-                  <p className="mt-2 text-[0.78rem] text-slate-400">
-                    Submitted {formatDateLabel(item.submittedAt)}
-                  </p>
+                  <span>{item.label}</span>
+                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[0.72rem] font-semibold text-slate-500">
+                    {item.count}
+                  </span>
                 </button>
               ))}
             </div>
-          </SurfaceCard>
+          </div>
 
-          <SurfaceCard className="space-y-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h2 className="text-base font-semibold text-slate-950">Today&apos;s follow-ups</h2>
-                <p className="mt-1 text-[0.84rem] text-slate-500">
-                  Exceptions that need outreach or accountant attention today.
-                </p>
+          {workQueueByTab[activeQueueTab].length > 0 ? (
+            <>
+              <div className="divide-y divide-slate-100">
+                {workQueueByTab[activeQueueTab].map((item) => {
+                  const tone = queueToneClasses(item.tone);
+
+                  return (
+                    <button
+                      className="relative flex w-full items-start gap-3 px-5 py-4 text-left transition hover:bg-slate-50"
+                      key={item.id}
+                      onClick={item.onOpen}
+                      type="button"
+                    >
+                      <span className={cn("absolute left-0 top-5 h-10 w-1 rounded-r-full", tone.border)} />
+                      <QueueIcon tone={item.tone} />
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-[0.96rem] font-semibold text-slate-950">
+                              {item.title}
+                            </p>
+                            <p className="mt-1 text-[0.82rem] text-slate-500">{item.subtitle}</p>
+                          </div>
+                          <span
+                            className={cn(
+                              "inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset",
+                              queuePriorityMeta(item.priority),
+                            )}
+                          >
+                            {item.priority[0].toUpperCase()}
+                            {item.priority.slice(1)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3 pt-1">
+                          <p className="text-[0.8rem] text-slate-500">{item.meta}</p>
+                          <span className="text-slate-400">
+                            <ChevronRightIcon />
+                          </span>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
-              <Button
-                onClick={() => navigate("/accountant/follow-ups")}
-                size="sm"
-                variant="ghost"
+
+              <button
+                className="flex w-full items-center gap-2 px-5 py-4 text-left text-sm font-medium text-brand-600 transition hover:bg-brand-50/50"
+                onClick={() =>
+                  navigate(activeQueueTab === "reviews" ? "/accountant/review" : "/accountant/follow-ups")
+                }
+                type="button"
               >
-                Open
-              </Button>
+                <span>View all tasks</span>
+                <ChevronRightIcon />
+              </button>
+            </>
+          ) : (
+            <div className="px-5 py-8">
+              <EmptyState
+                description="The selected work queue is clear right now."
+                title="No active tasks"
+              />
             </div>
-            <div className="space-y-2.5">
-              {deadlinePreview.map((item) => (
-                <button
-                  className="w-full rounded-[1.1rem] border border-slate-200 bg-slate-50 p-3.5 text-left transition hover:border-brand-200 hover:bg-brand-50"
-                  key={item.id}
-                  onClick={() => navigate("/accountant/follow-ups")}
-                  type="button"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-[0.88rem] font-semibold text-slate-950">{item.label}</p>
-                    <StatusBadge
-                      status={
-                        item.tone === "danger"
-                          ? "late"
-                          : item.tone === "warning"
-                            ? "due"
-                            : "on_track"
-                      }
-                    />
-                  </div>
-                  <p className="mt-2 text-[0.8rem] text-slate-500">{item.owner}</p>
-                  <p className="mt-1 text-[0.78rem] text-slate-400">
-                    Due {formatDateLabel(item.dueDate)}
-                  </p>
-                </button>
-              ))}
-            </div>
-          </SurfaceCard>
+          )}
+        </SurfaceCard>
+      </section>
+
+      <SurfaceCard className="overflow-hidden rounded-[1.75rem] border border-slate-200/90 bg-white p-0 shadow-[0_18px_42px_rgba(15,23,42,0.05)]">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 pb-5 pt-5">
+          <div>
+            <h2 className="text-[1.2rem] font-semibold text-slate-950">High priority exceptions</h2>
+            <p className="mt-1 text-[0.86rem] text-slate-500">
+              The most important issues blocking progress.
+            </p>
+          </div>
+          <Button
+            className="h-10 rounded-xl px-4 text-brand-600"
+            onClick={() => navigate("/accountant/follow-ups")}
+            variant="secondary"
+          >
+            <span>Go to exceptions</span>
+            <ChevronRightIcon />
+          </Button>
         </div>
-      </section>
 
-      <section className="grid gap-5 xl:grid-cols-2">
-        <SmartAlertsPanel
-          description="Workflow anomalies worth human judgment before they become client follow-ups."
-          headerActionLabel="View all"
-          items={data.smartAlerts.slice(0, 4)}
-          onHeaderAction={() => navigate("/accountant/documents")}
-          title="Workflow anomalies"
-        />
-        <ReconciliationAssistantPanel
-          description="Unmatched or unusual bank-to-invoice signals that need review."
-          headerActionLabel="View all"
-          items={data.reconciliationIssues.slice(0, 4)}
-          onHeaderAction={() => navigate("/accountant/documents")}
-          title="Reconciliation gaps"
-        />
-      </section>
-
-      <section className="grid gap-5 xl:grid-cols-3">
-        <MissingDocumentsPanel
-          actionLabel="Open client"
-          headerActionLabel="View all"
-          items={data.missingDocuments.slice(0, 4)}
-          onActionItem={() => navigate("/accountant/clients/firm-client-1?tab=packs")}
-          onHeaderAction={() => navigate("/accountant/clients")}
-        />
-        <ExpiringDocumentsPanel
-          actionLabel="Open exceptions"
-          headerActionLabel="View all"
-          items={data.expiringDocuments.slice(0, 4)}
-          onActionItem={() => navigate("/accountant/compliance-exceptions")}
-          onHeaderAction={() => navigate("/accountant/compliance-exceptions")}
-        />
-        <RejectedDocumentsPanel
-          actionLabel="Open review"
-          headerActionLabel="View all"
-          items={data.rejectedDocuments.slice(0, 4)}
-          onActionItem={() => navigate("/accountant/review")}
-          onHeaderAction={() => navigate("/accountant/review")}
-        />
-      </section>
-
-      <LatestRecordsTable
-        description="Recent document and invoice movement across the portfolio."
-        headerActionLabel="View all"
-        items={recentRecords}
-        onComment={() => navigate("/accountant/messages")}
-        onDownload={(recordName) => downloadCsv("record-download.csv", [["Record"], [recordName]])}
-        onHeaderAction={() => navigate("/accountant/documents")}
-        onView={() => navigate("/accountant/documents")}
-        title="Recent portfolio records"
-      />
+        <div className="grid gap-4 px-5 py-5 lg:grid-cols-4">
+          {[
+            {
+              id: "exception-missing",
+              count: data.missingDocuments.length,
+              label: "Missing documents",
+              helper: "Require upload",
+              cta: "View missing",
+              tone: "rose" as const,
+              route: "/accountant/clients",
+            },
+            {
+              id: "exception-expiring",
+              count: data.expiringDocuments.length,
+              label: "Expiring documents",
+              helper: "Next 30 days",
+              cta: "View expiring",
+              tone: "orange" as const,
+              route: "/accountant/compliance-exceptions",
+            },
+            {
+              id: "exception-rejected",
+              count: data.rejectedDocuments.length,
+              label: "Rejected files",
+              helper: "Need new version",
+              cta: "View rejected",
+              tone: "rose" as const,
+              route: "/accountant/review",
+            },
+            {
+              id: "exception-recon",
+              count: data.reconciliationIssues.length,
+              label: "Reconciliation gaps",
+              helper: "Need attention",
+              cta: "View gaps",
+              tone: "brand" as const,
+              route: "/accountant/documents",
+            },
+          ].map((item) => (
+            <button
+              className={cn(
+                "rounded-[1.5rem] border p-5 text-left transition hover:-translate-y-0.5 hover:shadow-[0_16px_34px_rgba(15,23,42,0.08)]",
+                item.tone === "rose"
+                  ? "border-rose-100 bg-[linear-gradient(180deg,#fff7f7_0%,#ffffff_100%)]"
+                  : item.tone === "orange"
+                    ? "border-amber-100 bg-[linear-gradient(180deg,#fffaf3_0%,#ffffff_100%)]"
+                    : "border-brand-100 bg-[linear-gradient(180deg,#f8f8ff_0%,#ffffff_100%)]",
+              )}
+              key={item.id}
+              onClick={() => navigate(item.route)}
+              type="button"
+            >
+              <div className="space-y-4">
+                <ExceptionIcon tone={item.tone} />
+                <div className="space-y-1">
+                  <p className="text-[2rem] font-semibold tracking-tight text-slate-950">
+                    {item.count}
+                  </p>
+                  <p className="text-[0.95rem] font-semibold text-slate-900">{item.label}</p>
+                  <p className="text-[0.82rem] text-slate-500">{item.helper}</p>
+                </div>
+                <div className={cn("flex items-center gap-2 text-sm font-medium", toneTextClass(item.tone === "rose" ? "danger" : item.tone === "orange" ? "warning" : "info"))}>
+                  <span>{item.cta}</span>
+                  <ChevronRightIcon />
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </SurfaceCard>
     </div>
   );
 }
