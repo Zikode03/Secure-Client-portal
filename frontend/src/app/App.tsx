@@ -3,10 +3,8 @@ import { defaultPathForRole, useAuth } from "./auth";
 import { WorkspaceLayout } from "../layouts/WorkspaceLayout";
 import { AccountantClientWorkspacePage } from "../pages/accountant/AccountantClientWorkspacePage";
 import { AccountantComplianceCentrePage } from "../pages/accountant/AccountantComplianceCentrePage";
-import { AccountantComplianceExceptionsPage } from "../pages/accountant/AccountantComplianceExceptionsPage";
 import { AccountantDashboardPage } from "../pages/accountant/AccountantDashboardPage";
 import { AccountantDocumentsPage } from "../pages/accountant/AccountantDocumentsPage";
-import { AccountantFollowUpsPage } from "../pages/accountant/AccountantFollowUpsPage";
 import { AccountantMessagesPage } from "../pages/accountant/AccountantMessagesPage";
 import { AccountantNotificationsPage } from "../pages/accountant/AccountantNotificationsPage";
 import { AccountantPortfolioPage } from "../pages/accountant/AccountantPortfolioPage";
@@ -150,8 +148,8 @@ export default function App() {
         <Route element={<AccountantClientWorkspacePage />} path="clients/:clientId/packs" />
         <Route element={<AccountantDocumentsPage />} path="documents" />
         <Route element={<AccountantReviewPage />} path="review" />
-        <Route element={<AccountantFollowUpsPage />} path="follow-ups" />
-        <Route element={<AccountantComplianceExceptionsPage />} path="compliance-exceptions" />
+        <Route element={<Navigate replace to="/accountant/clients" />} path="follow-ups" />
+        <Route element={<Navigate replace to="/accountant/compliance" />} path="compliance-exceptions" />
         <Route element={<AccountantComplianceCentrePage />} path="compliance" />
         <Route element={<AccountantNotificationsPage />} path="notifications" />
         <Route element={<AccountantMessagesPage />} path="messages" />

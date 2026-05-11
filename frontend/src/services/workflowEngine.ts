@@ -689,10 +689,12 @@ export function buildUnifiedSearchResults(args: {
     monthLabel: "Compliance",
     typeLabel: document.name,
     status: document.status,
-    date: document.issueDate,
+    date: document.issueDate ?? document.expiryDate ?? new Date().toISOString(),
     expiryDate: document.expiryDate,
     expiryStatus: document.status,
-    uploadedBy: document.versionHistory[0]?.uploadedBy,
+    uploadedBy:
+      document.versions.find((version) => version.isCurrentVersion)?.uploadedBy ??
+      document.versionHistory[0]?.uploadedBy,
     commentCount: 0,
     keywordText: [
       document.name,

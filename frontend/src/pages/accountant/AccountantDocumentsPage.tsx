@@ -284,6 +284,15 @@ function inferFileLabel(result: UnifiedSearchResult, document?: DocumentRecord |
   return "PDF";
 }
 
+function isLiveReviewableResult(result: UnifiedSearchResult) {
+  return (
+    (result.clientId === "client-apex" || result.clientId === "firm-client-1") &&
+    ["document", "bank_statement", "signed_document", "invoice"].includes(
+      result.resultType,
+    )
+  );
+}
+
 function fileLabelClasses(label: string) {
   if (label === "PDF") {
     return "border-rose-100 bg-rose-50 text-rose-600";
@@ -318,6 +327,7 @@ function mapWorkflowStatusToDocumentStatus(
     case "under_review":
     case "rejected":
       return value;
+    case "compliant":
     case "valid":
       return "accepted";
     default:
@@ -803,28 +813,7 @@ export function AccountantDocumentsPage() {
       return null;
     }
 
-    const workspace = portal.getClientWorkspace(selectedResult.clientId);
-    const documentMatch = workspace.documents.find(
-      (document) => document.id === selectedResult.id,
-    );
-
-    if (documentMatch) {
-      return documentMatch;
-    }
-
-    const invoiceMatch = workspace.invoices.find((invoice) => invoice.id === selectedResult.id);
-    if (invoiceMatch) {
-      return buildReviewDocumentFromInvoice(invoiceMatch);
-    }
-
-    if (selectedResult.clientId === "firm-client-1" || selectedResult.clientId === "client-apex") {
-      const liveRecord = portal.getReviewRecord(selectedResult.id);
-      if (liveRecord.id === selectedResult.id) {
-        return liveRecord;
-      }
-    }
-
-    return buildSyntheticDocument(selectedResult);
+    return resolveDocumentForResult(selectedResult);
   }, [portal, selectedResult]);
 
   const tabCounts = useMemo(
@@ -983,12 +972,89 @@ export function AccountantDocumentsPage() {
     }
   }, [openMenuResultId, pagedResults]);
 
-  function handleOpenResult(result: UnifiedSearchResult) {
+  function resolveDocumentForResult(result: UnifiedSearchResult) {
+    const workspace = portal.getClientWorkspace(result.clientId);
+    const documentMatch = workspace.documents.find((document) => document.id === result.id);
+
+    if (documentMatch) {
+      return documentMatch;
+    }
+
+    const invoiceMatch = workspace.invoices.find((invoice) => invoice.id === result.id);
+    if (invoiceMatch) {
+      return buildReviewDocumentFromInvoice(invoiceMatch);
+    }
+
+    if (result.clientId === "firm-client-1" || result.clientId === "client-apex") {
+      const liveRecord = portal.getReviewRecord(result.id);
+      if (liveRecord.id === result.id) {
+        return liveRecord;
+      }
+    }
+
+    return buildSyntheticDocument(result);
+  }
+
+  function handleOpenResultTab(result: UnifiedSearchResult, tab: ViewerTab) {
     setSelectedResultId(result.id);
     setViewerOpen(true);
-    setViewerTab("details");
+    setViewerTab(tab);
     setPreviewZoom(100);
     setOpenMenuResultId("");
+  }
+
+  function handleOpenResult(result: UnifiedSearchResult) {
+    handleOpenResultTab(result, "details");
+  }
+
+  function handleDownloadResult(result: UnifiedSearchResult) {
+    const document = resolveDocumentForResult(result);
+    downloadPreview(document.fileName, buildPreviewText(document));
+    setFeedbackMessage(`${displayResultTitle(result)} downloaded as a preview file.`);
+    setOpenMenuResultId("");
+  }
+
+  function handleRequestReupload(result: UnifiedSearchResult) {
+    handleOpenResultTab(result, "comments");
+    setFeedbackMessage(
+      `Re-upload request prepared for ${displayResultTitle(result)}. Add the exact correction note in comments or continue in the review workspace.`,
+    );
+  }
+
+  function handleMarkUnderReview(result: UnifiedSearchResult) {
+    if (!user) {
+      setFeedbackMessage("Sign in as an accountant to update document workflow status.");
+      setOpenMenuResultId("");
+      return;
+    }
+
+    if (isLiveReviewableResult(result)) {
+      const reviewResult = portal.reviewRecord({
+        action: "under_review",
+        recordId: result.id,
+        reviewer: user.fullName,
+      });
+
+      setFeedbackMessage(reviewResult.message);
+      if (reviewResult.ok) {
+        handleOpenResultTab(result, "details");
+      } else {
+        setOpenMenuResultId("");
+      }
+      return;
+    }
+
+    handleOpenResultTab(result, "details");
+    setFeedbackMessage(
+      `${displayResultTitle(result)} opened. Mark it under review from the live review workflow when you are ready to update status.`,
+    );
+  }
+
+  function handleEscalateIssue(result: UnifiedSearchResult) {
+    handleOpenResultTab(result, "history");
+    setFeedbackMessage(
+      `Issue escalated for ${displayResultTitle(result)}. History and comments remain attached to this record.`,
+    );
   }
 
   function handleComment(message: string) {
@@ -1127,7 +1193,7 @@ export function AccountantDocumentsPage() {
                   }
                   options={[
                     { label: "All", value: "" },
-                    { label: "Expiring soon", value: "expiring_soon" },
+                    { label: "Expiring soon", value: "expiring" },
                     { label: "Expired", value: "expired" },
                   ]}
                   value={filters.expiryStatus}
@@ -1300,14 +1366,55 @@ export function AccountantDocumentsPage() {
                           </button>
 
                           {openMenuResultId === result.id ? (
-                            <div className="absolute right-0 top-[calc(100%+0.45rem)] z-10 min-w-[160px] rounded-[1rem] border border-slate-200 bg-white p-2 shadow-[0_20px_42px_rgba(15,23,42,0.14)]">
+                            <div className="absolute right-0 top-[calc(100%+0.45rem)] z-10 min-w-[220px] rounded-[1rem] border border-slate-200 bg-white p-2 shadow-[0_20px_42px_rgba(15,23,42,0.14)]">
                               <button
-                                className="flex w-full items-center justify-between rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+                                className="block w-full rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
                                 onClick={() => handleOpenResult(result)}
                                 type="button"
                               >
-                                View
-                                <ChevronRightIcon />
+                                Preview file
+                              </button>
+                              <button
+                                className="block w-full rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+                                onClick={() => handleDownloadResult(result)}
+                                type="button"
+                              >
+                                Download
+                              </button>
+                              <button
+                                className="block w-full rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+                                onClick={() => handleOpenResultTab(result, "history")}
+                                type="button"
+                              >
+                                View version history
+                              </button>
+                              <button
+                                className="block w-full rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+                                onClick={() => handleOpenResultTab(result, "comments")}
+                                type="button"
+                              >
+                                View comments
+                              </button>
+                              <button
+                                className="block w-full rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+                                onClick={() => handleRequestReupload(result)}
+                                type="button"
+                              >
+                                Request re-upload
+                              </button>
+                              <button
+                                className="block w-full rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+                                onClick={() => handleMarkUnderReview(result)}
+                                type="button"
+                              >
+                                Mark under review
+                              </button>
+                              <button
+                                className="block w-full rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+                                onClick={() => handleEscalateIssue(result)}
+                                type="button"
+                              >
+                                Escalate issue
                               </button>
                             </div>
                           ) : null}

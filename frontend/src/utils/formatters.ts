@@ -52,13 +52,16 @@ export function statusToTone(value: WorkflowStatus): Tone {
     case "on_track":
     case "sent_to_accountant":
     case "uploaded":
+    case "compliant":
     case "valid":
       return "success";
     case "pending":
     case "pending_signature":
+    case "expiring":
     case "expiring_soon":
     case "under_review":
     case "attention":
+    case "at_risk":
     case "due":
     case "partial":
       return "warning";
@@ -66,6 +69,7 @@ export function statusToTone(value: WorkflowStatus): Tone {
     case "rejected":
     case "missing":
     case "overdue":
+    case "high_risk":
     case "expired":
       return "danger";
     default:

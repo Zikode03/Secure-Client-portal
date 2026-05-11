@@ -33,7 +33,7 @@ export function ComplianceExpiryQueuePanel({
                 <StatusBadge status={item.status} />
               </div>
               <p className="mt-3 text-sm text-slate-500">
-                Expires {formatDateLabel(item.expiryDate)}
+                Expires {item.expiryDate ? formatDateLabel(item.expiryDate) : "Not set"}
               </p>
             </div>
           ))

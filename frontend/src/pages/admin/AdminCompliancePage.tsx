@@ -1,6 +1,7 @@
 import { usePortal } from "../../app/portal";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
+import { formatDateLabel, formatStatusLabel } from "../../utils/formatters";
 
 export function AdminCompliancePage() {
   const portal = usePortal();
@@ -21,13 +22,13 @@ export function AdminCompliancePage() {
               <div>
                 <p className="text-sm font-semibold text-slate-950">{client.clientName}</p>
                 <p className="mt-1 text-sm text-slate-500">
-                  Report ready {client.reportReadyAt}
+                  Report ready {formatDateLabel(client.reportReadyAt)} / {formatStatusLabel(client.riskStatus)}
                 </p>
               </div>
               <p className="text-2xl font-semibold text-slate-950">{client.score}%</p>
             </div>
             <p className="mt-3 text-sm text-slate-500">
-              {client.expiredCount} expired / {client.expiringSoonCount} expiring soon / {client.missingRequiredCount} missing required
+              {client.expiredCount} expired / {client.expiringCount} expiring soon / {client.missingCount} missing required
             </p>
           </div>
         ))}

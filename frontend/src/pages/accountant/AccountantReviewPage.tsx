@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
@@ -6,7 +6,12 @@ import { AuditTrail } from "../../components/workflow/AuditTrail";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
-import type { DocumentComment, DocumentRecord, ReviewQueueItem } from "../../types/portal";
+import type {
+  AuditTrailEntry,
+  DocumentComment,
+  DocumentRecord,
+  ReviewQueueItem,
+} from "../../types/portal";
 import { cn } from "../../utils/cn";
 import {
   formatDateLabel,
@@ -16,9 +21,23 @@ import {
 
 const reviewSnapshotDate = new Date("2026-05-08T08:00:00.000Z");
 
-type ActivityTab = "comments" | "audit";
 type QueueStatusFilter = "all" | "under_review" | "overdue" | "attention" | "on_track";
 type DueWindowFilter = "all" | "overdue" | "soon" | "later";
+type WorkspaceDecision =
+  | "accepted"
+  | "rejected"
+  | "under_review"
+  | "request_reupload";
+
+interface ReviewVersionEntry {
+  id: string;
+  isLatest: boolean;
+  rejectionReason?: string;
+  status: DocumentRecord["status"];
+  uploadedAt: string;
+  uploadedBy: string;
+  versionNumber: number;
+}
 
 function getInitials(value: string) {
   return value
@@ -168,19 +187,19 @@ function documentStatusMeta(status: DocumentRecord["status"]) {
       };
     case "under_review":
       return {
-        description: "The client has been notified that the accountant is still reviewing this record.",
+        description: "The client can see that the document is still actively being reviewed.",
         panel: "border-amber-200 bg-amber-50/60",
         value: "text-amber-700",
       };
     case "rejected":
       return {
-        description: "The record was sent back and still needs a corrected version from the client.",
+        description: "The file was sent back and needs a corrected version in the structured upload slot.",
         panel: "border-rose-200 bg-rose-50/60",
         value: "text-rose-700",
       };
     case "accepted":
       return {
-        description: "The record has been approved and moved forward in the workflow.",
+        description: "The record has been accepted and moved forward in the workflow.",
         panel: "border-emerald-200 bg-emerald-50/60",
         value: "text-emerald-700",
       };
@@ -302,6 +321,62 @@ function ChevronDownIcon() {
   );
 }
 
+function ChevronLeftIcon() {
+  return (
+    <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24">
+      <path
+        d="m14 7-5 5 5 5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
+}
+
+function ChevronRightIcon() {
+  return (
+    <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24">
+      <path
+        d="m10 7 5 5-5 5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
+}
+
+function ZoomOutIcon() {
+  return (
+    <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24">
+      <path
+        d="M7 12h10"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
+}
+
+function ZoomInIcon() {
+  return (
+    <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24">
+      <path
+        d="M12 7v10M7 12h10"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
+}
+
 function RefreshIcon() {
   return (
     <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
@@ -354,9 +429,162 @@ function OfficeIcon() {
   );
 }
 
+function sortAuditEntriesDescending(entries: AuditTrailEntry[]) {
+  return [...entries].sort(
+    (left, right) =>
+      new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime(),
+  );
+}
+
+function chunkPreviewLines(lines: string[], size: number) {
+  if (!lines.length) {
+    return [["No extracted preview text is available for this file yet."]];
+  }
+
+  const pages: string[][] = [];
+  for (let index = 0; index < lines.length; index += size) {
+    pages.push(lines.slice(index, index + size));
+  }
+  return pages;
+}
+
+function buildVersionHistory(
+  document: DocumentRecord,
+  auditTrail: AuditTrailEntry[],
+): ReviewVersionEntry[] {
+  const ordered = [...auditTrail].sort(
+    (left, right) =>
+      new Date(left.timestamp).getTime() - new Date(right.timestamp).getTime(),
+  );
+
+  const uploadEvents = ordered.filter((entry) => entry.status.toLowerCase().includes("uploaded"));
+  const sourceUploads =
+    uploadEvents.length > 0
+      ? uploadEvents
+      : [
+          {
+            id: `${document.id}-upload-fallback`,
+            status: "Uploaded",
+            actor: document.uploadedBy,
+            timestamp: document.uploadedAt,
+            note: "Initial upload created the first file version.",
+          },
+        ];
+
+  return sourceUploads
+    .map((upload, index) => {
+      const uploadTime = new Date(upload.timestamp).getTime();
+      const nextUploadTime =
+        index < sourceUploads.length - 1
+          ? new Date(sourceUploads[index + 1].timestamp).getTime()
+          : Number.POSITIVE_INFINITY;
+      const versionEvents = ordered.filter((entry) => {
+        const eventTime = new Date(entry.timestamp).getTime();
+        return eventTime >= uploadTime && eventTime < nextUploadTime;
+      });
+
+      const rejectionEvent = versionEvents.find(
+        (entry) =>
+          entry.status.toLowerCase().includes("rejected") ||
+          entry.status.toLowerCase().includes("re-upload requested"),
+      );
+      const acceptedEvent = versionEvents.find((entry) =>
+        entry.status.toLowerCase().includes("accepted"),
+      );
+      const reviewEvent = versionEvents.find((entry) =>
+        entry.status.toLowerCase().includes("under review"),
+      );
+
+      let status: DocumentRecord["status"] = "uploaded";
+      if (index === sourceUploads.length - 1) {
+        status = document.status;
+      } else if (rejectionEvent) {
+        status = "rejected";
+      } else if (acceptedEvent) {
+        status = "accepted";
+      } else if (reviewEvent) {
+        status = "under_review";
+      }
+
+      return {
+        id: `${document.id}-version-${index + 1}`,
+        isLatest: index === sourceUploads.length - 1,
+        rejectionReason:
+          status === "rejected"
+            ? index === sourceUploads.length - 1
+              ? document.rejectionReason ?? rejectionEvent?.note
+              : rejectionEvent?.note
+            : undefined,
+        status,
+        uploadedAt: upload.timestamp,
+        uploadedBy: upload.actor,
+        versionNumber: index + 1,
+      };
+    })
+    .reverse();
+}
+
+function PreviewCanvas({
+  document,
+  previewPage,
+  previewPages,
+  previewZoom,
+}: {
+  document: DocumentRecord;
+  previewPage: number;
+  previewPages: string[][];
+  previewZoom: number;
+}) {
+  return (
+    <div className="flex min-h-[32rem] items-start justify-center overflow-auto bg-[linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)] px-4 py-6">
+      <div
+        className="w-full max-w-[620px] rounded-[1.35rem] border border-slate-200 bg-white p-6 shadow-[0_24px_48px_rgba(15,23,42,0.08)]"
+        style={{ transform: `scale(${previewZoom / 100})`, transformOrigin: "top center" }}
+      >
+        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 pb-5">
+          <div className="space-y-2">
+            <span
+              className={cn(
+                "inline-flex rounded-lg px-2.5 py-1 text-[0.72rem] font-semibold uppercase ring-1 ring-inset",
+                queueTypeClasses(document.documentType),
+              )}
+            >
+              {fileExtensionLabel(document.fileName)}
+            </span>
+            <div>
+              <h3 className="text-[1.15rem] font-semibold text-slate-950">{document.fileName}</h3>
+              <p className="mt-1 text-sm text-slate-500">
+                {document.clientName} / {document.monthLabel}
+              </p>
+            </div>
+          </div>
+          <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-right">
+            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-slate-400">
+              File type
+            </p>
+            <p className="mt-2 text-sm font-medium text-slate-700">{document.documentType}</p>
+          </div>
+        </div>
+
+        <div className="mt-6 space-y-3 font-mono text-[0.88rem] leading-7 text-slate-600">
+          {previewPages[previewPage - 1].map((line, index) => (
+            <div className="flex gap-4" key={`${document.id}-preview-${previewPage}-${index}`}>
+              <span className="w-7 shrink-0 text-right text-slate-300">
+                {(previewPage - 1) * previewPages[previewPage - 1].length + index + 1}
+              </span>
+              <p className="min-w-0 flex-1">{line}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function AccountantReviewPage() {
   const { user } = useAuth();
   const portal = usePortal();
+  const workspaceRef = useRef<HTMLDivElement | null>(null);
   const queue = portal.getReviewQueue();
 
   const [selectedClient, setSelectedClient] = useState("all");
@@ -366,12 +594,18 @@ export function AccountantReviewPage() {
   const [selectedRecordId, setSelectedRecordId] = useState(queue[0]?.id ?? "");
   const [viewerOpen, setViewerOpen] = useState(false);
   const [reviewReason, setReviewReason] = useState("");
+  const [internalNoteDraft, setInternalNoteDraft] = useState("");
   const [reviewMessage, setReviewMessage] = useState("");
+  const [decisionMessage, setDecisionMessage] = useState("");
   const [commentDraft, setCommentDraft] = useState("");
   const [commentError, setCommentError] = useState("");
-  const [showComposer, setShowComposer] = useState(false);
-  const [activityTab, setActivityTab] = useState<ActivityTab>("comments");
   const [openMenuRecordId, setOpenMenuRecordId] = useState("");
+  const [previewPage, setPreviewPage] = useState(1);
+  const [previewZoom, setPreviewZoom] = useState(100);
+  const [workspaceAuditEntries, setWorkspaceAuditEntries] = useState<
+    Record<string, AuditTrailEntry[]>
+  >({});
+  const [savedInternalNotes, setSavedInternalNotes] = useState<Record<string, string>>({});
 
   const queueRows = useMemo(
     () =>
@@ -417,6 +651,46 @@ export function AccountantReviewPage() {
     [queueRows, selectedClient, selectedDueWindow, selectedStatus, selectedType],
   );
 
+  const activeRow = useMemo(
+    () => queueRows.find((row) => row.item.id === selectedRecordId) ?? null,
+    [queueRows, selectedRecordId],
+  );
+  const activeDocument = activeRow?.record ?? null;
+  const activeStatus = activeDocument ? documentStatusMeta(activeDocument.status) : null;
+
+  const combinedAuditTrail = useMemo(() => {
+    if (!activeDocument) {
+      return [];
+    }
+
+    return sortAuditEntriesDescending([
+      ...(workspaceAuditEntries[activeDocument.id] ?? []),
+      ...activeDocument.auditTrail,
+    ]);
+  }, [activeDocument, workspaceAuditEntries]);
+
+  const previewPages = useMemo(() => {
+    if (!activeDocument) {
+      return [["No preview available."]];
+    }
+
+    return chunkPreviewLines(documentPreviewLines(activeDocument), 8);
+  }, [activeDocument]);
+
+  const orderedComments = useMemo(
+    () =>
+      [...(activeDocument?.comments ?? [])].sort(
+        (left, right) =>
+          new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime(),
+      ),
+    [activeDocument?.comments],
+  );
+
+  const versionHistory = useMemo(
+    () => (activeDocument ? buildVersionHistory(activeDocument, combinedAuditTrail) : []),
+    [activeDocument, combinedAuditTrail],
+  );
+
   useEffect(() => {
     if (!filteredRows.length) {
       setSelectedRecordId("");
@@ -433,7 +707,6 @@ export function AccountantReviewPage() {
     function handleEscape(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setOpenMenuRecordId("");
-        setViewerOpen(false);
       }
     }
 
@@ -441,33 +714,44 @@ export function AccountantReviewPage() {
     return () => window.removeEventListener("keydown", handleEscape);
   }, []);
 
-  const activeRow = useMemo(
-    () => queueRows.find((row) => row.item.id === selectedRecordId) ?? null,
-    [queueRows, selectedRecordId],
-  );
-  const activeDocument = activeRow?.record ?? null;
-  const activeStatus = activeDocument ? documentStatusMeta(activeDocument.status) : null;
-  const previewLines = useMemo(
-    () => (activeDocument ? documentPreviewLines(activeDocument) : []),
-    [activeDocument],
-  );
-  const orderedComments = useMemo(
-    () => [...(activeDocument?.comments ?? [])].reverse(),
-    [activeDocument?.comments],
-  );
-
   useEffect(() => {
     if (!activeDocument) {
       setReviewReason("");
+      setInternalNoteDraft("");
+      setDecisionMessage("");
       return;
     }
 
     setReviewReason(activeDocument.rejectionReason ?? "");
+    setInternalNoteDraft(savedInternalNotes[activeDocument.id] ?? "");
     setCommentDraft("");
     setCommentError("");
-    setShowComposer(false);
-    setActivityTab("comments");
-  }, [activeDocument?.id, activeDocument]);
+    setDecisionMessage("");
+    setPreviewPage(1);
+    setPreviewZoom(100);
+  }, [activeDocument?.id, activeDocument, savedInternalNotes]);
+
+  useEffect(() => {
+    if (!viewerOpen || !activeDocument || !workspaceRef.current) {
+      return;
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      workspaceRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [activeDocument, selectedRecordId, viewerOpen]);
+
+  function appendWorkspaceAudit(recordId: string, entry: AuditTrailEntry) {
+    setWorkspaceAuditEntries((current) => ({
+      ...current,
+      [recordId]: [entry, ...(current[recordId] ?? [])],
+    }));
+  }
 
   function clearFilters() {
     setSelectedClient("all");
@@ -476,12 +760,28 @@ export function AccountantReviewPage() {
     setSelectedDueWindow("all");
   }
 
-  function openViewer(recordId: string, tab: ActivityTab = "comments", openComposer = false) {
+  function openViewer(recordId: string) {
+    if (viewerOpen && selectedRecordId === recordId) {
+      setOpenMenuRecordId("");
+      workspaceRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+      return;
+    }
+
+    const viewedAt = new Date().toISOString();
     setSelectedRecordId(recordId);
-    setActivityTab(tab);
-    setShowComposer(openComposer);
     setViewerOpen(true);
     setOpenMenuRecordId("");
+
+    appendWorkspaceAudit(recordId, {
+      id: `${recordId}-viewed-${viewedAt}`,
+      status: "Viewed by accountant",
+      actor: user?.fullName ?? "Accountant",
+      timestamp: viewedAt,
+      note: "Opened the document review workspace.",
+    });
   }
 
   function handleDownloadRecord(record: DocumentRecord) {
@@ -492,28 +792,7 @@ export function AccountantReviewPage() {
     setOpenMenuRecordId("");
   }
 
-  function handleReviewAction(action: "accepted" | "rejected" | "under_review") {
-    if (!selectedRecordId) {
-      return;
-    }
-
-    const result = portal.reviewRecord({
-      recordId: selectedRecordId,
-      action,
-      reviewer: user?.fullName ?? "Accountant",
-      reason: reviewReason,
-    });
-
-    setReviewMessage(result.message);
-    if (result.ok) {
-      setOpenMenuRecordId("");
-      if (action !== "under_review") {
-        setViewerOpen(false);
-      }
-    }
-  }
-
-  function handleMenuAction(recordId: string, action: "accepted" | "under_review") {
+  function handleQuickStatus(recordId: string, action: "accepted" | "under_review") {
     const result = portal.reviewRecord({
       recordId,
       action,
@@ -522,13 +801,69 @@ export function AccountantReviewPage() {
 
     setReviewMessage(result.message);
     setOpenMenuRecordId("");
-    if (result.ok && selectedRecordId === recordId && action !== "under_review") {
-      setViewerOpen(false);
+    if (result.ok && selectedRecordId === recordId) {
+      setDecisionMessage(result.message);
+      setViewerOpen(true);
     }
   }
 
+  function handleWorkspaceDecision(decision: WorkspaceDecision) {
+    if (!selectedRecordId || !activeDocument) {
+      return;
+    }
+
+    const trimmedReason = reviewReason.trim();
+    const trimmedInternalNote = internalNoteDraft.trim();
+
+    if ((decision === "rejected" || decision === "request_reupload") && !trimmedReason) {
+      setDecisionMessage("Add a rejection or re-upload reason before sending the document back.");
+      return;
+    }
+
+    const result = portal.reviewRecord({
+      recordId: selectedRecordId,
+      action: decision === "request_reupload" ? "rejected" : decision,
+      reviewer: user?.fullName ?? "Accountant",
+      reason: decision === "rejected" || decision === "request_reupload" ? trimmedReason : reviewReason,
+    });
+
+    setReviewMessage(result.message);
+    if (!result.ok) {
+      setDecisionMessage(result.message);
+      return;
+    }
+
+    if (trimmedInternalNote) {
+      setSavedInternalNotes((current) => ({
+        ...current,
+        [selectedRecordId]: trimmedInternalNote,
+      }));
+    }
+
+    if (decision === "request_reupload") {
+      const requestedAt = new Date().toISOString();
+      appendWorkspaceAudit(selectedRecordId, {
+        id: `${selectedRecordId}-reupload-${requestedAt}`,
+        status: "Re-upload requested",
+        actor: user?.fullName ?? "Accountant",
+        timestamp: requestedAt,
+        note: trimmedReason,
+      });
+    }
+
+    setDecisionMessage(
+      decision === "accepted"
+        ? "Document accepted. The workflow has been updated and the decision is now visible in the queue."
+        : decision === "under_review"
+          ? "Document marked as under review. The client can see it is still in progress."
+          : decision === "request_reupload"
+            ? "A corrected version has been requested. The client must re-upload through the structured slot."
+            : "Document rejected with the supplied reason.",
+    );
+  }
+
   function handleCommentSubmit() {
-    if (!activeDocument) {
+    if (!activeDocument || !selectedRecordId) {
       setCommentError("Open a record before posting a comment.");
       return;
     }
@@ -546,15 +881,14 @@ export function AccountantReviewPage() {
       trimmed,
     );
 
+    setReviewMessage(result.message);
     if (!result.ok) {
       setCommentError(result.message);
       return;
     }
 
-    setReviewMessage(result.message);
     setCommentDraft("");
     setCommentError("");
-    setShowComposer(false);
   }
 
   function renderSelectField(
@@ -620,279 +954,311 @@ export function AccountantReviewPage() {
           </div>
         </SurfaceCard>
       ) : (
-        <SurfaceCard className="overflow-hidden rounded-[1.55rem] border border-slate-200/90 bg-white p-0 shadow-[0_16px_36px_rgba(15,23,42,0.05)]">
-          <div className="border-b border-slate-100 px-5 pb-5 pt-5">
-            <div className="grid gap-4 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto] lg:items-end">
-              {renderSelectField(
-                "Client",
-                selectedClient,
-                setSelectedClient,
-                [
-                  { label: "All clients", value: "all" },
-                  ...clientOptions.map((client) => ({ label: client, value: client })),
-                ],
-              )}
+        <>
+          <SurfaceCard className="overflow-hidden rounded-[1.55rem] border border-slate-200/90 bg-white p-0 shadow-[0_16px_36px_rgba(15,23,42,0.05)]">
+            <div className="border-b border-slate-100 px-5 pb-5 pt-5">
+              <div className="grid gap-4 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto] lg:items-end">
+                {renderSelectField(
+                  "Client",
+                  selectedClient,
+                  setSelectedClient,
+                  [
+                    { label: "All clients", value: "all" },
+                    ...clientOptions.map((client) => ({ label: client, value: client })),
+                  ],
+                )}
 
-              {renderSelectField(
-                "Record type",
-                selectedType,
-                setSelectedType,
-                [
-                  { label: "All types", value: "all" },
-                  ...typeOptions.map((type) => ({ label: type, value: type })),
-                ],
-              )}
+                {renderSelectField(
+                  "Record type",
+                  selectedType,
+                  setSelectedType,
+                  [
+                    { label: "All types", value: "all" },
+                    ...typeOptions.map((type) => ({ label: type, value: type })),
+                  ],
+                )}
 
-              {renderSelectField(
-                "Status",
-                selectedStatus,
-                (value) => setSelectedStatus(value as QueueStatusFilter),
-                [
-                  { label: "All statuses", value: "all" },
-                  { label: "Under review", value: "under_review" },
-                  { label: "Overdue", value: "overdue" },
-                  { label: "Attention", value: "attention" },
-                  { label: "On track", value: "on_track" },
-                ],
-              )}
+                {renderSelectField(
+                  "Status",
+                  selectedStatus,
+                  (value) => setSelectedStatus(value as QueueStatusFilter),
+                  [
+                    { label: "All statuses", value: "all" },
+                    { label: "Under review", value: "under_review" },
+                    { label: "Overdue", value: "overdue" },
+                    { label: "Attention", value: "attention" },
+                    { label: "On track", value: "on_track" },
+                  ],
+                )}
 
-              {renderSelectField(
-                "Due date",
-                selectedDueWindow,
-                (value) => setSelectedDueWindow(value as DueWindowFilter),
-                [
-                  { label: "Any time", value: "all" },
-                  { label: "Overdue", value: "overdue" },
-                  { label: "Due soon", value: "soon" },
-                  { label: "Later", value: "later" },
-                ],
-                <CalendarIcon />,
-              )}
+                {renderSelectField(
+                  "Due date",
+                  selectedDueWindow,
+                  (value) => setSelectedDueWindow(value as DueWindowFilter),
+                  [
+                    { label: "Any time", value: "all" },
+                    { label: "Overdue", value: "overdue" },
+                    { label: "Due soon", value: "soon" },
+                    { label: "Later", value: "later" },
+                  ],
+                  <CalendarIcon />,
+                )}
 
-              <button
-                className="flex h-11 items-center gap-2 whitespace-nowrap rounded-xl px-2 text-sm font-medium text-brand-600 transition hover:text-brand-700"
-                onClick={clearFilters}
-                type="button"
-              >
-                <RefreshIcon />
-                Clear filters
-              </button>
+                <button
+                  className="flex h-11 items-center gap-2 whitespace-nowrap rounded-xl px-2 text-sm font-medium text-brand-600 transition hover:text-brand-700"
+                  onClick={clearFilters}
+                  type="button"
+                >
+                  <RefreshIcon />
+                  Clear filters
+                </button>
+              </div>
             </div>
-          </div>
 
-          <div className="hidden border-b border-slate-100 px-5 py-4 text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-slate-400 lg:grid lg:grid-cols-[1.34fr_1fr_0.72fr_0.82fr_0.7fr_3.5rem] lg:gap-4">
-            <div>Record</div>
-            <div>Client & period</div>
-            <div>Submitted</div>
-            <div>Due date</div>
-            <div>Status</div>
-            <div aria-hidden="true" />
-          </div>
+            <div className="hidden border-b border-slate-100 px-5 py-4 text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-slate-400 lg:grid lg:grid-cols-[1.34fr_1fr_0.72fr_0.82fr_0.7fr_3.5rem] lg:gap-4">
+              <div>Record</div>
+              <div>Client & period</div>
+              <div>Submitted</div>
+              <div>Due date</div>
+              <div>Status</div>
+              <div aria-hidden="true" />
+            </div>
 
-          {filteredRows.length > 0 ? (
-            <div className="divide-y divide-slate-100">
-              {filteredRows.map((row) => {
-                const selected = row.item.id === selectedRecordId;
+            {filteredRows.length > 0 ? (
+              <div className="divide-y divide-slate-100">
+                {filteredRows.map((row) => {
+                  const selected = viewerOpen && row.item.id === selectedRecordId;
 
-                return (
-                  <div
-                    className={cn(
-                      "relative cursor-pointer border-l-[4px] px-5 py-4 transition lg:grid lg:grid-cols-[1.34fr_1fr_0.72fr_0.82fr_0.7fr_3.5rem] lg:items-center lg:gap-4",
-                      selected
-                        ? "border-l-brand-500 bg-brand-50/28 shadow-[inset_0_0_0_1px_rgba(84,66,255,0.14)]"
-                        : "border-l-transparent hover:bg-slate-50",
-                    )}
-                    key={row.item.id}
-                    onClick={() => setSelectedRecordId(row.item.id)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        setSelectedRecordId(row.item.id);
-                      }
-                    }}
-                    role="button"
-                    tabIndex={0}
-                  >
-                    <div className="flex items-start gap-3">
-                      <QueueFileIcon
-                        documentType={row.item.documentType}
-                        fileName={row.record.fileName}
-                      />
-                      <div className="min-w-0">
-                        <p className="text-[0.98rem] font-semibold text-slate-950">
-                          {row.item.documentType}
+                  return (
+                    <div
+                      className={cn(
+                        "relative cursor-pointer border-l-[4px] px-5 py-4 transition lg:grid lg:grid-cols-[1.34fr_1fr_0.72fr_0.82fr_0.7fr_3.5rem] lg:items-center lg:gap-4",
+                        selected
+                          ? "border-l-brand-500 bg-brand-50/28 shadow-[inset_0_0_0_1px_rgba(84,66,255,0.14)]"
+                          : "border-l-transparent hover:bg-slate-50",
+                      )}
+                      key={row.item.id}
+                      onClick={() => openViewer(row.item.id)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          openViewer(row.item.id);
+                        }
+                      }}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      <div className="flex items-start gap-3">
+                        <QueueFileIcon
+                          documentType={row.item.documentType}
+                          fileName={row.record.fileName}
+                        />
+                        <div className="min-w-0">
+                          <p className="text-[0.98rem] font-semibold text-slate-950">
+                            {row.item.documentType}
+                          </p>
+                          <p className="mt-1 text-[0.88rem] text-slate-500">
+                            {row.item.monthLabel}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 flex items-start gap-3 lg:mt-0">
+                        <div className="hidden h-10 w-10 items-center justify-center rounded-[0.95rem] bg-slate-50 ring-1 ring-slate-200 lg:flex">
+                          <OfficeIcon />
+                        </div>
+                        <div>
+                          <p className="text-[0.94rem] font-semibold text-slate-950">
+                            {row.item.clientName}
+                          </p>
+                          <p className="mt-1 text-[0.86rem] text-slate-500">
+                            {row.item.monthLabel} Pack
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 lg:mt-0">
+                        <p className="text-[0.92rem] font-semibold text-slate-950">
+                          {formatDateLabel(row.item.submittedAt)}
                         </p>
-                        <p className="mt-1 text-[0.88rem] text-slate-500">
-                          {row.item.monthLabel}
+                        <p className="mt-1 text-[0.84rem] text-slate-500">
+                          by {row.record.uploadedBy}
                         </p>
                       </div>
-                    </div>
 
-                    <div className="mt-3 flex items-start gap-3 lg:mt-0">
-                      <div className="hidden h-10 w-10 items-center justify-center rounded-[0.95rem] bg-slate-50 ring-1 ring-slate-200 lg:flex">
-                        <OfficeIcon />
-                      </div>
-                      <div>
-                        <p className="text-[0.94rem] font-semibold text-slate-950">
-                          {row.item.clientName}
+                      <div className="mt-3 lg:mt-0">
+                        <p className="text-[0.92rem] font-semibold text-slate-950">
+                          {row.dueMeta.label}
                         </p>
-                        <p className="mt-1 text-[0.86rem] text-slate-500">
-                          {row.item.monthLabel} Pack
+                        <p className={cn("mt-1 text-[0.84rem]", row.dueMeta.helperClass)}>
+                          {row.dueMeta.helper}
                         </p>
                       </div>
-                    </div>
 
-                    <div className="mt-3 lg:mt-0">
-                      <p className="text-[0.92rem] font-semibold text-slate-950">
-                        {formatDateLabel(row.item.submittedAt)}
-                      </p>
-                      <p className="mt-1 text-[0.84rem] text-slate-500">by Client</p>
-                    </div>
+                      <div className="mt-3 lg:mt-0">
+                        <span
+                          className={cn(
+                            "inline-flex rounded-full px-2.5 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.04em] ring-1 ring-inset",
+                            row.statusMeta.pill,
+                          )}
+                        >
+                          {row.statusMeta.label}
+                        </span>
+                      </div>
 
-                    <div className="mt-3 lg:mt-0">
-                      <p className="text-[0.92rem] font-semibold text-slate-950">
-                        {row.dueMeta.label}
-                      </p>
-                      <p className={cn("mt-1 text-[0.84rem]", row.dueMeta.helperClass)}>
-                        {row.dueMeta.helper}
-                      </p>
-                    </div>
+                      <div
+                        className="relative mt-3 flex items-center lg:mt-0 lg:justify-end"
+                        onClick={(event) => event.stopPropagation()}
+                      >
+                        <button
+                          aria-label="Open record actions"
+                          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
+                          onClick={() =>
+                            setOpenMenuRecordId((current) =>
+                              current === row.item.id ? "" : row.item.id,
+                            )
+                          }
+                          type="button"
+                        >
+                          <MoreHorizontalIcon />
+                        </button>
 
-                    <div className="mt-3 lg:mt-0">
+                        {openMenuRecordId === row.item.id ? (
+                          <div className="absolute right-0 top-[calc(100%+0.55rem)] z-10 min-w-[220px] rounded-[1rem] border border-slate-200 bg-white p-2 shadow-[0_20px_42px_rgba(15,23,42,0.14)]">
+                            <button
+                              className="flex w-full items-center justify-between rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+                              onClick={() => openViewer(row.item.id)}
+                              type="button"
+                            >
+                              View / review
+                              <ViewIcon />
+                            </button>
+                            <button
+                              className="flex w-full items-center justify-between rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+                              onClick={() => handleDownloadRecord(row.record)}
+                              type="button"
+                            >
+                              Download file
+                              <DownloadIcon />
+                            </button>
+                            <button
+                              className="flex w-full items-center justify-between rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+                              onClick={() => handleQuickStatus(row.item.id, "under_review")}
+                              type="button"
+                            >
+                              Mark under review
+                              <span>!</span>
+                            </button>
+                            <button
+                              className="flex w-full items-center justify-between rounded-[0.8rem] px-3 py-2 text-left text-sm text-emerald-700 transition hover:bg-emerald-50"
+                              onClick={() => handleQuickStatus(row.item.id, "accepted")}
+                              type="button"
+                            >
+                              Accept document
+                              <span>OK</span>
+                            </button>
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="px-5 py-10">
+                <EmptyState
+                  description="No review records match the current filters."
+                  title="Nothing in this view"
+                />
+              </div>
+            )}
+          </SurfaceCard>
+
+          {viewerOpen && activeDocument && activeRow ? (
+            <div className="scroll-mt-24" ref={workspaceRef}>
+              <SurfaceCard className="overflow-hidden rounded-[1.65rem] border border-slate-200/90 bg-white p-0 shadow-[0_16px_36px_rgba(15,23,42,0.05)]">
+              <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 px-5 py-5">
+                <div className="flex min-w-0 items-start gap-4">
+                  <QueueFileIcon
+                    documentType={activeDocument.documentType}
+                    fileName={activeDocument.fileName}
+                  />
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span
                         className={cn(
-                          "inline-flex rounded-full px-2.5 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.04em] ring-1 ring-inset",
-                          row.statusMeta.pill,
+                          "rounded-full px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.06em] ring-1 ring-inset",
+                          activeRow.statusMeta.pill,
                         )}
                       >
-                        {row.statusMeta.label}
+                        {activeRow.statusMeta.label}
+                      </span>
+                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.06em] text-slate-500">
+                        {activeDocument.documentType}
                       </span>
                     </div>
-
-                    <div
-                      className="relative mt-3 flex items-center lg:mt-0 lg:justify-end"
-                      onClick={(event) => event.stopPropagation()}
-                    >
-                      <button
-                        aria-label="Open record actions"
-                        className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
-                        onClick={() =>
-                          setOpenMenuRecordId((current) =>
-                            current === row.item.id ? "" : row.item.id,
-                          )
-                        }
-                        type="button"
-                      >
-                        <MoreHorizontalIcon />
-                      </button>
-
-                      {openMenuRecordId === row.item.id ? (
-                        <div className="absolute right-0 top-[calc(100%+0.55rem)] z-10 min-w-[220px] rounded-[1rem] border border-slate-200 bg-white p-2 shadow-[0_20px_42px_rgba(15,23,42,0.14)]">
-                          <button
-                            className="flex w-full items-center justify-between rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
-                            onClick={() => openViewer(row.item.id)}
-                            type="button"
-                          >
-                            View record
-                            <ViewIcon />
-                          </button>
-                          <button
-                            className="flex w-full items-center justify-between rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
-                            onClick={() => handleDownloadRecord(row.record)}
-                            type="button"
-                          >
-                            Download
-                            <DownloadIcon />
-                          </button>
-                          <button
-                            className="flex w-full items-center justify-between rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
-                            onClick={() => openViewer(row.item.id, "comments", true)}
-                            type="button"
-                          >
-                            Open comments
-                            <span>+</span>
-                          </button>
-                          <button
-                            className="flex w-full items-center justify-between rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
-                            onClick={() => handleMenuAction(row.item.id, "under_review")}
-                            type="button"
-                          >
-                            Notify under review
-                            <span>!</span>
-                          </button>
-                          <button
-                            className="flex w-full items-center justify-between rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
-                            onClick={() => openViewer(row.item.id)}
-                            type="button"
-                          >
-                            Reject with reason
-                            <span>x</span>
-                          </button>
-                          <button
-                            className="flex w-full items-center justify-between rounded-[0.8rem] px-3 py-2 text-left text-sm text-emerald-700 transition hover:bg-emerald-50"
-                            onClick={() => handleMenuAction(row.item.id, "accepted")}
-                            type="button"
-                          >
-                            Mark done
-                            <span>OK</span>
-                          </button>
-                        </div>
-                      ) : null}
-                    </div>
+                    <h2 className="mt-3 text-[1.22rem] font-semibold text-slate-950">
+                      {activeDocument.fileName}
+                    </h2>
+                    <p className="mt-1 text-[0.9rem] text-slate-500">
+                      {activeDocument.clientName} / {activeDocument.monthLabel}
+                    </p>
                   </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="px-5 py-10">
-              <EmptyState
-                description="No review records match the current filters."
-                title="Nothing in this view"
-              />
-            </div>
-          )}
-        </SurfaceCard>
-      )}
+                </div>
 
-      {viewerOpen && activeDocument && activeRow ? (
-        <div className="fixed inset-0 z-50 bg-slate-950/45 px-4 py-6 backdrop-blur-sm">
-          <div className="absolute inset-0" onClick={() => setViewerOpen(false)} />
-          <div className="relative z-10 mx-auto w-full max-w-[1360px]">
-            <div className="overflow-hidden rounded-[1.75rem] bg-white shadow-[0_30px_60px_rgba(15,23,42,0.18)]">
-              <div className="grid gap-0 xl:grid-cols-[minmax(0,1.08fr)_390px]">
+                <button
+                  aria-label="Close review workspace"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
+                  onClick={() => setViewerOpen(false)}
+                  type="button"
+                >
+                  <CloseIcon />
+                </button>
+              </div>
+
+              <div className="grid gap-0 xl:grid-cols-[minmax(0,1.08fr)_420px]">
                 <div className="border-b border-slate-200 xl:border-b-0 xl:border-r xl:border-slate-200">
-                  <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 px-5 pb-4 pt-5">
-                    <div className="flex min-w-0 items-start gap-3">
-                      <QueueFileIcon
-                        documentType={activeDocument.documentType}
-                        fileName={activeDocument.fileName}
-                      />
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span
-                            className={cn(
-                              "rounded-full px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.06em] ring-1 ring-inset",
-                              activeRow.statusMeta.pill,
-                            )}
-                          >
-                            {activeRow.statusMeta.label}
-                          </span>
-                          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.06em] text-slate-500">
-                            {activeDocument.documentType}
-                          </span>
+                  <div className="space-y-6 px-5 py-5">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="space-y-3">
+                        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                          <div className="rounded-[1.05rem] border border-slate-200 bg-slate-50 px-4 py-3">
+                            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                              File name
+                            </p>
+                            <p className="mt-2 text-sm font-medium text-slate-950">
+                              {activeDocument.fileName}
+                            </p>
+                          </div>
+                          <div className="rounded-[1.05rem] border border-slate-200 bg-slate-50 px-4 py-3">
+                            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                              File type
+                            </p>
+                            <p className="mt-2 text-sm font-medium text-slate-950">
+                              {fileExtensionLabel(activeDocument.fileName)} / {activeDocument.documentType}
+                            </p>
+                          </div>
+                          <div className="rounded-[1.05rem] border border-slate-200 bg-slate-50 px-4 py-3">
+                            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                              Uploaded by
+                            </p>
+                            <p className="mt-2 text-sm font-medium text-slate-950">
+                              {activeDocument.uploadedBy}
+                            </p>
+                          </div>
+                          <div className="rounded-[1.05rem] border border-slate-200 bg-slate-50 px-4 py-3">
+                            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                              Uploaded date
+                            </p>
+                            <p className="mt-2 text-sm font-medium text-slate-950">
+                              {formatDateTimeLabel(activeDocument.uploadedAt)}
+                            </p>
+                          </div>
                         </div>
-                        <h2 className="mt-3 truncate text-[1.08rem] font-semibold text-slate-950">
-                          {activeDocument.fileName}
-                        </h2>
-                        <p className="mt-1 text-[0.88rem] text-slate-500">
-                          {activeDocument.clientName} / {activeDocument.monthLabel}
-                        </p>
                       </div>
-                    </div>
 
-                    <div className="flex items-center gap-2.5">
                       <Button
-                        className="h-10 rounded-xl px-4 text-brand-600"
+                        className="h-10 rounded-xl px-4 text-brand-700"
                         onClick={() =>
                           downloadPreview(
                             activeDocument.fileName,
@@ -906,90 +1272,254 @@ export function AccountantReviewPage() {
                         <DownloadIcon />
                         <span>Download</span>
                       </Button>
-                      <button
-                        aria-label="Close record viewer"
-                        className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
-                        onClick={() => setViewerOpen(false)}
-                        type="button"
-                      >
-                        <CloseIcon />
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="space-y-5 bg-[linear-gradient(180deg,#f8fafc_0%,#ffffff_38%)] px-5 py-5">
-                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                      <div className="rounded-[1.1rem] border border-slate-200 bg-white p-4">
-                        <p className="text-[0.74rem] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                          Client
-                        </p>
-                        <p className="mt-2 text-[0.92rem] font-semibold text-slate-950">
-                          {activeDocument.clientName}
-                        </p>
-                      </div>
-                      <div className="rounded-[1.1rem] border border-slate-200 bg-white p-4">
-                        <p className="text-[0.74rem] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                          Period
-                        </p>
-                        <p className="mt-2 text-[0.92rem] font-semibold text-slate-950">
-                          {activeDocument.monthLabel}
-                        </p>
-                      </div>
-                      <div className="rounded-[1.1rem] border border-slate-200 bg-white p-4">
-                        <p className="text-[0.74rem] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                          Supplier / source
-                        </p>
-                        <p className="mt-2 text-[0.92rem] font-semibold text-slate-950">
-                          {activeDocument.supplierName ?? activeDocument.clientName}
-                        </p>
-                      </div>
-                      <div className="rounded-[1.1rem] border border-slate-200 bg-white p-4">
-                        <p className="text-[0.74rem] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                          Amount / size
-                        </p>
-                        <p className="mt-2 text-[0.92rem] font-semibold text-slate-950">
-                          {activeDocument.amountLabel ?? activeDocument.sizeLabel}
-                        </p>
-                      </div>
                     </div>
 
-                    <div className="rounded-[1.35rem] border border-slate-200 bg-white p-5 shadow-[0_18px_38px_rgba(15,23,42,0.06)]">
-                      <div className="mb-4 flex items-center justify-between gap-3">
+                    <section className="overflow-hidden rounded-[1.35rem] border border-slate-200 bg-white">
+                      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          <button
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                            disabled={previewPage === 1}
+                            onClick={() => setPreviewPage((current) => Math.max(1, current - 1))}
+                            type="button"
+                          >
+                            <ChevronLeftIcon />
+                          </button>
+                          <span className="min-w-[86px] text-center text-sm font-medium text-slate-700">
+                            Page {previewPage} / {previewPages.length}
+                          </span>
+                          <button
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                            disabled={previewPage === previewPages.length}
+                            onClick={() =>
+                              setPreviewPage((current) =>
+                                Math.min(previewPages.length, current + 1),
+                              )
+                            }
+                            type="button"
+                          >
+                            <ChevronRightIcon />
+                          </button>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                            disabled={previewZoom <= 80}
+                            onClick={() =>
+                              setPreviewZoom((current) => Math.max(80, current - 10))
+                            }
+                            type="button"
+                          >
+                            <ZoomOutIcon />
+                          </button>
+                          <span className="min-w-[62px] text-center text-sm font-medium text-slate-700">
+                            {previewZoom}%
+                          </span>
+                          <button
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                            disabled={previewZoom >= 140}
+                            onClick={() =>
+                              setPreviewZoom((current) => Math.min(140, current + 10))
+                            }
+                            type="button"
+                          >
+                            <ZoomInIcon />
+                          </button>
+                        </div>
+                      </div>
+
+                      <PreviewCanvas
+                        document={activeDocument}
+                        previewPage={previewPage}
+                        previewPages={previewPages}
+                        previewZoom={previewZoom}
+                      />
+                    </section>
+
+                    <section className="border-t border-slate-200 pt-6">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
-                          <p className="text-[0.82rem] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                            Document preview
-                          </p>
+                          <h3 className="text-[1.02rem] font-semibold text-slate-950">
+                            File version history
+                          </h3>
                           <p className="mt-1 text-sm text-slate-500">
-                            Review the extracted snapshot before making a status decision.
+                            Each uploaded version keeps its own outcome and timeline.
                           </p>
                         </div>
-                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[0.72rem] font-semibold text-slate-500">
-                          {previewLines.length} lines
+                        <span className="rounded-full bg-slate-100 px-3 py-1 text-[0.75rem] font-semibold text-slate-500">
+                          {versionHistory.length} version{versionHistory.length === 1 ? "" : "s"}
                         </span>
                       </div>
 
-                      <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-5">
-                        <div className="space-y-3 font-mono text-[0.82rem] leading-7 text-slate-600">
-                          {previewLines.map((line, index) => (
-                            <p key={`${activeDocument.id}-line-${index}`}>{line}</p>
-                          ))}
-                        </div>
+                      <div className="mt-4 space-y-3">
+                        {versionHistory.map((version) => (
+                          <div
+                            className={cn(
+                              "rounded-[1.15rem] border px-4 py-4",
+                              version.isLatest
+                                ? "border-brand-200 bg-brand-50/50"
+                                : "border-slate-200 bg-white",
+                            )}
+                            key={version.id}
+                          >
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                              <div className="space-y-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <p className="text-sm font-semibold text-slate-950">
+                                    Version {version.versionNumber}
+                                  </p>
+                                  {version.isLatest ? (
+                                    <span className="rounded-full bg-white px-2 py-0.5 text-[0.68rem] font-semibold text-brand-700 ring-1 ring-brand-200">
+                                      Latest
+                                    </span>
+                                  ) : null}
+                                </div>
+                                <p className="text-sm text-slate-500">
+                                  Uploaded by {version.uploadedBy}
+                                </p>
+                                <p className="text-sm text-slate-400">
+                                  {formatDateTimeLabel(version.uploadedAt)}
+                                </p>
+                              </div>
+                              <span
+                                className={cn(
+                                  "inline-flex rounded-full px-2.5 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.04em] ring-1 ring-inset",
+                                  documentStatusMeta(version.status).panel.includes("emerald")
+                                    ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+                                    : version.status === "rejected"
+                                      ? "bg-rose-50 text-rose-700 ring-rose-200"
+                                      : version.status === "under_review"
+                                        ? "bg-amber-50 text-amber-700 ring-amber-200"
+                                        : "bg-brand-50 text-brand-700 ring-brand-200",
+                                )}
+                              >
+                                {formatStatusLabel(version.status)}
+                              </span>
+                            </div>
+
+                            {version.rejectionReason ? (
+                              <p className="mt-3 rounded-[0.95rem] border border-rose-100 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                                Rejection reason: {version.rejectionReason}
+                              </p>
+                            ) : null}
+                          </div>
+                        ))}
                       </div>
-                    </div>
+                    </section>
                   </div>
                 </div>
 
-                <div className="space-y-5 p-5">
-                  <SurfaceCard className="space-y-5 rounded-[1.35rem] border border-slate-200 bg-white p-5 shadow-none">
+                <div className="space-y-6 px-5 py-5">
+                  <section className="border-b border-slate-200 pb-6">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-[1.02rem] font-semibold text-slate-950">
+                          Document comments
+                        </h3>
+                        <p className="mt-1 text-sm text-slate-500">
+                          Client and accountant messages stay attached to this document.
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-slate-100 px-3 py-1 text-[0.75rem] font-semibold text-slate-500">
+                        {orderedComments.length} comment{orderedComments.length === 1 ? "" : "s"}
+                      </span>
+                    </div>
+
+                    <div className="mt-4 rounded-[1rem] border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-700">
+                      Documents must be uploaded through the structured upload slot, not through comments.
+                    </div>
+
+                    <div className="mt-4 max-h-[22rem] space-y-3 overflow-y-auto pr-1">
+                      {orderedComments.length > 0 ? (
+                        orderedComments.map((comment: DocumentComment) => (
+                          <article
+                            className={cn(
+                              "rounded-[1.15rem] border px-4 py-4",
+                              comment.role === "accountant"
+                                ? "ml-6 border-brand-100 bg-brand-50/75"
+                                : "mr-6 border-emerald-100 bg-emerald-50/60",
+                            )}
+                            key={comment.id}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div
+                                className={cn(
+                                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white",
+                                  comment.role === "accountant"
+                                    ? "bg-[linear-gradient(135deg,#4f46e5,#4338ca)]"
+                                    : "bg-emerald-500",
+                                )}
+                              >
+                                {getInitials(comment.author)}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <p className="text-[0.92rem] font-semibold text-slate-950">
+                                    {comment.author}
+                                  </p>
+                                  <span className="rounded-full bg-white/80 px-2 py-0.5 text-[0.68rem] font-semibold text-slate-500 ring-1 ring-slate-200">
+                                    {comment.role === "accountant" ? "Accountant" : "Client"}
+                                  </span>
+                                  <span className="text-[0.8rem] text-slate-400">
+                                    {formatDateTimeLabel(comment.createdAt)}
+                                  </span>
+                                </div>
+                                <p className="mt-3 text-[0.9rem] leading-7 text-slate-600">
+                                  {comment.message}
+                                </p>
+                              </div>
+                            </div>
+                          </article>
+                        ))
+                      ) : (
+                        <EmptyState
+                          description="No one has commented on this record yet. Add a note when the client needs precise feedback."
+                          title="No comments yet"
+                        />
+                      )}
+                    </div>
+
+                    <div className="mt-4 space-y-3 rounded-[1.15rem] border border-slate-200 bg-slate-50 p-4">
+                      <label
+                        className="text-[0.9rem] font-semibold text-slate-950"
+                        htmlFor="review-comment"
+                      >
+                        Add comment
+                      </label>
+                      <textarea
+                        className="min-h-[108px] w-full rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-300 focus:ring-4 focus:ring-brand-100"
+                        id="review-comment"
+                        onChange={(event) => setCommentDraft(event.target.value)}
+                        placeholder="Leave a file-specific review note for the client."
+                        value={commentDraft}
+                      />
+                      {commentError ? (
+                        <p className="text-sm text-rose-600">{commentError}</p>
+                      ) : null}
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <p className="text-[0.82rem] text-slate-500">
+                          Posting as {user?.fullName ?? "Accountant"}.
+                        </p>
+                        <Button className="h-10 rounded-xl px-4" onClick={handleCommentSubmit} size="sm">
+                          Post comment
+                        </Button>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section className="border-b border-slate-200 pb-6">
                     <div className="space-y-2">
-                      <h2 className="text-[1.1rem] font-semibold text-slate-950">Review decision</h2>
-                      <p className="text-[0.82rem] text-slate-500">
-                        Complete one clear decision for this record and keep the client thread attached to the file.
+                      <h3 className="text-[1.02rem] font-semibold text-slate-950">
+                        Review decision
+                      </h3>
+                      <p className="text-sm text-slate-500">
+                        Review the file, read the conversation, and make the decision from the same workspace.
                       </p>
                     </div>
 
                     {activeStatus ? (
-                      <div className={cn("rounded-[1.15rem] border p-4", activeStatus.panel)}>
+                      <div className={cn("mt-4 rounded-[1.15rem] border px-4 py-4", activeStatus.panel)}>
                         <p className="text-[0.74rem] font-semibold uppercase tracking-[0.12em] text-slate-400">
                           Current status
                         </p>
@@ -1002,221 +1532,110 @@ export function AccountantReviewPage() {
                       </div>
                     ) : null}
 
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="rounded-[1.15rem] border border-slate-200 bg-slate-50 p-4">
-                        <p className="text-[0.8rem] font-medium text-slate-500">Uploaded by</p>
-                        <div className="mt-3 flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-sm font-semibold text-emerald-700">
-                            {getInitials(activeDocument.uploadedBy)}
-                          </div>
-                          <div>
-                            <p className="text-[0.9rem] font-semibold text-slate-950">
-                              {activeDocument.uploadedBy}
-                            </p>
-                            <p className="text-[0.8rem] text-slate-500">Client user</p>
-                          </div>
-                        </div>
-                        <p className="mt-4 text-[0.82rem] text-slate-500">
-                          {formatDateTimeLabel(activeDocument.uploadedAt)}
-                        </p>
-                      </div>
-
-                      <div className="rounded-[1.15rem] border border-slate-200 bg-slate-50 p-4">
-                        <p className="text-[0.8rem] font-medium text-slate-500">Reviewed by</p>
-                        <div className="mt-3 flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-100 text-sm font-semibold text-brand-700">
-                            {getInitials(activeDocument.reviewedBy ?? user?.fullName ?? "Accountant")}
-                          </div>
-                          <div>
-                            <p className="text-[0.9rem] font-semibold text-slate-950">
-                              {activeDocument.reviewedBy ?? "Unassigned"}
-                            </p>
-                            <p className="text-[0.8rem] text-slate-500">
-                              {activeDocument.reviewedAt ? "Accountant" : "Waiting for review"}
-                            </p>
-                          </div>
-                        </div>
-                        <p className="mt-4 text-[0.82rem] text-slate-500">
-                          {activeDocument.reviewedAt
-                            ? formatDateTimeLabel(activeDocument.reviewedAt)
-                            : "Waiting for review"}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
+                    <div className="mt-4 space-y-2">
                       <label
                         className="text-[0.9rem] font-semibold text-slate-950"
                         htmlFor="review-reason"
                       >
-                        Review reason
+                        Rejection / re-upload reason
                       </label>
                       <textarea
-                        className="min-h-[112px] w-full rounded-[1.15rem] border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-300 focus:ring-4 focus:ring-brand-100"
+                        className="min-h-[110px] w-full rounded-[1.15rem] border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-300 focus:ring-4 focus:ring-brand-100"
                         id="review-reason"
                         onChange={(event) => setReviewReason(event.target.value)}
-                        placeholder="Explain what is missing or what should happen next."
+                        placeholder="Required when rejecting a file or requesting a corrected re-upload."
                         value={reviewReason}
                       />
+                    </div>
+
+                    <div className="mt-4 space-y-2">
+                      <label
+                        className="text-[0.9rem] font-semibold text-slate-950"
+                        htmlFor="internal-note"
+                      >
+                        Internal accountant note
+                      </label>
+                      <textarea
+                        className="min-h-[96px] w-full rounded-[1.15rem] border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-300 focus:ring-4 focus:ring-brand-100"
+                        id="internal-note"
+                        onChange={(event) => setInternalNoteDraft(event.target.value)}
+                        placeholder="Optional note for the accountant team only."
+                        value={internalNoteDraft}
+                      />
                       <p className="text-[0.8rem] text-slate-500">
-                        Required when you reject the record and send it back to the client.
+                        This note stays internal to the accountant workflow.
                       </p>
                     </div>
 
-                    <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="mt-5 grid gap-3 sm:grid-cols-2">
                       <Button
                         className="h-11 rounded-xl bg-emerald-600 hover:bg-emerald-500"
-                        onClick={() => handleReviewAction("accepted")}
+                        onClick={() => handleWorkspaceDecision("accepted")}
                       >
-                        Done reviewing
+                        Accept document
                       </Button>
                       <Button
                         className="h-11 rounded-xl border border-amber-200 bg-white text-amber-700 hover:bg-amber-50"
-                        onClick={() => handleReviewAction("under_review")}
+                        onClick={() => handleWorkspaceDecision("under_review")}
                         variant="secondary"
                       >
-                        Notify under review
+                        Mark as under review
+                      </Button>
+                      <Button
+                        className="h-11 rounded-xl border border-brand-200 bg-white text-brand-700 hover:bg-brand-50"
+                        onClick={() => handleWorkspaceDecision("request_reupload")}
+                        variant="secondary"
+                      >
+                        Request re-upload
                       </Button>
                       <Button
                         className="h-11 rounded-xl border border-rose-200 bg-white text-rose-600 hover:bg-rose-50"
-                        onClick={() => handleReviewAction("rejected")}
+                        onClick={() => handleWorkspaceDecision("rejected")}
                         variant="secondary"
                       >
-                        Reject record
+                        Reject document
                       </Button>
                     </div>
-                  </SurfaceCard>
 
-                  <SurfaceCard className="space-y-4 rounded-[1.35rem] border border-slate-200 bg-white p-5 shadow-none">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2">
-                        <h2 className="text-[1.1rem] font-semibold text-slate-950">Record activity</h2>
-                        <span className="rounded-full bg-brand-50 px-2.5 py-1 text-[0.72rem] font-semibold text-brand-700">
-                          {activityTab === "comments"
-                            ? orderedComments.length
-                            : activeDocument.auditTrail.length}
-                        </span>
+                    {decisionMessage ? (
+                      <div className="mt-4 rounded-[1rem] border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-700">
+                        {decisionMessage}
                       </div>
-                      <div className="flex items-center rounded-full border border-slate-200 bg-slate-50 p-1">
-                        {[
-                          { id: "comments" as const, label: "Comments" },
-                          { id: "audit" as const, label: "Audit trail" },
-                        ].map((tab) => (
-                          <button
-                            className={cn(
-                              "rounded-full px-3 py-1.5 text-[0.78rem] font-medium transition",
-                              activityTab === tab.id
-                                ? "bg-white text-brand-600 shadow-sm"
-                                : "text-slate-500 hover:text-slate-700",
-                            )}
-                            key={tab.id}
-                            onClick={() => setActivityTab(tab.id)}
-                            type="button"
-                          >
-                            {tab.label}
-                          </button>
-                        ))}
+                    ) : null}
+
+                    {activeDocument.id in savedInternalNotes ? (
+                      <div className="mt-3 rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                        Saved internal note: {savedInternalNotes[activeDocument.id]}
                       </div>
+                    ) : null}
+                  </section>
+
+                  <section className="space-y-4">
+                    <div>
+                      <h3 className="text-[1.02rem] font-semibold text-slate-950">
+                        Audit trail
+                      </h3>
+                      <p className="mt-1 text-sm text-slate-500">
+                        View the full review history for this document in one place.
+                      </p>
                     </div>
 
-                    {activityTab === "comments" ? (
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <p className="text-[0.82rem] text-slate-500">
-                            Keep comments specific to this record. The client will only see feedback attached to this file.
-                          </p>
-                          <Button
-                            className="h-10 rounded-xl px-4 text-brand-600"
-                            onClick={() => setShowComposer((current) => !current)}
-                            size="sm"
-                            variant="secondary"
-                          >
-                            {showComposer ? "Close" : "Add comment"}
-                          </Button>
-                        </div>
-
-                        {showComposer ? (
-                          <div className="space-y-3 rounded-[1.15rem] border border-slate-200 bg-slate-50 p-4">
-                            <textarea
-                              className="min-h-[96px] w-full rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-300 focus:ring-4 focus:ring-brand-100"
-                              onChange={(event) => setCommentDraft(event.target.value)}
-                              placeholder="Leave a file-specific review note for the client."
-                              value={commentDraft}
-                            />
-                            {commentError ? (
-                              <p className="text-sm text-rose-600">{commentError}</p>
-                            ) : null}
-                            <div className="flex items-center justify-between gap-3">
-                              <p className="text-[0.82rem] text-slate-500">
-                                Comments stay attached to the exact record under review.
-                              </p>
-                              <Button className="h-10 rounded-xl px-4" onClick={handleCommentSubmit} size="sm">
-                                Post comment
-                              </Button>
-                            </div>
-                          </div>
-                        ) : null}
-
-                        {orderedComments.length > 0 ? (
-                          <div className="space-y-3">
-                            {orderedComments.map((comment: DocumentComment) => (
-                              <article
-                                className="rounded-[1.15rem] border border-slate-200 bg-white p-4 shadow-[0_8px_18px_rgba(15,23,42,0.03)]"
-                                key={comment.id}
-                              >
-                                <div className="flex items-start gap-3">
-                                  <div
-                                    className={cn(
-                                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white",
-                                      comment.role === "accountant"
-                                        ? "bg-[linear-gradient(135deg,#6d5efc,#7e67ff)]"
-                                        : "bg-emerald-500",
-                                    )}
-                                  >
-                                    {getInitials(comment.author)}
-                                  </div>
-                                  <div className="min-w-0 flex-1">
-                                    <div className="flex flex-wrap items-center gap-2">
-                                      <p className="text-[0.9rem] font-semibold text-slate-950">
-                                        {comment.author}
-                                      </p>
-                                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[0.7rem] font-medium text-slate-500">
-                                        {comment.role === "accountant" ? "Accountant" : "Client User"}
-                                      </span>
-                                    </div>
-                                    <p className="mt-2 text-[0.9rem] leading-7 text-slate-600">
-                                      {comment.message}
-                                    </p>
-                                    <p className="mt-3 text-[0.8rem] text-slate-400">
-                                      {formatDateTimeLabel(comment.createdAt)}
-                                    </p>
-                                  </div>
-                                </div>
-                              </article>
-                            ))}
-                          </div>
-                        ) : (
-                          <EmptyState
-                            description="No one has commented on this record yet. Add a note when you need to give the client precise review context."
-                            title="No comments yet"
-                          />
-                        )}
-                      </div>
-                    ) : activeDocument.auditTrail.length > 0 ? (
-                      <AuditTrail entries={activeDocument.auditTrail} />
+                    {combinedAuditTrail.length > 0 ? (
+                      <AuditTrail entries={combinedAuditTrail} />
                     ) : (
                       <EmptyState
                         description="Audit events will appear here as the review moves through the workflow."
                         title="No audit events yet"
                       />
                     )}
-                  </SurfaceCard>
+                  </section>
                 </div>
               </div>
+              </SurfaceCard>
             </div>
-          </div>
-        </div>
-      ) : null}
+          ) : null}
+        </>
+      )}
     </div>
   );
 }

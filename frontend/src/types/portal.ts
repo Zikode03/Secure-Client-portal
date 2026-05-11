@@ -39,9 +39,13 @@ export type WorkflowStatus =
   | PortfolioStatus
   | SlotStatus
   | InvoiceStatus
+  | "compliant"
+  | "expiring"
   | "valid"
   | "expired"
-  | "expiring_soon";
+  | "expiring_soon"
+  | "at_risk"
+  | "high_risk";
 
 export type NotificationKind =
   | "missing_documents"
@@ -410,6 +414,12 @@ export interface WorkflowRequest {
   assignedTo: string;
   dueDate: string;
   createdAt: string;
+  requestType?: ComplianceRequestType;
+  complianceCategoryId?: ComplianceCategoryId;
+  complianceCategoryName?: string;
+  complianceItemId?: string;
+  complianceItemName?: string;
+  monthlyPeriod?: string;
   comments: DocumentComment[];
   auditTrail: AuditTrailEntry[];
 }
@@ -570,36 +580,87 @@ export interface UserAccountRecord {
   company?: string;
 }
 
-export type ComplianceCategory =
-  | "sars_related"
-  | "company_statutory"
-  | "monthly_accounting";
+export type ComplianceCategoryId =
+  | "company_registration_compliance"
+  | "tax_compliance"
+  | "financial_records_compliance"
+  | "employment_payroll_compliance"
+  | "regulatory_industry_compliance"
+  | "insurance_compliance"
+  | "tender_supplier_compliance"
+  | "popia_data_protection_compliance";
 
-export type ComplianceDocumentStatus = "valid" | "expiring_soon" | "expired";
+export type ComplianceCategory = ComplianceCategoryId;
+
+export type ComplianceRiskStatus =
+  | "compliant"
+  | "at_risk"
+  | "overdue"
+  | "high_risk";
+
+export type ComplianceRequestType =
+  | "missing_document_request"
+  | "renewal_request"
+  | "re_upload_request"
+  | "clarification_request";
+
+export type ComplianceDocumentOwner = "client" | "accountant" | "admin";
+
+export type ComplianceDocumentStatus =
+  | "compliant"
+  | "missing"
+  | "expiring"
+  | "expired"
+  | "under_review"
+  | "rejected"
+  | "valid"
+  | "expiring_soon";
 
 export interface ComplianceReminder {
   id: string;
-  label: "30 days" | "14 days" | "7 days" | "expired";
+  label: "30 days" | "14 days" | "7 days" | "expiry day";
   reminderDate: string;
   state: "scheduled" | "sent" | "triggered";
 }
 
 export interface ComplianceDocumentVersion {
   id: string;
+  versionNumber: number;
   fileName: string;
+  fileType: string;
   uploadedBy: string;
   uploadedAt: string;
-  status: "accepted" | "replaced" | "rejected";
+  status: "accepted" | "replaced" | "rejected" | "under_review" | "expired";
+  rejectionReason?: string;
+  isCurrentVersion: boolean;
 }
 
 export interface ComplianceDocumentRecord {
   id: string;
+  categoryId: ComplianceCategoryId;
+  categoryName: string;
   name: string;
-  category: ComplianceCategory;
-  issueDate: string;
-  expiryDate: string;
+  simpleLabel: string;
+  description: string;
+  clientId: string;
+  clientName: string;
+  owner: ComplianceDocumentOwner;
+  required: boolean;
   status: ComplianceDocumentStatus;
-  owner: "client" | "accountant";
+  issueDate?: string;
+  expiryDate?: string;
+  lastReviewedDate?: string;
+  reviewedBy?: string;
+  uploadedBy?: string;
+  versionCount: number;
+  latestVersionId?: string;
+  reminderSchedule: ComplianceReminder["label"][];
+  notes: string;
+  auditTrail: ComplianceAuditEvent[];
+  versions: ComplianceDocumentVersion[];
+  monthlyPeriod?: string;
+  requestIds: string[];
+  category: ComplianceCategory;
   reminderDates: ComplianceReminder[];
   isLocked: boolean;
   versionHistory: ComplianceDocumentVersion[];
@@ -608,35 +669,86 @@ export interface ComplianceDocumentRecord {
 
 export interface ComplianceAuditEvent {
   id: string;
-  action: "uploaded" | "reviewed" | "approved" | "rejected" | "downloaded" | "new_version";
+  action:
+    | "uploaded"
+    | "reviewed"
+    | "approved"
+    | "rejected"
+    | "downloaded"
+    | "new_version"
+    | "expired"
+    | "renewed"
+    | "request_sent";
   actor: string;
   timestamp: string;
   detail: string;
+  complianceItemId?: string;
+  categoryId?: ComplianceCategoryId;
+  requestId?: string;
 }
 
 export interface ComplianceCategoryGroup {
-  id: ComplianceCategory;
+  id: ComplianceCategoryId;
+  name: string;
   title: string;
   description: string;
+  complianceScore: number;
+  totalRequiredItems: number;
+  compliantCount: number;
+  missingCount: number;
+  expiringCount: number;
+  expiredCount: number;
   documents: ComplianceDocumentRecord[];
+}
+
+export interface CompliancePriorityItem {
+  id: string;
+  complianceItemId: string;
+  categoryId: ComplianceCategoryId;
+  label: string;
+  detail: string;
+  status: ComplianceDocumentStatus;
+  owner: ComplianceDocumentOwner;
+  dueDate?: string;
+  requestType: ComplianceRequestType;
 }
 
 export interface ComplianceClientStatus {
   id: string;
+  clientId: string;
   clientName: string;
+  assignedAccountant: string;
+  riskStatus: ComplianceRiskStatus;
+  ownerLabel: string;
   score: number;
+  compliantCount: number;
+  totalRequiredItems: number;
   expiredCount: number;
+  expiringCount: number;
   expiringSoonCount: number;
+  missingCount: number;
   missingRequiredCount: number;
+  lastReviewed: string;
   reportReadyAt: string;
+  readinessSummary: string;
+  nextBestAction: string;
+  topPriorities: CompliancePriorityItem[];
+  categories: ComplianceCategoryGroup[];
+  documents: ComplianceDocumentRecord[];
+  auditTrail: ComplianceAuditEvent[];
 }
 
 export interface ComplianceCentreData {
+  snapshotDate: string;
   summaryMetrics: SummaryMetric[];
   overallScore: number;
+  portfolioCompliancePercentage: number;
+  expiredCount: number;
+  expiringCount: number;
+  missingRequiredCount: number;
   expiredDocuments: ComplianceDocumentRecord[];
   expiringDocuments: ComplianceDocumentRecord[];
-  missingRequiredDocuments: MissingDocumentItem[];
+  missingRequiredDocuments: ComplianceDocumentRecord[];
   categoryGroups: ComplianceCategoryGroup[];
   auditTrail: ComplianceAuditEvent[];
   secureRules: string[];

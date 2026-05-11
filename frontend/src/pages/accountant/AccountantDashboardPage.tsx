@@ -1,17 +1,17 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
-import type { DeadlineItem, PortfolioRow, ReviewQueueItem, Tone } from "../../types/portal";
+import type { DeadlineItem, NotificationItem, PortfolioRow, ReviewQueueItem } from "../../types/portal";
 import { cn } from "../../utils/cn";
 import { formatDateLabel } from "../../utils/formatters";
 
 const accountantDashboardDate = "2026-05-07T08:00:00.000Z";
 
-type QueueTab = "deadlines" | "followups" | "reviews";
+type QueueTab = "deadlines" | "reviews";
 type QueueTone = "brand" | "emerald" | "orange" | "rose";
 
 interface WorkQueueItem {
@@ -171,16 +171,65 @@ function queueToneClasses(tone: QueueTone) {
   }
 }
 
-function toneTextClass(tone: Tone) {
-  if (tone === "danger") {
-    return "text-rose-600";
+function notificationToneClasses(tone: NotificationItem["tone"]) {
+  switch (tone) {
+    case "danger":
+      return {
+        accent: "bg-rose-500",
+        icon: "bg-rose-50 text-rose-600 ring-rose-100",
+        badge: "bg-rose-50 text-rose-600 ring-rose-200",
+        panel: "bg-[radial-gradient(circle_at_top_left,rgba(244,63,94,0.08),transparent_36%),linear-gradient(180deg,#ffffff_0%,#fffafb_100%)]",
+      };
+    case "warning":
+      return {
+        accent: "bg-amber-500",
+        icon: "bg-amber-50 text-amber-600 ring-amber-100",
+        badge: "bg-amber-50 text-amber-600 ring-amber-200",
+        panel: "bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.08),transparent_36%),linear-gradient(180deg,#ffffff_0%,#fffdf8_100%)]",
+      };
+    case "success":
+      return {
+        accent: "bg-emerald-500",
+        icon: "bg-emerald-50 text-emerald-600 ring-emerald-100",
+        badge: "bg-emerald-50 text-emerald-600 ring-emerald-200",
+        panel: "bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.08),transparent_36%),linear-gradient(180deg,#ffffff_0%,#f9fffc_100%)]",
+      };
+    default:
+      return {
+        accent: "bg-brand-500",
+        icon: "bg-brand-50 text-brand-600 ring-brand-100",
+        badge: "bg-brand-50 text-brand-600 ring-brand-200",
+        panel: "bg-[radial-gradient(circle_at_top_left,rgba(84,66,255,0.08),transparent_36%),linear-gradient(180deg,#ffffff_0%,#fbfbff_100%)]",
+      };
+  }
+}
+
+function notificationKindLabel(kind: NotificationItem["kind"]) {
+  if (kind === "missing_documents") {
+    return "Missing evidence";
   }
 
-  if (tone === "warning") {
-    return "text-amber-600";
+  if (kind === "rejected_documents") {
+    return "Rejected file";
   }
 
-  return "text-brand-600";
+  if (kind === "deadline_reminder") {
+    return "Deadline risk";
+  }
+
+  return "Compliance expiry";
+}
+
+function notificationRelativeLabel(createdAt: string) {
+  const snapshot = new Date(accountantDashboardDate);
+  const difference = snapshot.getTime() - new Date(createdAt).getTime();
+  const hours = Math.max(1, Math.floor(difference / (1000 * 60 * 60)));
+
+  if (hours < 24) {
+    return `${hours}h ago`;
+  }
+
+  return `${Math.floor(hours / 24)}d ago`;
 }
 
 function FocusIcon({ tone }: { tone: QueueTone }) {
@@ -352,61 +401,6 @@ function QueueIcon({ tone }: { tone: QueueTone }) {
   );
 }
 
-function ExceptionIcon({ tone }: { tone: QueueTone }) {
-  const classes = queueToneClasses(tone);
-
-  return (
-    <div className={cn("flex h-12 w-12 items-center justify-center rounded-2xl ring-1", classes.icon)}>
-      {tone === "brand" ? (
-        <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
-          <path
-            d="M6 15.5 9.5 12l2.75 2.75L18 9"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="1.8"
-          />
-          <path
-            d="M18 14V9h-5"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="1.8"
-          />
-        </svg>
-      ) : tone === "orange" ? (
-        <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
-          <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="1.8" />
-          <path
-            d="M12 8v4l2.5 2.5"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="1.8"
-          />
-        </svg>
-      ) : (
-        <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
-          <path
-            d="M8 3.75h6l4.25 4.25v10.25a2 2 0 0 1-2 2H8A2.25 2.25 0 0 1 5.75 18V6A2.25 2.25 0 0 1 8 3.75Z"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="1.8"
-          />
-          <path
-            d="M13.75 3.75V8h4.25"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="1.8"
-          />
-        </svg>
-      )}
-    </div>
-  );
-}
-
 function buildReviewQueueItems(
   items: ReviewQueueItem[],
   onOpen: () => void,
@@ -445,6 +439,8 @@ export function AccountantDashboardPage() {
   const data = portal.accountantDashboard;
   const navigate = useNavigate();
   const [activeQueueTab, setActiveQueueTab] = useState<QueueTab>("reviews");
+  const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
+  const notificationPanelRef = useRef<HTMLDivElement | null>(null);
 
   const priorityClients = useMemo(
     () =>
@@ -468,62 +464,63 @@ export function AccountantDashboardPage() {
     [data.reviewQueue, navigate],
   );
 
-  const followUpQueueItems = useMemo(
-    () => {
-      const missingItems: WorkQueueItem[] = data.missingDocuments.slice(0, 3).map((item) => ({
-        id: `followup-missing-${item.id}`,
-        title: `Follow up - missing ${item.documentType.toLowerCase()}`,
-        subtitle: `${item.clientName ?? "Client"} • ${item.monthLabel}`,
-        meta: "Client upload still required",
-        priority: item.isRequired ? "high" : "medium",
-        tone: item.isRequired ? "brand" : "orange",
-        tab: "followups",
-        onOpen: () => navigate("/accountant/follow-ups"),
-      }));
-
-      const rejectedItems: WorkQueueItem[] = data.rejectedDocuments.slice(0, 2).map((item) => ({
-        id: `followup-rejected-${item.id}`,
-        title: `Follow up - rejected ${item.type.toLowerCase()}`,
-        subtitle: `${item.clientName ?? "Client"} • Needs corrected version`,
-        meta: formatDateLabel(item.date),
-        priority: "high",
-        tone: "rose",
-        tab: "followups",
-        onOpen: () => navigate("/accountant/follow-ups"),
-      }));
-
-      return [...missingItems, ...rejectedItems].slice(0, 5);
-    },
-    [data.missingDocuments, data.rejectedDocuments, navigate],
-  );
-
   const deadlineQueueItems = useMemo(
-    () => buildDeadlineQueueItems(data.deadlines.slice(0, 5), () => navigate("/accountant/follow-ups")),
+    () => buildDeadlineQueueItems(data.deadlines.slice(0, 5), () => navigate("/accountant/compliance")),
     [data.deadlines, navigate],
   );
 
   const workQueueByTab = useMemo<Record<QueueTab, WorkQueueItem[]>>(
     () => ({
       reviews: reviewQueueItems,
-      followups: followUpQueueItems,
       deadlines: deadlineQueueItems,
     }),
-    [deadlineQueueItems, followUpQueueItems, reviewQueueItems],
+    [deadlineQueueItems, reviewQueueItems],
   );
 
   const queueCounts = useMemo(
     () => ({
       reviews: reviewQueueItems.length,
-      followups: followUpQueueItems.length,
       deadlines: deadlineQueueItems.length,
     }),
-    [deadlineQueueItems.length, followUpQueueItems.length, reviewQueueItems.length],
+    [deadlineQueueItems.length, reviewQueueItems.length],
+  );
+
+  const notificationPreview = useMemo(() => data.notifications.slice(0, 4), [data.notifications]);
+
+  const unreadNotificationCount = useMemo(
+    () =>
+      data.notifications.filter(
+        (item) => item.state !== "reviewed" && item.state !== "resolved",
+      ).length,
+    [data.notifications],
+  );
+
+  const actionNotificationCount = useMemo(
+    () =>
+      data.notifications.filter(
+        (item) =>
+          item.kind !== "expiring_documents" &&
+          item.state !== "reviewed" &&
+          item.state !== "resolved",
+      ).length,
+    [data.notifications],
+  );
+
+  const complianceNotificationCount = useMemo(
+    () =>
+      data.notifications.filter(
+        (item) =>
+          item.kind === "expiring_documents" &&
+          item.state !== "reviewed" &&
+          item.state !== "resolved",
+      ).length,
+    [data.notifications],
   );
 
   const focusMetrics = useMemo(() => {
     const overdueClients = data.portfolio.filter((row) => row.status === "overdue").length;
     const reviewsWaiting = data.reviewQueue.length;
-    const followUpsDue = followUpQueueItems.length;
+    const clientActionDue = data.missingDocuments.length + data.rejectedDocuments.length;
     const clientsOnTrack = data.portfolio.filter((row) => row.status === "on_track").length;
 
     return [
@@ -542,11 +539,11 @@ export function AccountantDashboardPage() {
         tone: "orange" as const,
       },
       {
-        id: "focus-followups",
-        value: followUpsDue,
-        label: "Follow-ups due",
-        helper: "Awaiting response",
-        tone: "brand" as const,
+        id: "focus-client-action",
+        value: clientActionDue,
+        label: "Client action due",
+        helper: "Missing or corrected files",
+        tone: clientActionDue > 0 ? ("brand" as const) : ("emerald" as const),
       },
       {
         id: "focus-track",
@@ -556,7 +553,41 @@ export function AccountantDashboardPage() {
         tone: "emerald" as const,
       },
     ];
-  }, [data.portfolio, data.reviewQueue.length, followUpQueueItems.length]);
+  }, [
+    data.missingDocuments.length,
+    data.portfolio,
+    data.rejectedDocuments.length,
+    data.reviewQueue.length,
+  ]);
+
+  useEffect(() => {
+    if (!isNotificationPanelOpen) {
+      return undefined;
+    }
+
+    function handlePointerDown(event: MouseEvent) {
+      if (
+        notificationPanelRef.current &&
+        !notificationPanelRef.current.contains(event.target as Node)
+      ) {
+        setIsNotificationPanelOpen(false);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setIsNotificationPanelOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isNotificationPanelOpen]);
 
   function handleExportView() {
     downloadCsv("accountant-portfolio-view.csv", [
@@ -573,6 +604,15 @@ export function AccountantDashboardPage() {
 
   function openClientWorkspace(row: PortfolioRow) {
     navigate(`/accountant/clients/${row.clientId}`);
+  }
+
+  function openNotificationCentre(notificationId?: string) {
+    setIsNotificationPanelOpen(false);
+    navigate(
+      notificationId
+        ? `/accountant/notifications?notification=${encodeURIComponent(notificationId)}`
+        : "/accountant/notifications",
+    );
   }
 
   return (
@@ -597,15 +637,149 @@ export function AccountantDashboardPage() {
             <span>{formatDateLabel(accountantDashboardDate)}</span>
             <ChevronDownIcon />
           </button>
-          <button
-            aria-label="Open accountant alerts"
-            className="relative inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-[0_10px_30px_rgba(15,23,42,0.04)] transition hover:bg-slate-50"
-            onClick={() => navigate("/accountant/follow-ups")}
-            type="button"
-          >
-            <BellIcon />
-            <span className="absolute right-3 top-3 h-2.5 w-2.5 rounded-full bg-rose-500" />
-          </button>
+          <div className="relative" ref={notificationPanelRef}>
+            <button
+              aria-expanded={isNotificationPanelOpen}
+              aria-haspopup="dialog"
+              aria-label="Open accountant alerts"
+              className="relative inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-[0_10px_30px_rgba(15,23,42,0.04)] transition hover:bg-slate-50"
+              onClick={() => setIsNotificationPanelOpen((current) => !current)}
+              type="button"
+            >
+              <BellIcon />
+              {unreadNotificationCount > 0 ? (
+                <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1 text-[0.66rem] font-semibold text-white shadow-[0_6px_16px_rgba(244,63,94,0.28)]">
+                  {unreadNotificationCount > 9 ? "9+" : unreadNotificationCount}
+                </span>
+              ) : null}
+            </button>
+
+            {isNotificationPanelOpen ? (
+              <div
+                aria-label="Accountant notifications"
+                className="absolute right-0 top-[calc(100%+0.75rem)] z-30 w-[420px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-[1.6rem] border border-slate-200/90 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.14)]"
+                role="dialog"
+              >
+                <div className="border-b border-slate-100 bg-[radial-gradient(circle_at_top_left,rgba(84,66,255,0.08),transparent_36%),linear-gradient(180deg,#ffffff_0%,#fbfbff_100%)] px-5 pb-4 pt-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h2 className="text-[1rem] font-semibold text-slate-950">Notifications</h2>
+                      <p className="mt-1 text-[0.82rem] text-slate-500">
+                        {unreadNotificationCount} active item
+                        {unreadNotificationCount === 1 ? "" : "s"} need your attention.
+                      </p>
+                    </div>
+                    <button
+                      className="shrink-0 text-sm font-medium text-brand-600 transition hover:text-brand-700"
+                      onClick={() => openNotificationCentre()}
+                      type="button"
+                    >
+                      View more
+                    </button>
+                  </div>
+
+                  <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                    {[
+                      { id: "notif-unread", label: "Unread", value: unreadNotificationCount, tone: "text-brand-600" },
+                      { id: "notif-action", label: "Action", value: actionNotificationCount, tone: "text-rose-600" },
+                      { id: "notif-compliance", label: "Compliance", value: complianceNotificationCount, tone: "text-amber-600" },
+                    ].map((item) => (
+                      <div
+                        className="rounded-[1rem] border border-white/80 bg-white/90 px-3 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.04)]"
+                        key={item.id}
+                      >
+                        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                          {item.label}
+                        </p>
+                        <p className={cn("mt-1 text-[1.25rem] font-semibold", item.tone)}>
+                          {item.value}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {notificationPreview.length > 0 ? (
+                  <div className="max-h-[440px] overflow-y-auto px-4 py-4">
+                    <div className="space-y-2">
+                      {notificationPreview.map((item) => {
+                        const tone = notificationToneClasses(item.tone);
+                        const unread = item.state !== "reviewed" && item.state !== "resolved";
+
+                        return (
+                          <button
+                            className={cn(
+                              "w-full rounded-[1.2rem] border border-slate-200/80 px-4 py-4 text-left shadow-[0_10px_22px_rgba(15,23,42,0.04)] transition hover:border-slate-300 hover:bg-slate-50/80",
+                              tone.panel,
+                            )}
+                            key={item.id}
+                            onClick={() => openNotificationCentre(item.id)}
+                            type="button"
+                          >
+                            <div className="flex items-start gap-3">
+                              <div
+                                className={cn(
+                                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-full ring-1",
+                                  tone.icon,
+                                )}
+                              >
+                                <BellIcon />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <p className="text-[0.92rem] font-semibold leading-6 text-slate-950">
+                                      {item.title}
+                                    </p>
+                                    <p className="mt-1 text-[0.8rem] text-slate-500">
+                                      {item.linkedRecordLabel ?? notificationKindLabel(item.kind)}
+                                    </p>
+                                  </div>
+                                  <div className="flex flex-col items-end gap-1">
+                                    {unread ? (
+                                      <span
+                                        className={cn(
+                                          "inline-flex shrink-0 rounded-full px-2.5 py-1 text-[0.68rem] font-semibold ring-1 ring-inset",
+                                          tone.badge,
+                                        )}
+                                      >
+                                        New
+                                      </span>
+                                    ) : null}
+                                    <span className="text-[0.74rem] text-slate-400">
+                                      {notificationRelativeLabel(item.createdAt)}
+                                    </span>
+                                  </div>
+                                </div>
+                                <p className="mt-2 line-clamp-2 text-[0.82rem] leading-5 text-slate-500">
+                                  {item.message}
+                                </p>
+                                <div className="mt-3 flex items-center justify-between gap-3">
+                                  <span className="inline-flex rounded-full bg-white/90 px-2.5 py-1 text-[0.68rem] font-medium text-slate-600 ring-1 ring-slate-200">
+                                    {notificationKindLabel(item.kind)}
+                                  </span>
+                                  <span className="text-[0.78rem] font-medium text-brand-600">
+                                    Open
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="px-5 py-6">
+                    <EmptyState
+                      description="New accountant workflow alerts will appear here."
+                      title="No notifications"
+                    />
+                  </div>
+                )}
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -765,7 +939,6 @@ export function AccountantDashboardPage() {
             <div className="flex flex-wrap items-center gap-5">
               {[
                 { id: "reviews" as const, label: "Reviews", count: queueCounts.reviews },
-                { id: "followups" as const, label: "Follow-ups", count: queueCounts.followups },
                 { id: "deadlines" as const, label: "Deadlines", count: queueCounts.deadlines },
               ].map((item) => (
                 <button
@@ -836,7 +1009,7 @@ export function AccountantDashboardPage() {
               <button
                 className="flex w-full items-center gap-2 px-5 py-4 text-left text-sm font-medium text-brand-600 transition hover:bg-brand-50/50"
                 onClick={() =>
-                  navigate(activeQueueTab === "reviews" ? "/accountant/review" : "/accountant/follow-ups")
+                  navigate(activeQueueTab === "reviews" ? "/accountant/review" : "/accountant/compliance")
                 }
                 type="button"
               >
@@ -855,94 +1028,7 @@ export function AccountantDashboardPage() {
         </SurfaceCard>
       </section>
 
-      <SurfaceCard className="overflow-hidden rounded-[1.75rem] border border-slate-200/90 bg-white p-0 shadow-[0_18px_42px_rgba(15,23,42,0.05)]">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 pb-5 pt-5">
-          <div>
-            <h2 className="text-[1.2rem] font-semibold text-slate-950">High priority exceptions</h2>
-            <p className="mt-1 text-[0.86rem] text-slate-500">
-              The most important issues blocking progress.
-            </p>
-          </div>
-          <Button
-            className="h-10 rounded-xl px-4 text-brand-600"
-            onClick={() => navigate("/accountant/follow-ups")}
-            variant="secondary"
-          >
-            <span>Go to exceptions</span>
-            <ChevronRightIcon />
-          </Button>
-        </div>
-
-        <div className="grid gap-4 px-5 py-5 lg:grid-cols-4">
-          {[
-            {
-              id: "exception-missing",
-              count: data.missingDocuments.length,
-              label: "Missing documents",
-              helper: "Require upload",
-              cta: "View missing",
-              tone: "rose" as const,
-              route: "/accountant/clients",
-            },
-            {
-              id: "exception-expiring",
-              count: data.expiringDocuments.length,
-              label: "Expiring documents",
-              helper: "Next 30 days",
-              cta: "View expiring",
-              tone: "orange" as const,
-              route: "/accountant/compliance-exceptions",
-            },
-            {
-              id: "exception-rejected",
-              count: data.rejectedDocuments.length,
-              label: "Rejected files",
-              helper: "Need new version",
-              cta: "View rejected",
-              tone: "rose" as const,
-              route: "/accountant/review",
-            },
-            {
-              id: "exception-recon",
-              count: data.reconciliationIssues.length,
-              label: "Reconciliation gaps",
-              helper: "Need attention",
-              cta: "View gaps",
-              tone: "brand" as const,
-              route: "/accountant/documents",
-            },
-          ].map((item) => (
-            <button
-              className={cn(
-                "rounded-[1.5rem] border p-5 text-left transition hover:-translate-y-0.5 hover:shadow-[0_16px_34px_rgba(15,23,42,0.08)]",
-                item.tone === "rose"
-                  ? "border-rose-100 bg-[linear-gradient(180deg,#fff7f7_0%,#ffffff_100%)]"
-                  : item.tone === "orange"
-                    ? "border-amber-100 bg-[linear-gradient(180deg,#fffaf3_0%,#ffffff_100%)]"
-                    : "border-brand-100 bg-[linear-gradient(180deg,#f8f8ff_0%,#ffffff_100%)]",
-              )}
-              key={item.id}
-              onClick={() => navigate(item.route)}
-              type="button"
-            >
-              <div className="space-y-4">
-                <ExceptionIcon tone={item.tone} />
-                <div className="space-y-1">
-                  <p className="text-[2rem] font-semibold tracking-tight text-slate-950">
-                    {item.count}
-                  </p>
-                  <p className="text-[0.95rem] font-semibold text-slate-900">{item.label}</p>
-                  <p className="text-[0.82rem] text-slate-500">{item.helper}</p>
-                </div>
-                <div className={cn("flex items-center gap-2 text-sm font-medium", toneTextClass(item.tone === "rose" ? "danger" : item.tone === "orange" ? "warning" : "info"))}>
-                  <span>{item.cta}</span>
-                  <ChevronRightIcon />
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
-      </SurfaceCard>
     </div>
   );
 }
+

@@ -6,6 +6,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { buildComplianceCentreDataFromStatuses } from "../services/complianceData";
 import { portalService } from "../services/portalData";
 import {
   buildExpiringDocuments,
@@ -24,6 +25,17 @@ import {
   filterUnifiedSearchResults,
   recalculatePack,
 } from "../services/workflowEngine";
+import {
+  appendComplianceDocumentVersion,
+  appendComplianceRequestAudit,
+  buildComplianceCategoryGroup,
+  buildCompliancePriorityItems,
+  buildComplianceRequestDetails,
+  buildComplianceRiskStatus,
+  calculateComplianceScore,
+  COMPLIANCE_REFERENCE_DATE,
+  summariseComplianceRecords,
+} from "../utils/compliance";
 import type {
   AccountantDashboardData,
   ActivityItem,
@@ -35,6 +47,9 @@ import type {
   ClientSettingsState,
   ClientWorkflowSeed,
   ComplianceCentreData,
+  ComplianceClientStatus,
+  ComplianceDocumentRecord,
+  ComplianceRequestType,
   DocumentComment,
   DocumentPolicy,
   DocumentRecord,
@@ -65,7 +80,8 @@ const accountantAssignments: Record<string, string> = {
   "firm-client-1": "Daniel Mokoena",
   "firm-client-2": "Lerato Nkosi",
   "firm-client-3": "Daniel Mokoena",
-  "firm-client-4": "Sipho Maseko",
+  "firm-client-4": "Daniel Mokoena",
+  "firm-client-5": "Lerato Nkosi",
 };
 
 const initialProfile: BusinessProfile = {
@@ -307,7 +323,7 @@ function createInitialClientPortalState(
     clientProfile: clone(initialProfile),
     clientSettings: createInitialClientSettings(),
     scheduledReports: clone(defaultScheduledReports),
-    complianceAuditTrail: clone(compliance.auditTrail),
+    complianceAuditTrail: [],
     reportGeneratedAt: compliance.reportGeneratedAt,
   };
 }
@@ -404,6 +420,7 @@ export interface ClientWorkspaceView {
   documents: DocumentRecord[];
   invoices: InvoiceRecord[];
   requests: WorkflowRequest[];
+  compliance: ComplianceClientStatus | null;
   missingDocuments: ReturnType<typeof buildMissingDocuments>;
   expiringDocuments: ReturnType<typeof buildExpiringDocuments>;
   rejectedDocuments: ReturnType<typeof buildRejectedDocuments>;
@@ -427,6 +444,30 @@ interface FollowUpRequestPayload {
   dueDate: string;
   actor: SessionUser;
   relatedDocumentId?: string;
+  requestType?: ComplianceRequestType;
+  complianceCategoryId?: WorkflowRequest["complianceCategoryId"];
+  complianceCategoryName?: string;
+  complianceItemId?: string;
+  complianceItemName?: string;
+  monthlyPeriod?: string;
+}
+
+interface ComplianceRequestPayload {
+  clientId: string;
+  complianceItemId: string;
+  requestType: ComplianceRequestType;
+  dueDate: string;
+  actor: SessionUser;
+  comments?: string;
+}
+
+interface ComplianceVersionUploadPayload {
+  clientId: string;
+  complianceItemId: string;
+  fileName: string;
+  fileType: string;
+  uploadedBy: string;
+  note?: string;
 }
 
 interface PortalContextValue {
@@ -486,6 +527,8 @@ interface PortalContextValue {
     message: string,
   ) => PortalActionResult;
   createFollowUpRequest: (payload: FollowUpRequestPayload) => PortalActionResult;
+  createComplianceRequest: (payload: ComplianceRequestPayload) => PortalActionResult;
+  uploadComplianceVersion: (payload: ComplianceVersionUploadPayload) => PortalActionResult;
   resolveRequest: (requestId: string, actorName: string) => PortalActionResult;
   updateBusinessProfile: (profile: BusinessProfile) => PortalActionResult;
   updateClientNotificationPreferences: (
@@ -686,6 +729,125 @@ function buildFallbackReviewRecord(item: ReviewQueueItem): DocumentRecord {
   };
 }
 
+function isApexWorkspaceId(clientId: string) {
+  return clientId === "client-apex" || clientId === "firm-client-1";
+}
+
+function requestBelongsToClient(request: WorkflowRequest, clientId: string) {
+  return isApexWorkspaceId(clientId)
+    ? isApexWorkspaceId(request.clientId)
+    : request.clientId === clientId;
+}
+
+function buildComplianceReadinessSummary(client: ComplianceClientStatus) {
+  if (client.expiredCount > 0 || client.missingCount > 0) {
+    return `${client.expiredCount} expired and ${client.missingCount} missing required items still need attention.`;
+  }
+
+  if (client.expiringCount > 0) {
+    return `${client.expiringCount} items are inside their 30-day renewal window.`;
+  }
+
+  return "All required compliance items are currently in a healthy state.";
+}
+
+function buildComplianceNextBestAction(priorities: ComplianceClientStatus["topPriorities"]) {
+  const topPriority = priorities[0];
+
+  if (!topPriority) {
+    return "No immediate compliance action is required.";
+  }
+
+  if (topPriority.status === "expired") {
+    return `Request renewal for ${topPriority.label}.`;
+  }
+
+  if (topPriority.status === "missing") {
+    return `Request upload for ${topPriority.label}.`;
+  }
+
+  if (topPriority.status === "rejected") {
+    return `Request a corrected re-upload for ${topPriority.label}.`;
+  }
+
+  return `Review ${topPriority.label} next.`;
+}
+
+function rebuildComplianceClientStatus(client: ComplianceClientStatus): ComplianceClientStatus {
+  const categories = client.categories.map((category) =>
+    buildComplianceCategoryGroup(
+      category.id,
+      category.name,
+      category.description,
+      category.documents,
+      COMPLIANCE_REFERENCE_DATE,
+    ),
+  );
+  const documents = categories.flatMap((category) => category.documents);
+  const summary = summariseComplianceRecords(documents, COMPLIANCE_REFERENCE_DATE);
+  const score = calculateComplianceScore(documents, COMPLIANCE_REFERENCE_DATE);
+  const topPriorities = buildCompliancePriorityItems(documents, COMPLIANCE_REFERENCE_DATE);
+
+  return {
+    ...client,
+    riskStatus: buildComplianceRiskStatus(documents, COMPLIANCE_REFERENCE_DATE),
+    score,
+    compliantCount: summary.compliantCount,
+    totalRequiredItems: summary.totalRequiredItems,
+    expiredCount: summary.expiredCount,
+    expiringCount: summary.expiringCount,
+    expiringSoonCount: summary.expiringCount,
+    missingCount: summary.missingCount,
+    missingRequiredCount: summary.missingCount,
+    readinessSummary: buildComplianceReadinessSummary({
+      ...client,
+      expiredCount: summary.expiredCount,
+      expiringCount: summary.expiringCount,
+      missingCount: summary.missingCount,
+    } as ComplianceClientStatus),
+    nextBestAction: buildComplianceNextBestAction(topPriorities),
+    topPriorities,
+    categories,
+    documents,
+    auditTrail: [...documents.flatMap((document) => document.auditTrail)].sort(
+      (left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime(),
+    ),
+  };
+}
+
+function updateComplianceItemInClient(
+  current: ComplianceClientStatus[],
+  clientId: string,
+  complianceItemId: string,
+  updater: (record: ComplianceDocumentRecord) => ComplianceDocumentRecord,
+) {
+  return current.map((client) => {
+    if (client.clientId !== clientId) {
+      return client;
+    }
+
+    return rebuildComplianceClientStatus({
+      ...client,
+      categories: client.categories.map((category) => ({
+        ...category,
+        documents: category.documents.map((document) =>
+          document.id === complianceItemId ? updater(document) : document,
+        ),
+      })),
+    });
+  });
+}
+
+function findComplianceItem(
+  clients: ComplianceClientStatus[],
+  clientId: string,
+  complianceItemId: string,
+) {
+  return clients
+    .find((client) => client.clientId === clientId)
+    ?.documents.find((document) => document.id === complianceItemId);
+}
+
 function buildTemplateWorkspace(client: FirmClientAccount, source: ClientWorkspaceView): ClientWorkspaceView {
   const rename = (value: string) =>
     value
@@ -727,6 +889,7 @@ function buildTemplateWorkspace(client: FirmClientAccount, source: ClientWorkspa
     documents,
     invoices,
     requests,
+    compliance: source.compliance,
     missingDocuments: buildMissingDocuments(monthPack, client.clientName),
     expiringDocuments: buildExpiringDocuments(documents),
     rejectedDocuments: buildRejectedDocuments(documents, invoices),
@@ -752,7 +915,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     () => portalService.getClientComplianceCentre(),
     [],
   );
-  const accountantComplianceCentre = useMemo(
+  const seededAccountantComplianceCentre = useMemo(
     () => portalService.getAccountantComplianceCentre(),
     [],
   );
@@ -772,6 +935,9 @@ export function PortalProvider({ children }: { children: ReactNode }) {
   );
   const [scheduledReports, setScheduledReports] = useState(
     () => initialClientState.scheduledReports,
+  );
+  const [complianceClients, setComplianceClients] = useState<ComplianceClientStatus[]>(
+    () => clone(seededAccountantComplianceCentre.clientStatuses ?? []),
   );
   const [complianceAuditTrail, setComplianceAuditTrail] = useState(
     () => initialClientState.complianceAuditTrail,
@@ -812,18 +978,56 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     scheduledReports,
   ]);
 
-  const clientComplianceCentre = useMemo(
-    () => ({
-      ...baseClientComplianceCentre,
-      auditTrail: complianceAuditTrail,
+  const clientComplianceStatus = useMemo(
+    () =>
+      complianceClients.find((client) => client.clientId === "firm-client-1") ??
+      complianceClients[0] ??
+      null,
+    [complianceClients],
+  );
+
+  const clientComplianceCentre = useMemo(() => {
+    const baseData = buildComplianceCentreDataFromStatuses(
+      clientComplianceStatus ? [clientComplianceStatus] : [],
+      {
+        helperLabel: "Compliance score",
+        includeClientStatuses: false,
+      },
+    );
+
+    return {
+      ...baseData,
+      auditTrail: [...complianceAuditTrail, ...baseData.auditTrail].sort(
+        (left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime(),
+      ),
       reportGeneratedAt,
       retentionNote:
         clientSettings.documentPreferences.retentionMode === "audit_ready"
           ? baseClientComplianceCentre.retentionNote
           : "Standard retention is active. Expired records remain visible until they are manually replaced and archived.",
-    }),
-    [baseClientComplianceCentre, clientSettings.documentPreferences.retentionMode, complianceAuditTrail, reportGeneratedAt],
-  );
+    };
+  }, [
+    baseClientComplianceCentre.retentionNote,
+    clientComplianceStatus,
+    clientSettings.documentPreferences.retentionMode,
+    complianceAuditTrail,
+    reportGeneratedAt,
+  ]);
+
+  const accountantComplianceCentre = useMemo(() => {
+    const baseData = buildComplianceCentreDataFromStatuses(complianceClients, {
+      helperLabel: "Portfolio compliance %",
+      includeClientStatuses: true,
+    });
+
+    return {
+      ...baseData,
+      auditTrail: [...complianceAuditTrail, ...baseData.auditTrail].sort(
+        (left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime(),
+      ),
+      reportGeneratedAt,
+    };
+  }, [complianceAuditTrail, complianceClients, reportGeneratedAt]);
 
   const missingRequiredDocuments = useMemo(
     () => buildMissingDocuments(monthPack),
@@ -903,6 +1107,10 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       documents.filter((document) => document.monthLabel === clientSeed.previousMonthLabel),
     [clientSeed.previousMonthLabel, documents],
   );
+  const liveClientRequests = useMemo(
+    () => requests.filter((request) => requestBelongsToClient(request, "firm-client-1")),
+    [requests],
+  );
   const unifiedSearchResults = useMemo(
     () =>
       buildUnifiedSearchResults({
@@ -911,12 +1119,19 @@ export function PortalProvider({ children }: { children: ReactNode }) {
         documents,
         invoices,
         monthPack,
-        requests,
+        requests: liveClientRequests,
         complianceDocuments: clientComplianceCentre.categoryGroups.flatMap(
           (group) => group.documents,
         ),
       }),
-    [clientComplianceCentre.categoryGroups, clientProfile.legalName, documents, invoices, monthPack, requests],
+    [
+      clientComplianceCentre.categoryGroups,
+      clientProfile.legalName,
+      documents,
+      invoices,
+      liveClientRequests,
+      monthPack,
+    ],
   );
 
   const currentClientWorkspace = useMemo<ClientWorkspaceView>(
@@ -937,7 +1152,8 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       monthPack,
       documents,
       invoices,
-      requests,
+      requests: liveClientRequests,
+      compliance: clientComplianceStatus,
       missingDocuments: buildMissingDocuments(monthPack, clientProfile.legalName),
       expiringDocuments,
       rejectedDocuments,
@@ -951,9 +1167,10 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       expiringDocuments,
       invoices,
       latestOverallDocuments,
+      liveClientRequests,
       monthPack,
       rejectedDocuments,
-      requests,
+      clientComplianceStatus,
     ],
   );
 
@@ -1284,6 +1501,16 @@ export function PortalProvider({ children }: { children: ReactNode }) {
             ? {
                 ...document,
                 comments: [...document.comments, nextComment],
+                auditTrail: [
+                  {
+                    id: `audit-${document.auditTrail.length + 6001}`,
+                    status: "Comment added",
+                    actor: author,
+                    timestamp: nextComment.createdAt,
+                    note: trimmedMessage,
+                  },
+                  ...document.auditTrail,
+                ],
               }
             : document,
         ),
@@ -1412,6 +1639,8 @@ export function PortalProvider({ children }: { children: ReactNode }) {
   }
 
   function createFollowUpRequest(payload: FollowUpRequestPayload): PortalActionResult {
+    const createdAt = new Date().toISOString();
+
     setRequests((current) => [
       {
         id: `request-${current.length + 10}`,
@@ -1427,14 +1656,20 @@ export function PortalProvider({ children }: { children: ReactNode }) {
         requestedByRole: payload.actor.role,
         assignedTo: payload.clientName,
         dueDate: payload.dueDate,
-        createdAt: new Date().toISOString(),
+        createdAt,
+        requestType: payload.requestType,
+        complianceCategoryId: payload.complianceCategoryId,
+        complianceCategoryName: payload.complianceCategoryName,
+        complianceItemId: payload.complianceItemId,
+        complianceItemName: payload.complianceItemName,
+        monthlyPeriod: payload.monthlyPeriod,
         comments: [],
         auditTrail: [
           {
             id: `request-audit-${current.length + 100}`,
             status: "Follow-up sent",
             actor: payload.actor.fullName,
-            timestamp: new Date().toISOString(),
+            timestamp: createdAt,
             note: payload.description,
           },
         ],
@@ -1443,6 +1678,128 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     ]);
 
     return { ok: true, message: "Follow-up request added to the client workflow." };
+  }
+
+  function createComplianceRequest(payload: ComplianceRequestPayload): PortalActionResult {
+    const record = findComplianceItem(complianceClients, payload.clientId, payload.complianceItemId);
+    if (!record) {
+      return { ok: false, message: "The selected compliance item could not be found." };
+    }
+
+    const details = buildComplianceRequestDetails(
+      record,
+      payload.requestType,
+      payload.dueDate,
+      payload.comments ?? "",
+      payload.actor.fullName,
+    );
+    const createdAt = new Date().toISOString();
+    const nextRequestId = `request-${requests.length + 10}`;
+
+    setRequests((current) => [
+      {
+        id: nextRequestId,
+        clientId: payload.clientId,
+        clientName: record.clientName,
+        title: details.title,
+        description: details.description,
+        monthLabel: record.monthlyPeriod ?? "Compliance",
+        status: "awaiting_client",
+        priority:
+          payload.requestType === "clarification_request"
+            ? "medium"
+            : "high",
+        requestedBy: payload.actor.fullName,
+        requestedByRole: payload.actor.role,
+        assignedTo: record.clientName,
+        dueDate: details.dueDate,
+        createdAt,
+        requestType: details.requestType,
+        complianceCategoryId: details.complianceCategoryId,
+        complianceCategoryName: details.complianceCategoryName,
+        complianceItemId: details.complianceItemId,
+        complianceItemName: details.complianceItemName,
+        monthlyPeriod: details.monthlyPeriod,
+        comments: [],
+        auditTrail: [
+          {
+            id: `${nextRequestId}-audit-1`,
+            status: "Compliance request created",
+            actor: payload.actor.fullName,
+            timestamp: createdAt,
+            note: details.description,
+          },
+        ],
+      },
+      ...current,
+    ]);
+
+    setComplianceClients((current) =>
+      updateComplianceItemInClient(current, payload.clientId, payload.complianceItemId, (item) =>
+        appendComplianceRequestAudit(
+          item,
+          nextRequestId,
+          payload.actor.fullName,
+          payload.requestType,
+          COMPLIANCE_REFERENCE_DATE,
+        ),
+      ),
+    );
+
+    if (isApexWorkspaceId(payload.clientId)) {
+      setActivity((current) =>
+        appendActivity(
+          current,
+          `Compliance request created`,
+          `${payload.actor.fullName} created a compliance request for ${record.name}.`,
+          "warning",
+          payload.actor.fullName,
+          record.name,
+        ),
+      );
+    }
+
+    return { ok: true, message: "Compliance request added to the workflow." };
+  }
+
+  function uploadComplianceVersion(payload: ComplianceVersionUploadPayload): PortalActionResult {
+    const record = findComplianceItem(complianceClients, payload.clientId, payload.complianceItemId);
+    if (!record) {
+      return { ok: false, message: "The selected compliance item could not be found." };
+    }
+
+    setComplianceClients((current) =>
+      updateComplianceItemInClient(current, payload.clientId, payload.complianceItemId, (item) =>
+        appendComplianceDocumentVersion(
+          item,
+          {
+            fileName: payload.fileName,
+            fileType: payload.fileType,
+            uploadedBy: payload.uploadedBy,
+            note: payload.note,
+          },
+          COMPLIANCE_REFERENCE_DATE,
+        ),
+      ),
+    );
+
+    if (isApexWorkspaceId(payload.clientId)) {
+      setActivity((current) =>
+        appendActivity(
+          current,
+          `${record.name} re-uploaded`,
+          `${payload.uploadedBy} uploaded a new compliance version for ${record.name}.`,
+          "success",
+          payload.uploadedBy,
+          record.name,
+        ),
+      );
+    }
+
+    return {
+      ok: true,
+      message: "New compliance version uploaded and moved into review.",
+    };
   }
 
   function resolveRequest(requestId: string, actorName: string): PortalActionResult {
@@ -1651,6 +2008,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     setClientProfile(fresh.clientProfile);
     setClientSettings(fresh.clientSettings);
     setScheduledReports(fresh.scheduledReports);
+    setComplianceClients(clone(seededAccountantComplianceCentre.clientStatuses ?? []));
     setComplianceAuditTrail(fresh.complianceAuditTrail);
     setReportGeneratedAt(fresh.reportGeneratedAt);
 
@@ -1710,13 +2068,21 @@ export function PortalProvider({ children }: { children: ReactNode }) {
   }
 
   function getClientWorkspace(clientId: string): ClientWorkspaceView {
-    if (clientId === "client-apex" || clientId === "firm-client-1") {
+    if (isApexWorkspaceId(clientId)) {
       return currentClientWorkspace;
     }
 
     const client =
       adminClients.find((item) => item.id === clientId) ?? currentClientWorkspace.client;
-    return buildTemplateWorkspace(client, currentClientWorkspace);
+    const workspaceRequests = requests.filter((request) => requestBelongsToClient(request, clientId));
+
+    return {
+      ...buildTemplateWorkspace(client, currentClientWorkspace),
+      requests: workspaceRequests,
+      compliance:
+        complianceClients.find((complianceClient) => complianceClient.clientId === clientId) ??
+        currentClientWorkspace.compliance,
+    };
   }
 
   const accountantDashboard = useMemo<AccountantDashboardData>(() => {
@@ -1827,6 +2193,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       expiringDocuments: [...expiringDocuments, ...staticExpiring].slice(0, 8),
       rejectedDocuments: [...rejectedDocuments, ...staticRejected].slice(0, 8),
       latestOverallDocuments: latestOverall,
+      notifications,
     };
   }, [
       adminClients,
@@ -1837,6 +2204,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     expiringDocuments,
     invoices,
     monthPack,
+    notifications,
     rejectedDocuments,
     reconciliationIssues,
     smartAlerts,
@@ -1854,7 +2222,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
         invoices,
         notifications,
         activity,
-        requests,
+        requests: liveClientRequests,
         summaryMetrics,
         missingRequiredDocuments,
         expiringDocuments,
@@ -1883,6 +2251,8 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       updateNotificationState,
       addRequestComment,
       createFollowUpRequest,
+      createComplianceRequest,
+      uploadComplianceVersion,
       resolveRequest,
       updateBusinessProfile,
       updateClientNotificationPreferences,
@@ -1908,6 +2278,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       clientSettings,
       clientProfile,
       clientSeed,
+      complianceClients,
       documents,
       downloadComplianceReport,
       expiringDocuments,
@@ -1915,6 +2286,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       latestInvoices,
       latestOverallDocuments,
       latestUploadedDocuments,
+      liveClientRequests,
       managedAccountants,
       missingRequiredDocuments,
       monthPack,
@@ -1925,6 +2297,8 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       resetClientPortalDemoState,
       scheduleComplianceReport,
       scheduledReports,
+      createComplianceRequest,
+      uploadComplianceVersion,
       resolveRequest,
       rejectedDocuments,
       requests,

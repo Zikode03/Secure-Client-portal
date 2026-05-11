@@ -129,33 +129,11 @@ export const navigationByRole: Record<Role, NavigationItem[]> = {
       icon: "messages",
     },
     {
-      label: "Follow-ups",
-      to: "/accountant/follow-ups",
-      description: "Send and manage client requests",
-      section: "Operations",
-      icon: "followups",
-    },
-    {
-      label: "Exceptions",
-      to: "/accountant/compliance-exceptions",
-      description: "Work expiring, missing, and rejected items",
-      section: "Compliance",
-      icon: "exceptions",
-    },
-    {
       label: "Compliance Centre",
       to: "/accountant/compliance",
       description: "See the broader compliance centre view",
       section: "Compliance",
       icon: "compliance",
-    },
-    {
-      label: "Notifications",
-      to: "/accountant/notifications",
-      description: "Stay ahead of missing packs and due dates",
-      section: "System",
-      icon: "notifications",
-      badge: "5",
     },
     {
       label: "Settings",

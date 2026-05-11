@@ -32,13 +32,13 @@ export function ComplianceCategoryPanel({ group }: ComplianceCategoryPanelProps)
               <div className="rounded-2xl border border-slate-200 bg-white px-3 py-3">
                 <p className="text-xs uppercase tracking-[0.16em] text-slate-400">Issue date</p>
                 <p className="mt-2 text-sm font-medium text-slate-900">
-                  {formatDateLabel(document.issueDate)}
+                  {document.issueDate ? formatDateLabel(document.issueDate) : "Not set"}
                 </p>
               </div>
               <div className="rounded-2xl border border-slate-200 bg-white px-3 py-3">
                 <p className="text-xs uppercase tracking-[0.16em] text-slate-400">Expiry date</p>
                 <p className="mt-2 text-sm font-medium text-slate-900">
-                  {formatDateLabel(document.expiryDate)}
+                  {document.expiryDate ? formatDateLabel(document.expiryDate) : "Not set"}
                 </p>
               </div>
             </div>
