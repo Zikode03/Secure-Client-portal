@@ -392,6 +392,7 @@ export interface ClientDocumentCenterData {
 
 export type RequestStatus =
   | "open"
+  | "awaiting_accountant"
   | "awaiting_client"
   | "client_replied"
   | "resolved"

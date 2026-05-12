@@ -452,6 +452,18 @@ interface FollowUpRequestPayload {
   monthlyPeriod?: string;
 }
 
+interface ClientRequestPayload {
+  clientId: string;
+  clientName: string;
+  monthLabel: string;
+  title: string;
+  description: string;
+  dueDate: string;
+  priority: WorkflowRequest["priority"];
+  actor: SessionUser;
+  assignedAccountant: string;
+}
+
 interface ComplianceRequestPayload {
   clientId: string;
   complianceItemId: string;
@@ -526,6 +538,7 @@ interface PortalContextValue {
     role: Role,
     message: string,
   ) => PortalActionResult;
+  createClientRequest: (payload: ClientRequestPayload) => PortalActionResult;
   createFollowUpRequest: (payload: FollowUpRequestPayload) => PortalActionResult;
   createComplianceRequest: (payload: ComplianceRequestPayload) => PortalActionResult;
   uploadComplianceVersion: (payload: ComplianceVersionUploadPayload) => PortalActionResult;
@@ -1614,12 +1627,20 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       return { ok: false, message: "Write a clear note before posting to the request thread." };
     }
 
+    const commentCreatedAt = new Date().toISOString();
     setRequests((current) =>
       current.map((request) =>
         request.id === requestId
           ? {
               ...request,
-              status: role === "client" ? "client_replied" : request.status,
+              status:
+                request.requestedByRole === "accountant"
+                  ? role === "client"
+                    ? "client_replied"
+                    : request.status
+                  : role === "accountant"
+                    ? "open"
+                    : "awaiting_accountant",
               comments: [
                 ...request.comments,
                 {
@@ -1627,8 +1648,23 @@ export function PortalProvider({ children }: { children: ReactNode }) {
                   author,
                   role,
                   message: trimmedMessage,
-                  createdAt: new Date().toISOString(),
+                  createdAt: commentCreatedAt,
                 },
+              ],
+              auditTrail: [
+                {
+                  id: `${requestId}-audit-${request.auditTrail.length + 1}`,
+                  status:
+                    role === "accountant"
+                      ? "Accountant replied"
+                      : request.requestedByRole === "accountant"
+                        ? "Client replied"
+                        : "Client updated request",
+                  actor: author,
+                  timestamp: commentCreatedAt,
+                  note: trimmedMessage,
+                },
+                ...request.auditTrail,
               ],
             }
           : request,
@@ -1636,6 +1672,69 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     );
 
     return { ok: true, message: "Comment added to the request thread." };
+  }
+
+  function createClientRequest(payload: ClientRequestPayload): PortalActionResult {
+    const trimmedTitle = payload.title.trim();
+    const trimmedDescription = payload.description.trim();
+
+    if (!trimmedTitle || !trimmedDescription) {
+      return { ok: false, message: "Add both a subject and a clear request before sending it." };
+    }
+
+    const createdAt = new Date().toISOString();
+
+    setRequests((current) => [
+      {
+        id: `request-${current.length + 10}`,
+        clientId: payload.clientId,
+        clientName: payload.clientName,
+        title: trimmedTitle,
+        description: trimmedDescription,
+        monthLabel: payload.monthLabel,
+        status: "awaiting_accountant",
+        priority: payload.priority,
+        requestedBy: payload.actor.fullName,
+        requestedByRole: payload.actor.role,
+        assignedTo: payload.assignedAccountant,
+        dueDate: payload.dueDate,
+        createdAt,
+        comments: [
+          {
+            id: `request-comment-${current.length + 100}`,
+            author: payload.actor.fullName,
+            role: payload.actor.role,
+            message: trimmedDescription,
+            createdAt,
+          },
+        ],
+        auditTrail: [
+          {
+            id: `request-audit-${current.length + 100}`,
+            status: "Client request sent",
+            actor: payload.actor.fullName,
+            timestamp: createdAt,
+            note: trimmedDescription,
+          },
+        ],
+      },
+      ...current,
+    ]);
+
+    if (isApexWorkspaceId(payload.clientId)) {
+      setActivity((current) =>
+        appendActivity(
+          current,
+          "Client request sent",
+          `${payload.actor.fullName} asked ${payload.assignedAccountant} for ${trimmedTitle}.`,
+          "info",
+          payload.actor.fullName,
+          trimmedTitle,
+        ),
+      );
+    }
+
+    return { ok: true, message: "Your request has been sent to your accountant." };
   }
 
   function createFollowUpRequest(payload: FollowUpRequestPayload): PortalActionResult {
@@ -2250,6 +2349,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       addDocumentComment,
       updateNotificationState,
       addRequestComment,
+      createClientRequest,
       createFollowUpRequest,
       createComplianceRequest,
       uploadComplianceVersion,
@@ -2297,6 +2397,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       resetClientPortalDemoState,
       scheduleComplianceReport,
       scheduledReports,
+      createClientRequest,
       createComplianceRequest,
       uploadComplianceVersion,
       resolveRequest,

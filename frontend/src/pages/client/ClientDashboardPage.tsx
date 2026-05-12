@@ -945,7 +945,9 @@ export function ClientDashboardPage() {
                   <div className="min-w-0 space-y-0.5">
                     <p className="text-[0.95rem] font-medium leading-6 text-slate-950">{typedItem.title}</p>
                     <p className="text-[0.84rem] text-slate-500">
-                      Requested by {typedItem.requestedBy} - {formatDateLabel(typedItem.createdAt)}
+                      {typedItem.requestedByRole === "client"
+                        ? `Assigned to ${typedItem.assignedTo}`
+                        : `Requested by ${typedItem.requestedBy}`} - {formatDateLabel(typedItem.createdAt)}
                     </p>
                   </div>
                 </div>

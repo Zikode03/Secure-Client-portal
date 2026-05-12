@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { usePortal } from "../app/portal";
-import type { Role, Tone, UploadSubmission } from "../types/portal";
+import type { Role, SessionUser, Tone, UploadSubmission, WorkflowRequest } from "../types/portal";
 
 interface ClientWorkflowOptions {
   clientId?: string;
@@ -20,6 +20,15 @@ export function useClientWorkflow(options: ClientWorkflowOptions = {}) {
 
   const workflowClientName = options.clientName?.trim() || portal.clientProfile.legalName;
   const workflowActorName = options.uploadedBy?.trim() || portal.clientProfile.primaryContact;
+  const assignedAccountantName = useMemo(
+    () =>
+      portal.clientWorkflow.requests.find((request) => request.requestedByRole === "accountant")
+        ?.requestedBy ??
+      portal.accountantDashboard.portfolio.find((row) => row.clientName === workflowClientName)
+        ?.assignedAccountant ??
+      "Assigned accountant",
+    [portal.accountantDashboard.portfolio, portal.clientWorkflow.requests, workflowClientName],
+  );
 
   const workflow = useMemo(
     () => ({
@@ -87,6 +96,29 @@ export function useClientWorkflow(options: ClientWorkflowOptions = {}) {
     return result;
   }
 
+  function createClientRequest(
+    payload: Pick<WorkflowRequest, "title" | "description" | "dueDate" | "priority" | "monthLabel">,
+    actor: SessionUser,
+  ) {
+    const result = portal.createClientRequest({
+      clientId: options.clientId?.trim() || portal.clientProfile.clientId,
+      clientName: workflowClientName,
+      monthLabel: payload.monthLabel,
+      title: payload.title,
+      description: payload.description,
+      dueDate: payload.dueDate,
+      priority: payload.priority,
+      actor,
+      assignedAccountant: assignedAccountantName,
+    });
+    showFeedbackNotice(
+      result.ok ? "success" : "danger",
+      result.ok ? "Request sent" : "Request blocked",
+      result.message,
+    );
+    return result;
+  }
+
   function triggerView(recordName: string) {
     showFeedbackNotice("info", "Preview opened", `Preview opened for ${recordName}.`);
   }
@@ -98,11 +130,13 @@ export function useClientWorkflow(options: ClientWorkflowOptions = {}) {
   return {
     ...workflow,
     clientName: workflowClientName,
+    assignedAccountantName,
     uploadToSlot,
     submitMonth,
     finaliseInvoice,
     replyToRequest,
     resolveRequest,
+    createClientRequest,
     triggerView,
     triggerDownload,
     showFeedbackNotice,

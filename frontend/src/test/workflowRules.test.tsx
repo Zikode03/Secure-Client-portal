@@ -2,6 +2,7 @@ import { act, renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { PortalProvider, usePortal } from "../app/portal";
 import { portalService } from "../services/portalData";
+import type { SessionUser } from "../types/portal";
 import {
   buildExpiringDocuments,
   buildUnifiedSearchResults,
@@ -11,6 +12,30 @@ import {
 function PortalWrapper({ children }: { children: ReactNode }) {
   return <PortalProvider>{children}</PortalProvider>;
 }
+
+const clientUser: SessionUser = {
+  id: "user-client-1",
+  name: "Sarah",
+  fullName: "Sarah Jacobs",
+  email: "client@example.com",
+  role: "client",
+  title: "Finance Manager",
+  company: "Apex Trading Ltd",
+  initials: "SJ",
+  clientIds: ["client-apex"],
+};
+
+const accountantUser: SessionUser = {
+  id: "user-accountant-1",
+  name: "Daniel",
+  fullName: "Daniel Mokoena",
+  email: "accountant@example.com",
+  role: "accountant",
+  title: "Senior Accountant",
+  company: "Finwell Advisory",
+  initials: "DM",
+  clientIds: [],
+};
 
 describe("workflow business rules", () => {
   it("client cannot submit month when required documents are missing", () => {
@@ -153,5 +178,49 @@ describe("workflow business rules", () => {
     expect(resultTypes.has("invoice")).toBe(true);
     expect(resultTypes.has("monthly_pack_item")).toBe(true);
     expect(resultTypes.has("compliance_document")).toBe(true);
+  });
+
+  it("client can create a request and the accountant reply moves it into the active workflow", () => {
+    const { result } = renderHook(() => usePortal(), { wrapper: PortalWrapper });
+
+    act(() => {
+      result.current.createClientRequest({
+        clientId: "client-apex",
+        clientName: "Apex Trading Ltd",
+        monthLabel: "April 2026",
+        title: "Document request: Signed annual financial statements",
+        description: "Please send the signed annual financial statements for the board pack.",
+        dueDate: "2026-05-15T17:00:00.000Z",
+        priority: "medium",
+        actor: clientUser,
+        assignedAccountant: "Daniel Mokoena",
+      });
+    });
+
+    const createdRequest = result.current.clientWorkflow.requests.find(
+      (request) => request.title === "Document request: Signed annual financial statements",
+    );
+
+    expect(createdRequest).toBeDefined();
+    expect(createdRequest?.status).toBe("awaiting_accountant");
+    expect(createdRequest?.requestedByRole).toBe("client");
+
+    act(() => {
+      result.current.addRequestComment(
+        createdRequest!.id,
+        accountantUser.fullName,
+        accountantUser.role,
+        "I will upload the signed set this afternoon.",
+      );
+    });
+
+    const updatedRequest = result.current.clientWorkflow.requests.find(
+      (request) => request.id === createdRequest!.id,
+    );
+
+    expect(updatedRequest?.status).toBe("open");
+    expect(updatedRequest?.comments[updatedRequest.comments.length - 1]?.author).toBe(
+      "Daniel Mokoena",
+    );
   });
 });

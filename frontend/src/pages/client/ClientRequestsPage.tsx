@@ -7,7 +7,11 @@ import { CommentThread } from "../../components/workflow/CommentThread";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
+import { Modal } from "../../components/ui/Modal";
+import { SelectField } from "../../components/ui/SelectField";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
+import { TextAreaField } from "../../components/ui/TextAreaField";
+import { TextField } from "../../components/ui/TextField";
 import { useDisclosure } from "../../hooks/useDisclosure";
 import { useClientWorkflow } from "../../hooks/useClientWorkflow";
 import type {
@@ -21,6 +25,20 @@ import { formatDateLabel } from "../../utils/formatters";
 
 type RequestDetailTab = "overview" | "comments" | "audit" | "documents";
 type RequestListFilter = "all" | "open" | "waiting" | "overdue" | "resolved";
+type ClientRequestKind = "document" | "clarification" | "question" | "other";
+
+const clientRequestTypeOptions = [
+  { label: "Ask for a document", value: "document" },
+  { label: "Need clarification", value: "clarification" },
+  { label: "Ask a question", value: "question" },
+  { label: "Other request", value: "other" },
+] as const;
+
+const clientRequestPriorityOptions = [
+  { label: "Low", value: "low" },
+  { label: "Medium", value: "medium" },
+  { label: "High", value: "high" },
+] as const;
 
 function SearchIcon() {
   return (
@@ -254,6 +272,33 @@ function dueLabel(dateValue: string) {
   return `Due in ${days} days`;
 }
 
+function defaultClientRequestDueDate() {
+  const target = new Date("2026-05-09T17:00:00.000Z");
+  return target.toISOString().slice(0, 10);
+}
+
+function toIsoDueDate(dateValue: string) {
+  return `${dateValue}T17:00:00.000Z`;
+}
+
+function requestRoleLabel(request: WorkflowRequest) {
+  return request.requestedByRole === "client" ? "Client" : "Accountant";
+}
+
+function requestCounterpartyLabel(request: WorkflowRequest) {
+  return request.requestedByRole === "client"
+    ? `Assigned to ${request.assignedTo}`
+    : `Requested by ${request.requestedBy}`;
+}
+
+function requestWhyItMatters(request: WorkflowRequest) {
+  if (request.requestedByRole === "client") {
+    return "Your accountant needs this request in one tracked thread so they can respond with the right document, answer, or next action.";
+  }
+
+  return `Your accountant needs this item to complete the ${request.monthLabel} review and keep the month pack audit-ready.`;
+}
+
 function requestStatusMeta(status: RequestStatus, dueDate: string) {
   const overdue = daysUntilDue(dueDate) < 0 && !["resolved", "closed"].includes(status);
   if (overdue) {
@@ -265,6 +310,12 @@ function requestStatusMeta(status: RequestStatus, dueDate: string) {
   }
 
   switch (status) {
+    case "awaiting_accountant":
+      return {
+        filter: "open" as const,
+        label: "Waiting on accountant",
+        badge: "bg-brand-50 text-brand-700 ring-brand-200",
+      };
     case "awaiting_client":
       return {
         filter: "waiting" as const,
@@ -425,6 +476,15 @@ function primaryActionForRequest(
     };
   }
 
+  if (request.status === "awaiting_accountant") {
+    return {
+      kind: "reply" as const,
+      label: "Add more detail",
+      listLabel: "Waiting on accountant",
+      helper: "Your accountant has not responded yet. Add more detail here if it will help them answer faster.",
+    };
+  }
+
   if (relatedSlot) {
     return {
       kind: "open-pack" as const,
@@ -465,14 +525,23 @@ export function ClientRequestsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const uploadModal = useDisclosure(false);
+  const requestModal = useDisclosure(false);
   const [selectedRequestId, setSelectedRequestId] = useState("");
   const [selectedSlot, setSelectedSlot] = useState<MonthlyDocumentSlot | null>(null);
   const [activeTab, setActiveTab] = useState<RequestDetailTab>("overview");
   const [activeFilter, setActiveFilter] = useState<RequestListFilter>("all");
   const [searchValue, setSearchValue] = useState("");
+  const [requestKind, setRequestKind] = useState<ClientRequestKind>("document");
+  const [requestTitle, setRequestTitle] = useState("");
+  const [requestDescription, setRequestDescription] = useState("");
+  const [requestDueDate, setRequestDueDate] = useState(defaultClientRequestDueDate());
+  const [requestPriority, setRequestPriority] = useState<RequestPriority>("medium");
+  const [requestFormError, setRequestFormError] = useState("");
 
   const {
+    assignedAccountantName,
     clientName,
+    createClientRequest,
     dismissFeedbackNotice,
     documents,
     feedbackNotice,
@@ -670,6 +739,62 @@ export function ClientRequestsPage() {
     resolveRequest(selectedRequest.id);
   }
 
+  function resetRequestComposer() {
+    setRequestKind("document");
+    setRequestTitle("");
+    setRequestDescription("");
+    setRequestDueDate(defaultClientRequestDueDate());
+    setRequestPriority("medium");
+    setRequestFormError("");
+  }
+
+  function openRequestComposer() {
+    resetRequestComposer();
+    requestModal.open();
+  }
+
+  function handleSubmitClientRequest() {
+    if (!user) {
+      setRequestFormError("You must be signed in before sending a request to your accountant.");
+      return;
+    }
+
+    const trimmedTitle = requestTitle.trim();
+    const trimmedDescription = requestDescription.trim();
+    if (!trimmedTitle || !trimmedDescription || !requestDueDate) {
+      setRequestFormError("Add a request type, subject, detail, and needed-by date before sending.");
+      return;
+    }
+
+    const kindPrefix =
+      requestKind === "document"
+        ? "Document request"
+        : requestKind === "clarification"
+          ? "Clarification"
+          : requestKind === "question"
+            ? "Question"
+            : "Request";
+    const result = createClientRequest(
+      {
+        title: `${kindPrefix}: ${trimmedTitle}`,
+        description: trimmedDescription,
+        dueDate: toIsoDueDate(requestDueDate),
+        priority: requestPriority,
+        monthLabel: monthPack.monthLabel,
+      },
+      user,
+    );
+
+    if (!result.ok) {
+      setRequestFormError(result.message);
+      return;
+    }
+
+    requestModal.close();
+    resetRequestComposer();
+    setActiveFilter("all");
+  }
+
   const selectedStatusMeta = selectedRequest
     ? requestStatusMeta(selectedRequest.status, selectedRequest.dueDate)
     : null;
@@ -691,12 +816,19 @@ export function ClientRequestsPage() {
             My requests and tasks
           </h1>
           <p className="max-w-3xl text-[0.94rem] leading-7 text-slate-500">
-            Requests show what your accountant needs from you, when it is due, and what action
-            must be taken.
+            Requests show what your accountant needs from you, and they also give you one tracked
+            place to ask your accountant for documents, answers, or clarification.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5 lg:justify-end">
+          <Button
+            className="h-11 rounded-xl border border-brand-200 bg-white px-4 text-sm text-brand-700 hover:bg-brand-50"
+            onClick={openRequestComposer}
+            variant="secondary"
+          >
+            <span>Ask accountant</span>
+          </Button>
           <Button
             className="h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-800 hover:bg-slate-50"
             onClick={() => handleOpenUpload(topUploadSlot)}
@@ -842,7 +974,7 @@ export function ClientRequestsPage() {
 
                         <div className="grid gap-2 text-[0.82rem] text-slate-500 sm:grid-cols-2">
                           <p>Due {formatDateLabel(request.dueDate)}</p>
-                          <p>Requested by {request.requestedBy}</p>
+                          <p>{requestCounterpartyLabel(request)}</p>
                         </div>
 
                         <p className="text-[0.84rem] font-medium text-brand-600">
@@ -895,7 +1027,9 @@ export function ClientRequestsPage() {
                       onClick={() => handlePrimaryAction(selectedRequest)}
                       variant="secondary"
                     >
-                      <UploadIcon />
+                      {selectedPrimaryAction?.kind === "upload" || selectedPrimaryAction?.kind === "reupload" ? (
+                        <UploadIcon />
+                      ) : null}
                       <span>{selectedPrimaryAction?.label}</span>
                     </Button>
                     {canResolveCurrent ? (
@@ -922,12 +1056,18 @@ export function ClientRequestsPage() {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 text-[0.82rem] font-medium text-slate-500">
                       <UserIcon />
-                      <span>Requested by</span>
+                      <span>{selectedRequest.requestedByRole === "client" ? "Sent to" : "Requested by"}</span>
                     </div>
                     <p className="text-[0.95rem] font-semibold text-slate-950">
-                      {selectedRequest.requestedBy}
+                      {selectedRequest.requestedByRole === "client"
+                        ? selectedRequest.assignedTo
+                        : selectedRequest.requestedBy}
                     </p>
-                    <p className="text-[0.82rem] text-slate-500">Accountant</p>
+                    <p className="text-[0.82rem] text-slate-500">
+                      {selectedRequest.requestedByRole === "client"
+                        ? "Assigned accountant"
+                        : requestRoleLabel(selectedRequest)}
+                    </p>
                   </div>
 
                   <div className="space-y-1">
@@ -1009,7 +1149,7 @@ export function ClientRequestsPage() {
                       <div>
                         <p className="text-sm font-semibold text-slate-950">Why it matters</p>
                         <p className="mt-2 text-[0.92rem] leading-7 text-slate-600">
-                          Your accountant needs this item to complete the {selectedRequest.monthLabel} review and keep the month pack audit-ready.
+                          {requestWhyItMatters(selectedRequest)}
                         </p>
                       </div>
 
@@ -1047,7 +1187,7 @@ export function ClientRequestsPage() {
                         <div className="grid grid-cols-[120px_minmax(0,1fr)] gap-4 border-b border-slate-100 pb-4">
                           <span className="text-slate-500">Requested by</span>
                           <span className="font-medium text-slate-900">
-                            {selectedRequest.requestedBy}
+                            {selectedRequest.requestedBy} ({requestRoleLabel(selectedRequest)})
                           </span>
                         </div>
                         <div className="grid grid-cols-[120px_minmax(0,1fr)] gap-4">
@@ -1064,7 +1204,9 @@ export function ClientRequestsPage() {
                 {activeTab === "comments" ? (
                   <div className="space-y-4">
                     <div className="rounded-[1.15rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600">
-                      Files must be uploaded through the structured document slot so they can be named, tracked, and reviewed properly.
+                      {selectedRequest.requestedByRole === "client"
+                        ? "Keep the discussion here so your accountant can answer inside the same tracked request."
+                        : "Files must be uploaded through the structured document slot so they can be named, tracked, and reviewed properly."}
                     </div>
                     <CommentThread
                       comments={selectedRequest.comments}
@@ -1074,7 +1216,11 @@ export function ClientRequestsPage() {
                       currentRole="client"
                       emptyDescription="No comments yet. Add a message when you need to give context to your accountant."
                       emptyTitle="No comments yet"
-                      helperText="Files must be uploaded through the structured document slot so they can be named, tracked, and reviewed properly."
+                      helperText={
+                        selectedRequest.requestedByRole === "client"
+                          ? "This reply stays attached to your request so the accountant sees the full context."
+                          : "Files must be uploaded through the structured document slot so they can be named, tracked, and reviewed properly."
+                      }
                       onSubmitComment={handleSubmitComment}
                       submitLabel="Send reply"
                     />
@@ -1171,6 +1317,80 @@ export function ClientRequestsPage() {
           )}
         </SurfaceCard>
       </section>
+
+      <Modal
+        description={`Send a tracked request to ${assignedAccountantName}. Your accountant will see it in the same request workflow they already use for follow-ups.`}
+        isOpen={requestModal.isOpen}
+        onClose={requestModal.close}
+        title="Ask your accountant"
+      >
+        <div className="space-y-5">
+          <div className="grid gap-4 md:grid-cols-2">
+            <SelectField
+              id="client-request-kind"
+              label="Request type"
+              onChange={(event) => setRequestKind(event.target.value as ClientRequestKind)}
+              options={clientRequestTypeOptions.map((option) => ({ ...option }))}
+              value={requestKind}
+            />
+            <SelectField
+              id="client-request-priority"
+              label="Priority"
+              onChange={(event) => setRequestPriority(event.target.value as RequestPriority)}
+              options={clientRequestPriorityOptions.map((option) => ({ ...option }))}
+              value={requestPriority}
+            />
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <TextField
+              hint="Example: Signed annual financial statements for board pack"
+              id="client-request-title"
+              label="Subject"
+              onChange={(event) => setRequestTitle(event.target.value)}
+              placeholder="What do you need from your accountant?"
+              value={requestTitle}
+            />
+            <TextField
+              id="client-request-due-date"
+              label="Needed by"
+              onChange={(event) => setRequestDueDate(event.target.value)}
+              type="date"
+              value={requestDueDate}
+            />
+          </div>
+
+          <TextAreaField
+            hint="Keep it specific so your accountant can reply or send the right document quickly."
+            id="client-request-description"
+            label="Details"
+            onChange={(event) => setRequestDescription(event.target.value)}
+            placeholder="Explain what document, answer, or clarification you need and why."
+            value={requestDescription}
+          />
+
+          {requestFormError ? (
+            <div className="rounded-[1rem] border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+              {requestFormError}
+            </div>
+          ) : null}
+
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-[1.25rem] border border-slate-200 bg-slate-50 px-4 py-4">
+            <div className="space-y-1 text-sm text-slate-600">
+              <p className="font-medium text-slate-900">This request will be sent to {assignedAccountantName}.</p>
+              <p>It will appear in both your request list and the accountant workspace with a full audit trail.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={requestModal.close} variant="secondary">
+                Cancel
+              </Button>
+              <Button onClick={handleSubmitClientRequest}>
+                Send request
+              </Button>
+            </div>
+          </div>
+        </div>
+      </Modal>
 
       <DocumentUploadModal
         clientName={clientName ?? user?.company ?? "Apex Trading Ltd"}

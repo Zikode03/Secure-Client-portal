@@ -150,6 +150,18 @@ export function AccountantClientWorkspacePage() {
     return result;
   }
 
+  function handleResolveRequest() {
+    if (!selectedRequest || !user || workspace.client.id !== "firm-client-1") {
+      setFeedbackMessage(
+        "This seeded workspace is read-only for request updates outside the live client.",
+      );
+      return;
+    }
+
+    const result = portal.resolveRequest(selectedRequest.id, user.fullName);
+    setFeedbackMessage(result.message);
+  }
+
   function handleComplianceRequest(
     record: ComplianceDocumentRecord,
     requestType:
@@ -859,12 +871,59 @@ export function AccountantClientWorkspacePage() {
       {activeTab === "requests" ? (
         <section className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
           <RequestBoard
-            description="Requests show what the client still owes the accountant before the month can be closed."
+            description="Requests track both accountant follow-ups and client questions so each task stays in one accountable thread."
             onOpenRequest={(request) => setSelectedRequestId(request.id)}
             requests={workspace.requests}
             title="Open requests"
           />
           <div className="space-y-6">
+            <SurfaceCard className="space-y-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-xl font-semibold text-slate-950">Selected request</h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Review who asked for what, then reply in-thread or close the task once it is handled.
+                  </p>
+                </div>
+                {selectedRequest && !["resolved", "closed"].includes(selectedRequest.status) ? (
+                  <Button onClick={handleResolveRequest} variant="secondary">
+                    Mark resolved
+                  </Button>
+                ) : null}
+              </div>
+              {selectedRequest ? (
+                <div className="grid gap-4 rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4 md:grid-cols-2">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Request title</p>
+                    <p className="mt-2 text-sm font-semibold text-slate-950">{selectedRequest.title}</p>
+                    <p className="mt-1 text-sm text-slate-500">{selectedRequest.description}</p>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-[1rem] border border-slate-200 bg-white px-3 py-3 text-sm text-slate-600">
+                      <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Requested by</p>
+                      <p className="mt-2 font-semibold text-slate-950">
+                        {selectedRequest.requestedBy}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {selectedRequest.requestedByRole === "client" ? "Client request" : "Accountant follow-up"}
+                      </p>
+                    </div>
+                    <div className="rounded-[1rem] border border-slate-200 bg-white px-3 py-3 text-sm text-slate-600">
+                      <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Assigned to</p>
+                      <p className="mt-2 font-semibold text-slate-950">{selectedRequest.assignedTo}</p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        Due {formatDateLabel(selectedRequest.dueDate)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <EmptyState
+                  description="Select a request from the queue to review its details and reply in context."
+                  title="No request selected"
+                />
+              )}
+            </SurfaceCard>
             <SurfaceCard className="space-y-4">
               <div>
                 <h2 className="text-xl font-semibold text-slate-950">Request comments</h2>

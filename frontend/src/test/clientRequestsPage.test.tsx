@@ -191,7 +191,9 @@ function createRequests(): WorkflowRequest[] {
 
 function buildWorkflowState(overrides: Record<string, unknown> = {}) {
   return {
+    assignedAccountantName: "Daniel Mokoena",
     clientName: "Apex Trading Ltd",
+    createClientRequest: vi.fn(() => ({ ok: true, message: "Your request has been sent to your accountant." })),
     dismissFeedbackNotice: vi.fn(),
     documents: createDocuments(),
     feedbackNotice: null,
@@ -309,6 +311,79 @@ describe("ClientRequestsPage", () => {
     expect(
       screen.getByRole("button", { name: /upload bank statement/i }),
     ).toBeInTheDocument();
+  });
+
+  it("lets the client start a new accountant request", () => {
+    const workflowState = renderPage();
+
+    fireEvent.click(screen.getByRole("button", { name: "Ask accountant" }));
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Request type"), {
+      target: { value: "document" },
+    });
+    fireEvent.change(screen.getByPlaceholderText("What do you need from your accountant?"), {
+      target: { value: "Signed annual financial statements" },
+    });
+    fireEvent.change(
+      screen.getByPlaceholderText(
+        "Explain what document, answer, or clarification you need and why.",
+      ),
+      {
+        target: { value: "Please send the signed annual financial statements for the board pack." },
+      },
+    );
+    fireEvent.change(screen.getByLabelText("Needed by"), {
+      target: { value: "2026-05-15" },
+    });
+    fireEvent.change(screen.getByLabelText("Priority"), {
+      target: { value: "high" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Send request" }));
+
+    expect(workflowState.createClientRequest).toHaveBeenCalledWith(
+      {
+        title: "Document request: Signed annual financial statements",
+        description: "Please send the signed annual financial statements for the board pack.",
+        dueDate: "2026-05-15T17:00:00.000Z",
+        priority: "high",
+        monthLabel: "April 2026",
+      },
+      expect.objectContaining({
+        fullName: "Sarah Jacobs",
+        role: "client",
+      }),
+    );
+  });
+
+  it("shows when a request is waiting on the accountant", () => {
+    renderPage({
+      requests: [
+        {
+          ...createRequests()[0],
+          id: "request-client-1",
+          title: "Document request: Signed annual financial statements",
+          status: "awaiting_accountant",
+          requestedBy: "Sarah Jacobs",
+          requestedByRole: "client",
+          assignedTo: "Daniel Mokoena",
+          comments: [
+            {
+              id: "request-comment-client-1",
+              author: "Sarah Jacobs",
+              role: "client",
+              message: "Please send the signed annual financial statements for our board pack.",
+              createdAt: "2026-05-04T10:00:00.000Z",
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(screen.getAllByText("Waiting on accountant").length).toBeGreaterThan(0);
+    expect(screen.getByText("Assigned accountant")).toBeInTheDocument();
+    expect(screen.getByText("Daniel Mokoena")).toBeInTheDocument();
   });
 
   it("shows an empty state when there are no requests", () => {

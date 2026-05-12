@@ -54,7 +54,9 @@ export function RequestBoard({
                 <div>
                   <p className="text-sm font-semibold text-slate-950">{request.title}</p>
                   <p className="mt-1 text-sm text-slate-500">
-                    {request.clientName} / {request.monthLabel}
+                    {request.requestedByRole === "client"
+                      ? `Client request from ${request.requestedBy}`
+                      : `${request.clientName} / ${request.monthLabel}`}
                   </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -66,7 +68,7 @@ export function RequestBoard({
               </div>
               <p className="mt-3 text-sm leading-6 text-slate-600">{request.description}</p>
               <p className="mt-3 text-sm text-slate-400">
-                Due {formatDateLabel(request.dueDate)} / {request.comments.length} comments
+                Due {formatDateLabel(request.dueDate)} / {request.comments.length} comments / {request.requestedByRole === "client" ? `Assigned to ${request.assignedTo}` : request.monthLabel}
               </p>
             </button>
           ))}
