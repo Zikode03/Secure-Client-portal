@@ -33,6 +33,7 @@ function createUser(role: SessionUser["role"]): SessionUser {
       company: "Finwell Advisory",
       initials: "DM",
       clientIds: [],
+      assignedClientIds: ["client-apex", "firm-client-1", "firm-client-3", "firm-client-4"],
     };
   }
 
@@ -47,6 +48,7 @@ function createUser(role: SessionUser["role"]): SessionUser {
       company: "Finwell Advisory",
       initials: "PN",
       clientIds: [],
+      assignedClientIds: [],
     };
   }
 
@@ -60,24 +62,40 @@ function createUser(role: SessionUser["role"]): SessionUser {
     company: "Apex Trading Ltd",
     initials: "SJ",
     clientIds: ["client-apex"],
+    assignedClientIds: [],
   };
 }
 
 describe("role-based route access", () => {
-  it("client cannot access accountant routes", async () => {
-    renderAppAt("/accountant/dashboard", createUser("client"));
+  it("client cannot access firm routes", async () => {
+    renderAppAt("/firm/dashboard", createUser("client"));
 
     expect(
-      await screen.findByText("You do not have permission to open this workspace."),
+      await screen.findByText("You do not have permission to access this workspace."),
     ).toBeInTheDocument();
   });
 
-  it("accountant cannot access admin routes", async () => {
-    renderAppAt("/admin/dashboard", createUser("accountant"));
+  it("accountant cannot access admin user management", async () => {
+    renderAppAt("/firm/admin/users", createUser("accountant"));
 
     expect(
-      await screen.findByText("You do not have permission to open this workspace."),
+      await screen.findByText("You do not have permission to access this workspace."),
     ).toBeInTheDocument();
+    expect(screen.getByText(/Signed in as:/i)).toBeInTheDocument();
+  });
+
+  it("admin can access system settings", async () => {
+    renderAppAt("/firm/admin/system-settings", createUser("admin"));
+
+    expect(await screen.findByRole("heading", { name: "System settings" })).toBeInTheDocument();
+  });
+
+  it("navigation hides admin-only items from accountants", async () => {
+    renderAppAt("/firm/dashboard", createUser("accountant"));
+
+    expect(await screen.findByRole("link", { name: "Notifications" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "User Management" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "System Settings" })).not.toBeInTheDocument();
   });
 
   it("client navigation no longer shows standalone messages or invoices items", async () => {

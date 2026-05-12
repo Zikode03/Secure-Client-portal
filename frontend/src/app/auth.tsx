@@ -50,6 +50,7 @@ const mockUsersByEmail: Record<string, SessionUser> = {
     company: "Apex Trading Ltd",
     initials: "SJ",
     clientIds: ["client-apex"],
+    assignedClientIds: [],
   },
   "accountant@example.com": {
     id: "user-accountant-1",
@@ -61,6 +62,7 @@ const mockUsersByEmail: Record<string, SessionUser> = {
     company: "Finwell Advisory",
     initials: "DM",
     clientIds: [],
+    assignedClientIds: ["client-apex", "firm-client-1", "firm-client-3", "firm-client-4"],
   },
   "admin@example.com": {
     id: "user-admin-1",
@@ -72,6 +74,7 @@ const mockUsersByEmail: Record<string, SessionUser> = {
     company: "Finwell Advisory",
     initials: "PN",
     clientIds: [],
+    assignedClientIds: [],
   },
 };
 
@@ -129,9 +132,9 @@ function writeCredentials(credentials: Record<string, string>) {
 export function defaultPathForRole(role: Role) {
   switch (role) {
     case "accountant":
-      return "/accountant/dashboard";
+      return "/firm/dashboard";
     case "admin":
-      return "/admin/dashboard";
+      return "/firm/dashboard";
     default:
       return "/client/dashboard";
   }

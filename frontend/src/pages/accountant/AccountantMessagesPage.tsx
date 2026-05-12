@@ -170,7 +170,7 @@ export function AccountantMessagesPage() {
     }
 
     navigate(
-      `/accountant/clients/${selectedTarget.clientId}?tab=${
+      `/firm/clients/${selectedTarget.clientId}?tab=${
         selectedTarget.kind === "request" ? "requests" : "documents"
       }`,
     );

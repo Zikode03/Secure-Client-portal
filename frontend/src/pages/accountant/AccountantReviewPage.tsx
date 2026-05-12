@@ -18,6 +18,7 @@ import {
   formatDateTimeLabel,
   formatStatusLabel,
 } from "../../utils/formatters";
+import { getScopedReviewQueue } from "../../utils/permissions";
 
 const reviewSnapshotDate = new Date("2026-05-08T08:00:00.000Z");
 
@@ -585,8 +586,12 @@ export function AccountantReviewPage() {
   const { user } = useAuth();
   const portal = usePortal();
   const workspaceRef = useRef<HTMLDivElement | null>(null);
-  const queue = portal.getReviewQueue();
+  const queue = useMemo(
+    () => getScopedReviewQueue(user, portal.getReviewQueue(), portal.adminClients),
+    [portal, user],
+  );
 
+  const [selectedAccountant, setSelectedAccountant] = useState("all");
   const [selectedClient, setSelectedClient] = useState("all");
   const [selectedType, setSelectedType] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState<QueueStatusFilter>("all");
@@ -622,6 +627,10 @@ export function AccountantReviewPage() {
     () => Array.from(new Set(queueRows.map((row) => row.item.clientName))).sort(),
     [queueRows],
   );
+  const accountantOptions = useMemo(
+    () => Array.from(new Set(queueRows.map((row) => row.item.assignedAccountant))).sort(),
+    [queueRows],
+  );
   const typeOptions = useMemo(
     () => Array.from(new Set(queueRows.map((row) => row.item.documentType))).sort(),
     [queueRows],
@@ -630,6 +639,10 @@ export function AccountantReviewPage() {
   const filteredRows = useMemo(
     () =>
       queueRows.filter((row) => {
+        if (selectedAccountant !== "all" && row.item.assignedAccountant !== selectedAccountant) {
+          return false;
+        }
+
         if (selectedClient !== "all" && row.item.clientName !== selectedClient) {
           return false;
         }
@@ -648,7 +661,7 @@ export function AccountantReviewPage() {
 
         return true;
       }),
-    [queueRows, selectedClient, selectedDueWindow, selectedStatus, selectedType],
+    [queueRows, selectedAccountant, selectedClient, selectedDueWindow, selectedStatus, selectedType],
   );
 
   const activeRow = useMemo(
@@ -758,6 +771,7 @@ export function AccountantReviewPage() {
     setSelectedType("all");
     setSelectedStatus("all");
     setSelectedDueWindow("all");
+    setSelectedAccountant("all");
   }
 
   function openViewer(recordId: string) {
@@ -777,8 +791,8 @@ export function AccountantReviewPage() {
 
     appendWorkspaceAudit(recordId, {
       id: `${recordId}-viewed-${viewedAt}`,
-      status: "Viewed by accountant",
-      actor: user?.fullName ?? "Accountant",
+      status: "Viewed in review queue",
+      actor: user?.fullName ?? "Firm reviewer",
       timestamp: viewedAt,
       note: "Opened the document review workspace.",
     });
@@ -876,8 +890,8 @@ export function AccountantReviewPage() {
 
     const result = portal.addDocumentComment(
       activeDocument.id,
-      user?.fullName ?? "Accountant",
-      "accountant",
+      user?.fullName ?? "Firm reviewer",
+      user?.role ?? "accountant",
       trimmed,
     );
 
@@ -940,7 +954,11 @@ export function AccountantReviewPage() {
       {queueRows.length === 0 ? (
         <SurfaceCard className="space-y-5">
           <EmptyState
-            description="There are no records waiting for accountant review right now. Reload the demo records if you want to inspect the review queue layout again."
+            description={
+              user?.role === "admin"
+                ? "There are no firm records waiting in the review queue right now. Reload the demo queue if you want to inspect this workspace again."
+                : "There are no records waiting in your assigned review queue right now. Reload the demo queue if you want to inspect this workspace again."
+            }
             title="No review queue items"
           />
           <div className="flex justify-center">
@@ -957,7 +975,29 @@ export function AccountantReviewPage() {
         <>
           <SurfaceCard className="overflow-hidden rounded-[1.55rem] border border-slate-200/90 bg-white p-0 shadow-[0_16px_36px_rgba(15,23,42,0.05)]">
             <div className="border-b border-slate-100 px-5 pb-5 pt-5">
-              <div className="grid gap-4 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto] lg:items-end">
+              <div
+                className={cn(
+                  "grid gap-4 lg:items-end",
+                  user?.role === "admin"
+                    ? "lg:grid-cols-[repeat(5,minmax(0,1fr))_auto]"
+                    : "lg:grid-cols-[repeat(4,minmax(0,1fr))_auto]",
+                )}
+              >
+                {user?.role === "admin"
+                  ? renderSelectField(
+                      "Accountant",
+                      selectedAccountant,
+                      setSelectedAccountant,
+                      [
+                        { label: "All accountants", value: "all" },
+                        ...accountantOptions.map((accountant) => ({
+                          label: accountant,
+                          value: accountant,
+                        })),
+                      ],
+                    )
+                  : null}
+
                 {renderSelectField(
                   "Client",
                   selectedClient,
@@ -1436,7 +1476,7 @@ export function AccountantReviewPage() {
                           <article
                             className={cn(
                               "rounded-[1.15rem] border px-4 py-4",
-                              comment.role === "accountant"
+                              comment.role !== "client"
                                 ? "ml-6 border-brand-100 bg-brand-50/75"
                                 : "mr-6 border-emerald-100 bg-emerald-50/60",
                             )}
@@ -1446,7 +1486,7 @@ export function AccountantReviewPage() {
                               <div
                                 className={cn(
                                   "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white",
-                                  comment.role === "accountant"
+                                  comment.role !== "client"
                                     ? "bg-[linear-gradient(135deg,#4f46e5,#4338ca)]"
                                     : "bg-emerald-500",
                                 )}
@@ -1459,7 +1499,11 @@ export function AccountantReviewPage() {
                                     {comment.author}
                                   </p>
                                   <span className="rounded-full bg-white/80 px-2 py-0.5 text-[0.68rem] font-semibold text-slate-500 ring-1 ring-slate-200">
-                                    {comment.role === "accountant" ? "Accountant" : "Client"}
+                                    {comment.role === "client"
+                                      ? "Client"
+                                      : comment.role === "admin"
+                                        ? "Admin"
+                                        : "Accountant"}
                                   </span>
                                   <span className="text-[0.8rem] text-slate-400">
                                     {formatDateTimeLabel(comment.createdAt)}
@@ -1499,7 +1543,7 @@ export function AccountantReviewPage() {
                       ) : null}
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <p className="text-[0.82rem] text-slate-500">
-                          Posting as {user?.fullName ?? "Accountant"}.
+                          Posting as {user?.fullName ?? "Firm reviewer"}.
                         </p>
                         <Button className="h-10 rounded-xl px-4" onClick={handleCommentSubmit} size="sm">
                           Post comment
@@ -1553,17 +1597,17 @@ export function AccountantReviewPage() {
                         className="text-[0.9rem] font-semibold text-slate-950"
                         htmlFor="internal-note"
                       >
-                        Internal accountant note
+                        Internal firm note
                       </label>
                       <textarea
                         className="min-h-[96px] w-full rounded-[1.15rem] border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-300 focus:ring-4 focus:ring-brand-100"
                         id="internal-note"
                         onChange={(event) => setInternalNoteDraft(event.target.value)}
-                        placeholder="Optional note for the accountant team only."
+                        placeholder="Optional note for the internal firm team only."
                         value={internalNoteDraft}
                       />
                       <p className="text-[0.8rem] text-slate-500">
-                        This note stays internal to the accountant workflow.
+                        This note stays internal to the firm review workflow.
                       </p>
                     </div>
 

@@ -250,7 +250,7 @@ function matchesFilter(notification: NotificationItem, filter: NotificationFilte
 function destinationFor(notification: NotificationItem) {
   if (notification.kind === "rejected_documents") {
     return {
-      href: "/accountant/review",
+      href: "/firm/review",
       label: "Open review queue",
       workspace: "Review queue",
     };
@@ -258,14 +258,14 @@ function destinationFor(notification: NotificationItem) {
 
   if (notification.kind === "expiring_documents") {
     return {
-      href: "/accountant/compliance",
+      href: "/firm/compliance",
       label: "Open compliance centre",
       workspace: "Compliance centre",
     };
   }
 
   return {
-    href: "/accountant/clients",
+    href: "/firm/clients",
     label: "Open client workspace",
     workspace: "Client portfolio",
   };
@@ -286,7 +286,8 @@ export function AccountantNotificationsPage() {
   const [feedback, setFeedback] = useState<FeedbackState | null>(null);
   const notifications = portal.accountantDashboard.notifications;
   const focusedNotificationId = searchParams.get("notification") ?? "";
-  const actorName = user?.fullName ?? user?.name ?? "Accountant";
+  const isAdmin = user?.role === "admin";
+  const actorName = user?.fullName ?? user?.name ?? "Firm reviewer";
 
   const unreadCount = useMemo(
     () => notifications.filter((item) => isUnread(item)).length,
@@ -356,11 +357,16 @@ export function AccountantNotificationsPage() {
       <section className="space-y-2">
         <div>
           <p className="text-[0.82rem] font-semibold uppercase tracking-[0.18em] text-brand-600">
-            Accountant alerts
+            {isAdmin ? "Firm alerts" : "Assigned alerts"}
           </p>
           <h1 className="mt-2 text-[2.2rem] font-semibold tracking-tight text-slate-950">
-            Operational notifications
+            {isAdmin ? "Firm notifications" : "My notifications"}
           </h1>
+          <p className="mt-2 text-sm text-slate-500">
+            {isAdmin
+              ? "Monitor operational signals across the full firm and route the right issues to the right workspace."
+              : "Review only the alerts linked to your assigned client portfolio and close the loop from one place."}
+          </p>
         </div>
       </section>
 

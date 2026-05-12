@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../app/auth";
+import { defaultPathForRole, useAuth } from "../../app/auth";
 import { Button } from "../../components/ui/Button";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
 
@@ -14,15 +14,20 @@ export function AccessDeniedPage() {
           Access denied
         </p>
         <h1 className="mt-4 text-3xl font-semibold text-slate-950">
-          You do not have permission to open this workspace.
+          You do not have permission to access this workspace.
         </h1>
         <p className="mt-4 text-sm leading-6 text-slate-500">
-          Your signed-in role can only access the routes assigned to that workflow. Use the role
-          dashboard to continue working.
+          Your signed-in role can only access the routes and actions assigned to that workflow.
+          Use your allowed dashboard to continue working.
         </p>
+        {user ? (
+          <p className="mt-3 text-sm font-medium text-slate-600">
+            Signed in as: <span className="capitalize">{user.role}</span>
+          </p>
+        ) : null}
         <div className="mt-6 flex justify-center">
-          <Button onClick={() => navigate(user ? `/${user.role}/dashboard` : "/login")}>
-            Return to allowed workspace
+          <Button onClick={() => navigate(user ? defaultPathForRole(user.role) : "/login")}>
+            Return to dashboard
           </Button>
         </div>
       </SurfaceCard>

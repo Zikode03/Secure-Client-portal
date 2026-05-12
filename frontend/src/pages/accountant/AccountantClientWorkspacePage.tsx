@@ -208,10 +208,10 @@ export function AccountantClientWorkspacePage() {
       <PageHeader
         actions={
           <>
-            <Button onClick={() => navigate(`/accountant/documents?client=${workspace.client.id}`)} variant="secondary">
+            <Button onClick={() => navigate(`/firm/documents?client=${workspace.client.id}`)} variant="secondary">
               Open document centre
             </Button>
-            <Button onClick={() => navigate("/accountant/messages")}>Open messages</Button>
+            <Button onClick={() => navigate("/firm/requests")}>Open requests</Button>
           </>
         }
         description="This client workspace keeps the month pack, document review, compliance, requests, messages, and audit trail in one accountable place."
@@ -390,7 +390,7 @@ export function AccountantClientWorkspacePage() {
                 <CommentThread
                   comments={selectedDocument.comments}
                   currentAuthor={user?.fullName ?? "Accountant"}
-                  currentRole="accountant"
+                  currentRole={user?.role ?? "accountant"}
                   onSubmitComment={handleDocumentComment}
                 />
               ) : null}
@@ -935,7 +935,7 @@ export function AccountantClientWorkspacePage() {
                 <CommentThread
                   comments={selectedRequest.comments}
                   currentAuthor={user?.fullName ?? "Accountant"}
-                  currentRole="accountant"
+                  currentRole={user?.role ?? "accountant"}
                   onSubmitComment={handleRequestComment}
                 />
               ) : null}

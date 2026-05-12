@@ -3,8 +3,8 @@ import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { AuthProvider } from "../app/auth";
 import { PortalProvider, usePortal } from "../app/portal";
-import { AccountantComplianceCentrePage } from "../pages/accountant/AccountantComplianceCentrePage";
 import { ClientComplianceCentrePage } from "../pages/client/ClientComplianceCentrePage";
+import { FirmComplianceCentrePage } from "../pages/firm/FirmComplianceCentrePage";
 import { portalService } from "../services/portalData";
 import type { SessionUser } from "../types/portal";
 import {
@@ -27,6 +27,7 @@ const accountantUser: SessionUser = {
   company: "Finwell Advisory",
   initials: "DM",
   clientIds: [],
+  assignedClientIds: ["client-apex", "firm-client-1", "firm-client-3", "firm-client-4"],
 };
 
 const clientUser: SessionUser = {
@@ -39,6 +40,7 @@ const clientUser: SessionUser = {
   company: "Apex Trading Ltd",
   initials: "SJ",
   clientIds: ["client-apex"],
+  assignedClientIds: [],
 };
 
 function PortalWrapper({ children }: { children: ReactNode }) {
@@ -99,21 +101,21 @@ describe("compliance lifecycle", () => {
   });
 
   it("accountant can see the client compliance overview", () => {
-    renderWithProviders(<AccountantComplianceCentrePage />, accountantUser);
+    renderWithProviders(<FirmComplianceCentrePage />, accountantUser);
 
-    expect(screen.getByRole("heading", { name: "Compliance Centre" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "My Compliance Workspace" })).toBeInTheDocument();
     expect(screen.getByText("Active clients")).toBeInTheDocument();
     expect(screen.getAllByText("Apex Trading Ltd").length).toBeGreaterThan(0);
     expect(screen.getByText("Selected Client")).toBeInTheDocument();
   });
 
   it("selecting a client updates the selected client panel", () => {
-    renderWithProviders(<AccountantComplianceCentrePage />, accountantUser);
+    renderWithProviders(<FirmComplianceCentrePage />, accountantUser);
 
-    fireEvent.click(screen.getByRole("button", { name: /Blue Peak Logistics/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Cloud Nine Retail/i }));
 
-    expect(screen.getAllByText("Blue Peak Logistics").length).toBeGreaterThan(0);
-    expect(screen.getByText("Assigned to Lerato Nkosi")).toBeInTheDocument();
+    expect(screen.getAllByText("Cloud Nine Retail").length).toBeGreaterThan(0);
+    expect(screen.getByText("Assigned to Daniel Mokoena")).toBeInTheDocument();
   });
 
   it("compliance item can generate a request", () => {

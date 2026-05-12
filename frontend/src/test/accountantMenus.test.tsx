@@ -18,6 +18,7 @@ const accountantUser: SessionUser = {
   company: "Finwell Advisory",
   initials: "DM",
   clientIds: [],
+  assignedClientIds: ["client-apex", "firm-client-1", "firm-client-3", "firm-client-4"],
 };
 
 function renderWithProviders(page: JSX.Element) {

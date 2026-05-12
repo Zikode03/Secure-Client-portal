@@ -9,6 +9,7 @@ import { SurfaceCard } from "../../components/ui/SurfaceCard";
 import type { ComplianceClientStatus } from "../../types/portal";
 import { cn } from "../../utils/cn";
 import { formatDateLabel, formatStatusLabel } from "../../utils/formatters";
+import { getScopedComplianceStatuses } from "../../utils/permissions";
 
 type RiskFilter = "all" | "compliant" | "at_risk" | "overdue" | "high_risk";
 
@@ -169,11 +170,40 @@ export function AccountantComplianceCentrePage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const portal = usePortal();
+  const isAdmin = user?.role === "admin";
   const [searchQuery, setSearchQuery] = useState("");
   const [riskFilter, setRiskFilter] = useState<RiskFilter>("all");
   const [openClientMenuId, setOpenClientMenuId] = useState("");
   const [feedbackMessage, setFeedbackMessage] = useState("");
-  const clientStatuses = portal.accountantComplianceCentre.clientStatuses ?? [];
+  const clientStatuses = useMemo(
+    () =>
+      getScopedComplianceStatuses(
+        user,
+        portal.accountantComplianceCentre.clientStatuses ?? [],
+        portal.adminClients,
+      ),
+    [portal.accountantComplianceCentre.clientStatuses, portal.adminClients, user],
+  );
+  const scopedSummary = useMemo(() => {
+    const totalRequiredItems = clientStatuses.reduce(
+      (sum, client) => sum + client.totalRequiredItems,
+      0,
+    );
+    const compliantItems = clientStatuses.reduce((sum, client) => sum + client.compliantCount, 0);
+
+    return {
+      expiredCount: clientStatuses.reduce((sum, client) => sum + client.expiredCount, 0),
+      expiringCount: clientStatuses.reduce((sum, client) => sum + client.expiringCount, 0),
+      missingRequiredCount: clientStatuses.reduce(
+        (sum, client) => sum + client.missingRequiredCount,
+        0,
+      ),
+      compliantClientCount: clientStatuses.filter((client) => client.riskStatus === "compliant")
+        .length,
+      portfolioCompliancePercentage:
+        totalRequiredItems > 0 ? Math.round((compliantItems / totalRequiredItems) * 100) : 0,
+    };
+  }, [clientStatuses]);
   const [selectedClientId, setSelectedClientId] = useState(clientStatuses[0]?.clientId ?? "");
 
   const filteredClients = useMemo(() => {
@@ -197,29 +227,26 @@ export function AccountantComplianceCentrePage() {
 
   function openClientWorkspace(client: ComplianceClientStatus) {
     setOpenClientMenuId("");
-    navigate(`/accountant/clients/${client.clientId}?tab=compliance`);
+    navigate(`/firm/clients/${client.clientId}?tab=compliance`);
   }
 
   function openComplianceHistory(client: ComplianceClientStatus) {
     setOpenClientMenuId("");
-    navigate(`/accountant/clients/${client.clientId}?tab=compliance&view=audit`);
+    navigate(`/firm/clients/${client.clientId}?tab=compliance&view=audit`);
   }
 
   function openDocumentCentre(client: ComplianceClientStatus) {
     setOpenClientMenuId("");
-    navigate(`/accountant/documents?client=${client.clientId}`);
+    navigate(`/firm/documents?client=${client.clientId}`);
   }
 
   function downloadPortfolioReport() {
-    downloadCsv("accountant-compliance-report.csv", [
+    downloadCsv(isAdmin ? "firm-compliance-report.csv" : "my-compliance-report.csv", [
       ["Snapshot date", formatDateLabel(portal.accountantComplianceCentre.snapshotDate)],
-      ["Expired", String(portal.accountantComplianceCentre.expiredCount)],
-      ["Expiring soon", String(portal.accountantComplianceCentre.expiringCount)],
-      ["Missing required", String(portal.accountantComplianceCentre.missingRequiredCount)],
-      [
-        "Portfolio compliance",
-        `${portal.accountantComplianceCentre.portfolioCompliancePercentage}%`,
-      ],
+      ["Expired", String(scopedSummary.expiredCount)],
+      ["Expiring soon", String(scopedSummary.expiringCount)],
+      ["Missing required", String(scopedSummary.missingRequiredCount)],
+      ["Portfolio compliance", `${scopedSummary.portfolioCompliancePercentage}%`],
     ]);
   }
 
@@ -256,11 +283,23 @@ export function AccountantComplianceCentrePage() {
     setFeedbackMessage(result.message);
   }
 
+  function openAssignments() {
+    navigate("/firm/admin/assignments");
+  }
+
+  function openTemplates() {
+    navigate("/firm/admin/templates");
+  }
+
+  function openDeadlineRules() {
+    navigate("/firm/admin/deadline-rules");
+  }
+
   const summaryCards = [
     {
       id: "expired",
       label: "Expired",
-      value: String(portal.accountantComplianceCentre.expiredCount),
+      value: String(scopedSummary.expiredCount),
       helper: "Action required",
       icon: (
         <SummaryIcon
@@ -284,7 +323,7 @@ export function AccountantComplianceCentrePage() {
     {
       id: "expiring",
       label: "Expiring soon",
-      value: String(portal.accountantComplianceCentre.expiringCount),
+      value: String(scopedSummary.expiringCount),
       helper: "Next 30 days",
       icon: (
         <SummaryIcon
@@ -308,7 +347,7 @@ export function AccountantComplianceCentrePage() {
     {
       id: "missing",
       label: "Missing required",
-      value: String(portal.accountantComplianceCentre.missingRequiredCount),
+      value: String(scopedSummary.missingRequiredCount),
       helper: "Client follow-up needed",
       icon: (
         <SummaryIcon
@@ -338,8 +377,8 @@ export function AccountantComplianceCentrePage() {
     {
       id: "portfolio",
       label: "Portfolio compliance",
-      value: `${portal.accountantComplianceCentre.portfolioCompliancePercentage}%`,
-      helper: `${clientStatuses.filter((client) => client.riskStatus === "compliant").length} of ${clientStatuses.length} clients compliant`,
+      value: `${scopedSummary.portfolioCompliancePercentage}%`,
+      helper: `${scopedSummary.compliantClientCount} of ${clientStatuses.length} clients compliant`,
       icon: (
         <SummaryIcon
           colorClassName="bg-emerald-50 text-emerald-500"
@@ -366,14 +405,16 @@ export function AccountantComplianceCentrePage() {
       <section className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-3">
           <p className="text-[0.82rem] font-semibold uppercase tracking-[0.18em] text-brand-600">
-            Accountant Workspace
+            {isAdmin ? "Firm workspace" : "Accountant workspace"}
           </p>
           <div>
             <h1 className="text-[2.5rem] font-semibold tracking-tight text-slate-950">
-              Compliance Centre
+              {isAdmin ? "Firm Compliance Centre" : "My Compliance Workspace"}
             </h1>
             <p className="mt-3 text-[1.02rem] text-slate-500">
-              Which client needs compliance attention right now?
+              {isAdmin
+                ? "See the full firm compliance picture and control the rules that shape it."
+                : "Which assigned client needs compliance attention right now?"}
             </p>
           </div>
         </div>
@@ -390,13 +431,31 @@ export function AccountantComplianceCentrePage() {
             <FilterIcon />
             <span>Filters</span>
           </button>
+          {isAdmin ? (
+            <>
+              <button
+                className="inline-flex h-12 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-[0.95rem] font-medium text-slate-600 shadow-[0_10px_24px_rgba(15,23,42,0.04)] transition hover:bg-slate-50"
+                onClick={openTemplates}
+                type="button"
+              >
+                <span>Manage templates</span>
+              </button>
+              <button
+                className="inline-flex h-12 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-[0.95rem] font-medium text-slate-600 shadow-[0_10px_24px_rgba(15,23,42,0.04)] transition hover:bg-slate-50"
+                onClick={openDeadlineRules}
+                type="button"
+              >
+                <span>Configure rules</span>
+              </button>
+            </>
+          ) : null}
           <button
             className="inline-flex h-12 items-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#5546ff,#4338ca)] px-5 text-[0.95rem] font-semibold text-white shadow-[0_12px_28px_rgba(67,56,202,0.24)] transition hover:opacity-95"
             onClick={downloadPortfolioReport}
             type="button"
           >
             <DownloadIcon />
-            <span>Download report</span>
+            <span>{isAdmin ? "Export firm report" : "Download report"}</span>
           </button>
         </div>
       </section>
@@ -423,7 +482,7 @@ export function AccountantComplianceCentrePage() {
                       <div
                         className="h-2 rounded-full bg-gradient-to-r from-emerald-500 to-teal-400"
                         style={{
-                          width: `${portal.accountantComplianceCentre.portfolioCompliancePercentage}%`,
+                          width: `${scopedSummary.portfolioCompliancePercentage}%`,
                         }}
                       />
                     </div>
@@ -616,11 +675,15 @@ export function AccountantComplianceCentrePage() {
                                 className="block w-full rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
                                 onClick={(event) => {
                                   event.stopPropagation();
-                                  downloadClientReport(client);
+                                  if (isAdmin) {
+                                    openAssignments();
+                                  } else {
+                                    downloadClientReport(client);
+                                  }
                                 }}
                                 type="button"
                               >
-                                Export client compliance report
+                                {isAdmin ? "Assign accountant" : "Export client compliance report"}
                               </button>
                             </div>
                           ) : null}
@@ -637,7 +700,7 @@ export function AccountantComplianceCentrePage() {
                 </p>
                 <button
                   className="inline-flex items-center gap-1.5 font-semibold text-brand-700 transition hover:text-brand-800"
-                  onClick={() => navigate("/accountant/clients")}
+                  onClick={() => navigate("/firm/clients")}
                   type="button"
                 >
                   <span>View all clients</span>
@@ -648,7 +711,11 @@ export function AccountantComplianceCentrePage() {
           ) : (
             <div className="px-5 py-10">
               <EmptyState
-                description="Try another client name or clear the risk filter to bring the portfolio back into view."
+                description={
+                  !isAdmin && clientStatuses.length === 0
+                    ? "No clients have been assigned to you yet."
+                    : "Try another client name or clear the risk filter to bring the portfolio back into view."
+                }
                 title="No clients match these filters"
               />
             </div>
@@ -765,22 +832,45 @@ export function AccountantComplianceCentrePage() {
                   <span>Open client workspace</span>
                   <ChevronRightIcon />
                 </button>
-                <button
-                  className="flex w-full items-center justify-between rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-left text-sm font-medium text-slate-900 transition hover:bg-slate-50"
-                  onClick={() => handleRequestDocuments(selectedClient)}
-                  type="button"
-                >
-                  <span>Request documents</span>
-                  <ChevronRightIcon />
-                </button>
-                <button
-                  className="flex w-full items-center justify-between rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-left text-sm font-medium text-slate-900 transition hover:bg-slate-50"
-                  onClick={() => downloadClientReport(selectedClient)}
-                  type="button"
-                >
-                  <span>Download client compliance report</span>
-                  <ChevronRightIcon />
-                </button>
+                {isAdmin ? (
+                  <>
+                    <button
+                      className="flex w-full items-center justify-between rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-left text-sm font-medium text-slate-900 transition hover:bg-slate-50"
+                      onClick={openAssignments}
+                      type="button"
+                    >
+                      <span>Assign accountant</span>
+                      <ChevronRightIcon />
+                    </button>
+                    <button
+                      className="flex w-full items-center justify-between rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-left text-sm font-medium text-slate-900 transition hover:bg-slate-50"
+                      onClick={openDeadlineRules}
+                      type="button"
+                    >
+                      <span>Configure rules</span>
+                      <ChevronRightIcon />
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      className="flex w-full items-center justify-between rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-left text-sm font-medium text-slate-900 transition hover:bg-slate-50"
+                      onClick={() => handleRequestDocuments(selectedClient)}
+                      type="button"
+                    >
+                      <span>Request documents</span>
+                      <ChevronRightIcon />
+                    </button>
+                    <button
+                      className="flex w-full items-center justify-between rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-left text-sm font-medium text-slate-900 transition hover:bg-slate-50"
+                      onClick={() => downloadClientReport(selectedClient)}
+                      type="button"
+                    >
+                      <span>Download client compliance report</span>
+                      <ChevronRightIcon />
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           ) : (

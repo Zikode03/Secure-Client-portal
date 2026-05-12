@@ -18,9 +18,10 @@ const accountantUser: SessionUser = {
   company: "Finwell Advisory",
   initials: "DM",
   clientIds: [],
+  assignedClientIds: ["client-apex", "firm-client-1", "firm-client-3", "firm-client-4"],
 };
 
-function renderAccountantApp(initialEntries = ["/accountant/dashboard"]) {
+function renderAccountantApp(initialEntries = ["/firm/dashboard"]) {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(accountantUser));
 
   return render(
@@ -38,22 +39,24 @@ describe("accountant notifications access", () => {
   it("opens dashboard notifications from the bell and routes view more to the full notifications page", async () => {
     renderAccountantApp();
 
-    expect(screen.queryByRole("link", { name: /notifications/i })).not.toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "Notifications" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Open accountant alerts" }));
 
     expect(await screen.findByRole("dialog", { name: "Accountant notifications" })).toBeInTheDocument();
-    expect(screen.getByText("Notifications")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "View more" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "View more" }));
 
-    expect(await screen.findByText("Operational notifications")).toBeInTheDocument();
+    expect(await screen.findByText("My notifications")).toBeInTheDocument();
   });
 
-  it("keeps the accountant notifications page out of the sidebar navigation", () => {
+  it("keeps admin-only navigation items hidden from the accountant sidebar", () => {
+    expect(navigationByRole.accountant.some((item) => item.to === "/firm/notifications")).toBe(
+      true,
+    );
     expect(
-      navigationByRole.accountant.some((item) => item.to === "/accountant/notifications"),
+      navigationByRole.accountant.some((item) => item.to === "/firm/admin/users"),
     ).toBe(false);
   });
 });

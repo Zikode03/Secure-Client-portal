@@ -23,6 +23,7 @@ const clientUser: SessionUser = {
   company: "Apex Trading Ltd",
   initials: "SJ",
   clientIds: ["client-apex"],
+  assignedClientIds: [],
 };
 
 const accountantUser: SessionUser = {
@@ -35,6 +36,7 @@ const accountantUser: SessionUser = {
   company: "Finwell Advisory",
   initials: "DM",
   clientIds: [],
+  assignedClientIds: ["client-apex", "firm-client-1", "firm-client-3", "firm-client-4"],
 };
 
 describe("workflow business rules", () => {

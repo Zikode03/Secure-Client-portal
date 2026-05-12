@@ -11,6 +11,7 @@ import type {
   Tone,
 } from "../../types/portal";
 import { cn } from "../../utils/cn";
+import { getClientFacingComplianceLabel } from "../../utils/compliance";
 import { formatDateLabel } from "../../utils/formatters";
 
 const complianceSnapshotDate = new Date("2026-05-07T00:00:00.000Z");
@@ -496,7 +497,7 @@ function PrioritySection({
             const badge = getPriorityBadge(kind, item);
             const category = getCategoryLabelForDocument(item);
             const accentClass = getPriorityAccent(kind, item);
-            const titleText = item.name;
+            const titleText = getClientFacingComplianceLabel(item.name);
             const statusText =
               kind === "missing"
                 ? "Required document"
@@ -640,7 +641,7 @@ export function ClientComplianceCentrePage() {
   }
 
   function handlePriorityAction(kind: PriorityKind, item: ComplianceDocumentRecord) {
-    const itemLabel = item.name;
+    const itemLabel = getClientFacingComplianceLabel(item.name);
 
     if (kind === "expired") {
       showNotice(

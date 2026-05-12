@@ -1,5 +1,27 @@
 export type Role = "client" | "accountant" | "admin";
 
+export type Permission =
+  | "view:assigned_clients"
+  | "view:all_clients"
+  | "view:assigned_documents"
+  | "view:all_documents"
+  | "view:assigned_review_queue"
+  | "view:firm_review_queue"
+  | "view:assigned_compliance"
+  | "view:firm_compliance"
+  | "manage:users"
+  | "manage:roles"
+  | "manage:assignments"
+  | "manage:templates"
+  | "manage:deadline_rules"
+  | "manage:system_settings"
+  | "export:firm_reports"
+  | "export:client_reports"
+  | "request:documents"
+  | "review:documents"
+  | "comment:documents"
+  | "comment:requests";
+
 export type Tone = "neutral" | "info" | "success" | "warning" | "danger";
 
 export type SlotStatus =
@@ -63,6 +85,8 @@ export interface SessionUser {
   company: string;
   initials: string;
   clientIds: string[];
+  assignedClientIds: string[];
+  permissions?: Permission[];
 }
 
 export interface SummaryMetric {

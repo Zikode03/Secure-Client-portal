@@ -462,7 +462,7 @@ export function AccountantSettingsPage() {
         <div className="mt-6 flex flex-wrap gap-3">
           <Button
             className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-slate-700 hover:bg-slate-50"
-            onClick={() => navigate("/accountant/notifications")}
+            onClick={() => navigate("/firm/notifications")}
             variant="secondary"
           >
             Open notifications
@@ -561,7 +561,7 @@ export function AccountantSettingsPage() {
         <div className="mt-6 flex flex-wrap gap-3">
           <Button
             className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-slate-700 hover:bg-slate-50"
-            onClick={() => navigate("/accountant/compliance")}
+            onClick={() => navigate("/firm/compliance")}
             variant="secondary"
           >
             Open compliance centre
@@ -729,7 +729,7 @@ export function AccountantSettingsPage() {
           <button
             aria-label="Open notifications"
             className="relative inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 hover:text-slate-800"
-            onClick={() => navigate("/accountant/notifications")}
+            onClick={() => navigate("/firm/notifications")}
             type="button"
           >
             <BellIcon />

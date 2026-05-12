@@ -8,6 +8,7 @@ import { SurfaceCard } from "../../components/ui/SurfaceCard";
 import type { DeadlineItem, NotificationItem, PortfolioRow, ReviewQueueItem } from "../../types/portal";
 import { cn } from "../../utils/cn";
 import { formatDateLabel } from "../../utils/formatters";
+import { getScopedClients, getScopedReviewQueue } from "../../utils/permissions";
 
 const accountantDashboardDate = "2026-05-07T08:00:00.000Z";
 
@@ -442,31 +443,59 @@ export function AccountantDashboardPage() {
   const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
   const notificationPanelRef = useRef<HTMLDivElement | null>(null);
 
+  const scopedClients = useMemo(() => getScopedClients(user, portal.adminClients), [portal.adminClients, user]);
+  const scopedClientIds = useMemo(
+    () => new Set(scopedClients.map((client) => client.id)),
+    [scopedClients],
+  );
+  const scopedClientNames = useMemo(
+    () => new Set(scopedClients.map((client) => client.clientName)),
+    [scopedClients],
+  );
+  const scopedPortfolio = useMemo(
+    () => data.portfolio.filter((row) => scopedClientIds.has(row.clientId)),
+    [data.portfolio, scopedClientIds],
+  );
+  const scopedReviewQueue = useMemo(
+    () => getScopedReviewQueue(user, data.reviewQueue, portal.adminClients),
+    [data.reviewQueue, portal.adminClients, user],
+  );
+  const scopedDeadlines = useMemo(
+    () => data.deadlines.filter((item) => item.owner === user?.fullName),
+    [data.deadlines, user?.fullName],
+  );
+  const scopedMissingDocuments = useMemo(
+    () =>
+      data.missingDocuments.filter(
+        (item) => !item.clientName || scopedClientNames.has(item.clientName),
+      ),
+    [data.missingDocuments, scopedClientNames],
+  );
+  const scopedRejectedDocuments = useMemo(
+    () =>
+      data.rejectedDocuments.filter(
+        (item) => !item.clientName || scopedClientNames.has(item.clientName),
+      ),
+    [data.rejectedDocuments, scopedClientNames],
+  );
   const priorityClients = useMemo(
     () =>
-      [...data.portfolio]
+      [...scopedPortfolio]
         .sort((left, right) => portfolioRank(right) - portfolioRank(left))
         .slice(0, 6),
-    [data.portfolio],
+    [scopedPortfolio],
   );
 
-  const assignedClients = useMemo(() => {
-    const accountantName = user?.fullName ?? user?.name;
-    const directAssignments = priorityClients.filter(
-      (row) => row.assignedAccountant === accountantName,
-    );
-
-    return directAssignments.length >= 4 ? directAssignments : priorityClients;
-  }, [priorityClients, user?.fullName, user?.name]);
+  const assignedClients = priorityClients;
 
   const reviewQueueItems = useMemo(
-    () => buildReviewQueueItems(data.reviewQueue.slice(0, 5), () => navigate("/accountant/review")),
-    [data.reviewQueue, navigate],
+    () => buildReviewQueueItems(scopedReviewQueue.slice(0, 5), () => navigate("/firm/review")),
+    [navigate, scopedReviewQueue],
   );
 
   const deadlineQueueItems = useMemo(
-    () => buildDeadlineQueueItems(data.deadlines.slice(0, 5), () => navigate("/accountant/compliance")),
-    [data.deadlines, navigate],
+    () => buildDeadlineQueueItems(scopedDeadlines.slice(0, 5), () => navigate("/firm/compliance")),
+    [navigate, scopedDeadlines],
   );
 
   const workQueueByTab = useMemo<Record<QueueTab, WorkQueueItem[]>>(
@@ -518,10 +547,10 @@ export function AccountantDashboardPage() {
   );
 
   const focusMetrics = useMemo(() => {
-    const overdueClients = data.portfolio.filter((row) => row.status === "overdue").length;
-    const reviewsWaiting = data.reviewQueue.length;
-    const clientActionDue = data.missingDocuments.length + data.rejectedDocuments.length;
-    const clientsOnTrack = data.portfolio.filter((row) => row.status === "on_track").length;
+    const overdueClients = scopedPortfolio.filter((row) => row.status === "overdue").length;
+    const reviewsWaiting = scopedReviewQueue.length;
+    const clientActionDue = scopedMissingDocuments.length + scopedRejectedDocuments.length;
+    const clientsOnTrack = scopedPortfolio.filter((row) => row.status === "on_track").length;
 
     return [
       {
@@ -554,10 +583,10 @@ export function AccountantDashboardPage() {
       },
     ];
   }, [
-    data.missingDocuments.length,
-    data.portfolio,
-    data.rejectedDocuments.length,
-    data.reviewQueue.length,
+    scopedMissingDocuments.length,
+    scopedPortfolio,
+    scopedRejectedDocuments.length,
+    scopedReviewQueue.length,
   ]);
 
   useEffect(() => {
@@ -592,7 +621,7 @@ export function AccountantDashboardPage() {
   function handleExportView() {
     downloadCsv("accountant-portfolio-view.csv", [
       ["Client Name", "Month", "Progress %", "Status", "Assigned Accountant"],
-      ...data.portfolio.map((row) => [
+      ...scopedPortfolio.map((row) => [
         row.clientName,
         row.monthLabel,
         String(row.progressPercent),
@@ -603,15 +632,15 @@ export function AccountantDashboardPage() {
   }
 
   function openClientWorkspace(row: PortfolioRow) {
-    navigate(`/accountant/clients/${row.clientId}`);
+    navigate(`/firm/clients/${row.clientId}`);
   }
 
   function openNotificationCentre(notificationId?: string) {
     setIsNotificationPanelOpen(false);
     navigate(
       notificationId
-        ? `/accountant/notifications?notification=${encodeURIComponent(notificationId)}`
-        : "/accountant/notifications",
+        ? `/firm/notifications?notification=${encodeURIComponent(notificationId)}`
+        : "/firm/notifications",
     );
   }
 
@@ -823,7 +852,7 @@ export function AccountantDashboardPage() {
             <div className="flex items-center gap-2.5">
               <Button
                 className="h-10 rounded-xl px-4 text-brand-600"
-                onClick={() => navigate("/accountant/clients")}
+                onClick={() => navigate("/firm/clients")}
                 variant="secondary"
               >
                 <span>View all clients</span>
@@ -913,7 +942,7 @@ export function AccountantDashboardPage() {
 
               <button
                 className="flex w-full items-center gap-2 px-5 py-4 text-left text-sm font-medium text-brand-600 transition hover:bg-brand-50/50"
-                onClick={() => navigate("/accountant/clients")}
+                onClick={() => navigate("/firm/clients")}
                 type="button"
               >
                 <span>View all clients</span>
@@ -1009,7 +1038,7 @@ export function AccountantDashboardPage() {
               <button
                 className="flex w-full items-center gap-2 px-5 py-4 text-left text-sm font-medium text-brand-600 transition hover:bg-brand-50/50"
                 onClick={() =>
-                  navigate(activeQueueTab === "reviews" ? "/accountant/review" : "/accountant/compliance")
+                  navigate(activeQueueTab === "reviews" ? "/firm/review" : "/firm/compliance")
                 }
                 type="button"
               >

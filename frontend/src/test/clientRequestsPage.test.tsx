@@ -220,6 +220,7 @@ function renderPage(workflowOverrides: Record<string, unknown> = {}) {
       company: "Apex Trading Ltd",
       initials: "SJ",
       clientIds: ["client-apex"],
+      assignedClientIds: [],
     },
     login: vi.fn(),
     completeInvite: vi.fn(),

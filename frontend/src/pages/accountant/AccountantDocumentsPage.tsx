@@ -25,6 +25,7 @@ import {
   statusToTone,
   toneToAccentClass,
 } from "../../utils/formatters";
+import { getScopedClients } from "../../utils/permissions";
 
 const defaultFilters: UnifiedSearchFilters = {
   query: "",
@@ -753,11 +754,8 @@ export function AccountantDocumentsPage() {
   const [previewZoom, setPreviewZoom] = useState(100);
 
   const assignedClients = useMemo(
-    () =>
-      portal.adminClients.filter(
-        (client) => client.assignedAccountant === user?.fullName || user?.role === "admin",
-      ),
-    [portal.adminClients, user?.fullName, user?.role],
+    () => getScopedClients(user, portal.adminClients),
+    [portal.adminClients, user],
   );
 
   const allResults = useMemo(
@@ -1023,7 +1021,7 @@ export function AccountantDocumentsPage() {
 
   function handleMarkUnderReview(result: UnifiedSearchResult) {
     if (!user) {
-      setFeedbackMessage("Sign in as an accountant to update document workflow status.");
+      setFeedbackMessage("Sign in to update document workflow status.");
       setOpenMenuResultId("");
       return;
     }
@@ -1261,7 +1259,11 @@ export function AccountantDocumentsPage() {
             {visibleResults.length === 0 ? (
               <div className="px-5 py-10">
                 <EmptyState
-                  description="Try broadening the search terms or removing a few filters."
+                  description={
+                    assignedClients.length === 0 && user?.role === "accountant"
+                      ? "No records found in your assigned client portfolio."
+                      : "Try broadening the search terms or removing a few filters."
+                  }
                   title="No results match this view"
                 />
               </div>
@@ -1653,7 +1655,7 @@ export function AccountantDocumentsPage() {
                 <CommentThread
                   comments={selectedDocument.comments}
                   currentAuthor={user?.fullName ?? "Accountant"}
-                  currentRole="accountant"
+                  currentRole={user?.role ?? "accountant"}
                   helperText={
                     selectedResult.clientId === "client-apex" ||
                     selectedResult.clientId === "firm-client-1"

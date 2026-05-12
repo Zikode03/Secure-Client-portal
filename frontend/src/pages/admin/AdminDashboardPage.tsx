@@ -99,7 +99,7 @@ export function AdminDashboardPage() {
                 Keep firm assignments, policy alignment, and month-pack health visible in one place.
               </p>
             </div>
-            <Button onClick={() => navigate("/admin/clients")} size="sm" variant="ghost">
+            <Button onClick={() => navigate("/firm/clients")} size="sm" variant="ghost">
               View all
             </Button>
           </div>
@@ -137,7 +137,7 @@ export function AdminDashboardPage() {
                   Deadline and document rules that shape the portal workflow.
                 </p>
               </div>
-              <Button onClick={() => navigate("/admin/policies")} size="sm" variant="ghost">
+              <Button onClick={() => navigate("/firm/admin/templates")} size="sm" variant="ghost">
                 View all
               </Button>
             </div>
@@ -162,7 +162,7 @@ export function AdminDashboardPage() {
                   Shared exceptions that need admin attention.
                 </p>
               </div>
-              <Button onClick={() => navigate("/admin/compliance")} size="sm" variant="ghost">
+              <Button onClick={() => navigate("/firm/compliance")} size="sm" variant="ghost">
                 View all
               </Button>
             </div>
