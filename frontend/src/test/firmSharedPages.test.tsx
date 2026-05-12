@@ -6,6 +6,7 @@ import { FirmClientsPage } from "../pages/firm/FirmClientsPage";
 import { FirmComplianceCentrePage } from "../pages/firm/FirmComplianceCentrePage";
 import { FirmDashboardPage } from "../pages/firm/FirmDashboardPage";
 import { FirmDocumentsPage } from "../pages/firm/FirmDocumentsPage";
+import { FirmRequestsPage } from "../pages/firm/FirmRequestsPage";
 import { FirmSettingsPage } from "../pages/firm/FirmSettingsPage";
 import type { SessionUser } from "../types/portal";
 
@@ -54,34 +55,34 @@ describe("shared firm pages", () => {
   it("uses one shared dashboard skeleton with role-specific actions", async () => {
     const adminView = renderWithProviders(<FirmDashboardPage />, adminUser);
 
-    expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Open assignments" }).length).toBeGreaterThan(0);
-    expect(screen.getByRole("heading", { name: "Client portfolio" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Priority queue" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Firm workspace" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Manage assignments" }).length).toBeGreaterThan(0);
+    expect(screen.getByRole("heading", { name: "Firm clients" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Firm work queue" })).toBeInTheDocument();
 
     adminView.unmount();
 
     renderWithProviders(<FirmDashboardPage />, accountantUser);
 
-    expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Open review queue" }).length).toBeGreaterThan(0);
-    expect(screen.queryByRole("button", { name: "Manage users" })).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Client portfolio" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Priority queue" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Accountant workspace" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "View all clients" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "My assigned clients" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "My work queue" })).toBeInTheDocument();
   });
 
   it("shows all clients to admins and only assigned clients to accountants", async () => {
     const adminView = renderWithProviders(<FirmClientsPage />, adminUser);
 
-    expect(await screen.findByRole("heading", { name: "Clients" })).toBeInTheDocument();
+    expect(await screen.findByText("Firm Clients")).toBeInTheDocument();
     expect(screen.getByText("Blue Peak Logistics")).toBeInTheDocument();
-    expect(screen.getByText("Summit Consulting")).toBeInTheDocument();
+    expect(screen.getByText("Cloud Nine Retail")).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Manage assignments" }).length).toBeGreaterThan(0);
 
     adminView.unmount();
 
     renderWithProviders(<FirmClientsPage />, accountantUser);
 
-    expect(await screen.findByRole("heading", { name: "My clients" })).toBeInTheDocument();
+    expect(await screen.findByText("Assigned Clients")).toBeInTheDocument();
     expect(screen.getByText("Apex Trading Ltd")).toBeInTheDocument();
     expect(screen.queryByText("Blue Peak Logistics")).not.toBeInTheDocument();
     expect(screen.queryByText("Summit Consulting")).not.toBeInTheDocument();
@@ -149,5 +150,21 @@ describe("shared firm pages", () => {
     expect(screen.getByRole("button", { name: "Open compliance centre" })).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /Workflow defaults/i }).length).toBeGreaterThan(0);
     expect(screen.queryByRole("button", { name: "Open roles" })).not.toBeInTheDocument();
+  });
+
+  it("restores the richer follow-up request workspace with scoped data", async () => {
+    const adminView = renderWithProviders(<FirmRequestsPage />, adminUser);
+
+    expect(await screen.findByRole("heading", { name: "Request workspace" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Firm request board" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Create follow-up request" })).toBeInTheDocument();
+
+    adminView.unmount();
+
+    renderWithProviders(<FirmRequestsPage />, accountantUser);
+
+    expect(await screen.findByRole("heading", { name: "Follow-up requests" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Open requests" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Selected request thread" })).toBeInTheDocument();
   });
 });

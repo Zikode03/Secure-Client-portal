@@ -8,6 +8,7 @@ import { SurfaceCard } from "../../components/ui/SurfaceCard";
 import type { FirmClientAccount, PortfolioRow } from "../../types/portal";
 import { cn } from "../../utils/cn";
 import { formatDateLabel } from "../../utils/formatters";
+import { getScopedClients } from "../../utils/permissions";
 
 const portfolioSnapshotDate = "2026-05-07T08:00:00.000Z";
 
@@ -309,6 +310,7 @@ export function AccountantPortfolioPage() {
   const { user } = useAuth();
   const portal = usePortal();
   const navigate = useNavigate();
+  const isAdmin = user?.role === "admin";
   const [search, setSearch] = useState("");
   const [sortMode, setSortMode] = useState<SortMode>("priority");
 
@@ -316,18 +318,25 @@ export function AccountantPortfolioPage() {
     () => new Map(portal.adminClients.map((client) => [client.id, client])),
     [portal.adminClients],
   );
+  const scopedClients = useMemo(
+    () => getScopedClients(user, portal.adminClients),
+    [portal.adminClients, user],
+  );
+  const scopedClientIds = useMemo(
+    () => new Set(scopedClients.map((client) => client.id)),
+    [scopedClients],
+  );
 
   const assignedPortfolio = useMemo(() => {
-    const currentAccountant = user?.fullName ?? user?.name;
     const visibleRows = portal.accountantDashboard.portfolio.filter(
-      (row) => row.assignedAccountant === currentAccountant || user?.role === "admin",
+      (row) => scopedClientIds.has(row.clientId),
     );
 
     return visibleRows.map<PortfolioView>((row) => ({
       row,
       account: accountById.get(row.clientId) ?? null,
     }));
-  }, [accountById, portal.accountantDashboard.portfolio, user?.fullName, user?.name, user?.role]);
+  }, [accountById, portal.accountantDashboard.portfolio, scopedClientIds]);
 
   const visibleClients = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -374,14 +383,37 @@ export function AccountantPortfolioPage() {
           Good morning, {getFirstName(user?.fullName)}
         </h1>
         <p className="max-w-3xl text-[0.96rem] leading-7 text-slate-500">
-          Here&apos;s your client portfolio overview for May 2026.
+          {isAdmin
+            ? "Here&apos;s the firm client portfolio overview for May 2026."
+            : "Here&apos;s your client portfolio overview for May 2026."}
         </p>
       </div>
 
+      {isAdmin ? (
+        <div className="flex flex-wrap gap-2.5">
+          <Button
+            className="h-10 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+            onClick={() => navigate("/firm/admin/assignments")}
+            size="sm"
+            variant="secondary"
+          >
+            Manage assignments
+          </Button>
+          <Button
+            className="h-10 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+            onClick={() => navigate("/firm/admin/deadline-rules")}
+            size="sm"
+            variant="secondary"
+          >
+            Open deadline rules
+          </Button>
+        </div>
+      ) : null}
+
       <div className="grid gap-3 lg:grid-cols-4">
         <TopMetric
-          helper="Total clients assigned to you"
-          label="Assigned Clients"
+          helper={isAdmin ? "Total clients visible across the firm" : "Total clients assigned to you"}
+          label={isAdmin ? "Firm Clients" : "Assigned Clients"}
           tone="brand"
           value={summary.assigned}
         />
@@ -502,23 +534,46 @@ export function AccountantPortfolioPage() {
                   </div>
 
                   <div className="flex flex-col gap-2 lg:min-w-[162px]">
-                    <Button
-                      className="h-10 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                      onClick={() => navigate(`/accountant/clients/${row.clientId}?tab=packs`)}
-                      size="sm"
-                      variant="secondary"
-                    >
-                      <FolderIcon />
-                      <span>Open Pack</span>
-                    </Button>
-                    <Button
-                      className="h-10 rounded-xl bg-[linear-gradient(135deg,#2f54ff,#315cff)] shadow-[0_14px_26px_rgba(47,84,255,0.16)] hover:bg-[linear-gradient(135deg,#2849eb,#2f54ff)]"
-                      onClick={() => navigate(`/accountant/clients/${row.clientId}`)}
-                      size="sm"
-                    >
-                      <span>Open Workspace</span>
-                      <ChevronRightIcon />
-                    </Button>
+                    {isAdmin ? (
+                      <>
+                        <Button
+                          className="h-10 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                          onClick={() => navigate("/firm/admin/assignments")}
+                          size="sm"
+                          variant="secondary"
+                        >
+                          <span>Manage Assignment</span>
+                        </Button>
+                        <Button
+                          className="h-10 rounded-xl bg-[linear-gradient(135deg,#2f54ff,#315cff)] shadow-[0_14px_26px_rgba(47,84,255,0.16)] hover:bg-[linear-gradient(135deg,#2849eb,#2f54ff)]"
+                          onClick={() => navigate(`/firm/clients/${row.clientId}`)}
+                          size="sm"
+                        >
+                          <span>Open Workspace</span>
+                          <ChevronRightIcon />
+                        </Button>
+                      </>
+                    ) : (
+                      <>
+                        <Button
+                          className="h-10 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                          onClick={() => navigate(`/firm/clients/${row.clientId}?tab=packs`)}
+                          size="sm"
+                          variant="secondary"
+                        >
+                          <FolderIcon />
+                          <span>Open Pack</span>
+                        </Button>
+                        <Button
+                          className="h-10 rounded-xl bg-[linear-gradient(135deg,#2f54ff,#315cff)] shadow-[0_14px_26px_rgba(47,84,255,0.16)] hover:bg-[linear-gradient(135deg,#2849eb,#2f54ff)]"
+                          onClick={() => navigate(`/firm/clients/${row.clientId}`)}
+                          size="sm"
+                        >
+                          <span>Open Workspace</span>
+                          <ChevronRightIcon />
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
               </SurfaceCard>

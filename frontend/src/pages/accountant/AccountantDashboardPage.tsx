@@ -439,6 +439,7 @@ export function AccountantDashboardPage() {
   const portal = usePortal();
   const data = portal.accountantDashboard;
   const navigate = useNavigate();
+  const isAdmin = user?.role === "admin";
   const [activeQueueTab, setActiveQueueTab] = useState<QueueTab>("reviews");
   const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
   const notificationPanelRef = useRef<HTMLDivElement | null>(null);
@@ -461,8 +462,8 @@ export function AccountantDashboardPage() {
     [data.reviewQueue, portal.adminClients, user],
   );
   const scopedDeadlines = useMemo(
-    () => data.deadlines.filter((item) => item.owner === user?.fullName),
-    [data.deadlines, user?.fullName],
+    () => (isAdmin ? data.deadlines : data.deadlines.filter((item) => item.owner === user?.fullName)),
+    [data.deadlines, isAdmin, user?.fullName],
   );
   const scopedMissingDocuments = useMemo(
     () =>
@@ -619,7 +620,7 @@ export function AccountantDashboardPage() {
   }, [isNotificationPanelOpen]);
 
   function handleExportView() {
-    downloadCsv("accountant-portfolio-view.csv", [
+    downloadCsv(isAdmin ? "firm-portfolio-view.csv" : "accountant-portfolio-view.csv", [
       ["Client Name", "Month", "Progress %", "Status", "Assigned Accountant"],
       ...scopedPortfolio.map((row) => [
         row.clientName,
@@ -649,10 +650,12 @@ export function AccountantDashboardPage() {
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
         <div className="space-y-1.5">
           <h1 className="text-[2.05rem] font-semibold tracking-tight text-slate-950">
-            Accountant workspace
+            {isAdmin ? "Firm workspace" : "Accountant workspace"}
           </h1>
           <p className="max-w-3xl text-[0.96rem] leading-7 text-slate-500">
-            Focus on the clients and tasks that need your attention.
+            {isAdmin
+              ? "Focus on the clients and operational work that need attention across the firm."
+              : "Focus on the clients and tasks that need your attention."}
           </p>
         </div>
 
@@ -670,7 +673,7 @@ export function AccountantDashboardPage() {
             <button
               aria-expanded={isNotificationPanelOpen}
               aria-haspopup="dialog"
-              aria-label="Open accountant alerts"
+              aria-label={isAdmin ? "Open firm alerts" : "Open accountant alerts"}
               className="relative inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-[0_10px_30px_rgba(15,23,42,0.04)] transition hover:bg-slate-50"
               onClick={() => setIsNotificationPanelOpen((current) => !current)}
               type="button"
@@ -685,7 +688,7 @@ export function AccountantDashboardPage() {
 
             {isNotificationPanelOpen ? (
               <div
-                aria-label="Accountant notifications"
+                aria-label={isAdmin ? "Firm notifications" : "Accountant notifications"}
                 className="absolute right-0 top-[calc(100%+0.75rem)] z-30 w-[420px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-[1.6rem] border border-slate-200/90 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.14)]"
                 role="dialog"
               >
@@ -844,12 +847,26 @@ export function AccountantDashboardPage() {
         <SurfaceCard className="overflow-hidden rounded-[1.75rem] border border-slate-200/90 bg-white p-0 shadow-[0_18px_42px_rgba(15,23,42,0.05)]">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 pb-5 pt-5">
             <div>
-              <h2 className="text-[1.2rem] font-semibold text-slate-950">My assigned clients</h2>
+              <h2 className="text-[1.2rem] font-semibold text-slate-950">
+                {isAdmin ? "Firm clients" : "My assigned clients"}
+              </h2>
               <p className="mt-1 text-[0.86rem] text-slate-500">
-                Overview of your clients and pack progress.
+                {isAdmin
+                  ? "Overview of the firm client portfolio and current pack progress."
+                  : "Overview of your clients and pack progress."}
               </p>
             </div>
             <div className="flex items-center gap-2.5">
+              {isAdmin ? (
+                <Button
+                  className="h-10 rounded-xl px-4 text-brand-600"
+                  onClick={() => navigate("/firm/admin/assignments")}
+                  variant="secondary"
+                >
+                  <span>Manage assignments</span>
+                  <ChevronRightIcon />
+                </Button>
+              ) : null}
               <Button
                 className="h-10 rounded-xl px-4 text-brand-600"
                 onClick={() => navigate("/firm/clients")}
@@ -962,8 +979,14 @@ export function AccountantDashboardPage() {
         <SurfaceCard className="overflow-hidden rounded-[1.75rem] border border-slate-200/90 bg-white p-0 shadow-[0_18px_42px_rgba(15,23,42,0.05)]">
           <div className="space-y-4 border-b border-slate-100 px-5 pb-5 pt-5">
             <div>
-              <h2 className="text-[1.2rem] font-semibold text-slate-950">My work queue</h2>
-              <p className="mt-1 text-[0.86rem] text-slate-500">Tasks that need your attention.</p>
+              <h2 className="text-[1.2rem] font-semibold text-slate-950">
+                {isAdmin ? "Firm work queue" : "My work queue"}
+              </h2>
+              <p className="mt-1 text-[0.86rem] text-slate-500">
+                {isAdmin
+                  ? "Reviews and deadline items visible across the firm."
+                  : "Tasks that need your attention."}
+              </p>
             </div>
             <div className="flex flex-wrap items-center gap-5">
               {[
