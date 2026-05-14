@@ -75,13 +75,10 @@ describe("role-based route access", () => {
     ).toBeInTheDocument();
   });
 
-  it("accountant cannot access admin user management", async () => {
-    renderAppAt("/firm/admin/users", createUser("accountant"));
+  it("legacy admin users route redirects into settings", async () => {
+    renderAppAt("/admin/users", createUser("admin"));
 
-    expect(
-      await screen.findByText("You do not have permission to access this workspace."),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/Signed in as:/i)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Settings" })).toBeInTheDocument();
   });
 
   it("admin can access system settings", async () => {
@@ -93,8 +90,14 @@ describe("role-based route access", () => {
   it("navigation hides admin-only items from accountants", async () => {
     renderAppAt("/firm/dashboard", createUser("accountant"));
 
-    expect(await screen.findByRole("link", { name: "Notifications" })).toBeInTheDocument();
+    expect(await screen.findByText("Compliance Portal")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Compliance Calendar" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Exceptions Queue" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Activity Feed" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Notification Preferences" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Notifications" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "User Management" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Roles" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "System Settings" })).not.toBeInTheDocument();
   });
 
@@ -117,5 +120,18 @@ describe("role-based route access", () => {
     renderAppAt("/client/invoices", createUser("client"));
 
     expect(await screen.findByText("Document workspace")).toBeInTheDocument();
+  });
+
+  it("request detail route is directly reachable", async () => {
+    renderAppAt("/firm/requests/request-1", createUser("accountant"));
+
+    expect(await screen.findByRole("heading", { name: /Re-upload invoice support/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Mark resolved" })).toBeInTheDocument();
+  });
+
+  it("admin can open request SLA state machine page", async () => {
+    renderAppAt("/firm/admin/request-state-machine", createUser("admin"));
+
+    expect(await screen.findByRole("heading", { name: /Request State Machine/i })).toBeInTheDocument();
   });
 });

@@ -9,15 +9,43 @@ import { SelectField } from "../../components/ui/SelectField";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
 import { TextAreaField } from "../../components/ui/TextAreaField";
 import { TextField } from "../../components/ui/TextField";
-import type { Tone } from "../../types/portal";
+import type { Permission, Role, Tone } from "../../types/portal";
 import { cn } from "../../utils/cn";
+import { getPermissionsForRole } from "../../utils/permissions";
 
-type SettingsSection = "operations" | "notifications" | "compliance" | "profile";
+type SettingsSection = "operations" | "notifications" | "compliance" | "profile" | "access";
 
 interface FeedbackNotice {
   tone: Tone;
   title: string;
   message: string;
+}
+
+const permissionCatalogue: Permission[] = [
+  "view:assigned_clients",
+  "view:all_clients",
+  "view:assigned_documents",
+  "view:all_documents",
+  "view:assigned_review_queue",
+  "view:firm_review_queue",
+  "view:assigned_compliance",
+  "view:firm_compliance",
+  "manage:users",
+  "manage:roles",
+  "manage:assignments",
+  "manage:templates",
+  "manage:deadline_rules",
+  "manage:system_settings",
+  "export:firm_reports",
+  "export:client_reports",
+  "request:documents",
+  "review:documents",
+  "comment:documents",
+  "comment:requests",
+];
+
+function formatPermissionLabel(permission: Permission) {
+  return permission.replace(":", " / ").split("_").join(" ");
 }
 
 function OperationsIcon() {
@@ -90,6 +118,20 @@ function ProfileIcon() {
   );
 }
 
+function AccessIcon() {
+  return (
+    <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
+      <path
+        d="M7.5 11.5V8.75a4.5 4.5 0 1 1 9 0v2.75m-9 0h9a1.75 1.75 0 0 1 1.75 1.75v5A1.75 1.75 0 0 1 16.5 20h-9a1.75 1.75 0 0 1-1.75-1.75v-5A1.75 1.75 0 0 1 7.5 11.5Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
+}
+
 function Toggle({
   checked,
   description,
@@ -129,6 +171,10 @@ function Toggle({
 }
 
 function sectionIcon(section: SettingsSection) {
+  if (section === "access") {
+    return <AccessIcon />;
+  }
+
   if (section === "notifications") {
     return <BellIcon />;
   }
@@ -187,6 +233,12 @@ export function FirmSettingsPage() {
       ? "Review cross-firm blockers daily and keep assignment changes visible to the operations team."
       : "Escalate overdue compliance blockers after the second missed follow-up if month-end readiness is affected.",
   );
+  const [selectedRoleForChecklist, setSelectedRoleForChecklist] = useState<Role>("accountant");
+  const [rolePermissionMap, setRolePermissionMap] = useState<Record<Role, Permission[]>>({
+    admin: getPermissionsForRole("admin"),
+    accountant: getPermissionsForRole("accountant"),
+    client: getPermissionsForRole("client"),
+  });
 
   const complianceCentre = portal.accountantComplianceCentre;
   const notificationCount = portal.accountantDashboard.notifications.filter(
@@ -271,6 +323,16 @@ export function FirmSettingsPage() {
         : "Client-facing details and internal notes",
       tone: "bg-sky-50 text-sky-600 ring-sky-100",
     },
+    ...(isAdmin
+      ? [
+          {
+            id: "access" as const,
+            title: "Access control",
+            description: "Manage users and tick role permissions",
+            tone: "bg-violet-50 text-violet-600 ring-violet-100",
+          },
+        ]
+      : []),
   ];
 
   function showSavedNotice(title: string, message: string) {
@@ -390,8 +452,8 @@ export function FirmSettingsPage() {
             <Button onClick={() => navigate("/firm/admin/assignments")} variant="secondary">
               Open assignments
             </Button>
-            <Button onClick={() => navigate("/firm/admin/users")} variant="secondary">
-              Open user management
+            <Button onClick={() => setActiveSection("access")} variant="secondary">
+              Open access control
             </Button>
             <Button
               onClick={() =>
@@ -696,11 +758,8 @@ export function FirmSettingsPage() {
           </Button>
           {isAdmin ? (
             <>
-              <Button onClick={() => navigate("/firm/admin/templates")} variant="secondary">
-                Manage templates
-              </Button>
-              <Button onClick={() => navigate("/firm/admin/deadline-rules")} variant="secondary">
-                Open deadline rules
+              <Button onClick={() => navigate("/firm/admin/assignments")} variant="secondary">
+                Open assignments
               </Button>
             </>
           ) : null}
@@ -793,8 +852,8 @@ export function FirmSettingsPage() {
               <Button onClick={() => navigate("/firm/admin/system-settings")} variant="secondary">
                 Open system settings
               </Button>
-              <Button onClick={() => navigate("/firm/admin/roles")} variant="secondary">
-                Open roles
+              <Button onClick={() => setActiveSection("access")} variant="secondary">
+                Open access control
               </Button>
             </>
           ) : (
@@ -821,6 +880,112 @@ export function FirmSettingsPage() {
           </Button>
         </div>
       </SurfaceCard>
+    );
+  }
+
+  function toggleRolePermission(role: Role, permission: Permission) {
+    setRolePermissionMap((current) => {
+      const currentPermissions = current[role];
+      const hasPermission = currentPermissions.includes(permission);
+      const nextPermissions = hasPermission
+        ? currentPermissions.filter((item) => item !== permission)
+        : [...currentPermissions, permission];
+
+      return {
+        ...current,
+        [role]: nextPermissions,
+      };
+    });
+  }
+
+  function renderAccessControl() {
+    if (!isAdmin) {
+      return null;
+    }
+
+    const selectedPermissions = rolePermissionMap[selectedRoleForChecklist];
+
+    return (
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1.55fr)]">
+        <SurfaceCard className="space-y-4">
+          <div>
+            <h2 className="text-[1.25rem] font-semibold text-slate-950">User management</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              See all internal users and their assigned roles from inside settings.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            {portal.userAccounts.map((account) => (
+              <div
+                className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3"
+                key={account.id}
+              >
+                <p className="text-sm font-semibold text-slate-950">{account.name}</p>
+                <p className="mt-1 text-xs text-slate-500">
+                  {account.email} / {account.role}
+                </p>
+              </div>
+            ))}
+          </div>
+        </SurfaceCard>
+
+        <SurfaceCard className="space-y-5">
+          <div>
+            <h2 className="text-[1.25rem] font-semibold text-slate-950">Role permissions</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              Tick permissions to control what each role can access.
+            </p>
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-3">
+            {(["admin", "accountant", "client"] as Role[]).map((role) => (
+              <button
+                className={cn(
+                  "rounded-xl border px-3 py-2 text-sm font-semibold capitalize transition",
+                  selectedRoleForChecklist === role
+                    ? "border-brand-200 bg-brand-50 text-brand-700"
+                    : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+                )}
+                key={role}
+                onClick={() => setSelectedRoleForChecklist(role)}
+                type="button"
+              >
+                {role}
+              </button>
+            ))}
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-2">
+            {permissionCatalogue.map((permission) => (
+              <label
+                className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
+                key={`${selectedRoleForChecklist}-${permission}`}
+              >
+                <input
+                  checked={selectedPermissions.includes(permission)}
+                  onChange={() => toggleRolePermission(selectedRoleForChecklist, permission)}
+                  type="checkbox"
+                />
+                <span className="capitalize">{formatPermissionLabel(permission)}</span>
+              </label>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            <Button
+              onClick={() =>
+                showSavedNotice(
+                  "Role permissions saved",
+                  "Permission checklist updates were saved for the selected role.",
+                )
+              }
+            >
+              Save role permissions
+            </Button>
+          </div>
+        </SurfaceCard>
+      </div>
     );
   }
 
@@ -918,7 +1083,9 @@ export function FirmSettingsPage() {
           ? renderNotifications()
           : activeSection === "compliance"
             ? renderCompliance()
-            : renderProfile()}
+            : activeSection === "access"
+              ? renderAccessControl()
+              : renderProfile()}
     </div>
   );
 }

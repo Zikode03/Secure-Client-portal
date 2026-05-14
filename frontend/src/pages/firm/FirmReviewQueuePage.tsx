@@ -1,5 +1,5 @@
-import { AccountantReviewPage } from "../accountant/AccountantReviewPage";
+import { FirmWorkflowWorkspacePage } from "./FirmWorkflowWorkspacePage";
 
 export function FirmReviewQueuePage() {
-  return <AccountantReviewPage />;
+  return <FirmWorkflowWorkspacePage defaultTab="review" />;
 }

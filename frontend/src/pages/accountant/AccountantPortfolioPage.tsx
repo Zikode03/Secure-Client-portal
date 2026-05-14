@@ -399,14 +399,6 @@ export function AccountantPortfolioPage() {
           >
             Manage assignments
           </Button>
-          <Button
-            className="h-10 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-            onClick={() => navigate("/firm/admin/deadline-rules")}
-            size="sm"
-            variant="secondary"
-          >
-            Open deadline rules
-          </Button>
         </div>
       ) : null}
 

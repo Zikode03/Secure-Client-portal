@@ -25,7 +25,7 @@ import {
   statusToTone,
   toneToAccentClass,
 } from "../../utils/formatters";
-import { getScopedClients } from "../../utils/permissions";
+import { getScopedClients, hasPermission } from "../../utils/permissions";
 
 const defaultFilters: UnifiedSearchFilters = {
   query: "",
@@ -743,6 +743,7 @@ function Pagination({
 export function AccountantDocumentsPage() {
   const { user } = useAuth();
   const portal = usePortal();
+  const canReviewDocuments = hasPermission(user, "review:documents");
   const [filters, setFilters] = useState<UnifiedSearchFilters>(defaultFilters);
   const [activeResultTab, setActiveResultTab] = useState<ResultTab>("all");
   const [selectedResultId, setSelectedResultId] = useState("");
@@ -1013,6 +1014,12 @@ export function AccountantDocumentsPage() {
   }
 
   function handleRequestReupload(result: UnifiedSearchResult) {
+    if (!canReviewDocuments) {
+      setFeedbackMessage("You do not have permission to request re-uploads.");
+      setOpenMenuResultId("");
+      return;
+    }
+
     handleOpenResultTab(result, "comments");
     setFeedbackMessage(
       `Re-upload request prepared for ${displayResultTitle(result)}. Add the exact correction note in comments or continue in the review workspace.`,
@@ -1020,6 +1027,12 @@ export function AccountantDocumentsPage() {
   }
 
   function handleMarkUnderReview(result: UnifiedSearchResult) {
+    if (!canReviewDocuments) {
+      setFeedbackMessage("You do not have permission to change review status.");
+      setOpenMenuResultId("");
+      return;
+    }
+
     if (!user) {
       setFeedbackMessage("Sign in to update document workflow status.");
       setOpenMenuResultId("");
@@ -1049,6 +1062,12 @@ export function AccountantDocumentsPage() {
   }
 
   function handleEscalateIssue(result: UnifiedSearchResult) {
+    if (!canReviewDocuments) {
+      setFeedbackMessage("You do not have permission to escalate review issues.");
+      setOpenMenuResultId("");
+      return;
+    }
+
     handleOpenResultTab(result, "history");
     setFeedbackMessage(
       `Issue escalated for ${displayResultTitle(result)}. History and comments remain attached to this record.`,
@@ -1398,21 +1417,24 @@ export function AccountantDocumentsPage() {
                                 View comments
                               </button>
                               <button
-                                className="block w-full rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+                                className="block w-full rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+                                disabled={!canReviewDocuments}
                                 onClick={() => handleRequestReupload(result)}
                                 type="button"
                               >
                                 Request re-upload
                               </button>
                               <button
-                                className="block w-full rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+                                className="block w-full rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+                                disabled={!canReviewDocuments}
                                 onClick={() => handleMarkUnderReview(result)}
                                 type="button"
                               >
                                 Mark under review
                               </button>
                               <button
-                                className="block w-full rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+                                className="block w-full rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+                                disabled={!canReviewDocuments}
                                 onClick={() => handleEscalateIssue(result)}
                                 type="button"
                               >

@@ -1,5 +1,5 @@
-import { AccountantFollowUpsPage } from "../accountant/AccountantFollowUpsPage";
+import { FirmWorkflowWorkspacePage } from "./FirmWorkflowWorkspacePage";
 
 export function FirmRequestsPage() {
-  return <AccountantFollowUpsPage />;
+  return <FirmWorkflowWorkspacePage defaultTab="requests" />;
 }

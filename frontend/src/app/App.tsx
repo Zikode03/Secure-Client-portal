@@ -1,36 +1,157 @@
+import { Suspense, lazy } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { defaultPathForRole, useAuth } from "./auth";
-import { WorkspaceLayout } from "../layouts/WorkspaceLayout";
-import { AdminAccountantsPage } from "../pages/admin/AdminAccountantsPage";
-import { AdminAssignmentsPage } from "../pages/admin/AdminAssignmentsPage";
-import { AdminDeadlinesPage } from "../pages/admin/AdminDeadlinesPage";
-import { AdminRolesPage } from "../pages/admin/AdminRolesPage";
-import { AdminSettingsPage } from "../pages/admin/AdminSettingsPage";
-import { AdminTemplatesPage } from "../pages/admin/AdminTemplatesPage";
-import { AdminUsersPage } from "../pages/admin/AdminUsersPage";
-import { ClientComplianceCentrePage } from "../pages/client/ClientComplianceCentrePage";
-import { ClientDashboardPage } from "../pages/client/ClientDashboardPage";
-import { ClientDocumentsPage } from "../pages/client/ClientDocumentsPage";
-import { ClientMonthlyPacksPage } from "../pages/client/ClientMonthlyPacksPage";
-import { ClientNotificationsPage } from "../pages/client/ClientNotificationsPage";
-import { ClientRequestsPage } from "../pages/client/ClientRequestsPage";
-import { ClientSettingsPage } from "../pages/client/ClientSettingsPage";
-import { FirmClientWorkspacePage } from "../pages/firm/FirmClientWorkspacePage";
-import { FirmClientsPage } from "../pages/firm/FirmClientsPage";
-import { FirmComplianceCentrePage } from "../pages/firm/FirmComplianceCentrePage";
-import { FirmDashboardPage } from "../pages/firm/FirmDashboardPage";
-import { FirmDocumentsPage } from "../pages/firm/FirmDocumentsPage";
-import { FirmNotificationsPage } from "../pages/firm/FirmNotificationsPage";
-import { FirmRequestsPage } from "../pages/firm/FirmRequestsPage";
-import { FirmReviewQueuePage } from "../pages/firm/FirmReviewQueuePage";
-import { FirmSettingsPage } from "../pages/firm/FirmSettingsPage";
-import { AccessDeniedPage } from "../pages/shared/AccessDeniedPage";
-import { ForgotPasswordPage } from "../pages/shared/ForgotPasswordPage";
-import { InviteSetupPage } from "../pages/shared/InviteSetupPage";
-import { LoginPage } from "../pages/shared/LoginPage";
-import { NotFoundPage } from "../pages/shared/NotFoundPage";
 import type { Permission, Role } from "../types/portal";
 import { canAccessRoute, hasPermission } from "../utils/permissions";
+
+const WorkspaceLayout = lazy(() =>
+  import("../layouts/WorkspaceLayout").then((module) => ({ default: module.WorkspaceLayout })),
+);
+const AdminAccountantsPage = lazy(() =>
+  import("../pages/admin/AdminAccountantsPage").then((module) => ({
+    default: module.AdminAccountantsPage,
+  })),
+);
+const AdminAssignmentsPage = lazy(() =>
+  import("../pages/admin/AdminAssignmentsPage").then((module) => ({
+    default: module.AdminAssignmentsPage,
+  })),
+);
+const AdminSettingsPage = lazy(() =>
+  import("../pages/admin/AdminSettingsPage").then((module) => ({
+    default: module.AdminSettingsPage,
+  })),
+);
+const ClientComplianceCentrePage = lazy(() =>
+  import("../pages/client/ClientComplianceCentrePage").then((module) => ({
+    default: module.ClientComplianceCentrePage,
+  })),
+);
+const ClientDashboardPage = lazy(() =>
+  import("../pages/client/ClientDashboardPage").then((module) => ({
+    default: module.ClientDashboardPage,
+  })),
+);
+const ClientDocumentsPage = lazy(() =>
+  import("../pages/client/ClientDocumentsPage").then((module) => ({
+    default: module.ClientDocumentsPage,
+  })),
+);
+const ClientMonthlyPacksPage = lazy(() =>
+  import("../pages/client/ClientMonthlyPacksPage").then((module) => ({
+    default: module.ClientMonthlyPacksPage,
+  })),
+);
+const ClientNotificationsPage = lazy(() =>
+  import("../pages/client/ClientNotificationsPage").then((module) => ({
+    default: module.ClientNotificationsPage,
+  })),
+);
+const ClientRequestsPage = lazy(() =>
+  import("../pages/client/ClientRequestsPage").then((module) => ({
+    default: module.ClientRequestsPage,
+  })),
+);
+const ClientSettingsPage = lazy(() =>
+  import("../pages/client/ClientSettingsPage").then((module) => ({
+    default: module.ClientSettingsPage,
+  })),
+);
+const FirmClientWorkspacePage = lazy(() =>
+  import("../pages/firm/FirmClientWorkspacePage").then((module) => ({
+    default: module.FirmClientWorkspacePage,
+  })),
+);
+const FirmClientsPage = lazy(() =>
+  import("../pages/firm/FirmClientsPage").then((module) => ({ default: module.FirmClientsPage })),
+);
+const FirmComplianceCentrePage = lazy(() =>
+  import("../pages/firm/FirmComplianceCentrePage").then((module) => ({
+    default: module.FirmComplianceCentrePage,
+  })),
+);
+const FirmDashboardPage = lazy(() =>
+  import("../pages/firm/FirmDashboardPage").then((module) => ({
+    default: module.FirmDashboardPage,
+  })),
+);
+const FirmDocumentsPage = lazy(() =>
+  import("../pages/firm/FirmDocumentsPage").then((module) => ({
+    default: module.FirmDocumentsPage,
+  })),
+);
+const FirmNotificationsPage = lazy(() =>
+  import("../pages/firm/FirmNotificationsPage").then((module) => ({
+    default: module.FirmNotificationsPage,
+  })),
+);
+const FirmRequestsPage = lazy(() =>
+  import("../pages/firm/FirmRequestsPage").then((module) => ({ default: module.FirmRequestsPage })),
+);
+const FirmReviewQueuePage = lazy(() =>
+  import("../pages/firm/FirmReviewQueuePage").then((module) => ({
+    default: module.FirmReviewQueuePage,
+  })),
+);
+const FirmSettingsPage = lazy(() =>
+  import("../pages/firm/FirmSettingsPage").then((module) => ({ default: module.FirmSettingsPage })),
+);
+const FirmRequestDetailPage = lazy(() =>
+  import("../pages/firm/FirmRequestDetailPage").then((module) => ({
+    default: module.FirmRequestDetailPage,
+  })),
+);
+const FirmActivityFeedPage = lazy(() =>
+  import("../pages/firm/FirmActivityFeedPage").then((module) => ({
+    default: module.FirmActivityFeedPage,
+  })),
+);
+const FirmComplianceCalendarPage = lazy(() =>
+  import("../pages/firm/FirmComplianceCalendarPage").then((module) => ({
+    default: module.FirmComplianceCalendarPage,
+  })),
+);
+const FirmExceptionsQueuePage = lazy(() =>
+  import("../pages/firm/FirmExceptionsQueuePage").then((module) => ({
+    default: module.FirmExceptionsQueuePage,
+  })),
+);
+const FirmClient360Page = lazy(() =>
+  import("../pages/firm/FirmClient360Page").then((module) => ({
+    default: module.FirmClient360Page,
+  })),
+);
+const NotificationPreferencesPage = lazy(() =>
+  import("../pages/shared/NotificationPreferencesPage").then((module) => ({
+    default: module.NotificationPreferencesPage,
+  })),
+);
+const AdminRequestStateMachinePage = lazy(() =>
+  import("../pages/admin/AdminRequestStateMachinePage").then((module) => ({
+    default: module.AdminRequestStateMachinePage,
+  })),
+);
+const AccessDeniedPage = lazy(() =>
+  import("../pages/shared/AccessDeniedPage").then((module) => ({
+    default: module.AccessDeniedPage,
+  })),
+);
+const ForgotPasswordPage = lazy(() =>
+  import("../pages/shared/ForgotPasswordPage").then((module) => ({
+    default: module.ForgotPasswordPage,
+  })),
+);
+const InviteSetupPage = lazy(() =>
+  import("../pages/shared/InviteSetupPage").then((module) => ({
+    default: module.InviteSetupPage,
+  })),
+);
+const LoginPage = lazy(() =>
+  import("../pages/shared/LoginPage").then((module) => ({ default: module.LoginPage })),
+);
+const NotFoundPage = lazy(() =>
+  import("../pages/shared/NotFoundPage").then((module) => ({ default: module.NotFoundPage })),
+);
 
 function LoadingShell() {
   return <div className="min-h-screen bg-slate-100" />;
@@ -131,8 +252,8 @@ function redirectAccountantPath(pathname: string) {
 }
 
 function redirectAdminPath(pathname: string) {
-  if (pathname.startsWith("/admin/users")) {
-    return pathname.replace("/admin/users", "/firm/admin/users");
+  if (pathname.startsWith("/admin/users") || pathname.startsWith("/admin/roles")) {
+    return pathname.replace(/^\/admin\/(?:users|roles)/, "/firm/settings");
   }
 
   if (pathname.startsWith("/admin/accountants")) {
@@ -143,16 +264,12 @@ function redirectAdminPath(pathname: string) {
     return pathname.replace("/admin/assignments", "/firm/admin/assignments");
   }
 
-  if (pathname.startsWith("/admin/templates")) {
-    return pathname.replace("/admin/templates", "/firm/admin/templates");
-  }
-
-  if (pathname.startsWith("/admin/deadlines")) {
-    return pathname.replace("/admin/deadlines", "/firm/admin/deadline-rules");
-  }
-
-  if (pathname.startsWith("/admin/policies")) {
-    return pathname.replace("/admin/policies", "/firm/admin/templates");
+  if (
+    pathname.startsWith("/admin/templates") ||
+    pathname.startsWith("/admin/deadlines") ||
+    pathname.startsWith("/admin/policies")
+  ) {
+    return pathname.replace(/^\/admin(?:\/templates|\/deadlines|\/policies)/, "/firm/admin/system-settings");
   }
 
   if (pathname.startsWith("/admin/settings")) {
@@ -188,123 +305,108 @@ function LegacyWorkspaceRedirect({ role }: { role: Extract<Role, "admin" | "acco
 
 export default function App() {
   return (
-    <Routes>
-      <Route element={<SessionLanding />} path="/" />
-
-      <Route
-        element={
-          <PublicRoute>
-            <LoginPage />
-          </PublicRoute>
-        }
-        path="/login"
-      />
-      <Route
-        element={
-          <PublicRoute>
-            <ForgotPasswordPage />
-          </PublicRoute>
-        }
-        path="/forgot-password"
-      />
-      <Route
-        element={
-          <PublicRoute>
-            <InviteSetupPage />
-          </PublicRoute>
-        }
-        path="/invite-setup"
-      />
-      <Route element={<AccessDeniedPage />} path="/access-denied" />
-
-      <Route element={<RequireClientWorkspace />} path="/client">
-        <Route element={<Navigate replace to="dashboard" />} index />
-        <Route element={<ClientDashboardPage />} path="dashboard" />
-        <Route element={<ClientMonthlyPacksPage />} path="packs" />
-        <Route element={<ClientRequestsPage />} path="requests" />
-        <Route element={<ClientDocumentsPage />} path="documents" />
-        <Route element={<Navigate replace to="/client/documents" />} path="invoices" />
-        <Route element={<ClientComplianceCentrePage />} path="compliance" />
-        <Route element={<ClientNotificationsPage />} path="notifications" />
-        <Route element={<Navigate replace to="/client/requests" />} path="messages" />
-        <Route element={<ClientSettingsPage />} path="settings" />
-      </Route>
-
-      <Route element={<RequireFirmWorkspace />} path="/firm">
-        <Route element={<Navigate replace to="dashboard" />} index />
-        <Route element={<FirmDashboardPage />} path="dashboard" />
-        <Route element={<FirmClientsPage />} path="clients" />
-        <Route element={<FirmClientWorkspacePage />} path="clients/:clientId" />
-        <Route element={<FirmClientWorkspacePage />} path="clients/:clientId/packs" />
-        <Route element={<FirmDocumentsPage />} path="documents" />
-        <Route element={<FirmReviewQueuePage />} path="review" />
-        <Route element={<FirmRequestsPage />} path="requests" />
-        <Route element={<FirmComplianceCentrePage />} path="compliance" />
-        <Route element={<FirmNotificationsPage />} path="notifications" />
-        <Route element={<FirmSettingsPage />} path="settings" />
+    <Suspense fallback={<LoadingShell />}>
+      <Routes>
+        <Route element={<SessionLanding />} path="/" />
 
         <Route
           element={
-            <RequirePermission permission="manage:users">
-              <AdminUsersPage />
-            </RequirePermission>
+            <PublicRoute>
+              <LoginPage />
+            </PublicRoute>
           }
-          path="admin/users"
+          path="/login"
         />
         <Route
           element={
-            <RequirePermission permission="manage:users">
-              <AdminAccountantsPage />
-            </RequirePermission>
+            <PublicRoute>
+              <ForgotPasswordPage />
+            </PublicRoute>
           }
-          path="admin/accountants"
+          path="/forgot-password"
         />
         <Route
           element={
-            <RequirePermission permission="manage:roles">
-              <AdminRolesPage />
-            </RequirePermission>
+            <PublicRoute>
+              <InviteSetupPage />
+            </PublicRoute>
           }
-          path="admin/roles"
+          path="/invite-setup"
         />
-        <Route
-          element={
-            <RequirePermission permission="manage:assignments">
-              <AdminAssignmentsPage />
-            </RequirePermission>
-          }
-          path="admin/assignments"
-        />
-        <Route
-          element={
-            <RequirePermission permission="manage:templates">
-              <AdminTemplatesPage />
-            </RequirePermission>
-          }
-          path="admin/templates"
-        />
-        <Route
-          element={
-            <RequirePermission permission="manage:deadline_rules">
-              <AdminDeadlinesPage />
-            </RequirePermission>
-          }
-          path="admin/deadline-rules"
-        />
-        <Route
-          element={
-            <RequirePermission permission="manage:system_settings">
-              <AdminSettingsPage />
-            </RequirePermission>
-          }
-          path="admin/system-settings"
-        />
-      </Route>
+        <Route element={<AccessDeniedPage />} path="/access-denied" />
 
-      <Route element={<LegacyWorkspaceRedirect role="accountant" />} path="/accountant/*" />
-      <Route element={<LegacyWorkspaceRedirect role="admin" />} path="/admin/*" />
+        <Route element={<RequireClientWorkspace />} path="/client">
+          <Route element={<Navigate replace to="dashboard" />} index />
+          <Route element={<ClientDashboardPage />} path="dashboard" />
+          <Route element={<ClientMonthlyPacksPage />} path="packs" />
+          <Route element={<ClientRequestsPage />} path="requests" />
+          <Route element={<ClientDocumentsPage />} path="documents" />
+          <Route element={<Navigate replace to="/client/documents" />} path="invoices" />
+          <Route element={<ClientComplianceCentrePage />} path="compliance" />
+          <Route element={<ClientNotificationsPage />} path="notifications" />
+          <Route element={<NotificationPreferencesPage />} path="notifications/preferences" />
+          <Route element={<Navigate replace to="/client/requests" />} path="messages" />
+          <Route element={<ClientSettingsPage />} path="settings" />
+        </Route>
 
-      <Route element={<NotFoundPage />} path="*" />
-    </Routes>
+        <Route element={<RequireFirmWorkspace />} path="/firm">
+          <Route element={<Navigate replace to="dashboard" />} index />
+          <Route element={<FirmDashboardPage />} path="dashboard" />
+          <Route element={<FirmClientsPage />} path="clients" />
+          <Route element={<FirmClientWorkspacePage />} path="clients/:clientId" />
+          <Route element={<FirmClientWorkspacePage />} path="clients/:clientId/packs" />
+          <Route element={<FirmDocumentsPage />} path="documents" />
+          <Route element={<FirmReviewQueuePage />} path="review" />
+          <Route element={<FirmRequestsPage />} path="requests" />
+          <Route element={<FirmRequestDetailPage />} path="requests/:requestId" />
+          <Route element={<FirmActivityFeedPage />} path="activity" />
+          <Route element={<FirmExceptionsQueuePage />} path="exceptions" />
+          <Route element={<FirmComplianceCentrePage />} path="compliance" />
+          <Route element={<FirmComplianceCalendarPage />} path="compliance/calendar" />
+          <Route element={<FirmNotificationsPage />} path="notifications" />
+          <Route element={<NotificationPreferencesPage />} path="notifications/preferences" />
+          <Route element={<FirmSettingsPage />} path="settings" />
+          <Route element={<FirmClient360Page />} path="clients/:clientId/profile" />
+
+          <Route
+            element={
+              <RequirePermission permission="manage:users">
+                <AdminAccountantsPage />
+              </RequirePermission>
+            }
+            path="admin/accountants"
+          />
+          <Route
+            element={
+              <RequirePermission permission="manage:assignments">
+                <AdminAssignmentsPage />
+              </RequirePermission>
+            }
+            path="admin/assignments"
+          />
+          <Route
+            element={
+              <RequirePermission permission="manage:system_settings">
+                <AdminSettingsPage />
+              </RequirePermission>
+            }
+            path="admin/system-settings"
+          />
+          <Route
+            element={
+              <RequirePermission permission="manage:system_settings">
+                <AdminRequestStateMachinePage />
+              </RequirePermission>
+            }
+            path="admin/request-state-machine"
+          />
+        </Route>
+
+        <Route element={<LegacyWorkspaceRedirect role="accountant" />} path="/accountant/*" />
+        <Route element={<LegacyWorkspaceRedirect role="admin" />} path="/admin/*" />
+
+        <Route element={<NotFoundPage />} path="*" />
+      </Routes>
+    </Suspense>
   );
 }

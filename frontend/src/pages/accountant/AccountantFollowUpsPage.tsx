@@ -1,335 +1,572 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
-import { CommentThread } from "../../components/workflow/CommentThread";
-import { RequestBoard } from "../../components/workflow/RequestBoard";
-import { Button } from "../../components/ui/Button";
-import { EmptyState } from "../../components/ui/EmptyState";
-import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
-import { PageHeader } from "../../components/ui/PageHeader";
-import { SelectField } from "../../components/ui/SelectField";
-import { SurfaceCard } from "../../components/ui/SurfaceCard";
-import { TextAreaField } from "../../components/ui/TextAreaField";
-import { TextField } from "../../components/ui/TextField";
-import type { Tone, WorkflowRequest } from "../../types/portal";
+import type { ClientWorkspaceView } from "../../app/portal";
+import type { FirmClientAccount, WorkflowRequest } from "../../types/portal";
 import { formatDateLabel } from "../../utils/formatters";
 import { getScopedClients, getScopedRequests } from "../../utils/permissions";
 
-interface FeedbackState {
-  message: string;
-  title: string;
-  tone: Tone;
+interface NeededDocument {
+  id: string;
+  name: string;
+  status: "requested" | "needed";
+  dueDate: string;
 }
 
-function uniqueRequests(requests: WorkflowRequest[]) {
-  return Array.from(new Map(requests.map((request) => [request.id, request])).values());
+function ClientListPanel({
+  clients,
+  selectedClientId,
+  onSelectClient,
+}: {
+  clients: FirmClientAccount[];
+  selectedClientId: string;
+  onSelectClient: (id: string) => void;
+}) {
+  return (
+    <aside className="w-72 shrink-0 border-r border-slate-200 bg-white p-4">
+      <div className="mb-4">
+        <h2 className="text-sm font-semibold text-slate-900">Clients</h2>
+        <p className="text-xs text-slate-500">Requests workspace</p>
+      </div>
+      <div className="space-y-2">
+        {clients.map((client) => {
+          const active = client.id === selectedClientId;
+          return (
+            <button
+              key={client.id}
+              onClick={() => onSelectClient(client.id)}
+              className={`w-full rounded-2xl border p-3 text-left transition ${
+                active
+                  ? "border-violet-300 bg-violet-50/70 shadow-sm"
+                  : "border-slate-200 bg-white hover:border-slate-300"
+              }`}
+              type="button"
+            >
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-slate-900">{client.clientName}</p>
+                <span className="text-xs text-slate-500">{client.completionRate}%</span>
+              </div>
+              <p className="mt-1 text-xs text-slate-500">{client.status.replace(/_/g, " ")}</p>
+            </button>
+          );
+        })}
+      </div>
+    </aside>
+  );
 }
 
-function requestSummary(requests: WorkflowRequest[]) {
-  return {
-    open: requests.filter((request) => request.status === "open" || request.status === "client_replied")
-      .length,
-    awaitingClient: requests.filter((request) => request.status === "awaiting_client").length,
-    awaitingAccountant: requests.filter((request) => request.status === "awaiting_accountant").length,
-    resolved: requests.filter((request) => request.status === "resolved").length,
-  };
+function ClientWorkspaceHeader({
+  client,
+  activeTab,
+  onTabChange,
+}: {
+  client: FirmClientAccount;
+  activeTab: string;
+  onTabChange: (tab: string) => void;
+}) {
+  const tabs = ["Overview", "Requests", "Documents", "Details"];
+
+  return (
+    <header className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">{client.clientName}</h1>
+          <div className="mt-2 flex flex-wrap gap-2 text-xs">
+            <span className="rounded-full bg-rose-50 px-2 py-1 font-medium text-rose-700">
+              {client.status.replace(/_/g, " ")}
+            </span>
+            <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-700">
+              Accountant: {client.assignedAccountant}
+            </span>
+            <span className="rounded-full bg-slate-100 px-2 py-1 text-slate-700">
+              Industry: {client.industry}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5 border-b border-slate-200">
+        <div className="flex flex-wrap gap-5">
+          {tabs.map((tab) => (
+            <button
+              key={tab}
+              onClick={() => onTabChange(tab)}
+              className={`pb-3 text-sm font-medium ${
+                activeTab === tab
+                  ? "border-b-2 border-violet-600 text-violet-700"
+                  : "text-slate-500 hover:text-slate-800"
+              }`}
+              type="button"
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+      </div>
+    </header>
+  );
+}
+
+function RequestWorkflowCard({ request }: { request: WorkflowRequest }) {
+  const steps = [
+    { label: "Requested", active: true },
+    { label: "Client Reply", active: request.status !== "awaiting_client" },
+    {
+      label: "Review",
+      active: ["client_replied", "open", "awaiting_accountant", "resolved", "closed"].includes(
+        request.status,
+      ),
+    },
+    { label: "Resolved", active: ["resolved", "closed"].includes(request.status) },
+  ];
+
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-violet-700">
+            {request.priority} Priority
+          </p>
+          <h2 className="mt-1 text-2xl font-semibold text-slate-900">{request.title}</h2>
+          <p className="mt-2 text-sm text-slate-600">{request.description}</p>
+        </div>
+        <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
+          {request.status.replace(/_/g, " ")}
+        </span>
+      </div>
+
+      <div className="mt-6 grid grid-cols-2 gap-4 md:grid-cols-4">
+        {steps.map((step, idx) => (
+          <div key={step.label} className="relative">
+            {idx < steps.length - 1 ? (
+              <div className="absolute left-6 top-5 hidden h-[2px] w-full bg-slate-200 md:block" />
+            ) : null}
+            <div className="relative z-10 flex items-center gap-3">
+              <span
+                className={`grid h-6 w-6 place-items-center rounded-full text-[10px] font-bold ${
+                  step.active ? "bg-violet-600 text-white" : "bg-slate-100 text-slate-500"
+                }`}
+              >
+                {idx + 1}
+              </span>
+              <div>
+                <p className="text-xs font-medium text-slate-800">{step.label}</p>
+                <p className="text-xs text-slate-500">{formatDateLabel(request.createdAt)}</p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ConversationTimeline({ request }: { request: WorkflowRequest }) {
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <h3 className="text-sm font-semibold text-slate-900">Case Timeline</h3>
+      <div className="mt-4 space-y-4">
+        {request.auditTrail.slice(0, 8).map((item) => (
+          <div key={item.id} className="flex gap-3">
+            <div className="mt-1 h-2.5 w-2.5 rounded-full bg-violet-500" />
+            <div className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-sm text-slate-800">{item.status}</p>
+              {item.note ? <p className="mt-1 text-xs text-slate-600">{item.note}</p> : null}
+              <p className="mt-1 text-xs text-slate-500">
+                {item.actor} · {formatDateLabel(item.timestamp)}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function RequestRows({
+  requests,
+  onViewDetails,
+}: {
+  requests: WorkflowRequest[];
+  onViewDetails: (request: WorkflowRequest) => void;
+}) {
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <h3 className="text-sm font-semibold text-slate-900">Other Requests</h3>
+      <div className="mt-3 divide-y divide-slate-200">
+        {requests.map((r) => (
+          <div key={r.id} className="flex items-center justify-between py-3">
+            <div>
+              <p className="text-sm font-medium text-slate-900">{r.title}</p>
+              <p className="text-xs text-slate-500">Due {formatDateLabel(r.dueDate)}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-700">
+                {r.status.replace(/_/g, " ")}
+              </span>
+              <button
+                className="rounded-md border border-violet-200 bg-violet-50 px-2 py-1 text-xs font-semibold text-violet-700"
+                onClick={() => onViewDetails(r)}
+                type="button"
+              >
+                Details
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function RequestDetailView({ request }: { request: WorkflowRequest }) {
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <h3 className="text-sm font-semibold text-slate-900">Request Details</h3>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <p className="text-xs text-slate-500">Title</p>
+          <p className="mt-1 text-sm font-medium text-slate-900">{request.title}</p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <p className="text-xs text-slate-500">Status</p>
+          <p className="mt-1 text-sm font-medium text-slate-900">{request.status.replace(/_/g, " ")}</p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <p className="text-xs text-slate-500">Priority</p>
+          <p className="mt-1 text-sm font-medium text-slate-900">{request.priority}</p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <p className="text-xs text-slate-500">Due Date</p>
+          <p className="mt-1 text-sm font-medium text-slate-900">{formatDateLabel(request.dueDate)}</p>
+        </div>
+      </div>
+      <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+        <p className="text-xs text-slate-500">Description</p>
+        <p className="mt-1 text-sm text-slate-700">{request.description}</p>
+      </div>
+    </section>
+  );
+}
+
+function OverviewPanel({ client, workspace }: { client: FirmClientAccount; workspace: ClientWorkspaceView }) {
+  const summary = `${client.clientName} operates in ${client.industry}. Current completion is ${client.completionRate}%, with ${workspace.requests.filter((r) => !["resolved", "closed"].includes(r.status)).length} open request(s).`;
+
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <h3 className="text-sm font-semibold text-slate-900">Company Overview</h3>
+      <p className="mt-3 text-sm leading-7 text-slate-700">{summary}</p>
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <p className="text-xs text-slate-500">Compliance Status</p>
+          <p className="mt-1 text-sm font-semibold text-slate-900">{client.status.replace(/_/g, " ")}</p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <p className="text-xs text-slate-500">Assigned Accountant</p>
+          <p className="mt-1 text-sm font-semibold text-slate-900">{client.assignedAccountant}</p>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <p className="text-xs text-slate-500">Progress</p>
+          <p className="mt-1 text-sm font-semibold text-slate-900">{client.completionRate}%</p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function DocumentsPanel({
+  neededDocuments,
+  upcomingCompliance,
+  onViewDetails,
+}: {
+  neededDocuments: NeededDocument[];
+  upcomingCompliance: WorkflowRequest[];
+  onViewDetails: (request: WorkflowRequest) => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h3 className="text-sm font-semibold text-slate-900">Documents Needed / Requested</h3>
+        <div className="mt-3 space-y-2">
+          {neededDocuments.map((doc) => (
+            <div
+              className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"
+              key={doc.id}
+            >
+              <div>
+                <p className="text-sm font-medium text-slate-900">{doc.name}</p>
+                <p className="text-xs text-slate-500">Due {formatDateLabel(doc.dueDate)}</p>
+              </div>
+              <span
+                className={`rounded-full px-2 py-1 text-xs font-semibold ${
+                  doc.status === "requested" ? "bg-amber-50 text-amber-700" : "bg-sky-50 text-sky-700"
+                }`}
+              >
+                {doc.status}
+              </span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h3 className="text-sm font-semibold text-slate-900">Upcoming Compliance Requests</h3>
+        <div className="mt-3 space-y-2">
+          {upcomingCompliance.map((request) => (
+            <div
+              className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2"
+              key={request.id}
+            >
+              <div>
+                <p className="text-sm font-medium text-slate-900">{request.title}</p>
+                <p className="text-xs text-slate-500">Due {formatDateLabel(request.dueDate)}</p>
+              </div>
+              <button
+                className="rounded-md border border-violet-200 bg-violet-50 px-2 py-1 text-xs font-semibold text-violet-700"
+                onClick={() => onViewDetails(request)}
+                type="button"
+              >
+                Details
+              </button>
+            </div>
+          ))}
+          {upcomingCompliance.length === 0 ? (
+            <p className="text-xs text-slate-500">No upcoming compliance requests.</p>
+          ) : null}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function RightInsightPanel({
+  client,
+  activeRequest,
+  workspace,
+}: {
+  client: FirmClientAccount;
+  activeRequest: WorkflowRequest;
+  workspace: ClientWorkspaceView;
+}) {
+  return (
+    <aside className="w-full space-y-4 xl:w-80">
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h3 className="text-sm font-semibold text-slate-900">Progress</h3>
+        <div className="mt-3 h-2 w-full rounded-full bg-slate-100">
+          <div className="h-2 rounded-full bg-violet-600" style={{ width: `${client.completionRate}%` }} />
+        </div>
+        <p className="mt-2 text-sm text-slate-600">{client.completionRate}% completion</p>
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h3 className="text-sm font-semibold text-slate-900">Request Details</h3>
+        <div className="mt-3 space-y-2 text-sm">
+          <p className="text-slate-600">Priority: {activeRequest.priority}</p>
+          <p className="text-slate-600">Due: {formatDateLabel(activeRequest.dueDate)}</p>
+          <p className="text-slate-600">Status: {activeRequest.status.replace(/_/g, " ")}</p>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h3 className="text-sm font-semibold text-slate-900">Attachments</h3>
+        <div className="mt-3 space-y-2">
+          {workspace.documents.slice(0, 3).map((document) => (
+            <div key={document.id} className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-sm font-medium text-slate-900">{document.fileName}</p>
+              <p className="text-xs text-slate-500">{document.sizeLabel}</p>
+            </div>
+          ))}
+          {workspace.documents.length === 0 ? (
+            <p className="text-xs text-slate-500">No attachments yet.</p>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <h3 className="text-sm font-semibold text-slate-900">Recent Activity</h3>
+        <div className="mt-3 space-y-2">
+          {activeRequest.auditTrail.slice(0, 4).map((item) => (
+            <p key={item.id} className="text-xs text-slate-600">
+              {item.status} · {formatDateLabel(item.timestamp)}
+            </p>
+          ))}
+        </div>
+      </div>
+    </aside>
+  );
 }
 
 export function AccountantFollowUpsPage() {
   const { user } = useAuth();
   const portal = usePortal();
   const navigate = useNavigate();
-  const isAdmin = user?.role === "admin";
-  const scopedClients = useMemo(
-    () => getScopedClients(user, portal.adminClients),
-    [portal.adminClients, user],
-  );
-  const requests = useMemo(() => {
-    const allRequests = uniqueRequests(
-      portal.adminClients.flatMap((client) => portal.getClientWorkspace(client.id).requests),
-    );
+  const scopedClients = useMemo(() => getScopedClients(user, portal.adminClients), [user, portal.adminClients]);
 
-    return getScopedRequests(user, allRequests, portal.adminClients).sort(
-      (left, right) =>
-        new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
-    );
-  }, [portal, user]);
+  const [selectedClientId, setSelectedClientId] = useState(scopedClients[0]?.id ?? "");
+  const [activeTab, setActiveTab] = useState("Requests");
+  const [detailRequest, setDetailRequest] = useState<WorkflowRequest | null>(null);
 
-  const [selectedRequestId, setSelectedRequestId] = useState(requests[0]?.id ?? "");
-  const [feedback, setFeedback] = useState<FeedbackState | null>(null);
-  const [clientId, setClientId] = useState(scopedClients[0]?.id ?? "");
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [dueDate, setDueDate] = useState("2026-05-12");
-  const summary = useMemo(() => requestSummary(requests), [requests]);
-
-  useEffect(() => {
-    if (!requests.some((request) => request.id === selectedRequestId)) {
-      setSelectedRequestId(requests[0]?.id ?? "");
-    }
-  }, [requests, selectedRequestId]);
-
-  useEffect(() => {
-    if (!scopedClients.some((client) => client.id === clientId)) {
-      setClientId(scopedClients[0]?.id ?? "");
-    }
-  }, [clientId, scopedClients]);
-
-  const selectedRequest = useMemo(
-    () => requests.find((request) => request.id === selectedRequestId) ?? requests[0] ?? null,
-    [requests, selectedRequestId],
+  const selectedClient = useMemo(
+    () => scopedClients.find((client) => client.id === selectedClientId) ?? scopedClients[0] ?? null,
+    [scopedClients, selectedClientId],
   );
 
-  function handleCreateRequest() {
-    if (!user) {
-      return;
+  const selectedWorkspace = useMemo(() => {
+    if (!selectedClient) {
+      return null;
     }
 
-    const client = scopedClients.find((item) => item.id === clientId);
-    if (!client || !title.trim() || !description.trim()) {
-      setFeedback({
-        message: "Select a client and complete the follow-up details first.",
-        title: "Request not created",
-        tone: "warning",
-      });
-      return;
+    return portal.getClientWorkspace(selectedClient.id);
+  }, [portal, selectedClient]);
+
+  const scopedRequests = useMemo(() => {
+    if (!selectedWorkspace) {
+      return [] as WorkflowRequest[];
     }
 
-    const result = portal.createFollowUpRequest({
-      clientId,
-      clientName: client.clientName,
-      monthLabel: "May 2026",
-      title,
-      description,
-      dueDate: `${dueDate}T17:00:00.000Z`,
-      actor: user,
-    });
+    return getScopedRequests(user, selectedWorkspace.requests, portal.adminClients);
+  }, [portal.adminClients, selectedWorkspace, user]);
 
-    setFeedback({
-      message: result.message,
-      title: "Follow-up created",
-      tone: result.ok ? "success" : "danger",
-    });
-    if (result.ok) {
-      setTitle("");
-      setDescription("");
-    }
-  }
+  const activeRequest = scopedRequests[0] ?? null;
+  const otherRequests = scopedRequests.slice(1);
 
-  function handleComment(message: string) {
-    if (!selectedRequest || !user) {
-      return { ok: false, message: "Select a request before commenting." };
+  const neededDocuments = useMemo<NeededDocument[]>(() => {
+    if (!selectedWorkspace) {
+      return [];
     }
 
-    const result = portal.addRequestComment(
-      selectedRequest.id,
-      user.fullName,
-      user.role,
-      message,
+    return selectedWorkspace.monthPack.slots
+      .filter((slot) => ["missing", "rejected", "pending", "partial"].includes(slot.status))
+      .slice(0, 6)
+      .map((slot) => ({
+        id: slot.id,
+        name: slot.documentType,
+        status: slot.status === "missing" ? "needed" : "requested",
+        dueDate: slot.dueDate ?? new Date().toISOString(),
+      }));
+  }, [selectedWorkspace]);
+
+  const complianceUpcoming = useMemo(() => {
+    return scopedRequests
+      .filter((request) => {
+        const title = request.title.toLowerCase();
+        return (
+          request.requestType !== undefined ||
+          title.includes("vat") ||
+          title.includes("coida") ||
+          title.includes("cipc") ||
+          title.includes("tax") ||
+          title.includes("compliance")
+        );
+      })
+      .sort((left, right) => left.dueDate.localeCompare(right.dueDate));
+  }, [scopedRequests]);
+
+  if (!selectedClient || !selectedWorkspace) {
+    return (
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
+        No accessible clients found for this workspace.
+      </div>
     );
-    setFeedback({
-      message: result.message,
-      title: "Request updated",
-      tone: result.ok ? "info" : "danger",
-    });
-    return result;
-  }
-
-  function handleResolve() {
-    if (!selectedRequest || !user) {
-      return;
-    }
-
-    const result = portal.resolveRequest(selectedRequest.id, user.fullName);
-    setFeedback({
-      message: result.message,
-      title: "Request resolved",
-      tone: result.ok ? "success" : "danger",
-    });
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        actions={
-          <Button onClick={() => navigate("/firm/review")} variant="secondary">
-            Open review queue
-          </Button>
-        }
-        description={
-          isAdmin
-            ? "Monitor firm-wide requests, create the next follow-up quickly, and keep every conversation tied to the right client workspace."
-            : "Keep follow-up requests clear, owned, and easy to resolve without losing the comment trail."
-        }
-        eyebrow={isAdmin ? "Firm requests" : "Accountant follow-ups"}
-        title={isAdmin ? "Request workspace" : "Follow-up requests"}
-      />
-
-      {feedback ? (
-        <FeedbackBanner
-          message={feedback.message}
-          onDismiss={() => setFeedback(null)}
-          title={feedback.title}
-          tone={feedback.tone}
-        />
-      ) : null}
-
-      <section className="grid gap-3 md:grid-cols-4">
-        {[
-          {
-            id: "open",
-            label: "Open",
-            value: summary.open,
-            tone: "text-brand-600",
-            helper: "Active request threads",
-          },
-          {
-            id: "awaiting-client",
-            label: "Waiting on client",
-            value: summary.awaitingClient,
-            tone: "text-rose-600",
-            helper: "Uploads or answers still missing",
-          },
-          {
-            id: "awaiting-accountant",
-            label: "Waiting on accountant",
-            value: summary.awaitingAccountant,
-            tone: "text-amber-600",
-            helper: "Client has replied back",
-          },
-          {
-            id: "resolved",
-            label: "Resolved",
-            value: summary.resolved,
-            tone: "text-emerald-600",
-            helper: "Already closed out",
-          },
-        ].map((item) => (
-          <SurfaceCard
-            className="rounded-[1.25rem] border border-slate-200/90 bg-white p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]"
-            key={item.id}
-          >
-            <p className="text-[0.78rem] font-medium uppercase tracking-[0.12em] text-slate-400">
-              {item.label}
-            </p>
-            <p className={`mt-2 text-[1.8rem] font-semibold tracking-tight ${item.tone}`}>
-              {item.value}
-            </p>
-            <p className="mt-1 text-[0.82rem] text-slate-500">{item.helper}</p>
-          </SurfaceCard>
-        ))}
-      </section>
-
-      <section className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
-        <RequestBoard
-          actionLabel="Review queue"
-          description={
-            isAdmin
-              ? "All visible requests across the firm, including client-originated questions and accountant follow-ups."
-              : "These are the live follow-ups that still need client action or accountant review."
-          }
-          onAction={() => navigate("/firm/review")}
-          onOpenRequest={(request) => setSelectedRequestId(request.id)}
-          requests={requests}
-          title={isAdmin ? "Firm request board" : "Open requests"}
+    <div className="min-h-screen bg-[#f7f7fb] text-slate-900">
+      <div className="flex rounded-2xl border border-slate-200">
+        <ClientListPanel
+          clients={scopedClients}
+          selectedClientId={selectedClient.id}
+          onSelectClient={(clientId) => {
+            setSelectedClientId(clientId);
+            setActiveTab("Requests");
+            setDetailRequest(null);
+          }}
         />
 
-        <div className="space-y-6">
-          <SurfaceCard className="space-y-4">
-            <div>
-              <h2 className="text-xl font-semibold text-slate-950">Create follow-up request</h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Use this when a client needs a clear task instead of a loose message.
-              </p>
-            </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <SelectField
-                label="Client"
-                onChange={(event) => setClientId(event.target.value)}
-                options={scopedClients.map((client) => ({
-                  label: client.clientName,
-                  value: client.id,
-                }))}
-                value={clientId}
+        <main className="flex min-w-0 flex-1 flex-col p-4 md:p-6">
+          <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="min-w-0 space-y-4 pr-1">
+              <ClientWorkspaceHeader
+                client={selectedClient}
+                activeTab={activeTab}
+                onTabChange={(tab) => {
+                  setActiveTab(tab);
+                  if (tab !== "Details") {
+                    setDetailRequest(null);
+                  }
+                }}
               />
-              <TextField
-                label="Due date"
-                onChange={(event) => setDueDate(event.target.value)}
-                type="date"
-                value={dueDate}
-              />
-              <TextField
-                className="md:col-span-2"
-                label="Request title"
-                onChange={(event) => setTitle(event.target.value)}
-                placeholder="Upload missing bank statement"
-                value={title}
-              />
-            </div>
-            <TextAreaField
-              label="Request detail"
-              onChange={(event) => setDescription(event.target.value)}
-              placeholder="Explain what is missing, why it matters, and where the client should upload it."
-              value={description}
-            />
-            <Button onClick={handleCreateRequest}>
-              {isAdmin ? "Create firm follow-up" : "Send follow-up request"}
-            </Button>
-          </SurfaceCard>
 
-          <SurfaceCard className="space-y-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-950">Selected request thread</h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  Request comments stay tied to the task while uploads still go through the structured slot.
-                </p>
-              </div>
-              {selectedRequest ? (
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    onClick={() => navigate(`/firm/clients/${selectedRequest.clientId}?tab=requests`)}
-                    variant="secondary"
-                  >
-                    Open workspace
-                  </Button>
-                  {selectedRequest.status !== "resolved" ? (
-                    <Button onClick={handleResolve}>Mark resolved</Button>
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
-
-            {selectedRequest ? (
-              <>
-                <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
-                  <p className="text-sm font-semibold text-slate-950">{selectedRequest.title}</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">
-                    {selectedRequest.description}
-                  </p>
-                  <div className="mt-3 flex flex-wrap gap-3 text-sm text-slate-400">
-                    <span>Due {formatDateLabel(selectedRequest.dueDate)}</span>
-                    <span>{selectedRequest.clientName}</span>
-                    <span>Assigned to {selectedRequest.assignedTo}</span>
-                  </div>
-                </div>
-                <CommentThread
-                  comments={selectedRequest.comments}
-                  currentAuthor={user?.fullName ?? "Accountant"}
-                  currentRole={user?.role ?? "accountant"}
-                  onSubmitComment={handleComment}
+              {detailRequest || activeTab === "Details" ? (
+                <RequestDetailView request={detailRequest ?? activeRequest!} />
+              ) : activeTab === "Overview" ? (
+                <OverviewPanel client={selectedClient} workspace={selectedWorkspace} />
+              ) : activeTab === "Documents" ? (
+                <DocumentsPanel
+                  neededDocuments={neededDocuments}
+                  upcomingCompliance={complianceUpcoming}
+                  onViewDetails={(request) => {
+                    navigate(`/firm/requests/${request.id}`);
+                  }}
                 />
-              </>
-            ) : (
-              <EmptyState
-                description="Pick a request from the board to review the full thread."
-                title="Select a request"
-              />
-            )}
-          </SurfaceCard>
-        </div>
-      </section>
+              ) : activeRequest ? (
+                <>
+                  <div className="flex justify-end">
+                    <button
+                      className="rounded-md border border-violet-200 bg-violet-50 px-3 py-1.5 text-xs font-semibold text-violet-700"
+                      onClick={() => {
+                        navigate(`/firm/requests/${activeRequest.id}`);
+                      }}
+                      type="button"
+                    >
+                      Details
+                    </button>
+                  </div>
+                  <RequestWorkflowCard request={activeRequest} />
+                  <ConversationTimeline request={activeRequest} />
+                  <RequestRows
+                    requests={otherRequests}
+                    onViewDetails={(request) => {
+                      navigate(`/firm/requests/${request.id}`);
+                    }}
+                  />
+                </>
+              ) : (
+                <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                  <h2 className="text-lg font-semibold text-slate-900">No Requests Yet</h2>
+                  <p className="mt-2 text-sm text-slate-600">
+                    This client does not have any active requests yet.
+                  </p>
+                </section>
+              )}
+            </div>
+
+            <div className="pr-1">
+              {activeRequest ? (
+                <RightInsightPanel
+                  client={selectedClient}
+                  activeRequest={detailRequest ?? activeRequest}
+                  workspace={selectedWorkspace}
+                />
+              ) : (
+                <aside className="w-full space-y-4 xl:w-80">
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <h3 className="text-sm font-semibold text-slate-900">Client Snapshot</h3>
+                    <p className="mt-2 text-sm text-slate-600">
+                      Add a request to populate request insights and activity.
+                    </p>
+                  </div>
+                </aside>
+              )}
+            </div>
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
+
+
+
+

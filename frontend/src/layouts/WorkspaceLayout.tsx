@@ -157,6 +157,52 @@ function groupNavigation(items: NavigationItem[]) {
   }, {});
 }
 
+const prefetchedRoutes = new Set<string>();
+
+const routePrefetchers: Array<{ match: (path: string) => boolean; load: () => Promise<unknown> }> = [
+  { match: (path) => path.startsWith("/client/dashboard"), load: () => import("../pages/client/ClientDashboardPage") },
+  { match: (path) => path.startsWith("/client/packs"), load: () => import("../pages/client/ClientMonthlyPacksPage") },
+  { match: (path) => path.startsWith("/client/requests"), load: () => import("../pages/client/ClientRequestsPage") },
+  { match: (path) => path.startsWith("/client/documents"), load: () => import("../pages/client/ClientDocumentsPage") },
+  { match: (path) => path.startsWith("/client/compliance"), load: () => import("../pages/client/ClientComplianceCentrePage") },
+  { match: (path) => path.startsWith("/client/notifications"), load: () => import("../pages/client/ClientNotificationsPage") },
+  { match: (path) => path.startsWith("/client/settings"), load: () => import("../pages/client/ClientSettingsPage") },
+  { match: (path) => path.startsWith("/firm/dashboard"), load: () => import("../pages/firm/FirmDashboardPage") },
+  { match: (path) => path.startsWith("/firm/clients"), load: () => import("../pages/firm/FirmClientsPage") },
+  { match: (path) => path.startsWith("/firm/documents"), load: () => import("../pages/firm/FirmDocumentsPage") },
+  { match: (path) => path.startsWith("/firm/review"), load: () => import("../pages/firm/FirmReviewQueuePage") },
+  { match: (path) => path.startsWith("/firm/requests"), load: () => import("../pages/firm/FirmRequestsPage") },
+  { match: (path) => path.startsWith("/firm/requests/"), load: () => import("../pages/firm/FirmRequestDetailPage") },
+  { match: (path) => path.startsWith("/firm/activity"), load: () => import("../pages/firm/FirmActivityFeedPage") },
+  { match: (path) => path.startsWith("/firm/exceptions"), load: () => import("../pages/firm/FirmExceptionsQueuePage") },
+  { match: (path) => path.startsWith("/firm/compliance/calendar"), load: () => import("../pages/firm/FirmComplianceCalendarPage") },
+  { match: (path) => path.startsWith("/firm/compliance"), load: () => import("../pages/firm/FirmComplianceCentrePage") },
+  { match: (path) => path.startsWith("/firm/notifications/preferences"), load: () => import("../pages/shared/NotificationPreferencesPage") },
+  { match: (path) => path.startsWith("/firm/notifications"), load: () => import("../pages/firm/FirmNotificationsPage") },
+  { match: (path) => path.startsWith("/firm/settings"), load: () => import("../pages/firm/FirmSettingsPage") },
+  { match: (path) => path.startsWith("/firm/clients/") && path.endsWith("/profile"), load: () => import("../pages/firm/FirmClient360Page") },
+  { match: (path) => path.startsWith("/firm/admin/accountants"), load: () => import("../pages/admin/AdminAccountantsPage") },
+  { match: (path) => path.startsWith("/firm/admin/assignments"), load: () => import("../pages/admin/AdminAssignmentsPage") },
+  { match: (path) => path.startsWith("/firm/admin/system-settings"), load: () => import("../pages/admin/AdminSettingsPage") },
+  { match: (path) => path.startsWith("/firm/admin/request-state-machine"), load: () => import("../pages/admin/AdminRequestStateMachinePage") },
+];
+
+function prefetchRoute(path: string) {
+  if (!path || prefetchedRoutes.has(path)) {
+    return;
+  }
+
+  const prefetcher = routePrefetchers.find((entry) => entry.match(path));
+  if (!prefetcher) {
+    return;
+  }
+
+  prefetchedRoutes.add(path);
+  void prefetcher.load().catch(() => {
+    prefetchedRoutes.delete(path);
+  });
+}
+
 export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
   const { logout, user } = useAuth();
   const location = useLocation();
@@ -207,6 +253,8 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
                           )
                         }
                         to={item.to}
+                        onMouseEnter={() => prefetchRoute(item.to)}
+                        onFocus={() => prefetchRoute(item.to)}
                       >
                         {({ isActive }) => (
                           <>

@@ -81,7 +81,11 @@ export function getUserPermissions(user: SessionUser | null | undefined) {
     return [] as Permission[];
   }
 
-  return Array.from(new Set([...(user.permissions ?? []), ...getPermissionsForRole(user.role)]));
+  if (user.permissions && user.permissions.length > 0) {
+    return Array.from(new Set(user.permissions));
+  }
+
+  return getPermissionsForRole(user.role);
 }
 
 export function hasPermission(
@@ -283,24 +287,8 @@ export function canAccessRoute(
     return user.role === "client";
   }
 
-  if (route.startsWith("/firm/admin/users")) {
-    return hasPermission(user, "manage:users");
-  }
-
-  if (route.startsWith("/firm/admin/roles")) {
-    return hasPermission(user, "manage:roles");
-  }
-
   if (route.startsWith("/firm/admin/assignments")) {
     return hasPermission(user, "manage:assignments");
-  }
-
-  if (route.startsWith("/firm/admin/templates")) {
-    return hasPermission(user, "manage:templates");
-  }
-
-  if (route.startsWith("/firm/admin/deadline-rules")) {
-    return hasPermission(user, "manage:deadline_rules");
   }
 
   if (route.startsWith("/firm/admin/system-settings")) {

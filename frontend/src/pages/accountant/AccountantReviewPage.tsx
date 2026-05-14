@@ -670,6 +670,8 @@ export function AccountantReviewPage() {
   );
   const activeDocument = activeRow?.record ?? null;
   const activeStatus = activeDocument ? documentStatusMeta(activeDocument.status) : null;
+  const requiresReason =
+    activeDocument?.status === "rejected" || activeDocument?.status === "under_review";
 
   const combinedAuditTrail = useMemo(() => {
     if (!activeDocument) {
@@ -1451,6 +1453,93 @@ export function AccountantReviewPage() {
                 </div>
 
                 <div className="space-y-6 px-5 py-5">
+                  <section className="rounded-[1.25rem] border border-slate-200 bg-[linear-gradient(145deg,#f8fafc_0%,#eef2ff_100%)] p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <h3 className="text-[1.02rem] font-semibold text-slate-950">
+                          Review flow
+                        </h3>
+                        <p className="mt-1 text-sm text-slate-500">
+                          Check the file, read context, and record a clear decision.
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-white px-3 py-1 text-[0.72rem] font-semibold text-brand-700 ring-1 ring-brand-200">
+                        Approval workspace
+                      </span>
+                    </div>
+
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      {[
+                        "Inspect file preview and version history",
+                        "Review conversation and client context",
+                        "Set decision: approve, hold, re-upload, reject",
+                        "Capture reason when correction is needed",
+                      ].map((step, index) => (
+                        <div
+                          className="rounded-[1rem] border border-slate-200 bg-white px-3.5 py-3"
+                          key={step}
+                        >
+                          <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                            Step {index + 1}
+                          </p>
+                          <p className="mt-1 text-sm font-medium text-slate-700">{step}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+
+                  <section className="rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                          Decision summary
+                        </p>
+                        <p className="mt-1 text-sm text-slate-500">
+                          Current state and the minimum information needed before finalizing.
+                        </p>
+                      </div>
+                      <span
+                        className={cn(
+                          "inline-flex rounded-full px-2.5 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.05em] ring-1 ring-inset",
+                          activeDocument?.status === "accepted"
+                            ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+                            : activeDocument?.status === "rejected"
+                              ? "bg-rose-50 text-rose-700 ring-rose-200"
+                              : activeDocument?.status === "under_review"
+                                ? "bg-amber-50 text-amber-700 ring-amber-200"
+                                : "bg-brand-50 text-brand-700 ring-brand-200",
+                        )}
+                      >
+                        {formatStatusLabel(activeDocument.status)}
+                      </span>
+                    </div>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-[0.95rem] border border-slate-200 bg-white px-3.5 py-3">
+                        <p className="text-[0.78rem] font-semibold uppercase tracking-[0.1em] text-slate-400">
+                          Last updated
+                        </p>
+                        <p className="mt-1 text-sm font-medium text-slate-700">
+                          {formatDateTimeLabel(
+                            activeDocument.reviewedAt ?? activeDocument.uploadedAt,
+                          )}
+                        </p>
+                      </div>
+                      <div className="rounded-[0.95rem] border border-slate-200 bg-white px-3.5 py-3">
+                        <p className="text-[0.78rem] font-semibold uppercase tracking-[0.1em] text-slate-400">
+                          Reason required
+                        </p>
+                        <p
+                          className={cn(
+                            "mt-1 text-sm font-medium",
+                            requiresReason ? "text-rose-700" : "text-emerald-700",
+                          )}
+                        >
+                          {requiresReason ? "Yes for rejection/correction" : "No"}
+                        </p>
+                      </div>
+                    </div>
+                  </section>
+
                   <section className="border-b border-slate-200 pb-6">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
@@ -1558,7 +1647,7 @@ export function AccountantReviewPage() {
                         Review decision
                       </h3>
                       <p className="text-sm text-slate-500">
-                        Review the file, read the conversation, and make the decision from the same workspace.
+                        Choose the outcome that best matches the file quality and completion status.
                       </p>
                     </div>
 
@@ -1613,31 +1702,31 @@ export function AccountantReviewPage() {
 
                     <div className="mt-5 grid gap-3 sm:grid-cols-2">
                       <Button
-                        className="h-11 rounded-xl bg-emerald-600 hover:bg-emerald-500"
+                        className="h-11 rounded-xl bg-emerald-600 text-white shadow-[0_10px_24px_rgba(5,150,105,0.22)] hover:bg-emerald-500"
                         onClick={() => handleWorkspaceDecision("accepted")}
                       >
-                        Accept document
+                        Approve
                       </Button>
                       <Button
                         className="h-11 rounded-xl border border-amber-200 bg-white text-amber-700 hover:bg-amber-50"
                         onClick={() => handleWorkspaceDecision("under_review")}
                         variant="secondary"
                       >
-                        Mark as under review
+                        Still reviewing
                       </Button>
                       <Button
                         className="h-11 rounded-xl border border-brand-200 bg-white text-brand-700 hover:bg-brand-50"
                         onClick={() => handleWorkspaceDecision("request_reupload")}
                         variant="secondary"
                       >
-                        Request re-upload
+                        Needs correction (re-upload)
                       </Button>
                       <Button
                         className="h-11 rounded-xl border border-rose-200 bg-white text-rose-600 hover:bg-rose-50"
                         onClick={() => handleWorkspaceDecision("rejected")}
                         variant="secondary"
                       >
-                        Reject document
+                        Reject
                       </Button>
                     </div>
 

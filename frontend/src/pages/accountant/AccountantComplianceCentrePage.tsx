@@ -1,180 +1,114 @@
-import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
 import { Button } from "../../components/ui/Button";
-import { EmptyState } from "../../components/ui/EmptyState";
+import { SelectField } from "../../components/ui/SelectField";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
-import type { ComplianceClientStatus } from "../../types/portal";
-import { cn } from "../../utils/cn";
-import { formatDateLabel, formatStatusLabel } from "../../utils/formatters";
-import { getScopedComplianceStatuses } from "../../utils/permissions";
+import { TextField } from "../../components/ui/TextField";
+import { formatDateLabel } from "../../utils/formatters";
+import { getScopedComplianceStatuses, hasPermission } from "../../utils/permissions";
 
-type RiskFilter = "all" | "compliant" | "at_risk" | "overdue" | "high_risk";
+type RiskFilter = "all" | "low" | "medium" | "high";
+type StatusFilter = "all" | "compliant" | "pending" | "non_compliant";
+type ComplianceBoardStatus = "Compliant" | "Expiring Soon" | "Overdue";
 
-function statusChipClasses(status: ComplianceClientStatus["riskStatus"]) {
-  switch (status) {
-    case "high_risk":
-    case "overdue":
-      return "bg-rose-50 text-rose-700 ring-rose-200";
-    case "at_risk":
-      return "bg-amber-50 text-amber-700 ring-amber-200";
-    default:
-      return "bg-emerald-50 text-emerald-700 ring-emerald-200";
-  }
+type SupplierComplianceState = "compliant" | "pending" | "non_compliant";
+
+interface SupplierRow {
+  id: string;
+  name: string;
+  category: string;
+  contractExpiry: string;
+  complianceState: SupplierComplianceState;
+  riskLevel: "low" | "medium" | "high";
+  riskScore: number;
 }
 
-function progressClasses(score: number) {
-  if (score >= 85) {
-    return "from-emerald-500 to-teal-400";
+const categories = [
+  "Tax Compliance",
+  "CIPC",
+  "Payroll",
+  "VAT",
+  "Audit",
+  "Corporate",
+];
+
+function dueStatusLabel(dateIso: string) {
+  const diffDays = Math.ceil(
+    (new Date(dateIso).getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+  );
+
+  if (diffDays < 0) {
+    return "Overdue";
   }
 
+  if (diffDays <= 14) {
+    return "Expiring Soon";
+  }
+
+  return "Compliant";
+}
+
+function dueStatusClasses(label: string) {
+  if (label === "Overdue") {
+    return "bg-rose-50 text-rose-700 ring-rose-200";
+  }
+
+  if (label === "Expiring Soon") {
+    return "bg-amber-50 text-amber-700 ring-amber-200";
+  }
+
+  return "bg-emerald-50 text-emerald-700 ring-emerald-200";
+}
+
+function mapRiskLevel(score: number) {
   if (score >= 70) {
-    return "from-amber-500 to-orange-400";
+    return "low" as const;
   }
 
-  return "from-rose-500 to-orange-400";
+  if (score >= 45) {
+    return "medium" as const;
+  }
+
+  return "high" as const;
 }
 
-function initialsFor(name: string) {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .join("");
-}
+function mapComplianceState(score: number): SupplierComplianceState {
+  if (score >= 75) {
+    return "compliant";
+  }
 
-function downloadCsv(fileName: string, rows: string[][]) {
-  const csv = rows
-    .map((row) => row.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(","))
-    .join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = window.URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = fileName;
-  link.click();
-  window.URL.revokeObjectURL(url);
-}
+  if (score >= 45) {
+    return "pending";
+  }
 
-function fileSlug(value: string) {
-  return (
-    value
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "") || "client"
-  );
-}
-
-function CalendarIcon() {
-  return (
-    <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
-      <rect height="14" rx="2.5" stroke="currentColor" strokeWidth="1.8" width="16" x="4" y="6" />
-      <path
-        d="M8 4v4m8-4v4M4 10.25h16"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
-}
-
-function FilterIcon() {
-  return (
-    <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
-      <path
-        d="M4.75 6.5h14.5l-5.7 6v4.45l-3.1.8V12.5l-5.7-6Z"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
-}
-
-function DownloadIcon() {
-  return (
-    <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
-      <path
-        d="M12 4.25v9.5m0 0 3.5-3.5m-3.5 3.5-3.5-3.5M5.75 18.25h12.5"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
-}
-
-function SearchIcon() {
-  return (
-    <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
-      <circle cx="11" cy="11" r="6.4" stroke="currentColor" strokeWidth="1.8" />
-      <path
-        d="m16 16 4 4"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
-}
-
-function ChevronRightIcon() {
-  return (
-    <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24">
-      <path
-        d="m10 7 5 5-5 5"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
-}
-
-function MoreHorizontalIcon() {
-  return (
-    <svg aria-hidden="true" className="h-4.5 w-4.5" fill="currentColor" viewBox="0 0 24 24">
-      <circle cx="5" cy="12" r="1.7" />
-      <circle cx="12" cy="12" r="1.7" />
-      <circle cx="19" cy="12" r="1.7" />
-    </svg>
-  );
-}
-
-function SummaryIcon({
-  colorClassName,
-  path,
-}: {
-  colorClassName: string;
-  path: ReactNode;
-}) {
-  return (
-    <div className={cn("flex h-14 w-14 items-center justify-center rounded-full", colorClassName)}>
-      <svg aria-hidden="true" className="h-6 w-6" fill="none" viewBox="0 0 24 24">
-        {path}
-      </svg>
-    </div>
-  );
+  return "non_compliant";
 }
 
 export function AccountantComplianceCentrePage() {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const portal = usePortal();
   const isAdmin = user?.role === "admin";
   const [searchQuery, setSearchQuery] = useState("");
   const [riskFilter, setRiskFilter] = useState<RiskFilter>("all");
-  const [openClientMenuId, setOpenClientMenuId] = useState("");
-  const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [openClientActionsId, setOpenClientActionsId] = useState("");
+  const [selectedClientId, setSelectedClientId] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [activeView, setActiveView] = useState<"list" | "board">("list");
+  const [statusOverrides, setStatusOverrides] = useState<Record<string, ComplianceBoardStatus>>(
+    {},
+  );
+  const [boardAuditTrail, setBoardAuditTrail] = useState<
+    Array<{ id: string; itemName: string; from: ComplianceBoardStatus; to: ComplianceBoardStatus; actor: string; timestamp: string }>
+  >([]);
+  const pageSize = 5;
+  const canRequestDocuments = hasPermission(user, "request:documents");
+  const canExportReports =
+    hasPermission(user, "export:client_reports") || hasPermission(user, "export:firm_reports");
+  const canReviewDocuments = hasPermission(user, "review:documents");
+
   const clientStatuses = useMemo(
     () =>
       getScopedComplianceStatuses(
@@ -184,703 +118,646 @@ export function AccountantComplianceCentrePage() {
       ),
     [portal.accountantComplianceCentre.clientStatuses, portal.adminClients, user],
   );
-  const scopedSummary = useMemo(() => {
-    const totalRequiredItems = clientStatuses.reduce(
-      (sum, client) => sum + client.totalRequiredItems,
-      0,
-    );
-    const compliantItems = clientStatuses.reduce((sum, client) => sum + client.compliantCount, 0);
 
-    return {
-      expiredCount: clientStatuses.reduce((sum, client) => sum + client.expiredCount, 0),
-      expiringCount: clientStatuses.reduce((sum, client) => sum + client.expiringCount, 0),
-      missingRequiredCount: clientStatuses.reduce(
-        (sum, client) => sum + client.missingRequiredCount,
-        0,
-      ),
-      compliantClientCount: clientStatuses.filter((client) => client.riskStatus === "compliant")
-        .length,
-      portfolioCompliancePercentage:
-        totalRequiredItems > 0 ? Math.round((compliantItems / totalRequiredItems) * 100) : 0,
-    };
-  }, [clientStatuses]);
-  const [selectedClientId, setSelectedClientId] = useState(clientStatuses[0]?.clientId ?? "");
+  const supplierRows = useMemo<SupplierRow[]>(() => {
+    return clientStatuses.map((item, index) => {
+      const riskLevel = mapRiskLevel(item.score);
+      const complianceState = mapComplianceState(item.score);
+      const fallbackExpiry = new Date(item.lastReviewed);
+      fallbackExpiry.setDate(fallbackExpiry.getDate() + 21);
 
-  const filteredClients = useMemo(() => {
-    const normalizedQuery = searchQuery.trim().toLowerCase();
-
-    return clientStatuses.filter((client) => {
-      const matchesQuery =
-        normalizedQuery.length === 0 ||
-        client.clientName.toLowerCase().includes(normalizedQuery) ||
-        client.assignedAccountant.toLowerCase().includes(normalizedQuery);
-      const matchesRisk = riskFilter === "all" || client.riskStatus === riskFilter;
-
-      return matchesQuery && matchesRisk;
+      return {
+        id: item.clientId,
+        name: item.clientName,
+        category: categories[index % categories.length],
+        contractExpiry: item.topPriorities[0]?.dueDate ?? fallbackExpiry.toISOString(),
+        complianceState,
+        riskLevel,
+        riskScore: Math.max(1, 100 - item.score),
+      };
     });
-  }, [clientStatuses, riskFilter, searchQuery]);
+  }, [clientStatuses]);
 
-  const selectedClient =
-    filteredClients.find((client) => client.clientId === selectedClientId) ??
-    filteredClients[0] ??
-    null;
+  const selectedClient = useMemo(() => {
+    if (supplierRows.length === 0) {
+      return undefined;
+    }
 
-  function openClientWorkspace(client: ComplianceClientStatus) {
-    setOpenClientMenuId("");
-    navigate(`/firm/clients/${client.clientId}?tab=compliance`);
+    if (selectedClientId.length === 0) {
+      return supplierRows[0];
+    }
+
+    return supplierRows.find((row) => row.id === selectedClientId) ?? supplierRows[0];
+  }, [selectedClientId, supplierRows]);
+
+  const filteredSuppliers = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+
+    return supplierRows.filter((row) => {
+      const queryMatch =
+        query.length === 0 ||
+        row.name.toLowerCase().includes(query) ||
+        row.category.toLowerCase().includes(query);
+      const riskMatch = riskFilter === "all" || row.riskLevel === riskFilter;
+      const statusMatch = statusFilter === "all" || row.complianceState === statusFilter;
+      const categoryMatch = categoryFilter === "all" || row.category === categoryFilter;
+
+      return queryMatch && riskMatch && statusMatch && categoryMatch;
+    });
+  }, [categoryFilter, riskFilter, searchQuery, statusFilter, supplierRows]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredSuppliers.length / pageSize));
+  const pagedSuppliers = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredSuppliers.slice(start, start + pageSize);
+  }, [currentPage, filteredSuppliers]);
+
+  const startIndex = filteredSuppliers.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const endIndex = Math.min(currentPage * pageSize, filteredSuppliers.length);
+
+  function statusForRow(row: SupplierRow): ComplianceBoardStatus {
+    return statusOverrides[row.id] ?? (dueStatusLabel(row.contractExpiry) as ComplianceBoardStatus);
   }
 
-  function openComplianceHistory(client: ComplianceClientStatus) {
-    setOpenClientMenuId("");
-    navigate(`/firm/clients/${client.clientId}?tab=compliance&view=audit`);
+  function canTransitionStatus(
+    from: ComplianceBoardStatus,
+    to: ComplianceBoardStatus,
+    isAdminUser: boolean,
+  ) {
+    if (from === to) {
+      return false;
+    }
+
+    if (isAdminUser) {
+      return true;
+    }
+
+    if (!canReviewDocuments) {
+      return false;
+    }
+
+    if (from === "Compliant" && to === "Expiring Soon") {
+      return true;
+    }
+
+    if (from === "Expiring Soon" && (to === "Compliant" || to === "Overdue")) {
+      return true;
+    }
+
+    return false;
   }
 
-  function openDocumentCentre(client: ComplianceClientStatus) {
-    setOpenClientMenuId("");
-    navigate(`/firm/documents?client=${client.clientId}`);
-  }
-
-  function downloadPortfolioReport() {
-    downloadCsv(isAdmin ? "firm-compliance-report.csv" : "my-compliance-report.csv", [
-      ["Snapshot date", formatDateLabel(portal.accountantComplianceCentre.snapshotDate)],
-      ["Expired", String(scopedSummary.expiredCount)],
-      ["Expiring soon", String(scopedSummary.expiringCount)],
-      ["Missing required", String(scopedSummary.missingRequiredCount)],
-      ["Portfolio compliance", `${scopedSummary.portfolioCompliancePercentage}%`],
-    ]);
-  }
-
-  function downloadClientReport(client: ComplianceClientStatus) {
-    downloadCsv(`${fileSlug(client.clientName)}-compliance-report.csv`, [
-      ["Client", client.clientName],
-      ["Assigned accountant", client.assignedAccountant],
-      ["Compliance score", `${client.score}%`],
-      ["Expired", String(client.expiredCount)],
-      ["Expiring", String(client.expiringCount)],
-      ["Missing", String(client.missingCount)],
-      ["Last reviewed", formatDateLabel(client.lastReviewed)],
-      ["Next best action", client.nextBestAction],
-    ]);
-    setOpenClientMenuId("");
-  }
-
-  function handleRequestDocuments(client: ComplianceClientStatus) {
-    if (!user || !selectedClient || client.topPriorities.length === 0) {
-      setFeedbackMessage("No open compliance priority is available for request generation.");
+  function moveBoardItem(row: SupplierRow, to: ComplianceBoardStatus) {
+    const from = statusForRow(row);
+    if (!canTransitionStatus(from, to, isAdmin)) {
       return;
     }
 
-    const firstPriority = client.topPriorities[0];
-    const result = portal.createComplianceRequest({
-      clientId: client.clientId,
-      complianceItemId: firstPriority.complianceItemId,
-      requestType: firstPriority.requestType,
-      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-      actor: user,
-      comments: `Please action ${firstPriority.label} so the compliance record can move forward.`,
-    });
-
-    setFeedbackMessage(result.message);
+    setStatusOverrides((current) => ({ ...current, [row.id]: to }));
+    setBoardAuditTrail((current) => [
+      {
+        id: `${row.id}-${Date.now()}`,
+        itemName: row.category,
+        from,
+        to,
+        actor: user?.fullName ?? "Unknown user",
+        timestamp: new Date().toISOString(),
+      },
+      ...current,
+    ]);
   }
 
-  function openAssignments() {
-    navigate("/firm/admin/assignments");
-  }
+  const upcomingExpirations = useMemo(() => {
+    return [...supplierRows]
+      .sort(
+        (a, b) =>
+          new Date(a.contractExpiry).getTime() - new Date(b.contractExpiry).getTime(),
+      )
+      .slice(0, 3);
+  }, [supplierRows]);
 
-  function openTemplates() {
-    navigate("/firm/admin/templates");
-  }
+  const compliantCount = supplierRows.filter((row) => dueStatusLabel(row.contractExpiry) === "Compliant").length;
+  const expiringSoonCount = supplierRows.filter((row) => dueStatusLabel(row.contractExpiry) === "Expiring Soon").length;
+  const expiredCount = supplierRows.filter((row) => dueStatusLabel(row.contractExpiry) === "Overdue").length;
+  const totalStatusCount = Math.max(1, compliantCount + expiringSoonCount + expiredCount);
+  const compliantPercent = Math.round((compliantCount / totalStatusCount) * 100);
+  const expiringPercent = Math.round((expiringSoonCount / totalStatusCount) * 100);
+  const expiredPercent = Math.max(0, 100 - compliantPercent - expiringPercent);
 
-  function openDeadlineRules() {
-    navigate("/firm/admin/deadline-rules");
-  }
+  function downloadComplianceCsv() {
+    const headers = [
+      "Item Name",
+      "Client",
+      "Category",
+      "Expiry Date",
+      "Status",
+      "Risk Level",
+      "Owner",
+    ];
 
-  const summaryCards = [
-    {
-      id: "expired",
-      label: "Expired",
-      value: String(scopedSummary.expiredCount),
-      helper: "Action required",
-      icon: (
-        <SummaryIcon
-          colorClassName="bg-rose-50 text-rose-500"
-          path={
-            <>
-              <circle cx="12" cy="12" r="8.75" stroke="currentColor" strokeWidth="1.8" />
-              <path
-                d="M12 7.5v5.5m0 3h.01"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="1.8"
-              />
-            </>
-          }
-        />
-      ),
-      helperClassName: "text-rose-600",
-    },
-    {
-      id: "expiring",
-      label: "Expiring soon",
-      value: String(scopedSummary.expiringCount),
-      helper: "Next 30 days",
-      icon: (
-        <SummaryIcon
-          colorClassName="bg-amber-50 text-amber-500"
-          path={
-            <>
-              <circle cx="12" cy="12" r="8.75" stroke="currentColor" strokeWidth="1.8" />
-              <path
-                d="M12 7.5v4.8l3.2 2"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="1.8"
-              />
-            </>
-          }
-        />
-      ),
-      helperClassName: "text-amber-600",
-    },
-    {
-      id: "missing",
-      label: "Missing required",
-      value: String(scopedSummary.missingRequiredCount),
-      helper: "Client follow-up needed",
-      icon: (
-        <SummaryIcon
-          colorClassName="bg-indigo-50 text-indigo-500"
-          path={
-            <>
-              <path
-                d="M8 4.25h6.2L18.5 8.6V18a1.75 1.75 0 0 1-1.75 1.75H8A2.25 2.25 0 0 1 5.75 17.5V6.5A2.25 2.25 0 0 1 8 4.25Z"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="1.8"
-              />
-              <path
-                d="M14 4.25V8.5h4.25M9 12h6M9 15.5h4"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="1.8"
-              />
-            </>
-          }
-        />
-      ),
-      helperClassName: "text-brand-700",
-    },
-    {
-      id: "portfolio",
-      label: "Portfolio compliance",
-      value: `${scopedSummary.portfolioCompliancePercentage}%`,
-      helper: `${scopedSummary.compliantClientCount} of ${clientStatuses.length} clients compliant`,
-      icon: (
-        <SummaryIcon
-          colorClassName="bg-emerald-50 text-emerald-500"
-          path={
-            <>
-              <circle cx="12" cy="12" r="8.75" stroke="currentColor" strokeWidth="1.8" />
-              <path
-                d="m8.5 12.2 2.4 2.4 4.6-5.1"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="1.8"
-              />
-            </>
-          }
-        />
-      ),
-      helperClassName: "text-emerald-600",
-    },
-  ];
+    const rows = filteredSuppliers.map((row) => [
+      row.category,
+      row.name,
+      row.category,
+      formatDateLabel(row.contractExpiry),
+      dueStatusLabel(row.contractExpiry),
+      row.riskLevel,
+      user?.fullName ?? "Nayan Dhali",
+    ]);
+
+    const csv = [headers, ...rows]
+      .map((line) =>
+        line
+          .map((value) => `"${String(value).replace(/"/g, '""')}"`)
+          .join(","),
+      )
+      .join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", "compliance-items.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
 
   return (
-    <div className="mx-auto max-w-[1480px] space-y-5">
-      <section className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="space-y-3">
-          <p className="text-[0.82rem] font-semibold uppercase tracking-[0.18em] text-brand-600">
-            {isAdmin ? "Firm workspace" : "Accountant workspace"}
-          </p>
-          <div>
-            <h1 className="text-[2.5rem] font-semibold tracking-tight text-slate-950">
-              {isAdmin ? "Firm Compliance Centre" : "My Compliance Workspace"}
-            </h1>
-            <p className="mt-3 text-[1.02rem] text-slate-500">
-              {isAdmin
-                ? "See the full firm compliance picture and control the rules that shape it."
-                : "Which assigned client needs compliance attention right now?"}
-            </p>
+    <div className="space-y-6">
+      <div className="space-y-3 rounded-2xl border border-slate-200 bg-white px-5 py-4">
+        <h1 className="text-3xl font-semibold text-slate-950">
+          {isAdmin ? "Firm Compliance Centre" : "My Compliance Workspace"}
+        </h1>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-base text-slate-600">Client compliance tracking and action workspace</p>
+          {isAdmin ? <Button>Open system settings</Button> : <Button>Add Supplier</Button>}
+        </div>
+      </div>
+
+      <SurfaceCard className="space-y-5">
+        <div className="grid gap-3 lg:grid-cols-4">
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+            <p className="text-xs font-medium text-slate-500">Total Items</p>
+            <p className="mt-1 text-3xl font-semibold text-slate-900">{totalStatusCount}</p>
+            <p className="mt-1 text-xs text-emerald-600">12% from last month</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+            <p className="text-xs font-medium text-slate-500">Expiring Soon</p>
+            <p className="mt-1 text-3xl font-semibold text-slate-900">{expiringSoonCount}</p>
+            <p className="mt-1 text-xs text-rose-600">in next 30 days</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+            <p className="text-xs font-medium text-slate-500">Expired</p>
+            <p className="mt-1 text-3xl font-semibold text-slate-900">{expiredCount}</p>
+            <p className="mt-1 text-xs text-rose-600">requires attention</p>
+          </div>
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+            <p className="text-xs font-medium text-slate-500">Compliant</p>
+            <p className="mt-1 text-3xl font-semibold text-slate-900">{compliantCount}</p>
+            <p className="mt-1 text-xs text-emerald-600">8% from last month</p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 lg:justify-end">
-          <div className="inline-flex h-12 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 text-[0.95rem] font-medium text-slate-600 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
-            <CalendarIcon />
-            <span>{formatDateLabel(portal.accountantComplianceCentre.snapshotDate)}</span>
-          </div>
-          <button
-            className="inline-flex h-12 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-[0.95rem] font-medium text-slate-600 shadow-[0_10px_24px_rgba(15,23,42,0.04)] transition hover:bg-slate-50"
-            type="button"
-          >
-            <FilterIcon />
-            <span>Filters</span>
-          </button>
-          {isAdmin ? (
-            <>
-              <button
-                className="inline-flex h-12 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-[0.95rem] font-medium text-slate-600 shadow-[0_10px_24px_rgba(15,23,42,0.04)] transition hover:bg-slate-50"
-                onClick={openTemplates}
-                type="button"
-              >
-                <span>Manage templates</span>
-              </button>
-              <button
-                className="inline-flex h-12 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 text-[0.95rem] font-medium text-slate-600 shadow-[0_10px_24px_rgba(15,23,42,0.04)] transition hover:bg-slate-50"
-                onClick={openDeadlineRules}
-                type="button"
-              >
-                <span>Configure rules</span>
-              </button>
-            </>
-          ) : null}
-          <button
-            className="inline-flex h-12 items-center gap-2 rounded-2xl bg-[linear-gradient(135deg,#5546ff,#4338ca)] px-5 text-[0.95rem] font-semibold text-white shadow-[0_12px_28px_rgba(67,56,202,0.24)] transition hover:opacity-95"
-            onClick={downloadPortfolioReport}
-            type="button"
-          >
-            <DownloadIcon />
-            <span>{isAdmin ? "Export firm report" : "Download report"}</span>
-          </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <TextField
+            className="w-[280px]"
+            label=""
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="Search client"
+            value={searchQuery}
+          />
+          <SelectField
+            className="w-[150px]"
+            label=""
+            onChange={(event) => {
+              setRiskFilter(event.target.value as RiskFilter);
+              setCurrentPage(1);
+            }}
+            options={[
+              { label: "Risk filter", value: "all" },
+              { label: "Low", value: "low" },
+              { label: "Medium", value: "medium" },
+              { label: "High", value: "high" },
+            ]}
+            value={riskFilter}
+          />
+          <SelectField
+            className="w-[170px]"
+            label=""
+            onChange={(event) => {
+              setCategoryFilter(event.target.value);
+              setCurrentPage(1);
+            }}
+            options={[
+              { label: "Category filter", value: "all" },
+              ...[...new Set(supplierRows.map((item) => item.category))].map((category) => ({
+                label: category,
+                value: category,
+              })),
+            ]}
+            value={categoryFilter}
+          />
         </div>
-      </section>
 
-      {feedbackMessage ? (
-        <div className="rounded-[1.35rem] border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-700">
-          {feedbackMessage}
-        </div>
-      ) : null}
-
-      <SurfaceCard className="overflow-hidden rounded-[1.75rem] border border-slate-200/90 bg-white p-0 shadow-[0_18px_44px_rgba(15,23,42,0.05)]">
-        <div className="grid divide-y divide-slate-100 lg:grid-cols-4 lg:divide-x lg:divide-y-0">
-          {summaryCards.map((card) => (
-            <div className="flex items-center gap-5 px-7 py-7" key={card.id}>
-              {card.icon}
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-slate-500">{card.label}</p>
-                <p className="mt-2 text-[2rem] font-semibold tracking-tight text-slate-950">
-                  {card.value}
-                </p>
-                {card.id === "portfolio" ? (
-                  <>
-                    <div className="mt-3 h-2 rounded-full bg-slate-200">
-                      <div
-                        className="h-2 rounded-full bg-gradient-to-r from-emerald-500 to-teal-400"
-                        style={{
-                          width: `${scopedSummary.portfolioCompliancePercentage}%`,
-                        }}
-                      />
-                    </div>
-                    <p className={cn("mt-2 text-sm font-medium", card.helperClassName)}>
-                      {card.helper}
-                    </p>
-                  </>
-                ) : (
-                  <p className={cn("mt-2 text-sm font-medium", card.helperClassName)}>{card.helper}</p>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </SurfaceCard>
-
-      <section className="grid gap-5 xl:grid-cols-[minmax(0,1.7fr)_360px]">
-        <SurfaceCard className="overflow-hidden rounded-[1.75rem] border border-slate-200/90 bg-white p-0 shadow-[0_18px_44px_rgba(15,23,42,0.05)]">
-          <div className="border-b border-slate-100 px-5 py-5">
-            <h2 className="text-[1.35rem] font-semibold text-slate-950">Active clients</h2>
-
-            <div className="mt-4 flex flex-col gap-3 lg:flex-row">
-              <div className="relative lg:flex-[1.15]">
-                <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-                  <SearchIcon />
-                </span>
-                <input
-                  className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-brand-300 focus:ring-4 focus:ring-brand-100"
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder="Search clients..."
-                  type="search"
-                  value={searchQuery}
-                />
-              </div>
-              <select
-                className="h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-700 outline-none transition focus:border-brand-300 focus:ring-4 focus:ring-brand-100 lg:w-[180px]"
-                onChange={(event) => setRiskFilter(event.target.value as RiskFilter)}
-                value={riskFilter}
-              >
-                <option value="all">All risk levels</option>
-                <option value="overdue">Overdue</option>
-                <option value="high_risk">High risk</option>
-                <option value="at_risk">At risk</option>
-                <option value="compliant">Compliant</option>
-              </select>
-            </div>
-          </div>
-
-          {filteredClients.length > 0 ? (
-            <>
-              <div className="hidden border-b border-slate-100 px-5 py-4 text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-slate-400 lg:grid lg:grid-cols-[1.6fr_0.92fr_0.56fr_0.84fr_0.56fr_0.9fr_0.94fr_0.9fr] lg:gap-4">
-                <div>Client</div>
-                <div>Compliance</div>
-                <div>Expired</div>
-                <div>Expiring (30 Days)</div>
-                <div>Missing</div>
-                <div>Risk Status</div>
-                <div>Last Reviewed</div>
-                <div>Actions</div>
-              </div>
-
-              <div className="space-y-2 px-3 py-3">
-                {filteredClients.map((client) => {
-                  const selected = client.clientId === selectedClient?.clientId;
-
-                  return (
-                    <div
-                      className={cn(
-                        "rounded-[1.15rem] border px-4 py-4 transition",
-                        selected
-                          ? "border-rose-200 bg-rose-50/35 shadow-[0_10px_22px_rgba(244,63,94,0.05)]"
-                          : "border-transparent hover:border-slate-200 hover:bg-slate-50/60",
-                      )}
-                      key={client.clientId}
-                      onClick={() => {
-                        setSelectedClientId(client.clientId);
-                        setOpenClientMenuId("");
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.preventDefault();
-                          setSelectedClientId(client.clientId);
-                          setOpenClientMenuId("");
-                        }
-                      }}
-                      role="button"
-                      tabIndex={0}
-                    >
-                      <div className="grid gap-4 lg:grid-cols-[1.6fr_0.92fr_0.56fr_0.84fr_0.56fr_0.9fr_0.94fr_0.9fr] lg:items-center">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-sm font-semibold text-indigo-600">
-                            {initialsFor(client.clientName)}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="truncate text-[0.96rem] font-semibold text-slate-950">
-                              {client.clientName}
-                            </p>
-                            <p className="mt-1 text-sm text-slate-500">{client.assignedAccountant}</p>
-                          </div>
-                        </div>
-
-                        <div>
-                          <div className="flex items-center justify-between gap-3 text-sm font-semibold text-slate-800">
-                            <span>{client.score}%</span>
-                            <span className="text-slate-400">{client.totalRequiredItems} items</span>
-                          </div>
-                          <div className="mt-2 h-2 rounded-full bg-slate-200">
-                            <div
-                              className={cn("h-2 rounded-full bg-gradient-to-r", progressClasses(client.score))}
-                              style={{ width: `${client.score}%` }}
-                            />
-                          </div>
-                        </div>
-
-                        <p className="text-sm font-semibold text-rose-500 lg:text-center">
-                          {client.expiredCount}
-                        </p>
-
-                        <p className="text-sm font-semibold text-amber-500 lg:text-center">
-                          {client.expiringCount}
-                        </p>
-
-                        <p className="text-sm font-semibold text-indigo-500 lg:text-center">
-                          {client.missingCount}
-                        </p>
-
-                        <div className="lg:flex lg:justify-center">
-                          <span
-                            className={cn(
-                              "inline-flex rounded-full px-3 py-1 text-[0.72rem] font-semibold ring-1 ring-inset",
-                              statusChipClasses(client.riskStatus),
-                            )}
-                          >
-                            {formatStatusLabel(client.riskStatus)}
-                          </span>
-                        </div>
-
-                        <p className="text-sm text-slate-700">{formatDateLabel(client.lastReviewed)}</p>
-
-                        <div className="relative flex items-center justify-start gap-2 lg:justify-end">
-                          <Button
-                            className="h-9 rounded-xl px-4 text-[0.86rem]"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              openClientWorkspace(client);
-                            }}
-                            size="sm"
-                            variant="secondary"
-                          >
-                            Open
-                          </Button>
-
-                          <button
-                            aria-label="Open client actions"
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setOpenClientMenuId((current) =>
-                                current === client.clientId ? "" : client.clientId,
-                              );
-                            }}
-                            type="button"
-                          >
-                            <MoreHorizontalIcon />
-                          </button>
-
-                          {openClientMenuId === client.clientId ? (
-                            <div className="absolute right-0 top-[calc(100%+0.45rem)] z-20 min-w-[260px] rounded-[1rem] border border-slate-200 bg-white p-2 shadow-[0_20px_42px_rgba(15,23,42,0.14)]">
-                              <button
-                                className="block w-full rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  openComplianceHistory(client);
-                                }}
-                                type="button"
-                              >
-                                View compliance history
-                              </button>
-                              <button
-                                className="block w-full rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  openDocumentCentre(client);
-                                }}
-                                type="button"
-                              >
-                                Open document centre
-                              </button>
-                              <button
-                                className="block w-full rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  if (isAdmin) {
-                                    openAssignments();
-                                  } else {
-                                    downloadClientReport(client);
-                                  }
-                                }}
-                                type="button"
-                              >
-                                {isAdmin ? "Assign accountant" : "Export client compliance report"}
-                              </button>
-                            </div>
-                          ) : null}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="flex flex-col gap-3 border-t border-slate-100 px-5 py-4 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-                <p>
-                  Showing 1 to {filteredClients.length} of {clientStatuses.length} clients
-                </p>
-                <button
-                  className="inline-flex items-center gap-1.5 font-semibold text-brand-700 transition hover:text-brand-800"
-                  onClick={() => navigate("/firm/clients")}
-                  type="button"
-                >
-                  <span>View all clients</span>
-                  <ChevronRightIcon />
-                </button>
-              </div>
-            </>
-          ) : (
-            <div className="px-5 py-10">
-              <EmptyState
-                description={
-                  !isAdmin && clientStatuses.length === 0
-                    ? "No clients have been assigned to you yet."
-                    : "Try another client name or clear the risk filter to bring the portfolio back into view."
-                }
-                title="No clients match these filters"
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h2 className="text-base font-semibold text-slate-900">Compliance Status Overview</h2>
+              <SelectField
+                className="w-[120px]"
+                label=""
+                onChange={() => undefined}
+                options={[{ label: "All Clients", value: "all" }]}
+                value="all"
               />
             </div>
-          )}
-        </SurfaceCard>
-
-        <SurfaceCard className="rounded-[1.75rem] border border-slate-200/90 bg-white p-5 shadow-[0_18px_44px_rgba(15,23,42,0.05)]">
-          {selectedClient ? (
-            <div className="space-y-5">
-              <div className="space-y-4">
-                <p className="text-[0.76rem] font-semibold uppercase tracking-[0.18em] text-brand-600">
-                  Selected Client
-                </p>
-                <div className="flex items-start gap-4">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#fb923c,#f43f5e)] text-lg font-semibold text-white">
-                    {initialsFor(selectedClient.clientName)}
-                  </div>
-                  <div className="space-y-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h2 className="text-[1.45rem] font-semibold text-slate-950">
-                        {selectedClient.clientName}
-                      </h2>
-                      <span
-                        className={cn(
-                          "inline-flex rounded-full px-3 py-1 text-[0.72rem] font-semibold ring-1 ring-inset",
-                          statusChipClasses(selectedClient.riskStatus),
-                        )}
-                      >
-                        {formatStatusLabel(selectedClient.riskStatus)}
-                      </span>
-                    </div>
-                    <p className="text-sm text-slate-500">
-                      Assigned to {selectedClient.assignedAccountant}
-                    </p>
-                    <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-[0.72rem] font-medium text-slate-600">
-                      {selectedClient.ownerLabel}
-                    </span>
-                  </div>
+            <div className="grid gap-3 sm:grid-cols-[150px_minmax(0,1fr)] sm:items-center">
+              <div
+                className="relative mx-auto h-32 w-32 rounded-full"
+                style={{
+                  background: `conic-gradient(#59b36b 0% ${compliantPercent}%, #d8a13a ${compliantPercent}% ${compliantPercent + expiringPercent}%, #d15a5a ${compliantPercent + expiringPercent}% 100%)`,
+                }}
+              >
+                <div className="absolute inset-4 grid place-items-center rounded-full bg-white">
+                  <p className="text-2xl font-semibold text-slate-900">{compliantCount + expiringSoonCount + expiredCount}</p>
+                  <p className="text-xs text-slate-500">Total</p>
                 </div>
               </div>
-
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-[1.25rem] border border-slate-200 bg-white p-4">
-                  <p className="text-[0.78rem] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                    Compliance score
-                  </p>
-                  <p className="mt-2 text-[2rem] font-semibold text-slate-950">
-                    {selectedClient.score}%
-                  </p>
-                  <div className="mt-3 h-2 rounded-full bg-slate-200">
-                    <div
-                      className={cn("h-2 rounded-full bg-gradient-to-r", progressClasses(selectedClient.score))}
-                      style={{ width: `${selectedClient.score}%` }}
-                    />
-                  </div>
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="inline-flex items-center gap-2 text-slate-700"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />Compliant</span>
+                  <span className="text-slate-500">{compliantCount} ({compliantPercent}%)</span>
                 </div>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="rounded-[1.25rem] border border-slate-200 bg-white p-4">
-                    <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                      Expired
-                    </p>
-                    <p className="mt-2 text-[1.6rem] font-semibold text-rose-500">
-                      {selectedClient.expiredCount}
-                    </p>
-                  </div>
-                  <div className="rounded-[1.25rem] border border-slate-200 bg-white p-4">
-                    <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                      Expiring
-                    </p>
-                    <p className="mt-2 text-[1.6rem] font-semibold text-amber-500">
-                      {selectedClient.expiringCount}
-                    </p>
-                  </div>
-                  <div className="rounded-[1.25rem] border border-slate-200 bg-white p-4">
-                    <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                      Missing
-                    </p>
-                    <p className="mt-2 text-[1.6rem] font-semibold text-indigo-500">
-                      {selectedClient.missingCount}
-                    </p>
-                  </div>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="inline-flex items-center gap-2 text-slate-700"><span className="h-2.5 w-2.5 rounded-full bg-amber-500" />Expiring Soon</span>
+                  <span className="text-slate-500">{expiringSoonCount} ({expiringPercent}%)</span>
                 </div>
-              </div>
-
-              <div>
-                <p className="text-[0.76rem] font-semibold uppercase tracking-[0.18em] text-slate-400">
-                  Top priorities
-                </p>
-                <div className="mt-3 space-y-2.5">
-                  {selectedClient.topPriorities.slice(0, 3).map((priority) => (
-                    <div
-                      className="flex items-center justify-between gap-3 rounded-[1rem] border border-slate-200 bg-white px-4 py-3"
-                      key={priority.id}
-                    >
-                      <div className="space-y-1">
-                        <p className="text-sm font-semibold text-slate-950">{priority.label}</p>
-                        <p className="text-xs text-slate-500">{priority.detail}</p>
-                      </div>
-                      <ChevronRightIcon />
-                    </div>
-                  ))}
+                <div className="flex items-center justify-between gap-2">
+                  <span className="inline-flex items-center gap-2 text-slate-700"><span className="h-2.5 w-2.5 rounded-full bg-rose-500" />Expired</span>
+                  <span className="text-slate-500">{expiredCount} ({expiredPercent}%)</span>
                 </div>
-              </div>
-
-              <div className="space-y-2.5">
-                <p className="text-[0.76rem] font-semibold uppercase tracking-[0.18em] text-slate-400">
-                  Actions
-                </p>
-                <button
-                  className="flex w-full items-center justify-between rounded-[1rem] border border-brand-200 bg-white px-4 py-3 text-left text-sm font-medium text-brand-700 transition hover:bg-brand-50"
-                  onClick={() => openClientWorkspace(selectedClient)}
-                  type="button"
-                >
-                  <span>Open client workspace</span>
-                  <ChevronRightIcon />
-                </button>
-                {isAdmin ? (
-                  <>
-                    <button
-                      className="flex w-full items-center justify-between rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-left text-sm font-medium text-slate-900 transition hover:bg-slate-50"
-                      onClick={openAssignments}
-                      type="button"
-                    >
-                      <span>Assign accountant</span>
-                      <ChevronRightIcon />
-                    </button>
-                    <button
-                      className="flex w-full items-center justify-between rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-left text-sm font-medium text-slate-900 transition hover:bg-slate-50"
-                      onClick={openDeadlineRules}
-                      type="button"
-                    >
-                      <span>Configure rules</span>
-                      <ChevronRightIcon />
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button
-                      className="flex w-full items-center justify-between rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-left text-sm font-medium text-slate-900 transition hover:bg-slate-50"
-                      onClick={() => handleRequestDocuments(selectedClient)}
-                      type="button"
-                    >
-                      <span>Request documents</span>
-                      <ChevronRightIcon />
-                    </button>
-                    <button
-                      className="flex w-full items-center justify-between rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-left text-sm font-medium text-slate-900 transition hover:bg-slate-50"
-                      onClick={() => downloadClientReport(selectedClient)}
-                      type="button"
-                    >
-                      <span>Download client compliance report</span>
-                      <ChevronRightIcon />
-                    </button>
-                  </>
-                )}
               </div>
             </div>
-          ) : (
-            <EmptyState
-              description="Select a client row to view top priorities and actions."
-              title="No client selected"
+            <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
+              <p>Keep your compliance up to date to avoid penalties and disruptions.</p>
+              <button className="font-semibold text-brand-700" type="button">View full report</button>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h2 className="text-base font-semibold text-slate-900">Upcoming Expiry</h2>
+              <button className="text-xs font-semibold text-brand-700" type="button">View all</button>
+            </div>
+            <div className="space-y-2">
+              {upcomingExpirations.map((item) => {
+                const days = Math.ceil((new Date(item.contractExpiry).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                return (
+                  <div className="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-2" key={item.id}>
+                    <div className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-rose-100 text-xs font-bold text-rose-600">
+                      !
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-slate-900">{item.category}</p>
+                      <p className="truncate text-xs text-slate-500">{item.name}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-amber-600">{Math.abs(days)} days</p>
+                      <p className="text-[11px] text-slate-400">Expires on {formatDateLabel(item.contractExpiry)}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+          <h2 className="mb-1 text-base font-semibold text-slate-900">Compliance Items</h2>
+          <p className="mb-3 text-sm font-medium text-slate-500">Active clients</p>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
+              <button
+                className={
+                  activeView === "list"
+                    ? "rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-slate-900 shadow-sm"
+                    : "rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-500"
+                }
+                onClick={() => setActiveView("list")}
+                type="button"
+              >
+                List
+              </button>
+              <button
+                className={
+                  activeView === "board"
+                    ? "rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-slate-900 shadow-sm"
+                    : "rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-500"
+                }
+                onClick={() => setActiveView("board")}
+                type="button"
+              >
+                Board
+              </button>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+            <TextField
+              className="w-[220px]"
+              label=""
+              onChange={(event) => {
+                setSearchQuery(event.target.value);
+                setCurrentPage(1);
+              }}
+              placeholder="Search compliance items..."
+              value={searchQuery}
             />
+            <SelectField
+              className="w-[130px]"
+              label=""
+              onChange={() => undefined}
+              options={[{ label: "All Clients", value: "all" }]}
+              value="all"
+            />
+            <SelectField
+              className="w-[140px]"
+              label=""
+              onChange={(event) => {
+                setCategoryFilter(event.target.value);
+                setCurrentPage(1);
+              }}
+              options={[
+                { label: "All Categories", value: "all" },
+                ...[...new Set(supplierRows.map((item) => item.category))].map((category) => ({
+                  label: category,
+                  value: category,
+                })),
+              ]}
+              value={categoryFilter}
+            />
+            <SelectField
+              className="w-[120px]"
+              label=""
+              onChange={(event) => {
+                setStatusFilter(event.target.value as StatusFilter);
+                setCurrentPage(1);
+              }}
+              options={[
+                { label: "All Status", value: "all" },
+                { label: "Compliant", value: "compliant" },
+                { label: "Pending", value: "pending" },
+                { label: "Non-Compliant", value: "non_compliant" },
+              ]}
+              value={statusFilter}
+            />
+            <Button
+              disabled={!canExportReports}
+              onClick={downloadComplianceCsv}
+              size="sm"
+              variant="secondary"
+            >
+              Export
+            </Button>
+            </div>
+          </div>
+
+          {activeView === "list" ? (
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-left">
+              <thead>
+                <tr className="border-b border-slate-200 text-xs text-slate-500">
+                  <th className="px-2 py-2 font-medium">Item Name</th>
+                  <th className="px-2 py-2 font-medium">Client</th>
+                  <th className="px-2 py-2 font-medium">Category</th>
+                  <th className="px-2 py-2 font-medium">Expiry Date</th>
+                  <th className="px-2 py-2 font-medium">Status</th>
+                  <th className="px-2 py-2 font-medium">Owner</th>
+                  <th className="px-2 py-2 font-medium">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pagedSuppliers.map((row) => {
+                  const dueStatus = dueStatusLabel(row.contractExpiry);
+                  return (
+                    <tr className="border-b border-slate-100" key={row.id}>
+                      <td className="px-2 py-2 text-sm font-medium text-slate-900">{row.category}</td>
+                      <td className="px-2 py-2 text-sm text-slate-700">
+                        <button
+                          className="text-left text-sm font-medium text-slate-900 hover:text-brand-700"
+                          onClick={() => setSelectedClientId(row.id)}
+                          type="button"
+                        >
+                          {row.name}
+                        </button>
+                      </td>
+                      <td className="px-2 py-2 text-sm text-slate-700">{row.category}</td>
+                      <td className="px-2 py-2 text-sm text-slate-700">{formatDateLabel(row.contractExpiry)}</td>
+                      <td className="px-2 py-2">
+                        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${dueStatusClasses(dueStatus)}`}>
+                          {dueStatus}
+                        </span>
+                      </td>
+                      <td className="px-2 py-2 text-sm text-slate-700">{user?.fullName ?? "Nayan Dhali"}</td>
+                      <td className="relative px-2 py-2">
+                        <div className="flex items-center gap-2">
+                          <Button size="sm" variant="secondary">View</Button>
+                          <button
+                            aria-label="Open client actions"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
+                            onClick={() =>
+                              setOpenClientActionsId((current) => (current === row.id ? "" : row.id))
+                            }
+                            type="button"
+                          >
+                            ...
+                          </button>
+                        </div>
+                        {openClientActionsId === row.id ? (
+                          <div className="absolute right-2 top-[calc(100%+0.45rem)] z-10 min-w-[220px] rounded-xl border border-slate-200 bg-white p-2 shadow-[0_20px_42px_rgba(15,23,42,0.14)]">
+                            <button
+                              className="block w-full rounded-lg px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+                              onClick={() => setOpenClientActionsId("")}
+                              type="button"
+                            >
+                              View compliance history
+                            </button>
+                            <button
+                              className="block w-full rounded-lg px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+                              onClick={() => setOpenClientActionsId("")}
+                              type="button"
+                            >
+                              Open document centre
+                            </button>
+                            <button
+                              className="block w-full rounded-lg px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+                              onClick={() => setOpenClientActionsId("")}
+                              type="button"
+                            >
+                              Export client compliance report
+                            </button>
+                          </div>
+                        ) : null}
+                      </td>
+                    </tr>
+                  );
+                })}
+                {pagedSuppliers.length === 0 ? (
+                  <tr>
+                    <td className="px-2 py-6 text-center text-sm text-slate-500" colSpan={7}>
+                      No compliance items match your current filters.
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+          ) : (
+            <div className="grid gap-3 lg:grid-cols-3">
+              {(["Compliant", "Expiring Soon", "Overdue"] as ComplianceBoardStatus[]).map(
+                (statusColumn) => (
+                  <div
+                    className="rounded-xl border border-slate-200 bg-slate-50 p-3"
+                    key={statusColumn}
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={(event) => {
+                      event.preventDefault();
+                      const rowId = event.dataTransfer.getData("text/plain");
+                      const row = filteredSuppliers.find((item) => item.id === rowId);
+                      if (row) {
+                        moveBoardItem(row, statusColumn);
+                      }
+                    }}
+                  >
+                    <h3 className="mb-3 text-sm font-semibold text-slate-900">{statusColumn}</h3>
+                    <div className="space-y-2">
+                      {filteredSuppliers
+                        .filter((row) => statusForRow(row) === statusColumn)
+                        .map((row) => (
+                          <div
+                            className="rounded-lg border border-slate-200 bg-white px-3 py-2"
+                            draggable={isAdmin || canReviewDocuments}
+                            key={row.id}
+                            onDragStart={(event) => event.dataTransfer.setData("text/plain", row.id)}
+                          >
+                            <p className="text-sm font-semibold text-slate-900">{row.category}</p>
+                            <p className="text-xs text-slate-500">{row.name}</p>
+                            <p className="mt-1 text-xs text-slate-400">
+                              Due {formatDateLabel(row.contractExpiry)}
+                            </p>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                ),
+              )}
+            </div>
           )}
-        </SurfaceCard>
-      </section>
+          <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
+            <p>
+              Showing {startIndex} to {endIndex} of {filteredSuppliers.length} items
+            </p>
+            <div className="flex items-center gap-2">
+              {isAdmin ? <Button size="sm">Assign accountant</Button> : null}
+              {!isAdmin ? (
+                <Button disabled={!canRequestDocuments} size="sm">
+                  Request documents
+                </Button>
+              ) : null}
+              {!isAdmin ? (
+                <Button disabled={!canExportReports} size="sm" variant="secondary">
+                  Download client compliance report
+                </Button>
+              ) : null}
+              <div className="ml-2 flex items-center gap-1">
+                <button
+                  className="rounded-md border border-slate-200 px-2 py-1 text-slate-600 disabled:opacity-50"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                  type="button"
+                >
+                  Prev
+                </button>
+                <span className="px-2">
+                  {currentPage} / {totalPages}
+                </span>
+                <button
+                  className="rounded-md border border-slate-200 px-2 py-1 text-slate-600 disabled:opacity-50"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                  type="button"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {activeView === "board" ? (
+            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
+                Board Activity
+              </p>
+              <div className="mt-2 space-y-1 text-xs text-slate-600">
+                {boardAuditTrail.slice(0, 5).map((entry) => (
+                  <p key={entry.id}>
+                    {entry.actor} moved {entry.itemName} from {entry.from} to {entry.to} on{" "}
+                    {formatDateLabel(entry.timestamp)}
+                  </p>
+                ))}
+                {boardAuditTrail.length === 0 ? <p>No status transitions recorded yet.</p> : null}
+              </div>
+            </div>
+          ) : null}
+
+          {selectedClient ? (
+            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
+                Selected Client
+              </p>
+              <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
+                <div className="space-y-1">
+                  <p className="text-lg font-semibold text-slate-900">{selectedClient.name}</p>
+                  <p className="text-sm text-slate-600">
+                    Assigned to {user?.fullName ?? "Nayan Dhali"}
+                  </p>
+                </div>
+                {!isAdmin ? (
+                  <Button
+                    disabled={!canRequestDocuments}
+                    onClick={() => setOpenClientActionsId("")}
+                    size="sm"
+                  >
+                    Request client documents
+                  </Button>
+                ) : (
+                  <Button size="sm">Assign accountant</Button>
+                )}
+              </div>
+              <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                <div className="rounded-lg border border-slate-200 bg-white p-3">
+                  <p className="text-xs font-medium text-slate-500">Top risks</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900">
+                    {selectedClient.riskLevel.toUpperCase()} risk exposure
+                  </p>
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-white p-3">
+                  <p className="text-xs font-medium text-slate-500">Next action</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900">
+                    Review {selectedClient.category} pack
+                  </p>
+                </div>
+                <div className="rounded-lg border border-slate-200 bg-white p-3">
+                  <p className="text-xs font-medium text-slate-500">Due date</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900">
+                    {formatDateLabel(selectedClient.contractExpiry)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </SurfaceCard>
     </div>
   );
 }

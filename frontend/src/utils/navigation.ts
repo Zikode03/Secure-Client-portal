@@ -28,7 +28,8 @@ export type NavigationIcon =
   | "assignments"
   | "templates"
   | "deadlines"
-  | "policies";
+  | "policies"
+  | "exceptions";
 
 export interface NavigationItem {
   label: string;
@@ -56,13 +57,6 @@ export const navigationByRole: Record<Role, NavigationItem[]> = {
       icon: "packs",
     },
     {
-      label: "Requests",
-      to: "/client/requests",
-      description: "Reply to follow-ups and workflow tasks",
-      section: "Main",
-      icon: "requests",
-    },
-    {
       label: "Documents",
       to: "/client/documents",
       description: "Search documents, invoices, and compliance records",
@@ -77,17 +71,16 @@ export const navigationByRole: Record<Role, NavigationItem[]> = {
       icon: "compliance",
     },
     {
-      label: "Notifications",
-      to: "/client/notifications",
-      description: "See missing, rejected, and expiring alerts",
-      section: "System",
-      icon: "notifications",
-      badge: "3",
-    },
-    {
       label: "Settings",
       to: "/client/settings",
       description: "Update business and contact details",
+      section: "System",
+      icon: "settings",
+    },
+    {
+      label: "Notification Preferences",
+      to: "/client/notifications/preferences",
+      description: "Control reminders, alerts, and quiet hours",
       section: "System",
       icon: "settings",
     },
@@ -122,13 +115,6 @@ export const navigationByRole: Record<Role, NavigationItem[]> = {
       icon: "documents",
     },
     {
-      label: "Requests",
-      to: "/firm/requests",
-      description: "Track assigned client follow-ups and questions",
-      section: "Operations",
-      icon: "requests",
-    },
-    {
       label: "Compliance Centre",
       to: "/firm/compliance",
       description: "See the broader compliance centre view",
@@ -136,11 +122,32 @@ export const navigationByRole: Record<Role, NavigationItem[]> = {
       icon: "compliance",
     },
     {
-      label: "Notifications",
-      to: "/firm/notifications",
-      description: "See alerts across your assigned client portfolio",
-      section: "System",
+      label: "Compliance Calendar",
+      to: "/firm/compliance/calendar",
+      description: "Track filings and expiring compliance deadlines",
+      section: "Compliance",
+      icon: "deadlines",
+    },
+    {
+      label: "Exceptions Queue",
+      to: "/firm/exceptions",
+      description: "Operational inbox for overdue requests and compliance exceptions",
+      section: "Operations",
+      icon: "exceptions",
+    },
+    {
+      label: "Activity Feed",
+      to: "/firm/activity",
+      description: "Unified timeline across requests, reviews, and compliance",
+      section: "Operations",
       icon: "notifications",
+    },
+    {
+      label: "Notification Preferences",
+      to: "/firm/notifications/preferences",
+      description: "Set reminders, escalation channels, and quiet hours",
+      section: "System",
+      icon: "settings",
     },
     {
       label: "Settings",
@@ -180,13 +187,6 @@ export const navigationByRole: Record<Role, NavigationItem[]> = {
       icon: "documents",
     },
     {
-      label: "Requests",
-      to: "/firm/requests",
-      description: "See all client and accountant requests",
-      section: "Operations",
-      icon: "requests",
-    },
-    {
       label: "Compliance Centre",
       to: "/firm/compliance",
       description: "Review firm-wide compliance status",
@@ -194,25 +194,25 @@ export const navigationByRole: Record<Role, NavigationItem[]> = {
       icon: "compliance",
     },
     {
-      label: "Notifications",
-      to: "/firm/notifications",
-      description: "Monitor operational signals across the firm",
-      section: "System",
+      label: "Compliance Calendar",
+      to: "/firm/compliance/calendar",
+      description: "Track filings and expiring compliance deadlines",
+      section: "Compliance",
+      icon: "deadlines",
+    },
+    {
+      label: "Exceptions Queue",
+      to: "/firm/exceptions",
+      description: "Operational inbox for overdue requests and compliance exceptions",
+      section: "Operations",
+      icon: "exceptions",
+    },
+    {
+      label: "Activity Feed",
+      to: "/firm/activity",
+      description: "Unified timeline across requests, reviews, and compliance",
+      section: "Operations",
       icon: "notifications",
-    },
-    {
-      label: "User Management",
-      to: "/firm/admin/users",
-      description: "Manage users, roles, and access status",
-      section: "Management",
-      icon: "users",
-    },
-    {
-      label: "Roles",
-      to: "/firm/admin/roles",
-      description: "Manage role definitions and access levels",
-      section: "Management",
-      icon: "users",
     },
     {
       label: "Assignments",
@@ -222,18 +222,18 @@ export const navigationByRole: Record<Role, NavigationItem[]> = {
       icon: "assignments",
     },
     {
-      label: "Templates",
-      to: "/firm/admin/templates",
-      description: "Manage required document templates",
+      label: "Request SLA Rules",
+      to: "/firm/admin/request-state-machine",
+      description: "Manage request state transitions, reminders, and escalations",
       section: "Configuration",
-      icon: "templates",
+      icon: "policies",
     },
     {
-      label: "Deadline Rules",
-      to: "/firm/admin/deadline-rules",
-      description: "Configure monthly deadline rules",
-      section: "Configuration",
-      icon: "deadlines",
+      label: "Notification Preferences",
+      to: "/firm/notifications/preferences",
+      description: "Set reminders, escalation channels, and quiet hours",
+      section: "System",
+      icon: "settings",
     },
     {
       label: "System Settings",

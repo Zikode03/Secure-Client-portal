@@ -39,7 +39,8 @@ describe("accountant notifications access", () => {
   it("opens dashboard notifications from the bell and routes view more to the full notifications page", async () => {
     renderAccountantApp();
 
-    expect(await screen.findByRole("link", { name: "Notifications" })).toBeInTheDocument();
+    expect(await screen.findByText("Accountant workspace")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Notifications" })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Open accountant alerts" }));
 
@@ -52,9 +53,7 @@ describe("accountant notifications access", () => {
   });
 
   it("keeps admin-only navigation items hidden from the accountant sidebar", () => {
-    expect(navigationByRole.accountant.some((item) => item.to === "/firm/notifications")).toBe(
-      true,
-    );
+    expect(navigationByRole.accountant.some((item) => item.to === "/firm/notifications")).toBe(false);
     expect(
       navigationByRole.accountant.some((item) => item.to === "/firm/admin/users"),
     ).toBe(false);

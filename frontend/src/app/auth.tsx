@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 import type { Role, SessionUser } from "../types/portal";
+import { applyPermissionOverride } from "../utils/userPermissionOverrides";
 
 const STORAGE_KEY = "accounting-document-control-session";
 const CREDENTIALS_KEY = "accounting-document-control-credentials";
@@ -152,7 +153,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      setUser(JSON.parse(storedSession) as SessionUser);
+      const parsedUser = JSON.parse(storedSession) as SessionUser;
+      setUser(applyPermissionOverride(parsedUser));
     } catch {
       window.localStorage.removeItem(STORAGE_KEY);
     } finally {
@@ -204,8 +206,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           };
         }
 
-        setUser(matchedUser);
-        return { ok: true, user: matchedUser };
+        const nextUser = applyPermissionOverride(matchedUser);
+        setUser(nextUser);
+        return { ok: true, user: nextUser };
       },
       completeInvite({ email, fullName, password }) {
         const trimmedEmail = email.trim().toLowerCase();
@@ -234,9 +237,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const credentials = readCredentials();
         credentials[trimmedEmail] = password.trim();
         writeCredentials(credentials);
-        setUser(nextUser);
+        const resolvedUser = applyPermissionOverride(nextUser);
+        setUser(resolvedUser);
 
-        return { ok: true, user: nextUser };
+        return { ok: true, user: resolvedUser };
       },
       changePassword(currentPassword, nextPassword) {
         if (!user) {
