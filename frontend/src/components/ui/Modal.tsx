@@ -1,6 +1,10 @@
+// Friendly guide: this module (Modal) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import type { ReactNode } from "react";
 import { cn } from "../../utils/cn";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 interface ModalProps {
   isOpen: boolean;
   title: string;
@@ -9,11 +13,13 @@ interface ModalProps {
   onClose: () => void;
 }
 
+// Component flow: gather data first, then render a focused UI state.
 export function Modal({ children, description, isOpen, onClose, title }: ModalProps) {
   if (!isOpen) {
     return null;
   }
 
+// Render output: this is the visual state users interact with.
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm">
       <div

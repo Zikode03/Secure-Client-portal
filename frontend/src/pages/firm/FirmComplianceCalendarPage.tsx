@@ -1,8 +1,12 @@
-﻿import { useMemo, useState } from "react";
+// Friendly guide: this module (FirmComplianceCalendarPage) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
+import { useMemo, useState } from "react";
 import { usePortal } from "../../app/portal";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
 import { formatDateLabel } from "../../utils/formatters";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 type CalendarView = "month" | "week";
 
 interface DeadlineItem {
@@ -13,6 +17,7 @@ interface DeadlineItem {
   type: "filing" | "expiry";
 }
 
+// Component flow: gather data first, then render a focused UI state.
 export function FirmComplianceCalendarPage() {
   const portal = usePortal();
   const [view, setView] = useState<CalendarView>("month");
@@ -54,6 +59,7 @@ export function FirmComplianceCalendarPage() {
     });
   }, [deadlines, view]);
 
+// Render output: this is the visual state users interact with.
   return (
     <SurfaceCard className="rounded-2xl border border-slate-200 bg-white p-5 shadow-none">
       <div className="flex flex-wrap items-center justify-between gap-3">

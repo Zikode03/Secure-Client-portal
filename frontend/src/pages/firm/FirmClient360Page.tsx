@@ -1,10 +1,14 @@
-﻿import { useMemo } from "react";
+// Friendly guide: this module (FirmClient360Page) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
+import { useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { usePortal } from "../../app/portal";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
 import { formatDateLabel } from "../../utils/formatters";
 
+// Component flow: gather data first, then render a focused UI state.
 export function FirmClient360Page() {
   const { clientId } = useParams();
   const portal = usePortal();
@@ -18,6 +22,7 @@ export function FirmClient360Page() {
   }, [clientId, portal]);
 
   if (!workspace) {
+// Render output: this is the visual state users interact with.
     return (
       <SurfaceCard className="rounded-2xl border border-slate-200 bg-white p-6 shadow-none">
         <EmptyState title="Client not found" description="No client profile is available for this route." />
@@ -74,7 +79,7 @@ export function FirmClient360Page() {
           {openRequests.map((request) => (
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3" key={request.id}>
               <p className="text-sm font-semibold text-slate-900">{request.title}</p>
-              <p className="text-xs text-slate-500">{request.status.replace(/_/g, " ")} · Due {formatDateLabel(request.dueDate)}</p>
+              <p className="text-xs text-slate-500">{request.status.replace(/_/g, " ")} � Due {formatDateLabel(request.dueDate)}</p>
             </div>
           ))}
           {openRequests.length === 0 ? <p className="text-sm text-slate-500">No open requests.</p> : null}

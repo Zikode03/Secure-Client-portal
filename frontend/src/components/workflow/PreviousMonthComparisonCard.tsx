@@ -1,7 +1,11 @@
+// Friendly guide: this module (PreviousMonthComparisonCard) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import type { PreviousMonthComparison } from "../../types/portal";
 import { toneToAccentClass } from "../../utils/formatters";
 import { SurfaceCard } from "../ui/SurfaceCard";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 interface PreviousMonthComparisonCardProps {
   comparison: PreviousMonthComparison;
   actionLabel?: string;
@@ -9,12 +13,14 @@ interface PreviousMonthComparisonCardProps {
   title?: string;
 }
 
+// Component flow: gather data first, then render a focused UI state.
 export function PreviousMonthComparisonCard({
   actionLabel,
   comparison,
   onAction,
   title = "Month over month comparison",
 }: PreviousMonthComparisonCardProps) {
+// Render output: this is the visual state users interact with.
   return (
     <SurfaceCard className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">

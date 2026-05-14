@@ -1,3 +1,6 @@
+// Friendly guide: this module (ClientRequestsPage) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../app/auth";
@@ -23,6 +26,7 @@ import type {
 } from "../../types/portal";
 import { formatDateLabel } from "../../utils/formatters";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 type RequestDetailTab = "overview" | "comments" | "audit" | "documents";
 type RequestListFilter = "all" | "open" | "waiting" | "overdue" | "resolved";
 type ClientRequestKind = "document" | "clarification" | "question" | "other";
@@ -40,7 +44,9 @@ const clientRequestPriorityOptions = [
   { label: "High", value: "high" },
 ] as const;
 
+// Component flow: gather data first, then render a focused UI state.
 function SearchIcon() {
+// Render output: this is the visual state users interact with.
   return (
     <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
       <circle cx="11" cy="11" r="6.25" stroke="currentColor" strokeWidth="1.8" />
@@ -526,6 +532,7 @@ export function ClientRequestsPage() {
   const navigate = useNavigate();
   const uploadModal = useDisclosure(false);
   const requestModal = useDisclosure(false);
+// Local UI state: keeps track of what the user is seeing or editing right now.
   const [selectedRequestId, setSelectedRequestId] = useState("");
   const [selectedSlot, setSelectedSlot] = useState<MonthlyDocumentSlot | null>(null);
   const [activeTab, setActiveTab] = useState<RequestDetailTab>("overview");
@@ -591,6 +598,7 @@ export function ClientRequestsPage() {
     [filteredRequests, selectedRequestId],
   );
 
+// Reactive sync: this block responds when dependencies change.
   useEffect(() => {
     if (!filteredRequests.length) {
       setSelectedRequestId("");

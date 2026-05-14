@@ -1,3 +1,6 @@
+// Friendly guide: this module (MissingDocumentsPanel) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import type { MissingDocumentItem } from "../../types/portal";
 import { formatDateLabel, formatStatusLabel } from "../../utils/formatters";
 import { Button } from "../ui/Button";
@@ -5,6 +8,7 @@ import { EmptyState } from "../ui/EmptyState";
 import { StatusBadge } from "../ui/StatusBadge";
 import { SurfaceCard } from "../ui/SurfaceCard";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 interface MissingDocumentsPanelProps {
   items: MissingDocumentItem[];
   onUpload?: (slotId: string) => void;
@@ -17,6 +21,7 @@ interface MissingDocumentsPanelProps {
   onViewReason?: (item: MissingDocumentItem) => void;
 }
 
+// Component flow: gather data first, then render a focused UI state.
 function actionLabelForItem(item: MissingDocumentItem) {
   return item.status === "rejected" ? "Re-upload" : "Upload";
 }
@@ -32,6 +37,7 @@ export function MissingDocumentsPanel({
   onViewReason,
   title = "Missing documents",
 }: MissingDocumentsPanelProps) {
+// Render output: this is the visual state users interact with.
   return (
     <SurfaceCard className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">

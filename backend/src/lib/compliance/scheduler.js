@@ -1,3 +1,6 @@
+// Friendly guide: this module (scheduler) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { runEscalationRules, runReminderRules, syncAllClientsCompliance } from "./service.js";
 
 const SYNC_INTERVAL_MS = 15 * 60 * 1000;

@@ -1,3 +1,6 @@
+// Prisma schema notes: this file describes how our app data is shaped.
+// Readability matters here because small model changes affect the whole product.
+
 generator client {
   provider = "prisma-client-js"
 }

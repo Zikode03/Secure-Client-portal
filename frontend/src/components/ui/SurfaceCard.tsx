@@ -1,11 +1,17 @@
+// Friendly guide: this module (SurfaceCard) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import type { HTMLAttributes, ReactNode } from "react";
 import { cn } from "../../utils/cn";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 interface SurfaceCardProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
 }
 
+// Component flow: gather data first, then render a focused UI state.
 export function SurfaceCard({ children, className, ...props }: SurfaceCardProps) {
+// Render output: this is the visual state users interact with.
   return (
     <div
       className={cn(

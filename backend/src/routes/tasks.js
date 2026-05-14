@@ -1,3 +1,6 @@
+// Friendly guide: this module (tasks) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import express from "express";
 import { canAccessClient, requireRole } from "../lib/auth.js";
 import { store, utils } from "../lib/store.js";

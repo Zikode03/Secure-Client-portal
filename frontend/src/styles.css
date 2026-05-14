@@ -1,3 +1,8 @@
+/*
+ * Styling notes: this stylesheet is part of the Secure Client Portal UI.
+ * We keep it readable so future updates are easier for the next developer.
+ */
+
 @import "tailwindcss";
 
 @theme {

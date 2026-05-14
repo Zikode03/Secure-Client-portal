@@ -1,8 +1,12 @@
+// Friendly guide: this module (MonthlyPackChecklist) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { Fragment, useState } from "react";
 import type { MonthlyDocumentSlot, MonthlyPack } from "../../types/portal";
 import { formatDateLabel } from "../../utils/formatters";
 import { SurfaceCard } from "../ui/SurfaceCard";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 interface MonthlyPackChecklistProps {
   pack: MonthlyPack;
   onUpload: (slot: MonthlyDocumentSlot) => void;
@@ -15,7 +19,9 @@ interface MonthlyPackChecklistProps {
   showFooterMeta?: boolean;
 }
 
+// Component flow: gather data first, then render a focused UI state.
 function RequirementBadge({ isRequired }: { isRequired: boolean }) {
+// Render output: this is the visual state users interact with.
   return (
     <span
       className={`inline-flex rounded-full px-2.5 py-1 text-[0.68rem] font-semibold ring-1 ring-inset ${

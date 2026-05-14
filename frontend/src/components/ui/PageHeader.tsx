@@ -1,5 +1,9 @@
+// Friendly guide: this module (PageHeader) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import type { ReactNode } from "react";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 interface PageHeaderProps {
   eyebrow?: string;
   title: string;
@@ -7,12 +11,14 @@ interface PageHeaderProps {
   actions?: ReactNode;
 }
 
+// Component flow: gather data first, then render a focused UI state.
 export function PageHeader({
   actions,
   description,
   eyebrow,
   title,
 }: PageHeaderProps) {
+// Render output: this is the visual state users interact with.
   return (
     <div className="flex flex-col gap-4 rounded-[1.5rem] border border-slate-200/80 bg-white px-5 py-5 shadow-[0_12px_36px_rgba(15,23,42,0.05)] sm:px-6 lg:flex-row lg:items-end lg:justify-between">
       <div className="space-y-2.5">

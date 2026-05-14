@@ -1,3 +1,6 @@
+// Friendly guide: this module (navigation) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import type { Role, SessionUser } from "../types/portal";
 
 export type NavigationSection =
@@ -245,6 +248,7 @@ export const navigationByRole: Record<Role, NavigationItem[]> = {
   ],
 };
 
+// Component flow: gather data first, then render a focused UI state.
 export function getNavigationForUser(user: SessionUser | null | undefined) {
   if (!user) {
     return [];

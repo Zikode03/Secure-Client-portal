@@ -1,19 +1,25 @@
+// Friendly guide: this module (ComplianceExpiryQueuePanel) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import type { ComplianceDocumentRecord } from "../../types/portal";
 import { formatDateLabel } from "../../utils/formatters";
 import { StatusBadge } from "../ui/StatusBadge";
 import { SurfaceCard } from "../ui/SurfaceCard";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 interface ComplianceExpiryQueuePanelProps {
   description: string;
   items: ComplianceDocumentRecord[];
   title: string;
 }
 
+// Component flow: gather data first, then render a focused UI state.
 export function ComplianceExpiryQueuePanel({
   description,
   items,
   title,
 }: ComplianceExpiryQueuePanelProps) {
+// Render output: this is the visual state users interact with.
   return (
     <SurfaceCard className="space-y-5">
       <div>

@@ -1,3 +1,6 @@
+// Friendly guide: this module (RequestBoard) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import type { WorkflowRequest } from "../../types/portal";
 import { formatDateLabel } from "../../utils/formatters";
 import { Button } from "../ui/Button";
@@ -5,6 +8,7 @@ import { EmptyState } from "../ui/EmptyState";
 import { StatusBadge } from "../ui/StatusBadge";
 import { SurfaceCard } from "../ui/SurfaceCard";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 interface RequestBoardProps {
   title: string;
   description: string;
@@ -14,6 +18,7 @@ interface RequestBoardProps {
   onAction?: () => void;
 }
 
+// Component flow: gather data first, then render a focused UI state.
 export function RequestBoard({
   actionLabel,
   description,
@@ -22,6 +27,7 @@ export function RequestBoard({
   requests,
   title,
 }: RequestBoardProps) {
+// Render output: this is the visual state users interact with.
   return (
     <SurfaceCard className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">

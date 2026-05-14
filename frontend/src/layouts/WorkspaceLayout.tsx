@@ -1,3 +1,6 @@
+// Friendly guide: this module (WorkspaceLayout) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { useMemo } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../app/auth";
@@ -6,11 +9,14 @@ import { cn } from "../utils/cn";
 import type { NavigationIcon, NavigationItem } from "../utils/navigation";
 import { navigationByRole } from "../utils/navigation";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 interface WorkspaceLayoutProps {
   role: Role;
 }
 
+// Component flow: gather data first, then render a focused UI state.
 function PortalMark() {
+// Render output: this is the visual state users interact with.
   return (
     <svg className="h-7 w-7 text-indigo-400" fill="none" viewBox="0 0 24 24">
       <path

@@ -1,3 +1,6 @@
+// Friendly guide: this module (audit) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { store, utils } from "./store.js";
 import { getDb } from "./db.js";
 import { config } from "./config.js";

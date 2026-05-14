@@ -1,6 +1,10 @@
+// Friendly guide: this module (SelectField) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import type { SelectHTMLAttributes } from "react";
 import { cn } from "../../utils/cn";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 interface SelectOption {
   label: string;
   value: string;
@@ -13,6 +17,7 @@ interface SelectFieldProps extends SelectHTMLAttributes<HTMLSelectElement> {
   hint?: string;
 }
 
+// Component flow: gather data first, then render a focused UI state.
 export function SelectField({
   className,
   error,
@@ -22,6 +27,7 @@ export function SelectField({
   options,
   ...props
 }: SelectFieldProps) {
+// Render output: this is the visual state users interact with.
   return (
     <label className="block space-y-2" htmlFor={id}>
       <span className="text-sm font-medium text-slate-700">{label}</span>

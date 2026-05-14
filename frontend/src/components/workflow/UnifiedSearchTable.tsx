@@ -1,3 +1,6 @@
+// Friendly guide: this module (UnifiedSearchTable) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import type { UnifiedSearchResult } from "../../types/portal";
 import { formatDateLabel, formatStatusLabel } from "../../utils/formatters";
 import { EmptyState } from "../ui/EmptyState";
@@ -5,6 +8,7 @@ import { Button } from "../ui/Button";
 import { StatusBadge } from "../ui/StatusBadge";
 import { SurfaceCard } from "../ui/SurfaceCard";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 interface UnifiedSearchTableProps {
   title: string;
   description: string;
@@ -13,6 +17,7 @@ interface UnifiedSearchTableProps {
   onCommentResult?: (result: UnifiedSearchResult) => void;
 }
 
+// Component flow: gather data first, then render a focused UI state.
 export function UnifiedSearchTable({
   description,
   onCommentResult,
@@ -20,6 +25,7 @@ export function UnifiedSearchTable({
   results,
   title,
 }: UnifiedSearchTableProps) {
+// Render output: this is the visual state users interact with.
   return (
     <SurfaceCard>
       <div className="flex flex-wrap items-center justify-between gap-3">

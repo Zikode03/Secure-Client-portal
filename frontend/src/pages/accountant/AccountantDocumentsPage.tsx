@@ -1,3 +1,6 @@
+// Friendly guide: this module (AccountantDocumentsPage) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
@@ -43,10 +46,13 @@ const defaultFilters: UnifiedSearchFilters = {
 const previewReferenceDate = new Date("2026-05-08T08:00:00.000Z");
 const resultsPerPage = 7;
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 type ResultTab = "all" | "documents" | "invoices" | "requests" | "compliance";
 type ViewerTab = "details" | "comments" | "history" | "related";
 
+// Component flow: gather data first, then render a focused UI state.
 function SearchIcon() {
+// Render output: this is the visual state users interact with.
   return (
     <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
       <circle cx="11" cy="11" r="6.25" stroke="currentColor" strokeWidth="1.8" />
@@ -746,6 +752,7 @@ export function AccountantDocumentsPage() {
   const canReviewDocuments = hasPermission(user, "review:documents");
   const [filters, setFilters] = useState<UnifiedSearchFilters>(defaultFilters);
   const [activeResultTab, setActiveResultTab] = useState<ResultTab>("all");
+// Local UI state: keeps track of what the user is seeing or editing right now.
   const [selectedResultId, setSelectedResultId] = useState("");
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerTab, setViewerTab] = useState<ViewerTab>("details");
@@ -948,6 +955,7 @@ export function AccountantDocumentsPage() {
     );
   }, [portal.adminClients, selectedResult, user?.fullName]);
 
+// Reactive sync: this block responds when dependencies change.
   useEffect(() => {
     setCurrentPage(1);
   }, [activeResultTab, filters]);

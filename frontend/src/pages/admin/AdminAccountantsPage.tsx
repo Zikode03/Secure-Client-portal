@@ -1,11 +1,16 @@
+// Friendly guide: this module (AdminAccountantsPage) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { PageHeader } from "../../components/ui/PageHeader";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
 
 import { usePortal } from "../../app/portal";
 
+// Component flow: gather data first, then render a focused UI state.
 export function AdminAccountantsPage() {
   const portal = usePortal();
 
+// Render output: this is the visual state users interact with.
   return (
     <div className="space-y-6">
       <PageHeader

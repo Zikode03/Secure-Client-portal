@@ -1,3 +1,6 @@
+// Friendly guide: this module (AccountantComplianceCentrePage) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { useMemo, useState } from "react";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
@@ -8,6 +11,7 @@ import { TextField } from "../../components/ui/TextField";
 import { formatDateLabel } from "../../utils/formatters";
 import { getScopedComplianceStatuses, hasPermission } from "../../utils/permissions";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 type RiskFilter = "all" | "low" | "medium" | "high";
 type StatusFilter = "all" | "compliant" | "pending" | "non_compliant";
 type ComplianceBoardStatus = "Compliant" | "Expiring Soon" | "Overdue";
@@ -33,6 +37,7 @@ const categories = [
   "Corporate",
 ];
 
+// Component flow: gather data first, then render a focused UI state.
 function dueStatusLabel(dateIso: string) {
   const diffDays = Math.ceil(
     (new Date(dateIso).getTime() - Date.now()) / (1000 * 60 * 60 * 24),
@@ -89,6 +94,7 @@ export function AccountantComplianceCentrePage() {
   const { user } = useAuth();
   const portal = usePortal();
   const isAdmin = user?.role === "admin";
+// Local UI state: keeps track of what the user is seeing or editing right now.
   const [searchQuery, setSearchQuery] = useState("");
   const [riskFilter, setRiskFilter] = useState<RiskFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -284,6 +290,7 @@ export function AccountantComplianceCentrePage() {
     URL.revokeObjectURL(url);
   }
 
+// Render output: this is the visual state users interact with.
   return (
     <div className="space-y-6">
       <div className="space-y-3 rounded-2xl border border-slate-200 bg-white px-5 py-4">

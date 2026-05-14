@@ -1,3 +1,6 @@
+// Friendly guide: this module (profile) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import express from "express";
 import { addAudit } from "../lib/audit.js";
 import { store, utils } from "../lib/store.js";

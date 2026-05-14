@@ -1,8 +1,12 @@
-﻿import { useMemo } from "react";
+// Friendly guide: this module (FirmExceptionsQueuePage) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
+import { useMemo } from "react";
 import { usePortal } from "../../app/portal";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
 import { formatDateLabel } from "../../utils/formatters";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 interface ExceptionItem {
   id: string;
   clientName: string;
@@ -12,6 +16,7 @@ interface ExceptionItem {
   dueDate?: string;
 }
 
+// Component flow: gather data first, then render a focused UI state.
 export function FirmExceptionsQueuePage() {
   const portal = usePortal();
 
@@ -54,6 +59,7 @@ export function FirmExceptionsQueuePage() {
     );
   }, [portal]);
 
+// Render output: this is the visual state users interact with.
   return (
     <SurfaceCard className="rounded-2xl border border-slate-200 bg-white p-5 shadow-none">
       <h1 className="text-xl font-semibold text-slate-950">Approval / Exception Queue</h1>
@@ -66,7 +72,7 @@ export function FirmExceptionsQueuePage() {
           <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-3" key={item.id}>
             <div>
               <p className="text-sm font-semibold text-slate-900">{item.label}</p>
-              <p className="text-xs text-slate-500">{item.clientName} · {item.source}</p>
+              <p className="text-xs text-slate-500">{item.clientName} � {item.source}</p>
             </div>
             <div className="text-right">
               <span className={`rounded-full px-2 py-1 text-xs font-semibold ${item.severity === "high" ? "bg-rose-50 text-rose-700" : "bg-amber-50 text-amber-700"}`}>

@@ -1,8 +1,12 @@
-ï»¿import { useMemo } from "react";
+// Friendly guide: this module (FirmActivityFeedPage) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
+import { useMemo } from "react";
 import { usePortal } from "../../app/portal";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
 import { formatDateLabel } from "../../utils/formatters";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 interface FeedItem {
   id: string;
   title: string;
@@ -12,6 +16,7 @@ interface FeedItem {
   source: "request" | "review" | "compliance";
 }
 
+// Component flow: gather data first, then render a focused UI state.
 export function FirmActivityFeedPage() {
   const portal = usePortal();
 
@@ -33,7 +38,7 @@ export function FirmActivityFeedPage() {
       .getReviewQueue()
       .map((item) => ({
         id: `review-${item.id}`,
-        title: `${item.clientName} Â· ${item.documentType}`,
+        title: `${item.clientName} · ${item.documentType}`,
         detail: item.status.replace(/_/g, " "),
         actor: item.assignedAccountant,
         timestamp: item.submittedAt,
@@ -54,6 +59,7 @@ export function FirmActivityFeedPage() {
       .slice(0, 200);
   }, [portal]);
 
+// Render output: this is the visual state users interact with.
   return (
     <SurfaceCard className="rounded-2xl border border-slate-200 bg-white p-5 shadow-none">
       <h1 className="text-xl font-semibold text-slate-950">Unified Activity / Audit Feed</h1>
@@ -71,7 +77,7 @@ export function FirmActivityFeedPage() {
               <p className="text-sm font-semibold text-slate-900">{item.title}</p>
             </div>
             <p className="mt-1 text-sm text-slate-700">{item.detail}</p>
-            <p className="mt-1 text-xs text-slate-500">{item.actor} Â· {formatDateLabel(item.timestamp)}</p>
+            <p className="mt-1 text-xs text-slate-500">{item.actor} · {formatDateLabel(item.timestamp)}</p>
           </div>
         ))}
       </div>

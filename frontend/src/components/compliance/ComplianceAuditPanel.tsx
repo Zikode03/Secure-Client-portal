@@ -1,12 +1,18 @@
+// Friendly guide: this module (ComplianceAuditPanel) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import type { ComplianceAuditEvent } from "../../types/portal";
 import { formatDateLabel } from "../../utils/formatters";
 import { SurfaceCard } from "../ui/SurfaceCard";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 interface ComplianceAuditPanelProps {
   items: ComplianceAuditEvent[];
 }
 
+// Component flow: gather data first, then render a focused UI state.
 export function ComplianceAuditPanel({ items }: ComplianceAuditPanelProps) {
+// Render output: this is the visual state users interact with.
   return (
     <SurfaceCard className="space-y-5">
       <div>

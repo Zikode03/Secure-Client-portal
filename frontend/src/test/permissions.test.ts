@@ -1,3 +1,6 @@
+// Friendly guide: this module (permissions.test) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { portalService } from "../services/portalData";
 import type { DocumentRecord, SessionUser } from "../types/portal";
 import {

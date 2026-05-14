@@ -1,3 +1,6 @@
+// Friendly guide: this module (workflowRules.test) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { act, renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { PortalProvider, usePortal } from "../app/portal";
@@ -9,6 +12,7 @@ import {
   recalculatePack,
 } from "../services/workflowEngine";
 
+// Component flow: gather data first, then render a focused UI state.
 function PortalWrapper({ children }: { children: ReactNode }) {
   return <PortalProvider>{children}</PortalProvider>;
 }

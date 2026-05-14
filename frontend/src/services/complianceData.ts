@@ -1,3 +1,6 @@
+// Friendly guide: this module (complianceData) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import type {
   ComplianceAuditEvent,
   ComplianceCategoryId,
@@ -20,6 +23,7 @@ import {
   syncComplianceRecord,
 } from "../utils/compliance";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 interface ComplianceItemDefinition {
   name: string;
   description: string;
@@ -666,6 +670,7 @@ const clientSeeds: ClientComplianceSeed[] = [
   },
 ];
 
+// Component flow: gather data first, then render a focused UI state.
 function buildDate(offsetDays: number) {
   const reference = new Date(COMPLIANCE_REFERENCE_DATE);
   reference.setUTCDate(reference.getUTCDate() + offsetDays);

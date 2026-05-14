@@ -1,5 +1,9 @@
+// Friendly guide: this module (portal) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import {
   createContext,
+// Shared shape notes: these types keep UI and data contracts aligned.
   type ReactNode,
   useEffect,
   useContext,
@@ -223,6 +227,7 @@ const initialUsers: UserAccountRecord[] = [
 
 const CLIENT_PORTAL_STORAGE_KEY = "accounting-document-control-client-portal";
 
+// Component flow: gather data first, then render a focused UI state.
 function createInitialMonthPack(seed: ClientWorkflowSeed) {
   return recalculatePack({
     ...clone(seed.monthPack),
@@ -936,6 +941,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     () => readPersistedClientPortalState(clientSeed, baseClientComplianceCentre),
     [baseClientComplianceCentre, clientSeed],
   );
+// Local UI state: keeps track of what the user is seeing or editing right now.
   const [monthPack, setMonthPack] = useState(() => initialClientState.monthPack);
   const [documents, setDocuments] = useState(() => initialClientState.documents);
   const [invoices, setInvoices] = useState(() => initialClientState.invoices);
@@ -963,6 +969,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
   const [managedAccountants] = useState(() => clone(initialAccountants));
   const [userAccounts] = useState(() => clone(initialUsers));
 
+// Reactive sync: this block responds when dependencies change.
   useEffect(() => {
     writePersistedClientPortalState({
       monthPack,

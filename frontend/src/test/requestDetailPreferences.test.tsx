@@ -1,3 +1,6 @@
+// Friendly guide: this module (requestDetailPreferences.test) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "../app/auth";
@@ -34,6 +37,7 @@ const clientUser: SessionUser = {
   assignedClientIds: [],
 };
 
+// Component flow: gather data first, then render a focused UI state.
 function renderWithProviders(user: SessionUser, page: JSX.Element, initialPath = "/") {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
 

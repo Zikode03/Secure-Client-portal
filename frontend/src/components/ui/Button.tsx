@@ -1,6 +1,10 @@
+// Friendly guide: this module (Button) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { cn } from "../../utils/cn";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
 type ButtonSize = "sm" | "md" | "lg";
 
@@ -28,6 +32,7 @@ const sizeClasses: Record<ButtonSize, string> = {
   lg: "h-12 px-5 text-sm",
 };
 
+// Component flow: gather data first, then render a focused UI state.
 export function Button({
   children,
   className,
@@ -37,6 +42,7 @@ export function Button({
   variant = "primary",
   ...props
 }: ButtonProps) {
+// Render output: this is the visual state users interact with.
   return (
     <button
       className={cn(

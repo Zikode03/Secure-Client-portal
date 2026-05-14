@@ -1,3 +1,6 @@
+// Friendly guide: this module (CommentThread) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { useMemo, useState } from "react";
 import type { DocumentComment, Role } from "../../types/portal";
 import { cn } from "../../utils/cn";
@@ -5,6 +8,7 @@ import { formatDateTimeLabel } from "../../utils/formatters";
 import { Button } from "../ui/Button";
 import { TextAreaField } from "../ui/TextAreaField";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 interface CommentThreadProps {
   comments: DocumentComment[];
   currentRole: Role;
@@ -18,6 +22,7 @@ interface CommentThreadProps {
   submitLabel?: string;
 }
 
+// Component flow: gather data first, then render a focused UI state.
 export function CommentThread({
   comments,
   composerLabel = "Add a document-specific comment",
@@ -30,6 +35,7 @@ export function CommentThread({
   onSubmitComment,
   submitLabel = "Post comment",
 }: CommentThreadProps) {
+// Local UI state: keeps track of what the user is seeing or editing right now.
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -53,6 +59,7 @@ export function CommentThread({
     setError("");
   }
 
+// Render output: this is the visual state users interact with.
   return (
     <div className="space-y-4">
       {emptyState ? (

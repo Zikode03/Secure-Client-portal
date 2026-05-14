@@ -1,6 +1,10 @@
+// Friendly guide: this module (ComplianceRulesPanel) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import type { ReactNode } from "react";
 import { SurfaceCard } from "../ui/SurfaceCard";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 interface ComplianceRulesPanelProps {
   title: string;
   description: string;
@@ -8,12 +12,14 @@ interface ComplianceRulesPanelProps {
   footer?: ReactNode;
 }
 
+// Component flow: gather data first, then render a focused UI state.
 export function ComplianceRulesPanel({
   description,
   footer,
   items,
   title,
 }: ComplianceRulesPanelProps) {
+// Render output: this is the visual state users interact with.
   return (
     <SurfaceCard className="space-y-5">
       <div>

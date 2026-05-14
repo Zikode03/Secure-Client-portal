@@ -1,3 +1,6 @@
+// Friendly guide: this module (workflowEngine) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import type {
   BankTransaction,
   ComplianceDocumentRecord,
@@ -28,6 +31,7 @@ const slotBlockingStatuses = new Set<SlotStatus>([
   "rejected",
 ]);
 
+// Component flow: gather data first, then render a focused UI state.
 export function isSlotReady(status: SlotStatus) {
   return slotReadyStatuses.has(status);
 }
@@ -773,6 +777,7 @@ export function filterUnifiedSearchResults(
       !normalisedReviewedBy ||
       (result.reviewedBy ?? "").toLowerCase().includes(normalisedReviewedBy);
 
+// Render output: this is the visual state users interact with.
     return (
       matchesQuery &&
       matchesClient &&

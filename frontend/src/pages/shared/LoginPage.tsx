@@ -1,9 +1,13 @@
+// Friendly guide: this module (LoginPage) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { defaultPathForRole, useAuth } from "../../app/auth";
 import { Button } from "../../components/ui/Button";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 interface FeatureCardProps {
   icon: ReactNode;
   title: string;
@@ -21,7 +25,9 @@ interface InputFieldProps {
   endAdornment?: ReactNode;
 }
 
+// Component flow: gather data first, then render a focused UI state.
 function ShieldLogo() {
+// Render output: this is the visual state users interact with.
   return (
     <svg className="h-8 w-8 text-white" fill="none" viewBox="0 0 48 48">
       <path
@@ -292,6 +298,7 @@ function DeveloperAccount({
 export function LoginPage() {
   const navigate = useNavigate();
   const { login } = useAuth();
+// Local UI state: keeps track of what the user is seeing or editing right now.
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");

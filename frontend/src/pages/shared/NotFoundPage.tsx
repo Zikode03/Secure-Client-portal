@@ -1,10 +1,15 @@
+// Friendly guide: this module (NotFoundPage) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/Button";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
 
+// Component flow: gather data first, then render a focused UI state.
 export function NotFoundPage() {
   const navigate = useNavigate();
 
+// Render output: this is the visual state users interact with.
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4">
       <SurfaceCard className="max-w-xl text-center">

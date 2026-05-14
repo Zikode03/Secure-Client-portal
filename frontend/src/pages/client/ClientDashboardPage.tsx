@@ -1,3 +1,6 @@
+// Friendly guide: this module (ClientDashboardPage) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../app/auth";
@@ -37,7 +40,9 @@ const blockingStatuses = new Set<MonthlyDocumentSlot["status"]>([
   "rejected",
 ]);
 
+// Component flow: gather data first, then render a focused UI state.
 function UploadIcon() {
+// Render output: this is the visual state users interact with.
   return (
     <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24">
       <path
@@ -362,6 +367,7 @@ function CompactListCard({
   );
 }
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 interface NextActionItem {
   id: string;
   title: string;
@@ -525,6 +531,7 @@ export function ClientDashboardPage() {
   const navigate = useNavigate();
   const uploadModal = useDisclosure(false);
   const [selectedSlot, setSelectedSlot] = useState<MonthlyDocumentSlot | null>(null);
+// Local UI state: keeps track of what the user is seeing or editing right now.
   const [optionsOpen, setOptionsOpen] = useState(false);
   const {
     activity,

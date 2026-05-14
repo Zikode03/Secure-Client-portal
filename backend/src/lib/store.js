@@ -1,3 +1,6 @@
+// Friendly guide: this module (store) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import crypto from "crypto";
 
 function nowIso() {

@@ -1,3 +1,6 @@
+// Friendly guide: this module (AccountantNotificationsPage) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../app/auth";
@@ -12,9 +15,12 @@ import { formatDateLabel, formatDateTimeLabel } from "../../utils/formatters";
 
 const notificationSnapshotDate = new Date("2026-05-11T00:00:00.000Z");
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 type NotificationFilter = "all" | "unread" | "action" | "compliance";
 
+// Component flow: gather data first, then render a focused UI state.
 function BellIcon() {
+// Render output: this is the visual state users interact with.
   return (
     <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
       <path

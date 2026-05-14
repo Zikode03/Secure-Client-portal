@@ -1,9 +1,13 @@
+// Friendly guide: this module (RejectedDocumentsPanel) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import type { RejectedDocumentItem } from "../../types/portal";
 import { formatDateLabel } from "../../utils/formatters";
 import { Button } from "../ui/Button";
 import { StatusBadge } from "../ui/StatusBadge";
 import { SurfaceCard } from "../ui/SurfaceCard";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 interface RejectedDocumentsPanelProps {
   items: RejectedDocumentItem[];
   actionLabel?: string;
@@ -12,6 +16,7 @@ interface RejectedDocumentsPanelProps {
   onHeaderAction?: () => void;
 }
 
+// Component flow: gather data first, then render a focused UI state.
 export function RejectedDocumentsPanel({
   actionLabel,
   headerActionLabel,
@@ -19,6 +24,7 @@ export function RejectedDocumentsPanel({
   onActionItem,
   onHeaderAction,
 }: RejectedDocumentsPanelProps) {
+// Render output: this is the visual state users interact with.
   return (
     <SurfaceCard className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">

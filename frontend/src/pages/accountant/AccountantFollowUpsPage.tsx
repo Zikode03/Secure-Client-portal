@@ -1,4 +1,7 @@
-ï»¿import { useMemo, useState } from "react";
+// Friendly guide: this module (AccountantFollowUpsPage) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
@@ -7,6 +10,7 @@ import type { FirmClientAccount, WorkflowRequest } from "../../types/portal";
 import { formatDateLabel } from "../../utils/formatters";
 import { getScopedClients, getScopedRequests } from "../../utils/permissions";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 interface NeededDocument {
   id: string;
   name: string;
@@ -14,6 +18,7 @@ interface NeededDocument {
   dueDate: string;
 }
 
+// Component flow: gather data first, then render a focused UI state.
 function ClientListPanel({
   clients,
   selectedClientId,
@@ -23,6 +28,7 @@ function ClientListPanel({
   selectedClientId: string;
   onSelectClient: (id: string) => void;
 }) {
+// Render output: this is the visual state users interact with.
   return (
     <aside className="w-72 shrink-0 border-r border-slate-200 bg-white p-4">
       <div className="mb-4">
@@ -174,7 +180,7 @@ function ConversationTimeline({ request }: { request: WorkflowRequest }) {
               <p className="text-sm text-slate-800">{item.status}</p>
               {item.note ? <p className="mt-1 text-xs text-slate-600">{item.note}</p> : null}
               <p className="mt-1 text-xs text-slate-500">
-                {item.actor} Â· {formatDateLabel(item.timestamp)}
+                {item.actor} · {formatDateLabel(item.timestamp)}
               </p>
             </div>
           </div>
@@ -388,7 +394,7 @@ function RightInsightPanel({
         <div className="mt-3 space-y-2">
           {activeRequest.auditTrail.slice(0, 4).map((item) => (
             <p key={item.id} className="text-xs text-slate-600">
-              {item.status} Â· {formatDateLabel(item.timestamp)}
+              {item.status} · {formatDateLabel(item.timestamp)}
             </p>
           ))}
         </div>
@@ -403,6 +409,7 @@ export function AccountantFollowUpsPage() {
   const navigate = useNavigate();
   const scopedClients = useMemo(() => getScopedClients(user, portal.adminClients), [user, portal.adminClients]);
 
+// Local UI state: keeps track of what the user is seeing or editing right now.
   const [selectedClientId, setSelectedClientId] = useState(scopedClients[0]?.id ?? "");
   const [activeTab, setActiveTab] = useState("Requests");
   const [detailRequest, setDetailRequest] = useState<WorkflowRequest | null>(null);
@@ -566,7 +573,6 @@ export function AccountantFollowUpsPage() {
     </div>
   );
 }
-
 
 
 

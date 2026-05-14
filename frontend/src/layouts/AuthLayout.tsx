@@ -1,5 +1,9 @@
+// Friendly guide: this module (AuthLayout) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import type { ReactNode } from "react";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 interface AuthLayoutProps {
   badge: string;
   title: string;
@@ -7,12 +11,14 @@ interface AuthLayoutProps {
   children: ReactNode;
 }
 
+// Component flow: gather data first, then render a focused UI state.
 export function AuthLayout({
   badge,
   children,
   description,
   title,
 }: AuthLayoutProps) {
+// Render output: this is the visual state users interact with.
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(59,130,246,0.15),_transparent_28%),linear-gradient(180deg,_#f8fafc_0%,_#eef2ff_100%)] px-4 py-10 sm:px-6 lg:px-8">
       <div className="mx-auto grid min-h-[calc(100vh-5rem)] max-w-6xl items-center gap-8 lg:grid-cols-[1.05fr_0.95fr]">

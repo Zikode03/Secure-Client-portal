@@ -1,3 +1,6 @@
+// Friendly guide: this module (InviteSetupPage) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { defaultPathForRole, useAuth } from "../../app/auth";
@@ -5,11 +8,13 @@ import { Button } from "../../components/ui/Button";
 import { TextField } from "../../components/ui/TextField";
 import { AuthLayout } from "../../layouts/AuthLayout";
 
+// Component flow: gather data first, then render a focused UI state.
 export function InviteSetupPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const inviteEmail = searchParams.get("email") ?? "client@example.com";
   const { completeInvite } = useAuth();
+// Local UI state: keeps track of what the user is seeing or editing right now.
   const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -56,6 +61,7 @@ export function InviteSetupPage() {
     navigate(defaultPathForRole(result.user.role));
   }
 
+// Render output: this is the visual state users interact with.
   return (
     <AuthLayout
       badge="Invite Setup"

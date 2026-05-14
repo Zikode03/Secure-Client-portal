@@ -1,6 +1,10 @@
-﻿import { useMemo } from "react";
+// Friendly guide: this module (AdminRequestStateMachinePage) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
+import { useMemo } from "react";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 type RequestState =
   | "open"
   | "awaiting_accountant"
@@ -67,6 +71,7 @@ const transitionRules: TransitionRule[] = [
   },
 ];
 
+// Component flow: gather data first, then render a focused UI state.
 function statePill(state: RequestState) {
   const base = "rounded-full px-2.5 py-1 text-xs font-semibold";
   switch (state) {
@@ -91,6 +96,7 @@ export function AdminRequestStateMachinePage() {
     [],
   );
 
+// Render output: this is the visual state users interact with.
   return (
     <div className="space-y-4">
       <SurfaceCard className="rounded-2xl border border-slate-200 bg-white p-5 shadow-none">
@@ -106,7 +112,7 @@ export function AdminRequestStateMachinePage() {
           {states.map((state, index) => (
             <div className="flex items-center gap-2" key={state}>
               <span className={statePill(state)}>{state.replace(/_/g, " ")}</span>
-              {index < states.length - 1 ? <span className="text-slate-300">→</span> : null}
+              {index < states.length - 1 ? <span className="text-slate-300">?</span> : null}
             </div>
           ))}
         </div>

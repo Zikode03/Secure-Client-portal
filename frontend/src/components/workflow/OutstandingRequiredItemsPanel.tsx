@@ -1,9 +1,13 @@
+// Friendly guide: this module (OutstandingRequiredItemsPanel) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import type { MonthlyDocumentSlot } from "../../types/portal";
 import { formatDateLabel, formatStatusLabel } from "../../utils/formatters";
 import { Button } from "../ui/Button";
 import { StatusBadge } from "../ui/StatusBadge";
 import { SurfaceCard } from "../ui/SurfaceCard";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 interface OutstandingRequiredItemsPanelProps {
   slots: MonthlyDocumentSlot[];
   onUpload: (slotId: string) => void;
@@ -18,7 +22,9 @@ const readyStatuses = new Set<MonthlyDocumentSlot["status"]>([
   "accepted",
 ]);
 
+// Component flow: gather data first, then render a focused UI state.
 function ChecklistMarker({ ready }: { ready: boolean }) {
+// Render output: this is the visual state users interact with.
   return (
     <span
       className={`flex h-9 w-9 items-center justify-center rounded-full border ${

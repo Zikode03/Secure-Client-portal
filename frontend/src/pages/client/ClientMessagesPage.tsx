@@ -1,11 +1,16 @@
+// Friendly guide: this module (ClientMessagesPage) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
 
+// Component flow: gather data first, then render a focused UI state.
 export function ClientMessagesPage() {
   const navigate = useNavigate();
 
+// Render output: this is the visual state users interact with.
   return (
     <div className="mx-auto max-w-[760px] space-y-5">
       <div className="space-y-1.5">

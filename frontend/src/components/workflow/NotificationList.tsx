@@ -1,14 +1,20 @@
+// Friendly guide: this module (NotificationList) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import type { NotificationItem } from "../../types/portal";
 import { formatDateTimeLabel } from "../../utils/formatters";
 import { Button } from "../ui/Button";
 import { SurfaceCard } from "../ui/SurfaceCard";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 interface NotificationListProps {
   items: NotificationItem[];
   onAction?: (href: string) => void;
 }
 
+// Component flow: gather data first, then render a focused UI state.
 export function NotificationList({ items, onAction }: NotificationListProps) {
+// Render output: this is the visual state users interact with.
   return (
     <div className="space-y-4">
       {items.map((item) => (

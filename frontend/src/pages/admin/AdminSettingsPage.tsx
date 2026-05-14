@@ -1,3 +1,6 @@
+// Friendly guide: this module (AdminSettingsPage) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { useMemo, useState } from "react";
 import { usePortal } from "../../app/portal";
 import { Button } from "../../components/ui/Button";
@@ -12,6 +15,7 @@ import {
   setPermissionOverride,
 } from "../../utils/userPermissionOverrides";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 type SettingsPage = "profile" | "team" | "submission_rules" | "notifications";
 type PermissionKey =
   | "review_documents"
@@ -36,6 +40,7 @@ const permissionMapByKey: Record<PermissionKey, Permission[]> = {
   manage_team: ["manage:users", "manage:roles", "manage:system_settings"],
 };
 
+// Component flow: gather data first, then render a focused UI state.
 function keysToPermissions(keys: PermissionKey[]): Permission[] {
   const permissions = keys.flatMap((key) => permissionMapByKey[key]);
   return Array.from(new Set(permissions));
@@ -52,6 +57,7 @@ function permissionsToKeys(permissions: Permission[]): PermissionKey[] {
 export function AdminSettingsPage() {
   const portal = usePortal();
   const [activePage, setActivePage] = useState<SettingsPage>("profile");
+// Local UI state: keeps track of what the user is seeing or editing right now.
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [firmName, setFirmName] = useState("Finwell Advisory");
   const [logo, setLogo] = useState("https://example.com/logo.svg");
@@ -179,6 +185,7 @@ export function AdminSettingsPage() {
       { id: "notifications", label: "Notifications" },
     ];
 
+// Render output: this is the visual state users interact with.
     return (
       <SurfaceCard className="rounded-[1.35rem] border border-slate-200/80 bg-white p-3 shadow-[0_18px_36px_rgba(15,23,42,0.05)]">
         <div className="grid gap-2 md:grid-cols-4">

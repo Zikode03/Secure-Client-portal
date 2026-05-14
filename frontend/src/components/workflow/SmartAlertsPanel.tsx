@@ -1,7 +1,11 @@
+// Friendly guide: this module (SmartAlertsPanel) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import type { SmartAlertItem } from "../../types/portal";
 import { toneToAccentClass } from "../../utils/formatters";
 import { SurfaceCard } from "../ui/SurfaceCard";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 interface SmartAlertsPanelProps {
   items: SmartAlertItem[];
   title?: string;
@@ -10,6 +14,7 @@ interface SmartAlertsPanelProps {
   onHeaderAction?: () => void;
 }
 
+// Component flow: gather data first, then render a focused UI state.
 export function SmartAlertsPanel({
   description = "These alerts are generated from workflow patterns, not just calendar reminders.",
   headerActionLabel,
@@ -21,6 +26,7 @@ export function SmartAlertsPanel({
     return value.replace(/_/g, " ").replace(/\b\w/g, (character) => character.toUpperCase());
   }
 
+// Render output: this is the visual state users interact with.
   return (
     <SurfaceCard className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">

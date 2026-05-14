@@ -1,3 +1,6 @@
+// Friendly guide: this module (ClientComplianceCentrePage) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { Button } from "../../components/ui/Button";
@@ -16,6 +19,7 @@ import { formatDateLabel } from "../../utils/formatters";
 
 const complianceSnapshotDate = new Date("2026-05-07T00:00:00.000Z");
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 type FeedbackNotice = {
   tone: Tone;
   title: string;
@@ -57,7 +61,9 @@ const healthCategoryMeta: HealthCategoryMeta[] = [
   { id: "employment", title: "Employment Compliance" },
 ];
 
+// Component flow: gather data first, then render a focused UI state.
 function DownloadIcon() {
+// Render output: this is the visual state users interact with.
   return (
     <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
       <path

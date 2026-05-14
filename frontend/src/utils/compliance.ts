@@ -1,3 +1,6 @@
+// Friendly guide: this module (compliance) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import type {
   ComplianceAuditEvent,
   ComplianceCategoryGroup,
@@ -78,6 +81,7 @@ const clientFacingLabelMap: Record<string, string> = {
   "Data Processing Register": "Data processing register",
 };
 
+// Component flow: gather data first, then render a focused UI state.
 function resolveReferenceDate(referenceDate?: Date | string) {
   if (referenceDate instanceof Date) {
     return referenceDate;

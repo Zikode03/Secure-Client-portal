@@ -1,3 +1,6 @@
+// Friendly guide: this module (DocumentUploadModal) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { MonthlyDocumentSlot, UploadSubmission } from "../../types/portal";
 import { Button } from "../ui/Button";
@@ -6,6 +9,7 @@ import { SelectField } from "../ui/SelectField";
 import { TextAreaField } from "../ui/TextAreaField";
 import { TextField } from "../ui/TextField";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 interface DocumentUploadModalProps {
   clientName: string;
   isOpen: boolean;
@@ -44,6 +48,7 @@ const allowedTypes = [
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 ];
 
+// Component flow: gather data first, then render a focused UI state.
 function sanitiseNameSegment(value: string) {
   const compactValue = value.replace(/[^a-z0-9]+/gi, "");
   return compactValue || "Document";
@@ -67,6 +72,7 @@ export function DocumentUploadModal({
   selectedSlot,
 }: DocumentUploadModalProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+// Local UI state: keeps track of what the user is seeing or editing right now.
   const [documentType, setDocumentType] = useState("");
   const [clientBusinessName, setClientBusinessName] = useState("");
   const [month, setMonth] = useState("");
@@ -76,6 +82,7 @@ export function DocumentUploadModal({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+// Reactive sync: this block responds when dependencies change.
   useEffect(() => {
     if (!selectedSlot) {
       return;
@@ -195,6 +202,7 @@ export function DocumentUploadModal({
     onClose();
   }
 
+// Render output: this is the visual state users interact with.
   return (
     <Modal
       description="Smart upload keeps every file attached to the right checklist slot, month, and naming pattern so the accountant can review it without guesswork."

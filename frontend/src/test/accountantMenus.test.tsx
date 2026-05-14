@@ -1,3 +1,6 @@
+// Friendly guide: this module (accountantMenus.test) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { AuthProvider } from "../app/auth";
@@ -21,6 +24,7 @@ const accountantUser: SessionUser = {
   assignedClientIds: ["client-apex", "firm-client-1", "firm-client-3", "firm-client-4"],
 };
 
+// Component flow: gather data first, then render a focused UI state.
 function renderWithProviders(page: JSX.Element) {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(accountantUser));
 

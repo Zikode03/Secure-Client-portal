@@ -1,3 +1,6 @@
+// Friendly guide: this module (AdminAssignmentsPage) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { useState } from "react";
 import { usePortal } from "../../app/portal";
 import { Button } from "../../components/ui/Button";
@@ -5,10 +8,13 @@ import { PageHeader } from "../../components/ui/PageHeader";
 import { SelectField } from "../../components/ui/SelectField";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
 
+// Component flow: gather data first, then render a focused UI state.
 export function AdminAssignmentsPage() {
   const portal = usePortal();
+// Local UI state: keeps track of what the user is seeing or editing right now.
   const [feedbackMessage, setFeedbackMessage] = useState("");
 
+// Render output: this is the visual state users interact with.
   return (
     <div className="space-y-6">
       <PageHeader

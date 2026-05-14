@@ -1,3 +1,6 @@
+// Friendly guide: this module (permissions) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import type {
   ComplianceClientStatus,
   ComplianceDocumentRecord,
@@ -58,6 +61,7 @@ const clientIdAliases: Record<string, string[]> = {
   "firm-client-1": ["client-apex"],
 };
 
+// Component flow: gather data first, then render a focused UI state.
 function uniqueStrings(values: string[]) {
   return Array.from(new Set(values.filter(Boolean)));
 }
@@ -153,6 +157,7 @@ export function canViewDocument(
   document: DocumentRecord,
   clients: FirmClientAccount[],
 ) {
+// Render output: this is the visual state users interact with.
   return (
     canViewClient(user, document.clientId, clients) ||
     canViewByClientName(user, document.clientName, clients)

@@ -1,12 +1,17 @@
+// Friendly guide: this module (TextAreaField) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import type { TextareaHTMLAttributes } from "react";
 import { cn } from "../../utils/cn";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 interface TextAreaFieldProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   label: string;
   error?: string;
   hint?: string;
 }
 
+// Component flow: gather data first, then render a focused UI state.
 export function TextAreaField({
   className,
   error,
@@ -15,6 +20,7 @@ export function TextAreaField({
   label,
   ...props
 }: TextAreaFieldProps) {
+// Render output: this is the visual state users interact with.
   return (
     <label className="block space-y-2" htmlFor={id}>
       <span className="text-sm font-medium text-slate-700">{label}</span>

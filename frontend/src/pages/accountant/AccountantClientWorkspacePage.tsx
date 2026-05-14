@@ -1,3 +1,6 @@
+// Friendly guide: this module (AccountantClientWorkspacePage) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../app/auth";
@@ -28,6 +31,7 @@ const workspaceTabs = [
   { id: "audit", label: "Audit Trail" },
 ] as const;
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 type WorkspaceTab = (typeof workspaceTabs)[number]["id"];
 
 const complianceTabs = [
@@ -41,6 +45,7 @@ const complianceTabs = [
 
 type ComplianceWorkspaceTab = (typeof complianceTabs)[number]["id"];
 
+// Component flow: gather data first, then render a focused UI state.
 export function AccountantClientWorkspacePage() {
   const { clientId = "firm-client-1" } = useParams();
   const { user } = useAuth();
@@ -55,6 +60,7 @@ export function AccountantClientWorkspacePage() {
   const [activeComplianceView, setActiveComplianceView] = useState<ComplianceWorkspaceTab>(
     (searchParams.get("view") as ComplianceWorkspaceTab | null) ?? "overview",
   );
+// Local UI state: keeps track of what the user is seeing or editing right now.
   const [selectedDocumentId, setSelectedDocumentId] = useState("");
   const [selectedRequestId, setSelectedRequestId] = useState("");
   const [selectedComplianceCategoryId, setSelectedComplianceCategoryId] = useState("");
@@ -203,6 +209,7 @@ export function AccountantClientWorkspacePage() {
     setFeedbackMessage(result.message);
   }
 
+// Render output: this is the visual state users interact with.
   return (
     <div className="space-y-6">
       <PageHeader

@@ -1,3 +1,6 @@
+// Friendly guide: this module (routing.test) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { AuthProvider } from "../app/auth";
@@ -7,6 +10,7 @@ import type { SessionUser } from "../types/portal";
 
 const STORAGE_KEY = "accounting-document-control-session";
 
+// Component flow: gather data first, then render a focused UI state.
 function renderAppAt(path: string, user: SessionUser) {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
 

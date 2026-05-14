@@ -1,3 +1,6 @@
+// Friendly guide: this module (FirmSettingsPage) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../app/auth";
@@ -13,6 +16,7 @@ import type { Permission, Role, Tone } from "../../types/portal";
 import { cn } from "../../utils/cn";
 import { getPermissionsForRole } from "../../utils/permissions";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 type SettingsSection = "operations" | "notifications" | "compliance" | "profile" | "access";
 
 interface FeedbackNotice {
@@ -44,11 +48,13 @@ const permissionCatalogue: Permission[] = [
   "comment:requests",
 ];
 
+// Component flow: gather data first, then render a focused UI state.
 function formatPermissionLabel(permission: Permission) {
   return permission.replace(":", " / ").split("_").join(" ");
 }
 
 function OperationsIcon() {
+// Render output: this is the visual state users interact with.
   return (
     <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
       <path
@@ -198,6 +204,7 @@ export function FirmSettingsPage() {
   const [activeSection, setActiveSection] = useState<SettingsSection>("operations");
   const [feedbackNotice, setFeedbackNotice] = useState<FeedbackNotice | null>(null);
 
+// Local UI state: keeps track of what the user is seeing or editing right now.
   const [reviewSignature, setReviewSignature] = useState(user?.fullName ?? "Daniel Mokoena");
   const [clientFacingTitle, setClientFacingTitle] = useState(user?.title ?? "Senior Accountant");
   const [followUpWindow, setFollowUpWindow] = useState("2 business days");

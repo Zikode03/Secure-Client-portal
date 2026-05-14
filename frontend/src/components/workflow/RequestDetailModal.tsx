@@ -1,3 +1,6 @@
+// Friendly guide: this module (RequestDetailModal) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import type { Role, WorkflowRequest } from "../../types/portal";
 import { formatDateLabel } from "../../utils/formatters";
 import { Button } from "../ui/Button";
@@ -6,6 +9,7 @@ import { StatusBadge } from "../ui/StatusBadge";
 import { AuditTrail } from "./AuditTrail";
 import { CommentThread } from "./CommentThread";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 interface RequestDetailModalProps {
   currentAuthor: string;
   currentRole: Role;
@@ -17,6 +21,7 @@ interface RequestDetailModalProps {
   request: WorkflowRequest | null;
 }
 
+// Component flow: gather data first, then render a focused UI state.
 export function RequestDetailModal({
   currentAuthor,
   currentRole,
@@ -33,6 +38,7 @@ export function RequestDetailModal({
 
   const canResolve = request.status !== "resolved" && request.status !== "closed";
 
+// Render output: this is the visual state users interact with.
   return (
     <Modal
       description="Requests stay attached to the monthly pack so the client always knows what the accountant still needs and what will unblock submission."

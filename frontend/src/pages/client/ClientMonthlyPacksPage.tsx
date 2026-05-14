@@ -1,3 +1,6 @@
+// Friendly guide: this module (ClientMonthlyPacksPage) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../app/auth";
@@ -12,6 +15,7 @@ import { useClientWorkflow } from "../../hooks/useClientWorkflow";
 import type { MonthlyDocumentSlot } from "../../types/portal";
 import { formatDateLabel } from "../../utils/formatters";
 
+// Component flow: gather data first, then render a focused UI state.
 function downloadSlotFile(slot: MonthlyDocumentSlot, clientName: string) {
   const fileName = slot.acceptedFiles[0] ?? slot.autoName;
   const content = [
@@ -47,6 +51,7 @@ const blockingStatuses = new Set<MonthlyDocumentSlot["status"]>([
 ]);
 
 function UploadIcon() {
+// Render output: this is the visual state users interact with.
   return (
     <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24">
       <path
@@ -243,6 +248,7 @@ export function ClientMonthlyPacksPage() {
   const navigate = useNavigate();
   const uploadModal = useDisclosure(false);
   const [selectedSlot, setSelectedSlot] = useState<MonthlyDocumentSlot | null>(null);
+// Local UI state: keeps track of what the user is seeing or editing right now.
   const [optionsOpen, setOptionsOpen] = useState(false);
   const {
     clientName,
@@ -335,6 +341,7 @@ export function ClientMonthlyPacksPage() {
     };
   }, [missingRequiredCount, monthPack.canComplete, monthPack.submissionStatus, rejectedRequiredCount]);
 
+// Reactive sync: this block responds when dependencies change.
   useEffect(() => {
     if (location.hash !== "#pack-checklist") {
       return;

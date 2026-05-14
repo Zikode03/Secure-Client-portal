@@ -1,3 +1,6 @@
+// Friendly guide: this module (AccountantDashboardPage) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../app/auth";
@@ -12,6 +15,7 @@ import { getScopedClients, getScopedReviewQueue } from "../../utils/permissions"
 
 const accountantDashboardDate = "2026-05-07T08:00:00.000Z";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 type QueueTab = "deadlines" | "reviews";
 type QueueTone = "brand" | "emerald" | "orange" | "rose";
 
@@ -26,6 +30,7 @@ interface WorkQueueItem {
   onOpen: () => void;
 }
 
+// Component flow: gather data first, then render a focused UI state.
 function downloadCsv(fileName: string, rows: string[][]) {
   const csv = rows
     .map((row) => row.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(","))
@@ -236,6 +241,7 @@ function notificationRelativeLabel(createdAt: string) {
 function FocusIcon({ tone }: { tone: QueueTone }) {
   const classes = queueToneClasses(tone);
 
+// Render output: this is the visual state users interact with.
   return (
     <div className={cn("flex h-12 w-12 items-center justify-center rounded-2xl ring-1", classes.icon)}>
       {tone === "rose" ? (
@@ -441,6 +447,7 @@ export function AccountantDashboardPage() {
   const navigate = useNavigate();
   const isAdmin = user?.role === "admin";
   const [activeQueueTab, setActiveQueueTab] = useState<QueueTab>("reviews");
+// Local UI state: keeps track of what the user is seeing or editing right now.
   const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
   const notificationPanelRef = useRef<HTMLDivElement | null>(null);
 
@@ -590,6 +597,7 @@ export function AccountantDashboardPage() {
     scopedReviewQueue.length,
   ]);
 
+// Reactive sync: this block responds when dependencies change.
   useEffect(() => {
     if (!isNotificationPanelOpen) {
       return undefined;
@@ -1083,4 +1091,3 @@ export function AccountantDashboardPage() {
     </div>
   );
 }
-

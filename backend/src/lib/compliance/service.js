@@ -1,3 +1,6 @@
+// Friendly guide: this module (service) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { config } from "../config.js";
 import { getDb } from "../db.js";
 import { store, utils } from "../store.js";

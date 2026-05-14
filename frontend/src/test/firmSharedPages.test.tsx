@@ -1,3 +1,6 @@
+// Friendly guide: this module (firmSharedPages.test) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { AuthProvider } from "../app/auth";
@@ -38,6 +41,7 @@ const accountantUser: SessionUser = {
   assignedClientIds: ["client-apex", "firm-client-1", "firm-client-3", "firm-client-4"],
 };
 
+// Component flow: gather data first, then render a focused UI state.
 function renderWithProviders(page: JSX.Element, user: SessionUser) {
   window.localStorage.clear();
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(user));

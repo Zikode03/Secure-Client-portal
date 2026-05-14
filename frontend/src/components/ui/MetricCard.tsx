@@ -1,13 +1,19 @@
+// Friendly guide: this module (MetricCard) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import type { SummaryMetric } from "../../types/portal";
 import { toneToAccentClass } from "../../utils/formatters";
 import { ProgressBar } from "./ProgressBar";
 import { SurfaceCard } from "./SurfaceCard";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 interface MetricCardProps {
   metric: SummaryMetric;
 }
 
+// Component flow: gather data first, then render a focused UI state.
 export function MetricCard({ metric }: MetricCardProps) {
+// Render output: this is the visual state users interact with.
   return (
     <SurfaceCard className="space-y-3 p-4">
       <div className="flex items-start justify-between gap-4">

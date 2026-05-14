@@ -1,6 +1,10 @@
+// Friendly guide: this module (FeedbackBanner) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import type { Tone } from "../../types/portal";
 import { Button } from "./Button";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 interface FeedbackBannerProps {
   tone: Tone;
   title: string;
@@ -8,6 +12,7 @@ interface FeedbackBannerProps {
   onDismiss?: () => void;
 }
 
+// Component flow: gather data first, then render a focused UI state.
 function toneClasses(tone: Tone) {
   switch (tone) {
     case "success":
@@ -29,6 +34,7 @@ export function FeedbackBanner({
   title,
   tone,
 }: FeedbackBannerProps) {
+// Render output: this is the visual state users interact with.
   return (
     <div
       className={`flex flex-col gap-3 rounded-[1.5rem] border px-5 py-4 sm:flex-row sm:items-start sm:justify-between ${toneClasses(

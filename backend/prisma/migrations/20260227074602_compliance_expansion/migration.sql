@@ -1,3 +1,6 @@
+-- Migration notes: this SQL file defines part of the portal's data model.
+-- Keep changes deliberate so schema history stays easy to trace.
+
 -- CreateTable
 CREATE TABLE "ComplianceAccount" (
     "id" TEXT NOT NULL,

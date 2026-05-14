@@ -1,3 +1,6 @@
+// Friendly guide: this module (requests) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import express from "express";
 import { canAccessClient } from "../lib/auth.js";
 import { addAudit, addNotification } from "../lib/audit.js";

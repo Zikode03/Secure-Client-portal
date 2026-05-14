@@ -1,3 +1,6 @@
+// Friendly guide: this module (complianceLifecycle.test) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { act, fireEvent, render, renderHook, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
@@ -43,6 +46,7 @@ const clientUser: SessionUser = {
   assignedClientIds: [],
 };
 
+// Component flow: gather data first, then render a focused UI state.
 function PortalWrapper({ children }: { children: ReactNode }) {
   return <PortalProvider>{children}</PortalProvider>;
 }

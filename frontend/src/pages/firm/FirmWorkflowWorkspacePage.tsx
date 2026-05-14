@@ -1,16 +1,22 @@
+// Friendly guide: this module (FirmWorkflowWorkspacePage) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { useState } from "react";
 import { AccountantFollowUpsPage } from "../accountant/AccountantFollowUpsPage";
 import { AccountantReviewPage } from "../accountant/AccountantReviewPage";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 type WorkflowTab = "review" | "requests";
 
 interface FirmWorkflowWorkspacePageProps {
   defaultTab: WorkflowTab;
 }
 
+// Component flow: gather data first, then render a focused UI state.
 export function FirmWorkflowWorkspacePage({ defaultTab }: FirmWorkflowWorkspacePageProps) {
   const [activeTab, setActiveTab] = useState<WorkflowTab>(defaultTab);
 
+// Render output: this is the visual state users interact with.
   return (
     <div className="space-y-4">
       <section className="rounded-2xl border border-slate-200 bg-white p-4">

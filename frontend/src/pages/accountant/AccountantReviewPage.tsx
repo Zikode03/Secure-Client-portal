@@ -1,3 +1,6 @@
+// Friendly guide: this module (AccountantReviewPage) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useAuth } from "../../app/auth";
@@ -22,6 +25,7 @@ import { getScopedReviewQueue } from "../../utils/permissions";
 
 const reviewSnapshotDate = new Date("2026-05-08T08:00:00.000Z");
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 type QueueStatusFilter = "all" | "under_review" | "overdue" | "attention" | "on_track";
 type DueWindowFilter = "all" | "overdue" | "soon" | "later";
 type WorkspaceDecision =
@@ -40,6 +44,7 @@ interface ReviewVersionEntry {
   versionNumber: number;
 }
 
+// Component flow: gather data first, then render a focused UI state.
 function getInitials(value: string) {
   return value
     .split(" ")
@@ -244,6 +249,7 @@ function downloadPreview(fileName: string, content: string) {
 }
 
 function QueueFileIcon({ documentType, fileName }: { documentType: string; fileName: string }) {
+// Render output: this is the visual state users interact with.
   return (
     <div
       className={cn(
@@ -591,6 +597,7 @@ export function AccountantReviewPage() {
     [portal, user],
   );
 
+// Local UI state: keeps track of what the user is seeing or editing right now.
   const [selectedAccountant, setSelectedAccountant] = useState("all");
   const [selectedClient, setSelectedClient] = useState("all");
   const [selectedType, setSelectedType] = useState("all");
@@ -706,6 +713,7 @@ export function AccountantReviewPage() {
     [activeDocument, combinedAuditTrail],
   );
 
+// Reactive sync: this block responds when dependencies change.
   useEffect(() => {
     if (!filteredRows.length) {
       setSelectedRecordId("");

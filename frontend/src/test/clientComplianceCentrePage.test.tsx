@@ -1,3 +1,6 @@
+// Friendly guide: this module (clientComplianceCentrePage.test) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { fireEvent, render, screen } from "@testing-library/react";
 import { ClientComplianceCentrePage } from "../pages/client/ClientComplianceCentrePage";
 

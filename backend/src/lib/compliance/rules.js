@@ -1,3 +1,6 @@
+// Friendly guide: this module (rules) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 function countByStatus(obligations) {
   const counts = {
     compliant: 0,

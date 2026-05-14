@@ -1,7 +1,11 @@
+// Friendly guide: this module (useClientWorkflow) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { useMemo, useState } from "react";
 import { usePortal } from "../app/portal";
 import type { Role, SessionUser, Tone, UploadSubmission, WorkflowRequest } from "../types/portal";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 interface ClientWorkflowOptions {
   clientId?: string;
   clientName?: string;
@@ -14,6 +18,7 @@ interface FeedbackNotice {
   message: string;
 }
 
+// Component flow: gather data first, then render a focused UI state.
 export function useClientWorkflow(options: ClientWorkflowOptions = {}) {
   const portal = usePortal();
   const [feedbackNotice, setFeedbackNotice] = useState<FeedbackNotice | null>(null);

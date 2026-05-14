@@ -1,3 +1,6 @@
+// Friendly guide: this module (ClientNotificationsPage) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePortal } from "../../app/portal";
@@ -11,10 +14,13 @@ import { formatDateLabel } from "../../utils/formatters";
 
 const notificationSnapshotDate = new Date("2026-05-07T00:00:00.000Z");
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 type NotificationFilter = "all" | "unread" | "action";
 type NotificationSection = "today" | "this_week" | "earlier";
 
+// Component flow: gather data first, then render a focused UI state.
 function BellIcon() {
+// Render output: this is the visual state users interact with.
   return (
     <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
       <path
@@ -387,6 +393,7 @@ export function ClientNotificationsPage() {
   const notifications = portal.clientWorkflow.notifications;
   const [filter, setFilter] = useState<NotificationFilter>("all");
   const [reviewedIds, setReviewedIds] = useState<string[]>([]);
+// Local UI state: keeps track of what the user is seeing or editing right now.
   const [selectedNotificationId, setSelectedNotificationId] = useState(
     notifications[0]?.id ?? "",
   );

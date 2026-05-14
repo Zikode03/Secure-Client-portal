@@ -1,3 +1,6 @@
+// Friendly guide: this module (db) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { PrismaClient } from "@prisma/client";
 import { config } from "./config.js";
 

@@ -1,9 +1,14 @@
+// Friendly guide: this module (userPermissionOverrides) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import type { Permission, SessionUser } from "../types/portal";
 
 const USER_PERMISSION_OVERRIDES_KEY = "accounting-document-control-user-permissions";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 type PermissionOverrideMap = Record<string, Permission[]>;
 
+// Component flow: gather data first, then render a focused UI state.
 function normaliseEmail(email: string) {
   return email.trim().toLowerCase();
 }
@@ -61,4 +66,3 @@ export function applyPermissionOverride(user: SessionUser): SessionUser {
     permissions: override,
   };
 }
-

@@ -1,3 +1,6 @@
+// Friendly guide: this module (App) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { Suspense, lazy } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { defaultPathForRole, useAuth } from "./auth";
@@ -153,6 +156,7 @@ const NotFoundPage = lazy(() =>
   import("../pages/shared/NotFoundPage").then((module) => ({ default: module.NotFoundPage })),
 );
 
+// Component flow: gather data first, then render a focused UI state.
 function LoadingShell() {
   return <div className="min-h-screen bg-slate-100" />;
 }
@@ -304,6 +308,7 @@ function LegacyWorkspaceRedirect({ role }: { role: Extract<Role, "admin" | "acco
 }
 
 export default function App() {
+// Render output: this is the visual state users interact with.
   return (
     <Suspense fallback={<LoadingShell />}>
       <Routes>

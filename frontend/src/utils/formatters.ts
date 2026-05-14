@@ -1,8 +1,12 @@
+// Friendly guide: this module (formatters) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import type {
   Tone,
   WorkflowStatus,
 } from "../types/portal";
 
+// Component flow: gather data first, then render a focused UI state.
 export function formatStatusLabel(value: WorkflowStatus) {
   return value
     .replace(/_/g, " ")

@@ -1,3 +1,6 @@
+// Friendly guide: this module (portal) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 export type Role = "client" | "accountant" | "admin";
 
 export type Permission =

@@ -1,5 +1,9 @@
+// Friendly guide: this module (auth) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import {
   createContext,
+// Shared shape notes: these types keep UI and data contracts aligned.
   type ReactNode,
   useContext,
   useEffect,
@@ -85,6 +89,7 @@ const defaultCredentialsByEmail: Record<string, string> = {
   "admin@example.com": "Admin@2026",
 };
 
+// Component flow: gather data first, then render a focused UI state.
 function createInitials(fullName: string) {
   const initials = fullName
     .split(/\s+/)
@@ -142,9 +147,11 @@ export function defaultPathForRole(role: Role) {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+// Local UI state: keeps track of what the user is seeing or editing right now.
   const [ready, setReady] = useState(false);
   const [user, setUser] = useState<SessionUser | null>(null);
 
+// Reactive sync: this block responds when dependencies change.
   useEffect(() => {
     const storedSession = window.localStorage.getItem(STORAGE_KEY);
     if (!storedSession) {

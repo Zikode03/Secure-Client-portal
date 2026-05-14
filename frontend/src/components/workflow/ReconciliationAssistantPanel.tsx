@@ -1,7 +1,11 @@
+// Friendly guide: this module (ReconciliationAssistantPanel) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import type { ReconciliationIssue } from "../../types/portal";
 import { formatDateLabel, toneToAccentClass } from "../../utils/formatters";
 import { SurfaceCard } from "../ui/SurfaceCard";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 interface ReconciliationAssistantPanelProps {
   items: ReconciliationIssue[];
   title?: string;
@@ -10,6 +14,7 @@ interface ReconciliationAssistantPanelProps {
   onHeaderAction?: () => void;
 }
 
+// Component flow: gather data first, then render a focused UI state.
 export function ReconciliationAssistantPanel({
   description = "The assistant compares invoice activity against bank transactions and flags gaps that need a human check.",
   headerActionLabel,
@@ -17,6 +22,7 @@ export function ReconciliationAssistantPanel({
   onHeaderAction,
   title = "Auto-Reconciliation Assistant",
 }: ReconciliationAssistantPanelProps) {
+// Render output: this is the visual state users interact with.
   return (
     <SurfaceCard className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">

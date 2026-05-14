@@ -1,4 +1,7 @@
-ï»¿import { useMemo, useState } from "react";
+// Friendly guide: this module (FirmRequestDetailPage) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
+import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
@@ -8,10 +11,12 @@ import { SurfaceCard } from "../../components/ui/SurfaceCard";
 import { formatDateLabel } from "../../utils/formatters";
 import { getScopedRequests } from "../../utils/permissions";
 
+// Component flow: gather data first, then render a focused UI state.
 export function FirmRequestDetailPage() {
   const { requestId } = useParams();
   const { user } = useAuth();
   const portal = usePortal();
+// Local UI state: keeps track of what the user is seeing or editing right now.
   const [comment, setComment] = useState("");
   const [flash, setFlash] = useState("");
 
@@ -62,6 +67,7 @@ export function FirmRequestDetailPage() {
   }
 
   if (!request) {
+// Render output: this is the visual state users interact with.
     return (
       <SurfaceCard className="rounded-2xl border border-slate-200 bg-white p-6 shadow-none">
         <EmptyState
@@ -80,7 +86,7 @@ export function FirmRequestDetailPage() {
             <p className="text-xs uppercase tracking-wide text-slate-500">Request detail</p>
             <h1 className="mt-1 text-2xl font-semibold text-slate-950">{request.title}</h1>
             <p className="mt-1 text-sm text-slate-500">
-              {request.clientName} Â· {request.monthLabel} Â· {request.id}
+              {request.clientName} · {request.monthLabel} · {request.id}
             </p>
           </div>
           <Link
@@ -123,7 +129,7 @@ export function FirmRequestDetailPage() {
               <p className="text-sm font-medium text-slate-900">{entry.status}</p>
               {entry.note ? <p className="mt-1 text-sm text-slate-600">{entry.note}</p> : null}
               <p className="mt-1 text-xs text-slate-500">
-                {entry.actor} Â· {formatDateLabel(entry.timestamp)}
+                {entry.actor} · {formatDateLabel(entry.timestamp)}
               </p>
             </div>
           ))}

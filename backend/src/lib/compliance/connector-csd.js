@@ -1,3 +1,6 @@
+// Friendly guide: this module (connector csd) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import crypto from "crypto";
 
 function seededInt(seed, min, max) {

@@ -1,3 +1,6 @@
+// Friendly guide: this module (portalData) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import {
   getAccountantComplianceCentreData,
   getClientComplianceCentreData,
@@ -27,6 +30,7 @@ const TODAY = new Date("2026-05-04T08:00:00.000Z");
 
 const clone = <Value,>(value: Value): Value => JSON.parse(JSON.stringify(value)) as Value;
 
+// Component flow: gather data first, then render a focused UI state.
 function differenceInDays(dateValue: string) {
   const target = new Date(dateValue);
   return Math.ceil((target.getTime() - TODAY.getTime()) / (1000 * 60 * 60 * 24));

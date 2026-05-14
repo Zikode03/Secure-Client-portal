@@ -1,11 +1,17 @@
+// Friendly guide: this module (AuditTrail) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import type { AuditTrailEntry } from "../../types/portal";
 import { formatDateTimeLabel } from "../../utils/formatters";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 interface AuditTrailProps {
   entries: AuditTrailEntry[];
 }
 
+// Component flow: gather data first, then render a focused UI state.
 export function AuditTrail({ entries }: AuditTrailProps) {
+// Render output: this is the visual state users interact with.
   return (
     <div className="space-y-4">
       {entries.map((entry) => (

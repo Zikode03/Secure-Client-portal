@@ -1,9 +1,13 @@
+// Friendly guide: this module (LatestRecordsTable) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import type { InvoiceStatus, LatestRecordItem } from "../../types/portal";
 import { formatDateLabel } from "../../utils/formatters";
 import { Button } from "../ui/Button";
 import { StatusBadge } from "../ui/StatusBadge";
 import { SurfaceCard } from "../ui/SurfaceCard";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 interface LatestRecordsTableProps {
   title: string;
   description: string;
@@ -16,6 +20,7 @@ interface LatestRecordsTableProps {
   onHeaderAction?: () => void;
 }
 
+// Component flow: gather data first, then render a focused UI state.
 function canFinalise(status: InvoiceStatus) {
   return status === "draft" || status === "uploaded" || status === "finalised";
 }
@@ -31,6 +36,7 @@ export function LatestRecordsTable({
   title,
   headerActionLabel,
 }: LatestRecordsTableProps) {
+// Render output: this is the visual state users interact with.
   return (
     <SurfaceCard>
       <div className="flex flex-wrap items-center justify-between gap-3">

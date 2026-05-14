@@ -1,9 +1,13 @@
+// Friendly guide: this module (NotificationPreferencesPage) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
 import { Button } from "../../components/ui/Button";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 interface RoleNotificationPreferences {
   emailReminders: boolean;
   escalationAlerts: boolean;
@@ -16,9 +20,11 @@ const DEFAULT_PREFERENCES: RoleNotificationPreferences = {
   quietHours: "22:00-06:00",
 };
 
+// Component flow: gather data first, then render a focused UI state.
 export function NotificationPreferencesPage() {
   const { user } = useAuth();
   const portal = usePortal();
+// Local UI state: keeps track of what the user is seeing or editing right now.
   const [flash, setFlash] = useState("");
 
   const isClient = user?.role === "client";
@@ -34,6 +40,7 @@ export function NotificationPreferencesPage() {
   const [escalationAlerts, setEscalationAlerts] = useState(DEFAULT_PREFERENCES.escalationAlerts);
   const [quietHours, setQuietHours] = useState(DEFAULT_PREFERENCES.quietHours);
 
+// Reactive sync: this block responds when dependencies change.
   useEffect(() => {
     if (!user) {
       return;
@@ -99,6 +106,7 @@ export function NotificationPreferencesPage() {
     setFlash("Notification preferences saved.");
   }
 
+// Render output: this is the visual state users interact with.
   return (
     <SurfaceCard className="rounded-2xl border border-slate-200 bg-white p-5 shadow-none">
       <h1 className="text-xl font-semibold text-slate-950">Notification Preferences</h1>

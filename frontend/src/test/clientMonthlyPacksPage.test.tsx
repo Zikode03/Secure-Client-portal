@@ -1,3 +1,6 @@
+// Friendly guide: this module (clientMonthlyPacksPage.test) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
@@ -17,6 +20,7 @@ vi.mock("../hooks/useClientWorkflow", () => ({
 const mockedUseAuth = vi.mocked(useAuth);
 const mockedUseClientWorkflow = vi.mocked(useClientWorkflow);
 
+// Component flow: gather data first, then render a focused UI state.
 function createBasePack(): MonthlyPack {
   return {
     monthLabel: "April 2026",

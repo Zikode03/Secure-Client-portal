@@ -1,13 +1,19 @@
+// Friendly guide: this module (DocumentPreviewPane) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import type { DocumentRecord } from "../../types/portal";
 import { formatDateTimeLabel } from "../../utils/formatters";
 import { StatusBadge } from "../ui/StatusBadge";
 import { SurfaceCard } from "../ui/SurfaceCard";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 interface DocumentPreviewPaneProps {
   document: DocumentRecord;
 }
 
+// Component flow: gather data first, then render a focused UI state.
 export function DocumentPreviewPane({ document }: DocumentPreviewPaneProps) {
+// Render output: this is the visual state users interact with.
   return (
     <SurfaceCard className="overflow-hidden p-0">
       <div className="border-b border-slate-200 bg-slate-50 px-6 py-4">

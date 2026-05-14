@@ -1,3 +1,6 @@
+// Friendly guide: this module (AccountantPortfolioPage) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../app/auth";
@@ -12,12 +15,14 @@ import { getScopedClients } from "../../utils/permissions";
 
 const portfolioSnapshotDate = "2026-05-07T08:00:00.000Z";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 type SortMode = "priority" | "deadline" | "progress";
 type PortfolioView = {
   account: FirmClientAccount | null;
   row: PortfolioRow;
 };
 
+// Component flow: gather data first, then render a focused UI state.
 function getFirstName(value: string | undefined) {
   return value?.split(" ").filter(Boolean)[0] ?? "there";
 }
@@ -130,6 +135,7 @@ function industryTone(industry: string | undefined) {
 }
 
 function SearchIcon() {
+// Render output: this is the visual state users interact with.
   return (
     <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
       <circle cx="11" cy="11" r="6.5" stroke="currentColor" strokeWidth="1.8" />
@@ -311,6 +317,7 @@ export function AccountantPortfolioPage() {
   const portal = usePortal();
   const navigate = useNavigate();
   const isAdmin = user?.role === "admin";
+// Local UI state: keeps track of what the user is seeing or editing right now.
   const [search, setSearch] = useState("");
   const [sortMode, setSortMode] = useState<SortMode>("priority");
 

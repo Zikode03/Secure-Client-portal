@@ -1,12 +1,18 @@
+// Friendly guide: this module (ComplianceClientStatusTable) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import type { ComplianceClientStatus } from "../../types/portal";
 import { formatDateLabel } from "../../utils/formatters";
 import { SurfaceCard } from "../ui/SurfaceCard";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 interface ComplianceClientStatusTableProps {
   items: ComplianceClientStatus[];
 }
 
+// Component flow: gather data first, then render a focused UI state.
 export function ComplianceClientStatusTable({ items }: ComplianceClientStatusTableProps) {
+// Render output: this is the visual state users interact with.
   return (
     <SurfaceCard>
       <div className="flex flex-wrap items-center justify-between gap-3">

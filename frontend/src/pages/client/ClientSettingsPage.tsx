@@ -1,3 +1,6 @@
+// Friendly guide: this module (ClientSettingsPage) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../app/auth";
@@ -10,6 +13,7 @@ import { TextField } from "../../components/ui/TextField";
 import type { BusinessProfile, Tone } from "../../types/portal";
 import { cn } from "../../utils/cn";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 type SettingsSection = "business" | "security" | "notifications" | "documents";
 
 interface FeedbackNotice {
@@ -18,7 +22,9 @@ interface FeedbackNotice {
   message: string;
 }
 
+// Component flow: gather data first, then render a focused UI state.
 function BuildingIcon() {
+// Render output: this is the visual state users interact with.
   return (
     <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
       <path
@@ -198,6 +204,7 @@ export function ClientSettingsPage() {
 
   const [activeSection, setActiveSection] = useState<SettingsSection>("business");
   const [profile, setProfile] = useState<BusinessProfile>(portal.clientProfile);
+// Local UI state: keeps track of what the user is seeing or editing right now.
   const [industry, setIndustry] = useState("Accounting & Financial Services");
   const [jobTitle, setJobTitle] = useState(user?.title ?? "Finance Manager");
   const [deadlineAlerts, setDeadlineAlerts] = useState(true);

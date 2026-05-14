@@ -1,3 +1,6 @@
+// Friendly guide: this module (notifications) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import express from "express";
 import { store } from "../lib/store.js";
 import { addAudit } from "../lib/audit.js";

@@ -1,3 +1,6 @@
+// Friendly guide: this module (uploads) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import express from "express";
 import path from "path";
 import crypto from "crypto";

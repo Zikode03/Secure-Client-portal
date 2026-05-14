@@ -1,16 +1,22 @@
+// Friendly guide: this module (ComplianceReportPanel) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
 import { formatDateLabel } from "../../utils/formatters";
 import { Button } from "../ui/Button";
 import { SurfaceCard } from "../ui/SurfaceCard";
 
+// Shared shape notes: these types keep UI and data contracts aligned.
 interface ComplianceReportPanelProps {
   generatedAt: string;
   onDownload: () => void;
 }
 
+// Component flow: gather data first, then render a focused UI state.
 export function ComplianceReportPanel({
   generatedAt,
   onDownload,
 }: ComplianceReportPanelProps) {
+// Render output: this is the visual state users interact with.
   return (
     <SurfaceCard className="space-y-5">
       <div>
