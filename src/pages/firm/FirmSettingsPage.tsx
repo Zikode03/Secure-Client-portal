@@ -445,7 +445,7 @@ export function FirmSettingsPage() {
               </p>
             </div>
             <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4">
-              <p className="text-sm font-semibold text-slate-950">Open requests</p>
+              <p className="text-sm font-semibold text-slate-950">Open inbox items</p>
               <p className="mt-2 text-[1.8rem] font-semibold tracking-tight text-amber-600">
                 {outstandingRequestCount}
               </p>
@@ -555,7 +555,7 @@ export function FirmSettingsPage() {
             </p>
           </div>
           <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4">
-            <p className="text-sm font-semibold text-slate-950">Open requests</p>
+            <p className="text-sm font-semibold text-slate-950">Open inbox items</p>
             <p className="mt-2 text-[1.8rem] font-semibold tracking-tight text-rose-600">
               {outstandingRequestCount}
             </p>

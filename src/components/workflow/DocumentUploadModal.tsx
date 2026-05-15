@@ -54,6 +54,24 @@ function sanitiseNameSegment(value: string) {
   return compactValue || "Document";
 }
 
+function hasGenericFileName(fileName: string) {
+  const baseName = fileName.replace(/\.[^.]+$/, "").toLowerCase().trim();
+  const genericPatterns = [
+    /^img\d*$/,
+    /^image\d*$/,
+    /^document\d*$/,
+    /^doc\d*$/,
+    /^new\s*doc\d*$/,
+    /^scan\d*$/,
+    /^file\d*$/,
+    /^untitled\d*$/,
+    /^invoice$/,
+    /^statement$/,
+  ];
+
+  return genericPatterns.some((pattern) => pattern.test(baseName));
+}
+
 function shouldTrackExpiryDate(documentType: string, selectedSlot: MonthlyDocumentSlot | null) {
   if (selectedSlot?.supportsExpiryDate) {
     return true;
@@ -129,6 +147,10 @@ export function DocumentUploadModal({
 
     if (file.size > 10 * 1024 * 1024) {
       return "Keep uploads under 10 MB so the review queue stays fast and reliable.";
+    }
+
+    if (hasGenericFileName(file.name)) {
+      return "File name is too generic. Rename it to something specific like INV_May_ABCCompany_2026.pdf before uploading.";
     }
 
     return "";
@@ -318,6 +340,9 @@ export function DocumentUploadModal({
           <p className="text-sm font-medium text-brand-700">Auto-naming preview</p>
           <p className="mt-3 break-all text-lg font-semibold text-slate-950">
             {autoNamePreview}
+          </p>
+          <p className="mt-2 text-sm text-slate-600">
+            Required format: <span className="font-medium">Client_DocumentType_Month_Year.ext</span>
           </p>
         </div>
 

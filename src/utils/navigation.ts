@@ -60,6 +60,13 @@ export const navigationByRole: Record<Role, NavigationItem[]> = {
       icon: "packs",
     },
     {
+      label: "Inbox",
+      to: "/client/inbox",
+      description: "Track accountant requests, clarifications, and follow-ups",
+      section: "Main",
+      icon: "requests",
+    },
+    {
       label: "Documents",
       to: "/client/documents",
       description: "Search documents, invoices, and compliance records",
@@ -109,6 +116,13 @@ export const navigationByRole: Record<Role, NavigationItem[]> = {
       description: "Accept, reject, or hold records under review",
       section: "Main",
       icon: "review",
+    },
+    {
+      label: "Inbox",
+      to: "/firm/inbox",
+      description: "Handle request threads, clarifications, and follow-ups",
+      section: "Main",
+      icon: "requests",
     },
     {
       label: "Documents",

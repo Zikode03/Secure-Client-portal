@@ -249,7 +249,7 @@ function RequirePermission({
 
 function redirectAccountantPath(pathname: string) {
   if (pathname.startsWith("/accountant/messages")) {
-    return pathname.replace("/accountant/messages", "/firm/requests");
+    return pathname.replace("/accountant/messages", "/firm/inbox");
   }
 
   return pathname.replace("/accountant", "/firm");
@@ -344,13 +344,14 @@ export default function App() {
           <Route element={<Navigate replace to="dashboard" />} index />
           <Route element={<ClientDashboardPage />} path="dashboard" />
           <Route element={<ClientMonthlyPacksPage />} path="packs" />
-          <Route element={<ClientRequestsPage />} path="requests" />
+          <Route element={<Navigate replace to="/client/inbox" />} path="requests" />
+          <Route element={<ClientRequestsPage />} path="inbox" />
           <Route element={<ClientDocumentsPage />} path="documents" />
           <Route element={<Navigate replace to="/client/documents" />} path="invoices" />
           <Route element={<ClientComplianceCentrePage />} path="compliance" />
           <Route element={<ClientNotificationsPage />} path="notifications" />
           <Route element={<NotificationPreferencesPage />} path="notifications/preferences" />
-          <Route element={<Navigate replace to="/client/requests" />} path="messages" />
+          <Route element={<Navigate replace to="/client/inbox" />} path="messages" />
           <Route element={<ClientSettingsPage />} path="settings" />
         </Route>
 
@@ -362,6 +363,9 @@ export default function App() {
           <Route element={<FirmClientWorkspacePage />} path="clients/:clientId/packs" />
           <Route element={<FirmDocumentsPage />} path="documents" />
           <Route element={<FirmReviewQueuePage />} path="review" />
+          <Route element={<Navigate replace to="/firm/inbox" />} path="requests" />
+          <Route element={<FirmRequestsPage />} path="inbox" />
+          <Route element={<FirmRequestDetailPage />} path="inbox/:requestId" />
           <Route element={<FirmRequestsPage />} path="requests" />
           <Route element={<FirmRequestDetailPage />} path="requests/:requestId" />
           <Route element={<FirmActivityFeedPage />} path="activity" />

@@ -70,7 +70,7 @@ function rowDueMeta(row: PortfolioRow) {
     return {
       label: "On track",
       textClass: "text-emerald-600",
-      detail: row.deadline === "—" ? "No immediate deadline" : row.deadline,
+      detail: row.deadline === "-" ? "No immediate deadline" : row.deadline,
     };
   }
 
@@ -415,7 +415,7 @@ function buildReviewQueueItems(
   return items.map((item) => ({
     id: item.id,
     title: `${item.documentType} review`,
-    subtitle: `${item.clientName} • ${item.monthLabel}`,
+    subtitle: `${item.clientName} | ${item.monthLabel}`,
     meta: `Submitted ${formatDateLabel(item.submittedAt)}`,
     priority: item.status === "under_review" ? "high" : "medium",
     tone: item.status === "under_review" ? "rose" : "orange",
@@ -654,7 +654,7 @@ export function AccountantDashboardPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[1280px] space-y-5">
+    <div className="mx-auto max-w-[1280px] space-y-6">
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
         <div className="space-y-1.5">
           <h1 className="text-[2.05rem] font-semibold tracking-tight text-slate-950">
@@ -697,7 +697,7 @@ export function AccountantDashboardPage() {
             {isNotificationPanelOpen ? (
               <div
                 aria-label={isAdmin ? "Firm notifications" : "Accountant notifications"}
-                className="absolute right-0 top-[calc(100%+0.75rem)] z-30 w-[420px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-[1.6rem] border border-slate-200/90 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.14)]"
+                className="absolute right-0 top-[calc(100%+0.75rem)] z-30 w-[min(420px,calc(100vw-1rem))] max-w-[calc(100vw-1rem)] overflow-hidden rounded-[1.6rem] border border-slate-200/90 bg-white shadow-[0_24px_60px_rgba(15,23,42,0.14)]"
                 role="dialog"
               >
                 <div className="border-b border-slate-100 bg-[radial-gradient(circle_at_top_left,rgba(84,66,255,0.08),transparent_36%),linear-gradient(180deg,#ffffff_0%,#fbfbff_100%)] px-5 pb-4 pt-5">
@@ -828,7 +828,7 @@ export function AccountantDashboardPage() {
           <div>
             <h2 className="text-[1.35rem] font-semibold text-slate-950">Today&apos;s focus</h2>
           </div>
-          <div className="grid gap-5 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {focusMetrics.map((metric, index) => (
               <div
                 className={cn(
@@ -864,7 +864,7 @@ export function AccountantDashboardPage() {
                   : "Overview of your clients and pack progress."}
               </p>
             </div>
-            <div className="flex items-center gap-2.5">
+            <div className="flex w-full flex-wrap items-center gap-2.5 sm:w-auto">
               {isAdmin ? (
                 <Button
                   className="h-10 rounded-xl px-4 text-brand-600"
@@ -905,7 +905,7 @@ export function AccountantDashboardPage() {
 
                   return (
                     <button
-                      className="grid w-full grid-cols-[minmax(0,1.4fr)_minmax(180px,1fr)_minmax(160px,0.8fr)_auto] gap-4 px-5 py-4 text-left transition hover:bg-slate-50"
+                      className="w-full space-y-3 px-5 py-4 text-left transition hover:bg-slate-50 lg:grid lg:grid-cols-[minmax(0,1.4fr)_minmax(180px,1fr)_minmax(160px,0.8fr)_auto] lg:items-start lg:gap-4 lg:space-y-0"
                       key={row.id}
                       onClick={() => openClientWorkspace(row)}
                       type="button"
@@ -935,7 +935,7 @@ export function AccountantDashboardPage() {
                           />
                         </div>
                         <p className="text-[0.78rem] text-slate-500">
-                          {row.missingCount} missing <span className="text-slate-300">•</span>{" "}
+                          {row.missingCount} missing <span className="text-slate-300">|</span>{" "}
                           <span className={row.overdueCount > 0 ? "text-rose-600" : "text-slate-500"}>
                             {row.overdueCount} overdue
                           </span>

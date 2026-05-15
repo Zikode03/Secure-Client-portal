@@ -631,7 +631,7 @@ export function ClientDashboardPage() {
         detail: openRequest.title,
         ctaLabel: "Open",
         tone: "info",
-        onAction: () => navigate("/client/requests"),
+        onAction: () => navigate("/client/inbox"),
       });
     }
 
@@ -937,7 +937,7 @@ export function ClientDashboardPage() {
           emptyDescription="Any accountant follow-ups for this month will appear here."
           emptyTitle="No follow-up requests"
           items={requestsPreview}
-          onViewAll={() => navigate("/client/requests")}
+          onViewAll={() => navigate("/client/inbox")}
           renderItem={(item, index) => {
             const typedItem = item as WorkflowRequest;
             return (
@@ -960,7 +960,7 @@ export function ClientDashboardPage() {
                 </div>
                 <button
                   className="text-sm font-medium text-amber-600 transition hover:text-amber-700"
-                  onClick={() => navigate("/client/requests")}
+                  onClick={() => navigate("/client/inbox")}
                   type="button"
                 >
                   Open

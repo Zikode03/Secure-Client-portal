@@ -3,11 +3,11 @@
 
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
+import { usePortal } from "../../app/portal";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
-import { portalService } from "../../services/portalData";
 import type {
   ComplianceCentreData,
   ComplianceDocumentRecord,
@@ -584,7 +584,7 @@ function PrioritySection({
 }
 
 export function ClientComplianceCentrePage() {
-  const data = useMemo(() => portalService.getClientComplianceCentre(), []);
+  const { clientComplianceCentre: data } = usePortal();
   const [feedbackNotice, setFeedbackNotice] = useState<FeedbackNotice | null>(null);
   const [priorityFilter, setPriorityFilter] = useState<"all" | PriorityKind>("all");
 
@@ -676,12 +676,12 @@ export function ClientComplianceCentrePage() {
 
   return (
     <div className="mx-auto max-w-[1280px] space-y-6">
-      <section className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-        <div className="space-y-2">
-          <h1 className="text-[2.65rem] font-semibold tracking-tight text-slate-950">
+      <section className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="space-y-1.5">
+          <h1 className="text-[2.05rem] font-semibold tracking-tight text-slate-950">
             Compliance Centre
           </h1>
-          <p className="max-w-3xl text-[1.02rem] leading-7 text-slate-500">
+          <p className="max-w-3xl text-[0.96rem] leading-7 text-slate-500">
             Track compliance readiness, expiry risk, and audit activity across all regulated records.
           </p>
         </div>

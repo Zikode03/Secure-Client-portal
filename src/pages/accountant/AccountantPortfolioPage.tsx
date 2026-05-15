@@ -556,7 +556,7 @@ export function AccountantPortfolioPage() {
                       <>
                         <Button
                           className="h-10 rounded-xl border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                          onClick={() => navigate(`/firm/clients/${row.clientId}?tab=packs`)}
+                          onClick={() => navigate(`/firm/clients/${row.clientId}/packs`)}
                           size="sm"
                           variant="secondary"
                         >

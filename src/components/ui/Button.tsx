@@ -16,20 +16,16 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClasses: Record<ButtonVariant, string> = {
-  primary:
-    "bg-slate-950 text-white shadow-sm hover:bg-slate-800 focus-visible:outline-brand-500",
-  secondary:
-    "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50 focus-visible:outline-brand-500",
-  ghost:
-    "bg-transparent text-slate-600 hover:bg-slate-100 focus-visible:outline-brand-500",
-  danger:
-    "bg-rose-600 text-white shadow-sm hover:bg-rose-500 focus-visible:outline-rose-500",
+  primary: "ui-btn-primary",
+  secondary: "ui-btn-secondary",
+  ghost: "ui-btn-ghost",
+  danger: "ui-btn-danger",
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
-  sm: "h-9 px-3 text-sm",
-  md: "h-10 px-4 text-sm",
-  lg: "h-12 px-5 text-sm",
+  sm: "h-9 px-3 text-[0.84rem]",
+  md: "h-10 px-4 text-[0.9rem]",
+  lg: "h-12 px-5 text-[0.95rem]",
 };
 
 // Component flow: gather data first, then render a focused UI state.
@@ -46,7 +42,7 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-xl font-medium transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60",
+        "ui-btn inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60",
         variantClasses[variant],
         sizeClasses[size],
         fullWidth && "w-full",

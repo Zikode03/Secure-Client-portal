@@ -7,16 +7,19 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./app/App";
 import { AuthProvider } from "./app/auth";
 import { PortalProvider } from "./app/portal";
+import { ThemeProvider } from "./app/theme";
 import "./styles.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>
-      <PortalProvider>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
-      </PortalProvider>
+      <ThemeProvider>
+        <PortalProvider>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </PortalProvider>
+      </ThemeProvider>
     </BrowserRouter>
   </React.StrictMode>,
 );

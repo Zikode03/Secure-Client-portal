@@ -385,6 +385,8 @@ export function ClientDocumentsPage() {
   const [commentDraft, setCommentDraft] = useState("");
   const [commentError, setCommentError] = useState("");
   const [previewZoom, setPreviewZoom] = useState(100);
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
 
   const searchableResults = useMemo(
     () =>
@@ -570,6 +572,8 @@ export function ClientDocumentsPage() {
     setCommentDraft("");
     setCommentError("");
     setPreviewZoom(100);
+    setPreviewModalOpen(false);
+    setViewerOpen(false);
   }, [selectedResultId]);
 
   function dismissFeedbackNotice() {
@@ -912,7 +916,7 @@ export function ClientDocumentsPage() {
         ) : null}
       </SurfaceCard>
 
-      <section className="grid gap-5 xl:grid-cols-[minmax(0,0.39fr)_minmax(0,0.61fr)] xl:items-start">
+      <section className="grid gap-5">
         <SurfaceCard className="overflow-hidden rounded-[1.5rem] border border-slate-200/80 bg-white p-0 shadow-[0_20px_45px_rgba(15,23,42,0.05)]">
           <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 pb-4 pt-5">
             <div className="flex items-center gap-3">
@@ -937,12 +941,10 @@ export function ClientDocumentsPage() {
 
           {sortedResults.length > 0 ? (
             <>
-              <div className="hidden grid-cols-[minmax(0,2.2fr)_0.9fr_0.9fr_1fr_0.9fr_24px] gap-4 border-b border-slate-100 px-5 py-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-slate-400 lg:grid">
+              <div className="hidden grid-cols-[minmax(0,1.9fr)_0.95fr_0.95fr_24px] gap-4 border-b border-slate-100 px-5 py-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-slate-400 lg:grid">
                 <span>Document</span>
-                <span>Type</span>
-                <span>Period</span>
-                <span>Status</span>
                 <span>Updated</span>
+                <span>Status</span>
                 <span />
               </div>
 
@@ -950,6 +952,8 @@ export function ClientDocumentsPage() {
                 {visibleResults.map((result) => {
                   const tone = statusToTone(result.status);
                   const isSelected = selectedResult?.id === result.id;
+                  const isRecent =
+                    (Date.now() - new Date(result.date).getTime()) / (1000 * 60 * 60 * 24) <= 7;
 
                   return (
                     <button
@@ -959,10 +963,13 @@ export function ClientDocumentsPage() {
                           : "hover:bg-slate-50"
                       }`}
                       key={result.id}
-                      onClick={() => setSelectedResultId(result.id)}
+                      onClick={() => {
+                        setSelectedResultId(result.id);
+                        setViewerOpen(true);
+                      }}
                       type="button"
                     >
-                      <div className="grid gap-3 lg:grid-cols-[minmax(0,2.2fr)_0.9fr_0.9fr_1fr_0.9fr_24px] lg:items-center lg:gap-4">
+                      <div className="grid gap-3 lg:grid-cols-[minmax(0,1.9fr)_0.95fr_0.95fr_24px] lg:items-center lg:gap-4">
                         <div className="flex items-start gap-3">
                           <ResultTypeIcon result={result} />
                           <div className="min-w-0">
@@ -970,20 +977,27 @@ export function ClientDocumentsPage() {
                               {result.title}
                             </p>
                             <p className="mt-0.5 truncate text-[0.82rem] text-slate-500">
-                              {result.supplierName ?? result.clientName}
+                              {result.typeLabel} | {result.monthLabel}
+                            </p>
+                            {result.amountLabel ? (
+                              <p className="mt-1 text-[0.82rem] font-medium text-slate-400">{result.amountLabel}</p>
+                            ) : null}
+                            {isRecent ? (
+                              <span className="mt-1.5 inline-flex rounded-full bg-brand-50 px-2 py-0.5 text-[0.68rem] font-semibold text-brand-700 ring-1 ring-brand-100">
+                                New
+                              </span>
+                            ) : null}
+                            <p className="mt-1 text-[0.78rem] text-slate-400 lg:hidden">
+                              Updated {formatDateLabel(result.date)}
                             </p>
                           </div>
                         </div>
 
-                        <div className="text-[0.84rem] text-slate-600">{result.typeLabel}</div>
-                        <div className="text-[0.84rem] text-slate-600">{result.monthLabel}</div>
-
+                        <div className="text-[0.82rem] text-slate-500">{formatDateLabel(result.date)}</div>
                         <div className="flex items-center gap-2 text-[0.84rem] font-medium text-slate-700">
                           <span className={`h-2.5 w-2.5 rounded-full ${toneDotClass(tone)}`} />
                           <span>{formatStatusLabel(result.status)}</span>
                         </div>
-
-                        <div className="text-[0.82rem] text-slate-500">{formatDateLabel(result.date)}</div>
 
                         <div className="hidden justify-self-end text-slate-300 lg:block">
                           <ChevronRightIcon />
@@ -1028,7 +1042,15 @@ export function ClientDocumentsPage() {
           )}
         </SurfaceCard>
 
-        <SurfaceCard className="overflow-hidden rounded-[1.5rem] border border-slate-200/80 bg-white p-0 shadow-[0_20px_45px_rgba(15,23,42,0.05)]">
+        {viewerOpen && selectedResult ? (
+          <div
+            className="fixed inset-0 z-50 bg-slate-950/55 px-3 py-4 sm:px-6 sm:py-6"
+            onClick={() => setViewerOpen(false)}
+          >
+            <SurfaceCard
+              className="mx-auto h-full w-full max-w-[1120px] overflow-y-auto rounded-[1.5rem] border border-slate-200/80 bg-white p-0 shadow-[0_22px_56px_rgba(15,23,42,0.22)]"
+              onClick={(event) => event.stopPropagation()}
+            >
           {selectedResult ? (
             <>
               <div className="space-y-5 border-b border-slate-100 px-5 pb-5 pt-5">
@@ -1054,7 +1076,7 @@ export function ClientDocumentsPage() {
                   <div className="relative flex flex-wrap items-center gap-2.5 lg:justify-end">
                     <Button
                       className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-700 hover:bg-slate-50"
-                      onClick={() => setActiveTab("overview")}
+                      onClick={() => setPreviewModalOpen(true)}
                       size="sm"
                       variant="secondary"
                     >
@@ -1090,6 +1112,14 @@ export function ClientDocumentsPage() {
                       type="button"
                     >
                       <MoreIcon />
+                    </button>
+                    <button
+                      aria-label="Close document workspace"
+                      className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
+                      onClick={() => setViewerOpen(false)}
+                      type="button"
+                    >
+                      ✕
                     </button>
 
                     {detailMenuOpen ? (
@@ -1216,118 +1246,24 @@ export function ClientDocumentsPage() {
 
               <div className="px-5 py-5">
                 {activeTab === "overview" ? (
-                  <div className="grid gap-5 xl:grid-cols-[minmax(0,0.56fr)_minmax(0,0.44fr)]">
+                  <div className="grid gap-5">
                     <div className="rounded-[1.3rem] border border-slate-200 bg-slate-50 p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <p className="text-sm font-semibold text-slate-950">Preview</p>
-                        <span className="rounded-full bg-white px-3 py-1 text-[0.72rem] font-semibold text-slate-500 ring-1 ring-slate-200">
-                          {selectedDocument?.sizeLabel ?? selectedResult.typeLabel}
-                        </span>
-                      </div>
-
-                      <div className="mt-4 overflow-hidden rounded-[1.1rem] border border-slate-200 bg-white shadow-inner">
-                        <div className="flex min-h-[430px] items-start justify-center bg-[radial-gradient(circle_at_top,#f8fafc_0%,#eef2ff_100%)] px-4 py-6">
-                          <div
-                            className="w-full max-w-[360px] rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-[0_18px_32px_rgba(15,23,42,0.08)]"
-                            style={{
-                              transform: `scale(${previewZoom / 100})`,
-                              transformOrigin: "top center",
-                            }}
-                          >
-                            <div className="flex items-start justify-between gap-3">
-                              <div>
-                                <p className="text-[1.35rem] font-semibold tracking-tight text-slate-950">
-                                  {selectedSupplier}
-                                </p>
-                                <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                                  {selectedResult.typeLabel}
-                                </p>
-                              </div>
-                              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[0.72rem] font-semibold text-slate-600">
-                                {selectedResult.monthLabel}
-                              </span>
-                            </div>
-
-                            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                                <p className="text-[0.72rem] uppercase tracking-[0.16em] text-slate-400">
-                                  Reference
-                                </p>
-                                <p className="mt-2 text-sm font-semibold text-slate-900">{selectedReference}</p>
-                              </div>
-                              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                                <p className="text-[0.72rem] uppercase tracking-[0.16em] text-slate-400">
-                                  Amount
-                                </p>
-                                <p className="mt-2 text-sm font-semibold text-slate-900">{selectedAmount}</p>
-                              </div>
-                            </div>
-
-                            <div className="mt-5 space-y-3 rounded-[1.2rem] border border-slate-200 bg-white p-4">
-                              {previewLines.length > 0 ? (
-                                previewLines.map((line) => (
-                                  <p className="text-[0.85rem] leading-6 text-slate-600" key={line}>
-                                    {line}.
-                                  </p>
-                                ))
-                              ) : (
-                                <>
-                                  <div className="h-3 w-4/5 rounded-full bg-slate-100" />
-                                  <div className="h-3 w-5/6 rounded-full bg-slate-100" />
-                                  <div className="h-3 w-3/5 rounded-full bg-slate-100" />
-                                </>
-                              )}
-                            </div>
-
-                            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                              <div className="rounded-2xl border border-slate-200 p-3">
-                                <p className="text-[0.72rem] uppercase tracking-[0.16em] text-slate-400">
-                                  Uploaded
-                                </p>
-                                <p className="mt-2 text-sm font-medium text-slate-900">
-                                  {selectedDocument
-                                    ? formatDateTimeLabel(selectedDocument.uploadedAt)
-                                    : formatDateTimeLabel(selectedResult.date)}
-                                </p>
-                              </div>
-                              <div className="rounded-2xl border border-slate-200 p-3">
-                                <p className="text-[0.72rem] uppercase tracking-[0.16em] text-slate-400">
-                                  Status
-                                </p>
-                                <p className="mt-2 text-sm font-medium text-slate-900">
-                                  {formatStatusLabel(selectedResult.status)}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-slate-950">Preview</p>
+                          <p className="mt-1 text-sm text-slate-500">
+                            Open the document preview in full screen for a cleaner reading view.
+                          </p>
                         </div>
-
-                        <div className="flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <button
-                              className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
-                              onClick={() => setPreviewZoom((current) => Math.max(80, current - 10))}
-                              type="button"
-                            >
-                              -
-                            </button>
-                            <button
-                              className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
-                              onClick={() => setPreviewZoom((current) => Math.min(140, current + 10))}
-                              type="button"
-                            >
-                              +
-                            </button>
-                          </div>
-                          <span className="text-sm font-medium text-slate-500">{previewZoom}%</span>
-                          <button
-                            className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-800"
-                            onClick={() => setPreviewZoom(100)}
-                            type="button"
-                          >
-                            Reset
-                          </button>
-                        </div>
+                        <Button
+                          className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-700 hover:bg-slate-50"
+                          onClick={() => setPreviewModalOpen(true)}
+                          size="sm"
+                          variant="secondary"
+                        >
+                          <EyeIcon />
+                          <span>Open full preview</span>
+                        </Button>
                       </div>
                     </div>
 
@@ -1356,12 +1292,16 @@ export function ClientDocumentsPage() {
                             {selectedDueDate ? formatDateLabel(selectedDueDate) : "—"}
                           </span>
                         </div>
-                        <div className="space-y-2 border-b border-slate-100 pb-4">
-                          <span className="text-slate-500">Status reason</span>
-                          <div className={`rounded-[1rem] border px-4 py-3 leading-6 ${toneToAccentClass(selectedTone)}`}>
-                            {selectedStatusMessage}
-                          </div>
+                      <div className="space-y-2 border-b border-slate-100 pb-4">
+                        <span className="text-slate-500">Status reason</span>
+                        <div
+                          className={`rounded-[1rem] border px-4 py-3 leading-6 ${toneToAccentClass(
+                            selectedTone,
+                          )}`}
+                        >
+                          {selectedStatusMessage}
                         </div>
+                      </div>
                         <div className="grid grid-cols-[120px_minmax(0,1fr)] gap-4">
                           <span className="text-slate-500">Required</span>
                           <span className="font-medium text-slate-900">{selectedRequired ? "Yes" : "No"}</span>
@@ -1496,7 +1436,9 @@ export function ClientDocumentsPage() {
               />
             </div>
           )}
-        </SurfaceCard>
+            </SurfaceCard>
+          </div>
+        ) : null}
       </section>
 
       <DocumentUploadModal
@@ -1506,6 +1448,103 @@ export function ClientDocumentsPage() {
         onUploaded={handleUploadToSlot}
         selectedSlot={selectedSlot}
       />
+      {previewModalOpen && selectedResult ? (
+        <div className="fixed inset-0 z-50 bg-slate-950/60 px-3 py-4 sm:px-6 sm:py-6" onClick={() => setPreviewModalOpen(false)}>
+          <div
+            className="mx-auto h-full w-full max-w-[980px] overflow-y-auto rounded-[1.4rem] border border-slate-200 bg-white shadow-[0_26px_55px_rgba(15,23,42,0.3)]"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-950">{selectedResult.title}</p>
+                <p className="text-xs text-slate-500">
+                  {selectedSupplier} / {selectedResult.monthLabel}
+                </p>
+              </div>
+              <button
+                className="rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+                onClick={() => setPreviewModalOpen(false)}
+                type="button"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="bg-[radial-gradient(circle_at_top,#f8fafc_0%,#eef2ff_100%)] px-4 py-6 sm:px-6">
+              <div
+                className="mx-auto w-full max-w-[520px] rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-[0_18px_32px_rgba(15,23,42,0.08)]"
+                style={{ transform: `scale(${previewZoom / 100})`, transformOrigin: "top center" }}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[1.35rem] font-semibold tracking-tight text-slate-950">{selectedSupplier}</p>
+                    <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                      {selectedResult.typeLabel}
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[0.72rem] font-semibold text-slate-600">
+                    {selectedResult.monthLabel}
+                  </span>
+                </div>
+
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                    <p className="text-[0.72rem] uppercase tracking-[0.16em] text-slate-400">Reference</p>
+                    <p className="mt-2 text-sm font-semibold text-slate-900">{selectedReference}</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                    <p className="text-[0.72rem] uppercase tracking-[0.16em] text-slate-400">Amount</p>
+                    <p className="mt-2 text-sm font-semibold text-slate-900">{selectedAmount}</p>
+                  </div>
+                </div>
+
+                <div className="mt-5 space-y-3 rounded-[1.2rem] border border-slate-200 bg-white p-4">
+                  {previewLines.length > 0 ? (
+                    previewLines.map((line) => (
+                      <p className="text-[0.85rem] leading-6 text-slate-600" key={line}>
+                        {line}.
+                      </p>
+                    ))
+                  ) : (
+                    <>
+                      <div className="h-3 w-4/5 rounded-full bg-slate-100" />
+                      <div className="h-3 w-5/6 rounded-full bg-slate-100" />
+                      <div className="h-3 w-3/5 rounded-full bg-slate-100" />
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3">
+              <div className="flex items-center gap-2">
+                <button
+                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
+                  onClick={() => setPreviewZoom((current) => Math.max(80, current - 10))}
+                  type="button"
+                >
+                  -
+                </button>
+                <button
+                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
+                  onClick={() => setPreviewZoom((current) => Math.min(140, current + 10))}
+                  type="button"
+                >
+                  +
+                </button>
+              </div>
+              <span className="text-sm font-medium text-slate-500">{previewZoom}%</span>
+              <button
+                className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-slate-800"
+                onClick={() => setPreviewZoom(100)}
+                type="button"
+              >
+                Reset
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

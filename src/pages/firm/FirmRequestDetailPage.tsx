@@ -83,7 +83,7 @@ export function FirmRequestDetailPage() {
       <SurfaceCard className="rounded-2xl border border-slate-200 bg-white p-5 shadow-none">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs uppercase tracking-wide text-slate-500">Request detail</p>
+            <p className="text-xs uppercase tracking-wide text-slate-500">Inbox item detail</p>
             <h1 className="mt-1 text-2xl font-semibold text-slate-950">{request.title}</h1>
             <p className="mt-1 text-sm text-slate-500">
               {request.clientName} · {request.monthLabel} · {request.id}
@@ -91,9 +91,9 @@ export function FirmRequestDetailPage() {
           </div>
           <Link
             className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700"
-            to="/firm/requests"
+            to="/firm/inbox"
           >
-            Back to requests
+            Back to inbox
           </Link>
         </div>
       </SurfaceCard>

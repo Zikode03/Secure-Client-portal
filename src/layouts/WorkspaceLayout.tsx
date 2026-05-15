@@ -1,9 +1,10 @@
 // Friendly guide: this module (WorkspaceLayout) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../app/auth";
+import { useTheme } from "../app/theme";
 import type { Role } from "../types/portal";
 import { cn } from "../utils/cn";
 import type { NavigationIcon, NavigationItem } from "../utils/navigation";
@@ -18,7 +19,7 @@ interface WorkspaceLayoutProps {
 function PortalMark() {
 // Render output: this is the visual state users interact with.
   return (
-    <svg className="h-7 w-7 text-indigo-400" fill="none" viewBox="0 0 24 24">
+    <svg className="h-7 w-7 text-brand-300" fill="none" viewBox="0 0 24 24">
       <path
         d="M12 3 19 6v6c0 4.9-2.8 8.7-7 10-4.2-1.3-7-5.1-7-10V6l7-3Z"
         stroke="currentColor"
@@ -168,6 +169,7 @@ const prefetchedRoutes = new Set<string>();
 const routePrefetchers: Array<{ match: (path: string) => boolean; load: () => Promise<unknown> }> = [
   { match: (path) => path.startsWith("/client/dashboard"), load: () => import("../pages/client/ClientDashboardPage") },
   { match: (path) => path.startsWith("/client/packs"), load: () => import("../pages/client/ClientMonthlyPacksPage") },
+  { match: (path) => path.startsWith("/client/inbox"), load: () => import("../pages/client/ClientRequestsPage") },
   { match: (path) => path.startsWith("/client/requests"), load: () => import("../pages/client/ClientRequestsPage") },
   { match: (path) => path.startsWith("/client/documents"), load: () => import("../pages/client/ClientDocumentsPage") },
   { match: (path) => path.startsWith("/client/compliance"), load: () => import("../pages/client/ClientComplianceCentrePage") },
@@ -177,6 +179,8 @@ const routePrefetchers: Array<{ match: (path: string) => boolean; load: () => Pr
   { match: (path) => path.startsWith("/firm/clients"), load: () => import("../pages/firm/FirmClientsPage") },
   { match: (path) => path.startsWith("/firm/documents"), load: () => import("../pages/firm/FirmDocumentsPage") },
   { match: (path) => path.startsWith("/firm/review"), load: () => import("../pages/firm/FirmReviewQueuePage") },
+  { match: (path) => path.startsWith("/firm/inbox"), load: () => import("../pages/firm/FirmRequestsPage") },
+  { match: (path) => path.startsWith("/firm/inbox/"), load: () => import("../pages/firm/FirmRequestDetailPage") },
   { match: (path) => path.startsWith("/firm/requests"), load: () => import("../pages/firm/FirmRequestsPage") },
   { match: (path) => path.startsWith("/firm/requests/"), load: () => import("../pages/firm/FirmRequestDetailPage") },
   { match: (path) => path.startsWith("/firm/activity"), load: () => import("../pages/firm/FirmActivityFeedPage") },
@@ -211,7 +215,9 @@ function prefetchRoute(path: string) {
 
 export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
   const { logout, user } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const location = useLocation();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const navigation = navigationByRole[role];
   const groupedNavigation = useMemo(() => groupNavigation(navigation), [navigation]);
 
@@ -223,8 +229,24 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
 
   return (
     <div className="min-h-screen bg-slate-100">
+      {mobileNavOpen ? (
+        <button
+          aria-label="Close navigation"
+          className="fixed inset-0 z-30 bg-slate-950/45 lg:hidden"
+          onClick={() => setMobileNavOpen(false)}
+          type="button"
+        />
+      ) : null}
       <div className="flex min-h-screen flex-col lg:flex-row">
-        <aside className="border-b border-slate-900 bg-[linear-gradient(180deg,#131a33_0%,#0d1327_100%)] px-4 py-5 text-white shadow-[8px_0_30px_rgba(15,23,42,0.18)] lg:w-[258px] lg:border-b-0 lg:border-r lg:border-slate-900 lg:px-3 lg:py-3">
+        <aside
+          className={cn(
+            "fixed inset-y-0 left-0 z-40 w-[86vw] max-w-[320px] -translate-x-full border-b px-4 py-5 text-white shadow-[8px_0_30px_rgba(15,23,42,0.18)] transition-transform lg:static lg:w-[258px] lg:max-w-none lg:translate-x-0 lg:border-b-0 lg:border-r lg:px-3 lg:py-3",
+            theme === "dark"
+              ? "border-slate-900 bg-[linear-gradient(180deg,#0a0f1e_0%,#060b16_100%)] lg:border-slate-900"
+              : "border-brand-900/70 bg-[linear-gradient(180deg,#0a2f66_0%,#07244f_100%)] lg:border-brand-900/70",
+            mobileNavOpen && "translate-x-0",
+          )}
+        >
           <div className="flex flex-col rounded-[1.4rem] border border-white/6 bg-[linear-gradient(180deg,rgba(255,255,255,0.028)_0%,rgba(255,255,255,0.012)_100%)] px-3.5 py-3.5 lg:min-h-[calc(100vh-1.5rem)]">
             <div className="rounded-[1.15rem] border border-white/7 bg-white/[0.025] px-3.5 py-3">
               <div className="flex items-center gap-3">
@@ -254,27 +276,28 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
                           cn(
                             "group relative flex items-center gap-3 overflow-hidden rounded-[1rem] px-3 py-2.5 transition-all duration-150",
                             isActive
-                              ? "bg-[linear-gradient(135deg,rgba(84,66,255,0.22),rgba(84,66,255,0.11))] text-white ring-1 ring-white/8 shadow-[0_12px_24px_rgba(15,23,42,0.18)]"
+                              ? "bg-[linear-gradient(135deg,rgba(24,172,95,0.28),rgba(10,47,102,0.4))] text-white ring-1 ring-white/8 shadow-[0_12px_24px_rgba(15,23,42,0.18)]"
                               : "text-slate-300 hover:bg-white/[0.045] hover:text-white",
                           )
                         }
                         to={item.to}
                         onMouseEnter={() => prefetchRoute(item.to)}
                         onFocus={() => prefetchRoute(item.to)}
+                        onClick={() => setMobileNavOpen(false)}
                       >
                         {({ isActive }) => (
                           <>
                             <span
                               className={cn(
                                 "absolute bottom-2 top-2 left-0 w-1 rounded-r-full transition",
-                                isActive ? "bg-indigo-400" : "bg-transparent group-hover:bg-white/10",
+                                isActive ? "bg-brand-300" : "bg-transparent group-hover:bg-white/10",
                               )}
                             />
                             <span
                               className={cn(
                                 "relative flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition",
                                 isActive
-                                  ? "bg-indigo-500/18 text-indigo-200"
+                                  ? "bg-brand-500/22 text-brand-100"
                                   : "text-slate-400 group-hover:bg-white/[0.04] group-hover:text-slate-200",
                               )}
                             >
@@ -284,7 +307,7 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
                               {item.label}
                             </span>
                             {item.badge ? (
-                              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-indigo-500 px-1.5 text-[0.66rem] font-semibold text-white shadow-[0_4px_10px_rgba(79,70,229,0.25)]">
+                              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-500 px-1.5 text-[0.66rem] font-semibold text-white shadow-[0_4px_10px_rgba(16,185,129,0.25)]">
                                 {item.badge}
                               </span>
                             ) : null}
@@ -300,7 +323,7 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
             <div className="mt-5 border-t border-white/8 pt-4">
               <div className="rounded-[1.15rem] border border-white/7 bg-[linear-gradient(180deg,rgba(255,255,255,0.05)_0%,rgba(255,255,255,0.03)_100%)] px-3.5 py-3.5 shadow-[0_14px_26px_rgba(15,23,42,0.16)]">
                 <div className="flex items-center gap-3">
-                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,#5e4bff,#6f59ff)] text-sm font-semibold text-white shadow-[0_8px_20px_rgba(79,70,229,0.28)]">
+                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,#18ac5f,#0a2f66)] text-sm font-semibold text-white shadow-[0_8px_20px_rgba(10,47,102,0.34)]">
                     {user?.initials}
                   </span>
                   <div className="min-w-0 flex-1">
@@ -342,13 +365,38 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
         <main className="min-w-0 flex-1">
           <header className="border-b border-slate-200 bg-white/92 px-4 py-3 backdrop-blur sm:px-6 lg:px-8">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
+              <div className="flex items-center gap-3">
+                <button
+                  aria-label="Open navigation"
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:bg-slate-50 lg:hidden"
+                  onClick={() => setMobileNavOpen(true)}
+                  type="button"
+                >
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24">
+                    <path
+                      d="M4 7h16M4 12h16M4 17h16"
+                      stroke="currentColor"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="1.8"
+                    />
+                  </svg>
+                </button>
+                <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
                   {role} workspace
                 </p>
                 <h2 className="mt-1 text-[1.12rem] font-semibold text-slate-950">{activeItem.label}</h2>
+                </div>
               </div>
               <div className="flex items-center gap-3">
+                <button
+                  className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+                  onClick={toggleTheme}
+                  type="button"
+                >
+                  <span>{theme === "dark" ? "Light mode" : "Dark mode"}</span>
+                </button>
                 {user?.company ? (
                   <div className="hidden rounded-full border border-slate-200 bg-slate-50 px-3.5 py-1.5 text-sm text-slate-500 lg:inline-flex">
                     {user.company}

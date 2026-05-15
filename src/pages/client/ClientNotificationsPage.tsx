@@ -491,9 +491,10 @@ export function ClientNotificationsPage() {
               <button
                 aria-label="Filter notifications"
                 className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
-                onClick={() =>
-                  setFeedbackMessage("Notifications are already filtered to workflow-relevant items only.")
-                }
+                onClick={() => {
+                  setFilter("action");
+                  setFeedbackMessage("Showing action-required notifications only.");
+                }}
                 type="button"
               >
                 <FilterIcon />
@@ -759,7 +760,7 @@ export function ClientNotificationsPage() {
                   </div>
                   <Button
                     className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-slate-700 hover:bg-slate-50"
-                    onClick={() => navigate("/client/requests")}
+                    onClick={() => navigate("/client/inbox")}
                     variant="secondary"
                   >
                     <MessageIcon />

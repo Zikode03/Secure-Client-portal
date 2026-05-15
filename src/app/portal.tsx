@@ -1,4 +1,4 @@
-// Friendly guide: this module (portal) supports the Secure Client Portal workflow.
+﻿// Friendly guide: this module (portal) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
 import {
@@ -12,6 +12,7 @@ import {
 } from "react";
 import { buildComplianceCentreDataFromStatuses } from "../services/complianceData";
 import { portalService } from "../services/portalData";
+import { portalServiceApi } from "../services/portalApi";
 import {
   buildExpiringDocuments,
   buildInvoiceReviewQueue,
@@ -925,17 +926,17 @@ function buildTemplateWorkspace(client: FirmClientAccount, source: ClientWorkspa
 }
 
 export function PortalProvider({ children }: { children: ReactNode }) {
-  const clientSeed = useMemo(() => portalService.getClientWorkflowSeed(), []);
-  const baseAccountantDashboard = useMemo(() => portalService.getAccountantDashboard(), []);
-  const baseAdminClients = useMemo(() => portalService.getAdminClients(), []);
-  const baseAdminPolicies = useMemo(() => portalService.getAdminPolicies(), []);
-  const baseClientComplianceCentre = useMemo(
-    () => portalService.getClientComplianceCentre(),
-    [],
+  const [clientSeed, setClientSeed] = useState(() => portalService.getClientWorkflowSeed());
+  const [baseAccountantDashboard, setBaseAccountantDashboard] = useState(() =>
+    portalService.getAccountantDashboard(),
   );
-  const seededAccountantComplianceCentre = useMemo(
-    () => portalService.getAccountantComplianceCentre(),
-    [],
+  const [baseAdminClients, setBaseAdminClients] = useState(() => portalService.getAdminClients());
+  const [baseAdminPolicies, setBaseAdminPolicies] = useState(() => portalService.getAdminPolicies());
+  const [baseClientComplianceCentre, setBaseClientComplianceCentre] = useState(() =>
+    portalService.getClientComplianceCentre(),
+  );
+  const [seededAccountantComplianceCentre, setSeededAccountantComplianceCentre] = useState(() =>
+    portalService.getAccountantComplianceCentre(),
   );
   const initialClientState = useMemo(
     () => readPersistedClientPortalState(clientSeed, baseClientComplianceCentre),
@@ -965,11 +966,50 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     () => initialClientState.reportGeneratedAt,
   );
   const [adminClients, setAdminClients] = useState(() => clone(baseAdminClients));
-  const [adminPolicies] = useState(() => clone(baseAdminPolicies));
+  const adminPolicies = useMemo(() => clone(baseAdminPolicies), [baseAdminPolicies]);
   const [managedAccountants] = useState(() => clone(initialAccountants));
   const [userAccounts] = useState(() => clone(initialUsers));
 
 // Reactive sync: this block responds when dependencies change.
+  useEffect(() => {
+    let isActive = true;
+
+    const hydrateFromApi = async () => {
+      const [
+        nextClientSeed,
+        nextAccountantDashboard,
+        nextAdminClients,
+        nextAdminPolicies,
+        nextClientCompliance,
+        nextAccountantCompliance,
+      ] = await Promise.all([
+        portalServiceApi.getClientWorkflowSeed(),
+        portalServiceApi.getAccountantDashboard(),
+        portalServiceApi.getAdminClients(),
+        portalServiceApi.getAdminPolicies(),
+        portalServiceApi.getClientComplianceCentre(),
+        portalServiceApi.getAccountantComplianceCentre(),
+      ]);
+
+      if (!isActive) return;
+
+      setClientSeed(nextClientSeed);
+      setBaseAccountantDashboard(nextAccountantDashboard);
+      setBaseAdminClients(nextAdminClients);
+      setBaseAdminPolicies(nextAdminPolicies);
+      setBaseClientComplianceCentre(nextClientCompliance);
+      setSeededAccountantComplianceCentre(nextAccountantCompliance);
+      setAdminClients(clone(nextAdminClients));
+      setComplianceClients(clone(nextAccountantCompliance.clientStatuses ?? []));
+    };
+
+    void hydrateFromApi();
+
+    return () => {
+      isActive = false;
+    };
+  }, []);
+
   useEffect(() => {
     writePersistedClientPortalState({
       monthPack,
@@ -1194,7 +1234,13 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     ],
   );
 
-  const assignedAccountantForApex =
+  function isStrictUploadName(value: string) {
+  return /^[A-Za-z0-9]+_[A-Za-z0-9]+_[A-Za-z]+_\d{4}\.(pdf|png|jpe?g|docx|xlsx)$/i.test(
+    value.trim(),
+  );
+}
+
+const assignedAccountantForApex =
     adminClients.find((client) => client.id === "firm-client-1")?.assignedAccountant ??
     accountantAssignments["client-apex"];
 
@@ -1207,6 +1253,14 @@ export function PortalProvider({ children }: { children: ReactNode }) {
 
     if (!targetSlot) {
       return { ok: false, message: "The selected upload slot could not be found." };
+    }
+
+    if (!isStrictUploadName(submission.autoName)) {
+      return {
+        ok: false,
+        message:
+          "Upload blocked: file naming must follow Client_DocumentType_Month_Year.ext before submission.",
+      };
     }
 
     const actorName = actor.fullName || actor.name;
@@ -1310,11 +1364,28 @@ export function PortalProvider({ children }: { children: ReactNode }) {
 
   function submitMonth(actorName: string): PortalActionResult {
     const nextPack = recalculatePack(monthPack);
-    if (!nextPack.canComplete) {
+    const blockingStatuses = new Set(["missing", "partial", "pending", "pending_signature", "rejected"]);
+    const blockingRequiredSlots = nextPack.slots.filter(
+      (slot) => slot.isRequired && blockingStatuses.has(slot.status),
+    );
+
+    if (blockingRequiredSlots.length > 0 || !nextPack.canComplete) {
+      const slotSummary = blockingRequiredSlots
+        .slice(0, 5)
+        .map(
+          (slot) =>
+            `${slot.documentType} (${slot.month} ${slot.year} - ${slot.status.replace(/_/g, " ")})`,
+        )
+        .join(", ");
+      const extraCount =
+        blockingRequiredSlots.length > 5 ? ` and ${blockingRequiredSlots.length - 5} more` : "";
+
       return {
         ok: false,
         message:
-          "You cannot submit this month because required documents are still missing or rejected.",
+          blockingRequiredSlots.length > 0
+            ? `Submission blocked: ${blockingRequiredSlots.length} required document slot${blockingRequiredSlots.length === 1 ? " is" : "s are"} incomplete. Resolve: ${slotSummary}${extraCount}.`
+            : "Submission blocked: required document checks are incomplete.",
       };
     }
 
@@ -1341,15 +1412,107 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     };
   }
 
+  function parseCurrencyAmount(amountLabel: string) {
+    const numericValue = Number.parseFloat(amountLabel.replace(/[^\d.-]/g, ""));
+    return Number.isFinite(numericValue) ? numericValue : Number.NaN;
+  }
+
+  function isStrictInvoiceFileName(fileName: string) {
+    return /^[A-Za-z0-9][A-Za-z0-9-]*_[A-Za-z0-9][A-Za-z0-9-]*_[A-Za-z]{3,9}_\d{4}\.(pdf|png|jpg|jpeg|docx|xlsx)$/i.test(
+      fileName.trim(),
+    );
+  }
+
+  function isInvoiceAlreadySubmitted(status: InvoiceRecord["status"]) {
+    return (
+      status === "sent_to_accountant" ||
+      status === "under_review" ||
+      status === "accepted"
+    );
+  }
+
   function finaliseInvoice(invoiceId: string): PortalActionResult {
     const invoice = invoices.find((item) => item.id === invoiceId);
     if (!invoice) {
       return { ok: false, message: "The invoice could not be found." };
     }
 
+    if (isInvoiceAlreadySubmitted(invoice.status)) {
+      return {
+        ok: false,
+        message:
+          "This invoice is already submitted and cannot be sent again. Open the existing submitted record instead.",
+      };
+    }
+
+    if (!["draft", "uploaded", "finalised", "rejected"].includes(invoice.status)) {
+      return {
+        ok: false,
+        message: "This invoice is not in a sendable state yet. Complete the draft checks first.",
+      };
+    }
+
+    const amount = parseCurrencyAmount(invoice.amountLabel);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return {
+        ok: false,
+        message: "Invoice send blocked: add a valid amount greater than zero before finalising.",
+      };
+    }
+
+    if (!/^INV-\d{3,}$/i.test(invoice.invoiceNumber.trim())) {
+      return {
+        ok: false,
+        message: "Invoice send blocked: invoice number must follow INV-XXXX format.",
+      };
+    }
+
+    if (!isStrictInvoiceFileName(invoice.fileName)) {
+      return {
+        ok: false,
+        message:
+          "Invoice send blocked: rename file to Client_DocumentType_Month_Year.ext before finalising.",
+      };
+    }
+
+    if (!invoice.description.trim() || invoice.description.trim().length < 12) {
+      return {
+        ok: false,
+        message: "Invoice send blocked: add a clear invoice description before finalising.",
+      };
+    }
+
+    if (!/^[A-Za-z]+\s+\d{4}$/.test(invoice.monthLabel.trim())) {
+      return {
+        ok: false,
+        message: "Invoice send blocked: invoice period is invalid. Use format like April 2026.",
+      };
+    }
+
+    const submittedAt = new Date().toISOString();
+
     setInvoices((current) =>
       current.map((item) =>
-        item.id === invoiceId ? { ...item, status: "sent_to_accountant" } : item,
+        item.id === invoiceId
+          ? {
+              ...item,
+              status: "sent_to_accountant",
+              rejectionReason: undefined,
+              reviewedBy: undefined,
+              reviewedAt: undefined,
+              auditTrail: [
+                ...(item.auditTrail ?? []),
+                {
+                  id: `invoice-audit-${(item.auditTrail?.length ?? 0) + 1}`,
+                  status: "Submitted",
+                  actor: clientProfile.primaryContact,
+                  timestamp: submittedAt,
+                  note:
+                    "Invoice passed final checks and was submitted to the accountant review queue.",
+                },
+              ],
+            }
+          : item,
       ),
     );
     setActivity((current) =>
@@ -1365,7 +1528,8 @@ export function PortalProvider({ children }: { children: ReactNode }) {
 
     return {
       ok: true,
-      message: "Invoice has been finalised and sent to your accountant.",
+      message:
+        "Invoice passed validation, was finalised, and is now submitted to your accountant.",
     };
   }
 
@@ -2433,3 +2597,4 @@ export function usePortal() {
 
   return value;
 }
+

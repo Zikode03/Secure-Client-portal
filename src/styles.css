@@ -6,16 +6,16 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brand-50: #eff6ff;
-  --color-brand-100: #dbeafe;
-  --color-brand-200: #bfdbfe;
-  --color-brand-300: #93c5fd;
-  --color-brand-400: #60a5fa;
-  --color-brand-500: #3b82f6;
-  --color-brand-600: #2563eb;
-  --color-brand-700: #1d4ed8;
-  --color-brand-800: #1e40af;
-  --color-brand-900: #1e3a8a;
+  --color-brand-50: #eef9f4;
+  --color-brand-100: #d8f2e4;
+  --color-brand-200: #a7e3c2;
+  --color-brand-300: #78d5a0;
+  --color-brand-400: #43c37c;
+  --color-brand-500: #18ac5f;
+  --color-brand-600: #0f7f56;
+  --color-brand-700: #0a2f66;
+  --color-brand-800: #07244f;
+  --color-brand-900: #041834;
 }
 
 @layer base {
@@ -30,10 +30,14 @@
   body {
     margin: 0;
     min-width: 320px;
-    background: #f8fafc;
+    background:
+      radial-gradient(circle at 12% -8%, rgba(10, 47, 102, 0.13), transparent 40%),
+      radial-gradient(circle at 85% -12%, rgba(24, 172, 95, 0.11), transparent 44%),
+      #f4f8fb;
     color: #0f172a;
     font-family:
-      Inter,
+      Manrope,
+      "Segoe UI Variable Display",
       ui-sans-serif,
       system-ui,
       -apple-system,
@@ -55,5 +59,142 @@
   select,
   textarea {
     font: inherit;
+  }
+}
+
+@layer base {
+  html.theme-dark body {
+    background:
+      radial-gradient(circle at 12% -8%, rgba(100, 116, 139, 0.12), transparent 44%),
+      radial-gradient(circle at 85% -12%, rgba(15, 23, 42, 0.42), transparent 46%),
+      #0b1220;
+    color: #e2e8f0;
+  }
+}
+
+@layer utilities {
+  html.theme-dark .bg-white {
+    background-color: #0f1d3a !important;
+  }
+
+  html.theme-dark .bg-slate-50,
+  html.theme-dark .bg-slate-100 {
+    background-color: #122447 !important;
+  }
+
+  html.theme-dark .border-slate-100,
+  html.theme-dark .border-slate-200,
+  html.theme-dark .border-slate-300 {
+    border-color: #1f335d !important;
+  }
+
+  html.theme-dark .text-slate-950,
+  html.theme-dark .text-slate-900,
+  html.theme-dark .text-slate-800,
+  html.theme-dark .text-slate-700 {
+    color: #e2e8f0 !important;
+  }
+
+  html.theme-dark .text-slate-600,
+  html.theme-dark .text-slate-500,
+  html.theme-dark .text-slate-400 {
+    color: #9fb0cb !important;
+  }
+
+  html.theme-dark .shadow-\[0_20px_45px_rgba\(15\,23\,42\,0\.05\)\],
+  html.theme-dark .shadow-\[0_18px_40px_rgba\(15\,23\,42\,0\.05\)\],
+  html.theme-dark .shadow-\[0_22px_56px_rgba\(15\,23\,42\,0\.22\)\] {
+    box-shadow: 0 20px 42px rgba(1, 8, 22, 0.52) !important;
+  }
+
+  .ui-btn-primary {
+    background: linear-gradient(135deg, #18ac5f 0%, #0a2f66 100%);
+    color: #ffffff;
+    box-shadow: 0 10px 22px rgba(10, 47, 102, 0.25);
+  }
+
+  .ui-btn-primary:hover {
+    background: linear-gradient(135deg, #149553 0%, #08264f 100%);
+  }
+
+  .ui-btn-primary:focus-visible {
+    outline-color: #18ac5f;
+  }
+
+  .ui-btn-secondary {
+    background: #ffffff;
+    color: #0a2f66;
+    box-shadow: inset 0 0 0 1px #cfe5d8;
+  }
+
+  .ui-btn-secondary:hover {
+    background: #eef9f4;
+  }
+
+  .ui-btn-secondary:focus-visible {
+    outline-color: #18ac5f;
+  }
+
+  .ui-btn-ghost {
+    background: transparent;
+    color: #0a2f66;
+  }
+
+  .ui-btn-ghost:hover {
+    background: rgba(10, 47, 102, 0.08);
+  }
+
+  .ui-btn-ghost:focus-visible {
+    outline-color: #0a2f66;
+  }
+
+  .ui-btn-danger {
+    background: #be123c;
+    color: #ffffff;
+    box-shadow: 0 8px 18px rgba(136, 19, 55, 0.25);
+  }
+
+  .ui-btn-danger:hover {
+    background: #a80f35;
+  }
+
+  .ui-btn-danger:focus-visible {
+    outline-color: #be123c;
+  }
+
+  html.theme-dark .ui-btn-primary {
+    background: linear-gradient(135deg, #1f7a50 0%, #1e3a8a 100%);
+    box-shadow: 0 10px 22px rgba(1, 8, 22, 0.45);
+  }
+
+  html.theme-dark .ui-btn-primary:hover {
+    background: linear-gradient(135deg, #1b6d47 0%, #1a3276 100%);
+  }
+
+  html.theme-dark .ui-btn-secondary {
+    background: #132340;
+    color: #d8e6fb;
+    box-shadow: inset 0 0 0 1px #2a416b;
+  }
+
+  html.theme-dark .ui-btn-secondary:hover {
+    background: #1a2f55;
+  }
+
+  html.theme-dark .ui-btn-ghost {
+    color: #b8c8e0;
+  }
+
+  html.theme-dark .ui-btn-ghost:hover {
+    background: rgba(148, 163, 184, 0.16);
+  }
+
+  html.theme-dark .ui-btn-danger {
+    background: #9f1239;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+  }
+
+  html.theme-dark .ui-btn-danger:hover {
+    background: #881337;
   }
 }

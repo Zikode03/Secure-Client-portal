@@ -164,6 +164,23 @@ describe("workflow business rules", () => {
     expect(reviewQueueItem).toBeDefined();
   });
 
+  it("blocks invoice finalise when the invoice is already submitted", () => {
+    const { result } = renderHook(() => usePortal(), { wrapper: PortalWrapper });
+    const alreadySubmittedInvoice = result.current.clientWorkflow.invoices.find(
+      (item) => item.status === "sent_to_accountant" || item.status === "under_review",
+    );
+
+    expect(alreadySubmittedInvoice).toBeDefined();
+
+    let response: { ok: boolean; message: string } | undefined;
+    act(() => {
+      response = result.current.finaliseInvoice(alreadySubmittedInvoice!.id);
+    });
+
+    expect(response?.ok).toBe(false);
+    expect(response?.message).toContain("already submitted");
+  });
+
   it("unified search returns mixed result types", () => {
     const seed = portalService.getClientWorkflowSeed();
     const complianceDocuments = portalService

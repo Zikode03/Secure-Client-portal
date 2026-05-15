@@ -33,8 +33,8 @@ export function ClientMessagesPage() {
         />
 
         <div className="mt-6 flex flex-wrap gap-3">
-          <Button onClick={() => navigate("/client/requests")} variant="primary">
-            Open requests
+          <Button onClick={() => navigate("/client/inbox")} variant="primary">
+            Open inbox
           </Button>
           <Button onClick={() => navigate("/client/documents")} variant="secondary">
             Open documents

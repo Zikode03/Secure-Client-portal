@@ -1,7 +1,7 @@
 // Friendly guide: this module (AccountantClientWorkspacePage) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
@@ -9,7 +9,6 @@ import { EmptyState } from "../../components/ui/EmptyState";
 import { AuditTrail } from "../../components/workflow/AuditTrail";
 import { CommentThread } from "../../components/workflow/CommentThread";
 import { DocumentPreviewPane } from "../../components/workflow/DocumentPreviewPane";
-import { ExpiringDocumentsPanel } from "../../components/workflow/ExpiringDocumentsPanel";
 import { RequestBoard } from "../../components/workflow/RequestBoard";
 import { Button } from "../../components/ui/Button";
 import { PageHeader } from "../../components/ui/PageHeader";
@@ -21,7 +20,6 @@ import { cn } from "../../utils/cn";
 import { formatDateLabel, formatStatusLabel } from "../../utils/formatters";
 
 const workspaceTabs = [
-  { id: "overview", label: "Overview" },
   { id: "packs", label: "Monthly Packs" },
   { id: "documents", label: "Documents" },
   { id: "invoices", label: "Invoices" },
@@ -53,9 +51,10 @@ export function AccountantClientWorkspacePage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
+  const searchParamString = searchParams.toString();
   const initialTab =
     (searchParams.get("tab") as WorkspaceTab | null) ??
-    (location.pathname.endsWith("/packs") ? "packs" : "overview");
+    (location.pathname.endsWith("/packs") ? "packs" : "documents");
   const [activeTab, setActiveTab] = useState<WorkspaceTab>(initialTab);
   const [activeComplianceView, setActiveComplianceView] = useState<ComplianceWorkspaceTab>(
     (searchParams.get("view") as ComplianceWorkspaceTab | null) ?? "overview",
@@ -100,6 +99,31 @@ export function AccountantClientWorkspacePage() {
   const complianceMissingItems = workspace.compliance?.documents.filter(
     (document) => document.status === "missing",
   ) ?? [];
+
+  useEffect(() => {
+    const requestedTab =
+      (searchParams.get("tab") as WorkspaceTab | null) ??
+      (location.pathname.endsWith("/packs") ? "packs" : "documents");
+    setActiveTab(requestedTab);
+  }, [location.pathname, searchParamString]);
+
+  useEffect(() => {
+    if (activeTab !== "documents") {
+      return;
+    }
+
+    if (workspace.documents.length === 0) {
+      return;
+    }
+
+    const selectedStillExists = workspace.documents.some(
+      (document) => document.id === selectedDocumentId,
+    );
+
+    if (!selectedDocumentId || !selectedStillExists) {
+      setSelectedDocumentId(workspace.documents[0].id);
+    }
+  }, [activeTab, selectedDocumentId, workspace.documents]);
 
   function switchTab(tab: WorkspaceTab) {
     setActiveTab(tab);
@@ -218,7 +242,7 @@ export function AccountantClientWorkspacePage() {
             <Button onClick={() => navigate(`/firm/documents?client=${workspace.client.id}`)} variant="secondary">
               Open document centre
             </Button>
-            <Button onClick={() => navigate("/firm/requests")}>Open requests</Button>
+            <Button onClick={() => navigate("/firm/inbox")}>Open inbox</Button>
           </>
         }
         description="This client workspace keeps the month pack, document review, compliance, requests, messages, and audit trail in one accountable place."
@@ -271,35 +295,6 @@ export function AccountantClientWorkspacePage() {
         </div>
       </SurfaceCard>
 
-      {activeTab === "overview" ? (
-        <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-          <SurfaceCard className="space-y-4">
-            <div>
-              <h2 className="text-xl font-semibold text-slate-950">Workspace overview</h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Start here to understand completeness, compliance, and review readiness.
-              </p>
-            </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
-                <p className="text-sm font-semibold text-slate-950">Missing items</p>
-                <p className="mt-2 text-3xl font-semibold text-slate-950">
-                  {workspace.missingDocuments.length}
-                </p>
-              </div>
-              <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
-                <p className="text-sm font-semibold text-slate-950">Pending requests</p>
-                <p className="mt-2 text-3xl font-semibold text-slate-950">
-                  {workspace.requests.length}
-                </p>
-              </div>
-            </div>
-          </SurfaceCard>
-
-          <ExpiringDocumentsPanel items={workspace.expiringDocuments} />
-        </section>
-      ) : null}
-
       {activeTab === "packs" ? (
         <SurfaceCard className="space-y-4">
           <div>
@@ -334,13 +329,16 @@ export function AccountantClientWorkspacePage() {
                   <StatusBadge status={slot.status} />
                   <Button
                     onClick={() => {
-                      setSelectedDocumentId(
-                        workspace.documents.find(
-                          (document) =>
-                            document.documentType === slot.documentType &&
-                            document.monthLabel === workspace.monthPack.monthLabel,
-                        )?.id ?? "",
+                      const directMatch = workspace.documents.find(
+                        (document) =>
+                          document.documentType === slot.documentType &&
+                          document.monthLabel === workspace.monthPack.monthLabel,
                       );
+                      const typeMatch = workspace.documents.find(
+                        (document) => document.documentType === slot.documentType,
+                      );
+                      const fallbackDocument = directMatch ?? typeMatch ?? workspace.documents[0] ?? null;
+                      setSelectedDocumentId(fallbackDocument?.id ?? "");
                       switchTab("documents");
                     }}
                     variant="secondary"
@@ -355,7 +353,7 @@ export function AccountantClientWorkspacePage() {
       ) : null}
 
       {activeTab === "documents" ? (
-        <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+        <section className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
           <SurfaceCard className="space-y-4">
             <div>
               <h2 className="text-xl font-semibold text-slate-950">Documents</h2>
@@ -715,11 +713,12 @@ export function AccountantClientWorkspacePage() {
                             Upload replacement
                           </Button>
                           <Button
-                            onClick={() =>
+                            onClick={() => {
+                              setActiveComplianceView("audit");
                               setFeedbackMessage(
-                                `${document.name} has ${document.versions.length} stored version${document.versions.length === 1 ? "" : "s"} in history.`,
-                              )
-                            }
+                                `Opened compliance audit trail for ${document.name} (${document.versions.length} version${document.versions.length === 1 ? "" : "s"}).`,
+                              );
+                            }}
                             size="sm"
                             variant="secondary"
                           >
@@ -781,9 +780,13 @@ export function AccountantClientWorkspacePage() {
                             Send reminder
                           </Button>
                           <Button
-                            onClick={() =>
-                              setFeedbackMessage(`Open ${document.name} from the compliance record list.`)
-                            }
+                            onClick={() => {
+                              setActiveComplianceView("categories");
+                              if (document.categoryId) {
+                                setSelectedComplianceCategoryId(document.categoryId);
+                              }
+                              setFeedbackMessage(`Opened ${document.name} in compliance categories.`);
+                            }}
                             size="sm"
                             variant="secondary"
                           >
@@ -881,7 +884,7 @@ export function AccountantClientWorkspacePage() {
             description="Requests track both accountant follow-ups and client questions so each task stays in one accountable thread."
             onOpenRequest={(request) => setSelectedRequestId(request.id)}
             requests={workspace.requests}
-            title="Open requests"
+            title="Open inbox"
           />
           <div className="space-y-6">
             <SurfaceCard className="space-y-4">
@@ -961,7 +964,7 @@ export function AccountantClientWorkspacePage() {
           </div>
           <ul className="space-y-3 text-sm leading-6 text-slate-600">
             <li>Use the Documents tab for file-specific discussions.</li>
-            <li>Use the Requests tab for follow-up tasks and clarifications.</li>
+            <li>Use the Inbox tab for follow-up tasks and clarifications.</li>
             <li>Uploads must still go through the client’s structured monthly pack slot.</li>
           </ul>
         </SurfaceCard>

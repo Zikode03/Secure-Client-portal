@@ -56,6 +56,7 @@ function permissionsToKeys(permissions: Permission[]): PermissionKey[] {
 
 export function AdminSettingsPage() {
   const portal = usePortal();
+  const settingsStorageKey = "secure-client-portal.admin-settings";
   const [activePage, setActivePage] = useState<SettingsPage>("profile");
 // Local UI state: keeps track of what the user is seeing or editing right now.
   const [feedbackMessage, setFeedbackMessage] = useState("");
@@ -175,6 +176,33 @@ export function AdminSettingsPage() {
 
     const result = portal.assignClientAccountant(assignmentClientId, assignmentAccountant);
     setFeedbackMessage(result.message);
+  }
+
+  function saveSettingsSnapshot() {
+    const snapshot = {
+      firmName,
+      logo,
+      email,
+      phone,
+      address,
+      registrationNumber,
+      vatNumber,
+      branding,
+      timezone,
+      currency,
+      teamMembers,
+      monthlySubmissionDeadline,
+      requiredMonthlyDocuments,
+      autoReminders,
+      lateSubmissionHandling,
+      emailReminders,
+      accountantAlerts,
+      clientReminders,
+      savedAt: new Date().toISOString(),
+    };
+
+    localStorage.setItem(settingsStorageKey, JSON.stringify(snapshot));
+    setFeedbackMessage("System settings saved.");
   }
 
   function renderPageNavigation() {
@@ -462,7 +490,7 @@ export function AdminSettingsPage() {
     <div className="space-y-6">
       <PageHeader
         actions={
-          <Button onClick={() => setFeedbackMessage("System settings saved in the frontend workspace.")}>
+          <Button onClick={saveSettingsSnapshot}>
             Save settings
           </Button>
         }

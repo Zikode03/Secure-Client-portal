@@ -79,16 +79,6 @@ function SubmitIcon() {
   );
 }
 
-function MoreIcon() {
-  return (
-    <svg aria-hidden="true" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-      <circle cx="5" cy="12" r="1.7" />
-      <circle cx="12" cy="12" r="1.7" />
-      <circle cx="19" cy="12" r="1.7" />
-    </svg>
-  );
-}
-
 function AlertIcon({ tone }: { tone: "warning" | "success" | "info" }) {
   if (tone === "success") {
     return (
@@ -153,20 +143,6 @@ function CalendarIcon() {
       />
       <path
         d="M8 4.5v4m8-4v4M4 10.5h16"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
-}
-
-function ChevronDownIcon() {
-  return (
-    <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24">
-      <path
-        d="m6 9 6 6 6-6"
         stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -249,7 +225,6 @@ export function ClientMonthlyPacksPage() {
   const uploadModal = useDisclosure(false);
   const [selectedSlot, setSelectedSlot] = useState<MonthlyDocumentSlot | null>(null);
 // Local UI state: keeps track of what the user is seeing or editing right now.
-  const [optionsOpen, setOptionsOpen] = useState(false);
   const {
     clientName,
     dismissFeedbackNotice,
@@ -369,7 +344,6 @@ export function ClientMonthlyPacksPage() {
 
   function handleOpenChecklist() {
     document.getElementById("pack-checklist")?.scrollIntoView({ behavior: "smooth", block: "start" });
-    setOptionsOpen(false);
   }
 
   function handleDownloadSlot(slot: MonthlyDocumentSlot) {
@@ -379,84 +353,45 @@ export function ClientMonthlyPacksPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[1180px] space-y-4">
-      <div className="flex flex-wrap items-center gap-2 text-[0.8rem] text-slate-400">
-        <span>Monthly Packs</span>
-        <span>/</span>
-        <span className="font-medium text-slate-600">{monthPack.monthLabel}</span>
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
+    <div className="mx-auto max-w-[1180px] space-y-6">
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
         <div className="space-y-1.5">
-          <h1 className="text-[1.72rem] font-semibold tracking-tight text-slate-950 lg:text-[1.86rem]">
-            {monthPack.monthLabel} Monthly Pack
+          <p className="text-[0.78rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
+            Monthly Packs
+          </p>
+          <h1 className="text-[2.05rem] font-semibold tracking-tight text-slate-950">
+            {monthPack.monthLabel}
           </h1>
-          <p className="max-w-2xl text-[0.9rem] leading-6 text-slate-500">
-            Complete the required document slots, resolve blockers, and submit the month for accountant review.
+          <p className="max-w-2xl text-[0.96rem] leading-7 text-slate-500">
+            Complete required slots and submit once the pack is ready for accountant review.
           </p>
         </div>
 
-        <div className="relative flex flex-wrap items-center gap-2.5 sm:flex-nowrap xl:justify-end">
+        <div className="flex w-full flex-wrap items-center gap-2.5 sm:w-auto lg:justify-end">
           <Button
-            className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-800 ring-0 hover:bg-slate-50"
+            className="h-10 rounded-xl px-4"
             disabled={monthPack.submissionStatus === "under_accountant_review"}
             onClick={() => handleOpenUpload(highlightedSlot)}
             variant="secondary"
           >
             <UploadIcon />
-            <span>Upload into slot</span>
+            <span>Upload</span>
           </Button>
           <Button
-            className="h-10 rounded-xl bg-[linear-gradient(135deg,#5442ff,#6f59ff)] px-4 text-sm shadow-[0_12px_24px_rgba(84,66,255,0.18)] hover:bg-[linear-gradient(135deg,#4a38ef,#6650ff)]"
+            className="h-10 rounded-xl px-4"
             disabled={!monthPack.canComplete || monthPack.submissionStatus === "under_accountant_review"}
             onClick={submitMonth}
           >
             <SubmitIcon />
             <span>Submit Month</span>
           </Button>
-          <button
-            aria-label="Open monthly pack options"
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:bg-slate-50 hover:text-slate-700"
-            onClick={() => setOptionsOpen((current) => !current)}
-            type="button"
+          <Button
+            className="h-10 rounded-xl px-4 text-brand-700"
+            onClick={handleOpenChecklist}
+            variant="secondary"
           >
-            <MoreIcon />
-          </button>
-
-          {optionsOpen ? (
-            <div className="absolute right-0 top-[calc(100%+0.65rem)] z-20 min-w-[210px] rounded-xl border border-slate-200 bg-white p-2 shadow-[0_18px_38px_rgba(15,23,42,0.12)]">
-              <button
-                className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
-                onClick={handleOpenChecklist}
-                type="button"
-              >
-                Open checklist
-                <ChevronRightIcon />
-              </button>
-              <button
-                className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
-                onClick={() => {
-                  navigate("/client/documents");
-                  setOptionsOpen(false);
-                }}
-                type="button"
-              >
-                Open documents
-                <ChevronRightIcon />
-              </button>
-              <button
-                className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
-                onClick={() => {
-                  navigate("/client/requests");
-                  setOptionsOpen(false);
-                }}
-                type="button"
-              >
-                Open requests
-                <ChevronRightIcon />
-              </button>
-            </div>
-          ) : null}
+            <span>Open Checklist</span>
+          </Button>
         </div>
       </div>
 
@@ -483,14 +418,20 @@ export function ClientMonthlyPacksPage() {
               <p className="text-[0.88rem] text-slate-700">{submissionState.bannerMessage}</p>
             </div>
           </div>
-          <Button
-            className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-700 ring-0 hover:bg-slate-50"
-            onClick={handleOpenChecklist}
-            variant="secondary"
-          >
-            <span>View details</span>
-            <ChevronDownIcon />
-          </Button>
+          {highlightedSlot ? (
+            <Button
+              className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-700 ring-0 hover:bg-slate-50"
+              disabled={monthPack.submissionStatus === "under_accountant_review"}
+              onClick={() => handleOpenUpload(highlightedSlot)}
+              variant="secondary"
+            >
+              <span>
+                {submissionState.tone === "warning"
+                  ? `Fix: ${highlightedSlot.documentType}`
+                  : `Update: ${highlightedSlot.documentType}`}
+              </span>
+            </Button>
+          ) : null}
         </div>
       </SurfaceCard>
 
@@ -520,7 +461,7 @@ export function ClientMonthlyPacksPage() {
               <CalendarIcon />
               <span className="text-[1.42rem]">{formatDateLabel(monthPack.dueDate)}</span>
             </div>
-            <p className="text-[0.88rem] text-slate-500">Client side deadline</p>
+            <p className="text-[0.88rem] text-slate-500">Submission deadline</p>
           </div>
 
           <div className="space-y-2 px-5 py-4">
@@ -547,6 +488,35 @@ export function ClientMonthlyPacksPage() {
             </div>
             <p className="text-[0.88rem] text-slate-500">{submissionState.statusHelper}</p>
           </div>
+        </div>
+      </SurfaceCard>
+
+      <SurfaceCard className="rounded-[1.35rem] border-slate-200/90">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <button
+            className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-left text-sm text-slate-700 transition hover:bg-slate-50"
+            onClick={handleOpenChecklist}
+            type="button"
+          >
+            <span>Go to checklist</span>
+            <ChevronRightIcon />
+          </button>
+          <button
+            className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-left text-sm text-slate-700 transition hover:bg-slate-50"
+            onClick={() => navigate("/client/documents")}
+            type="button"
+          >
+            <span>Open documents</span>
+            <ChevronRightIcon />
+          </button>
+          <button
+            className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-left text-sm text-slate-700 transition hover:bg-slate-50"
+            onClick={() => navigate("/client/inbox")}
+            type="button"
+          >
+            <span>Open inbox</span>
+            <ChevronRightIcon />
+          </button>
         </div>
       </SurfaceCard>
 

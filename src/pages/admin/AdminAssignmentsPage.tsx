@@ -2,6 +2,7 @@
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { usePortal } from "../../app/portal";
 import { Button } from "../../components/ui/Button";
 import { PageHeader } from "../../components/ui/PageHeader";
@@ -10,6 +11,7 @@ import { SurfaceCard } from "../../components/ui/SurfaceCard";
 
 // Component flow: gather data first, then render a focused UI state.
 export function AdminAssignmentsPage() {
+  const navigate = useNavigate();
   const portal = usePortal();
 // Local UI state: keeps track of what the user is seeing or editing right now.
   const [feedbackMessage, setFeedbackMessage] = useState("");
@@ -50,10 +52,10 @@ export function AdminAssignmentsPage() {
             />
             <div className="flex items-end">
               <Button
-                onClick={() => setFeedbackMessage(`${client.clientName} is assigned to ${client.assignedAccountant}.`)}
+                onClick={() => navigate(`/firm/clients/${client.id}`)}
                 variant="secondary"
               >
-                Confirm
+                Open client
               </Button>
             </div>
           </div>

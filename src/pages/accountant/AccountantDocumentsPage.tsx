@@ -2,6 +2,7 @@
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
 import { AuditTrail } from "../../components/workflow/AuditTrail";
@@ -438,7 +439,7 @@ function openPreviewInNewTab(document: DocumentRecord) {
   <body>
     <article>
       <h1>${escapeHtml(document.fileName)}</h1>
-      <p>${escapeHtml(document.documentType)} • ${escapeHtml(document.clientName)} • ${escapeHtml(document.monthLabel)}</p>
+      <p>${escapeHtml(document.documentType)} | ${escapeHtml(document.clientName)} | ${escapeHtml(document.monthLabel)}</p>
       <pre>${escapeHtml(buildPreviewText(document))}</pre>
     </article>
   </body>
@@ -635,7 +636,7 @@ function PreviewShell({
             {displayResultTitle(result)}
           </h3>
           <p className="mt-2 text-sm text-slate-500">
-            {document.clientName} • {document.monthLabel}
+            {document.clientName} | {document.monthLabel}
           </p>
         </div>
         <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-500">
@@ -747,6 +748,7 @@ function Pagination({
 }
 
 export function AccountantDocumentsPage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const portal = usePortal();
   const canReviewDocuments = hasPermission(user, "review:documents");
@@ -1117,14 +1119,25 @@ export function AccountantDocumentsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="mx-auto max-w-[1280px] space-y-6">
+      <section className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="space-y-1.5">
+          <h1 className="text-[2.05rem] font-semibold tracking-tight text-slate-950">
+            Document Centre
+          </h1>
+          <p className="max-w-3xl text-[0.96rem] leading-7 text-slate-500">
+            Search, review, and action document records across assigned clients from one workspace.
+          </p>
+        </div>
+      </section>
+
       {feedbackMessage ? (
         <div className="rounded-[1.35rem] border border-brand-100 bg-brand-50 px-5 py-4 text-sm text-brand-700">
           {feedbackMessage}
         </div>
       ) : null}
 
-      <div className={cn("grid gap-6", viewerOpen ? "xl:grid-cols-[minmax(0,1.45fr)_430px]" : "")}>
+      <div className={cn("grid gap-6", viewerOpen ? "lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,430px)]" : "")}>
         <div className="space-y-6">
           <SurfaceCard className="rounded-[1.7rem] border border-slate-200/90 bg-white p-5 shadow-[0_18px_48px_rgba(15,23,42,0.06)]">
             <div className="flex flex-col gap-4">
@@ -1143,7 +1156,7 @@ export function AccountantDocumentsPage() {
                   />
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
                   <Button className="h-11 rounded-xl px-4 text-brand-700" variant="secondary">
                     <FilterIcon />
                     <span>Filters</span>
@@ -1231,9 +1244,15 @@ export function AccountantDocumentsPage() {
                 />
                 <button
                   className="inline-flex h-10 items-center gap-1.5 rounded-xl px-1 text-sm font-semibold text-brand-600 transition hover:text-brand-700"
-                  onClick={() =>
-                    setFeedbackMessage("Extended filter presets can be added here later.")
-                  }
+                  onClick={() => {
+                    setFilters((current) => ({
+                      ...current,
+                      requiredFlag: "required",
+                      expiryStatus: "expiring",
+                      status: current.status || "uploaded",
+                    }));
+                    setFeedbackMessage("Applied priority filter preset for required and expiring items.");
+                  }}
                   type="button"
                 >
                   <span>More filters</span>
@@ -1245,7 +1264,7 @@ export function AccountantDocumentsPage() {
 
           <SurfaceCard className="overflow-hidden rounded-[1.7rem] border border-slate-200/90 bg-white p-0 shadow-[0_18px_48px_rgba(15,23,42,0.06)]">
             <div className="border-b border-slate-100 px-5 pt-4">
-              <div className="flex flex-wrap items-center gap-6">
+              <div className="flex flex-nowrap items-center gap-6 overflow-x-auto pb-1">
                 {[
                   { id: "all" as const, label: "All results", count: tabCounts.all },
                   { id: "documents" as const, label: "Documents", count: tabCounts.documents },
@@ -1296,9 +1315,8 @@ export function AccountantDocumentsPage() {
               </div>
             ) : (
               <>
-                <div className="hidden border-b border-slate-100 px-5 py-4 text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-slate-400 lg:grid lg:grid-cols-[1.85fr_1fr_0.88fr_0.72fr_3.5rem] lg:gap-4">
+                <div className="hidden border-b border-slate-100 px-5 py-4 text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-slate-400 lg:grid lg:grid-cols-[minmax(0,1.85fr)_0.9fr_0.72fr_3.5rem] lg:gap-4">
                   <div>Document</div>
-                  <div>Client</div>
                   <div>Uploaded</div>
                   <div>Status</div>
                   <div aria-hidden="true" />
@@ -1312,7 +1330,7 @@ export function AccountantDocumentsPage() {
                     return (
                       <div
                         className={cn(
-                          "border-l-[3px] px-5 py-4 transition lg:grid lg:grid-cols-[1.85fr_1fr_0.88fr_0.72fr_3.5rem] lg:items-center lg:gap-4",
+                          "border-l-[3px] px-5 py-4 transition lg:grid lg:grid-cols-[minmax(0,1.85fr)_0.9fr_0.72fr_3.5rem] lg:items-center lg:gap-4",
                           selected
                             ? "border-l-brand-500 bg-brand-50/35"
                             : "border-l-transparent hover:bg-slate-50/80",
@@ -1340,7 +1358,10 @@ export function AccountantDocumentsPage() {
                               ) : null}
                             </div>
                             <p className="mt-1 text-[0.84rem] text-slate-500">
-                              {resultFamilyLabel(result)} • {result.monthLabel}
+                              {resultFamilyLabel(result)} | {result.monthLabel}
+                            </p>
+                            <p className="mt-1 truncate text-[0.8rem] text-slate-400">
+                              {result.clientName}
                             </p>
                             {result.amountLabel ? (
                               <p className="mt-1 text-[0.84rem] text-slate-400">
@@ -1348,12 +1369,6 @@ export function AccountantDocumentsPage() {
                               </p>
                             ) : null}
                           </div>
-                        </div>
-
-                        <div className="mt-3 lg:mt-0">
-                          <p className="text-[0.9rem] font-semibold text-slate-950">
-                            {result.clientName}
-                          </p>
                         </div>
 
                         <div className="mt-3 lg:mt-0">
@@ -1474,7 +1489,14 @@ export function AccountantDocumentsPage() {
         </div>
 
         {viewerOpen && selectedResult && selectedDocument ? (
-          <SurfaceCard className="h-fit rounded-[1.7rem] border border-slate-200/90 bg-white p-5 shadow-[0_18px_48px_rgba(15,23,42,0.06)] xl:sticky xl:top-4">
+          <div
+            className="fixed inset-0 z-50 bg-slate-950/55 px-3 py-4 sm:px-6 sm:py-6"
+            onClick={() => setViewerOpen(false)}
+          >
+            <SurfaceCard
+              className="mx-auto h-full w-full max-w-[1080px] overflow-y-auto rounded-[1.7rem] border border-slate-200/90 bg-white p-5 shadow-[0_22px_56px_rgba(15,23,42,0.22)]"
+              onClick={(event) => event.stopPropagation()}
+            >
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
                 <h2 className="truncate text-[1.7rem] font-semibold tracking-tight text-slate-950">
@@ -1549,7 +1571,7 @@ export function AccountantDocumentsPage() {
                   </button>
                 </div>
 
-                <div className="flex items-center gap-3 text-sm text-slate-500">
+                <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto text-sm text-slate-500">
                   <span className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">
                     1 / 2
                   </span>
@@ -1575,7 +1597,7 @@ export function AccountantDocumentsPage() {
             </div>
 
             <div className="mt-5 border-b border-slate-200">
-              <div className="flex flex-wrap items-center gap-6">
+              <div className="flex flex-nowrap items-center gap-6 overflow-x-auto pb-1">
                 {viewerTabs.map((tab) => (
                   <button
                     className={cn(
@@ -1669,11 +1691,7 @@ export function AccountantDocumentsPage() {
 
                   <Button
                     className="h-11 w-full rounded-xl bg-[linear-gradient(135deg,#4338ca,#4f46e5)] hover:bg-[linear-gradient(135deg,#3730a3,#4338ca)]"
-                    onClick={() =>
-                      setFeedbackMessage(
-                        `Open the review workspace to continue with ${displayResultTitle(selectedResult)}.`,
-                      )
-                    }
+                    onClick={() => navigate("/firm/review")}
                   >
                     <span>Review document</span>
                     <ChevronRightIcon />
@@ -1722,7 +1740,7 @@ export function AccountantDocumentsPage() {
                             {displayResultTitle(result)}
                           </p>
                           <p className="mt-1 text-sm text-slate-500">
-                            {resultFamilyLabel(result)} • {formatStatusLabel(result.status)}
+                            {resultFamilyLabel(result)} | {formatStatusLabel(result.status)}
                           </p>
                         </div>
                         <ChevronRightIcon />
@@ -1737,7 +1755,8 @@ export function AccountantDocumentsPage() {
                 )
               ) : null}
             </div>
-          </SurfaceCard>
+            </SurfaceCard>
+          </div>
         ) : null}
       </div>
     </div>
