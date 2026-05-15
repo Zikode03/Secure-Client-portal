@@ -1,0 +1,92 @@
+using Microsoft.EntityFrameworkCore;
+using SecureClientPortal.Backend.Models;
+
+namespace SecureClientPortal.Backend.Data;
+
+public class PortalDbContext : DbContext
+{
+    public PortalDbContext(DbContextOptions<PortalDbContext> options) : base(options) { }
+
+    public DbSet<User> Users => Set<User>();
+    public DbSet<Client> Clients => Set<Client>();
+    public DbSet<Document> Documents => Set<Document>();
+    public DbSet<TaskItem> Tasks => Set<TaskItem>();
+    public DbSet<RequestItem> Requests => Set<RequestItem>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.ToTable("AppUsers");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(100);
+            entity.Property(x => x.Email).HasMaxLength(320).IsRequired();
+            entity.HasIndex(x => x.Email).IsUnique();
+            entity.Property(x => x.FullName).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Role).HasMaxLength(50).IsRequired();
+            entity.Property(x => x.PasswordHash).HasMaxLength(500).IsRequired();
+            entity.Property(x => x.ClientIdsJson).HasColumnType("nvarchar(max)").IsRequired();
+            entity.Property(x => x.ProfileJson).HasColumnType("nvarchar(max)");
+            entity.Property(x => x.SecurityJson).HasColumnType("nvarchar(max)");
+            entity.Property(x => x.CreatedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()");
+        });
+
+        modelBuilder.Entity<Client>(entity =>
+        {
+            entity.ToTable("AppClients");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(100);
+            entity.Property(x => x.Name).HasMaxLength(250).IsRequired();
+            entity.Property(x => x.EntityType).HasMaxLength(50).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.AssignedAccountantId).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.PrimaryContact).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Email).HasMaxLength(320).IsRequired();
+            entity.Property(x => x.CreatedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()");
+        });
+
+        modelBuilder.Entity<Document>(entity =>
+        {
+            entity.ToTable("AppDocuments");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(100);
+            entity.Property(x => x.ClientId).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.Name).HasMaxLength(260).IsRequired();
+            entity.Property(x => x.Category).HasMaxLength(80).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.StorageKey).HasMaxLength(500);
+            entity.Property(x => x.UploadedByUserId).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.UploadedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()");
+            entity.HasIndex(x => new { x.ClientId, x.Status });
+        });
+
+        modelBuilder.Entity<TaskItem>(entity =>
+        {
+            entity.ToTable("AppTasks");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(100);
+            entity.Property(x => x.ClientId).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.Title).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Priority).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.CreatedByUserId).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.CreatedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()");
+            entity.HasIndex(x => new { x.ClientId, x.Status });
+        });
+
+        modelBuilder.Entity<RequestItem>(entity =>
+        {
+            entity.ToTable("AppRequests");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(100);
+            entity.Property(x => x.ClientId).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.Title).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Description).HasColumnType("nvarchar(max)").IsRequired();
+            entity.Property(x => x.Priority).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.RequestedByUserId).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.RequestedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()");
+            entity.HasIndex(x => new { x.ClientId, x.Status });
+        });
+    }
+}
