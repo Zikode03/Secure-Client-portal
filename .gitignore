@@ -10,3 +10,11 @@ backend/**/obj/
 backend/**/*.user
 backend/**/*.suo
 backend/**/*.cache
+
+# Database local/runtime artifacts
+database/**/*.sqlite
+database/**/*.db
+database/**/*.bak
+database/**/*.dump
+database/**/*.sql.gz
+database/**/local/
