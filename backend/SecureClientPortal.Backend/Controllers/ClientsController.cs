@@ -35,6 +35,7 @@ public class ClientsController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(request.Id)) request.Id = $"c_{Guid.NewGuid():N}";
         request.CreatedAtUtc = DateTime.UtcNow;
+        request.UpdatedAtUtc = request.CreatedAtUtc;
 
         _db.Clients.Add(request);
         await _db.SaveChangesAsync();
@@ -55,6 +56,7 @@ public class ClientsController : ControllerBase
         existing.AssignedAccountantId = request.AssignedAccountantId;
         existing.PrimaryContact = request.PrimaryContact;
         existing.Email = request.Email;
+        existing.UpdatedAtUtc = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
         return Ok(existing);

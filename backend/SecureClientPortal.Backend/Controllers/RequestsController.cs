@@ -29,6 +29,7 @@ public class RequestsController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(request.Id)) request.Id = $"req_{Guid.NewGuid():N}";
         request.RequestedAtUtc = DateTime.UtcNow;
+        request.UpdatedAtUtc = request.RequestedAtUtc;
 
         _db.Requests.Add(request);
         await _db.SaveChangesAsync();
@@ -55,6 +56,7 @@ public class RequestsController : ControllerBase
         item.Priority = request.Priority;
         item.Status = request.Status;
         item.DueDateUtc = request.DueDateUtc;
+        item.UpdatedAtUtc = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
         return Ok(item);

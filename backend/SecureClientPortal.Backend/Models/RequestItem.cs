@@ -11,4 +11,5 @@ public class RequestItem
     public DateTime? DueDateUtc { get; set; }
     public string RequestedByUserId { get; set; } = string.Empty;
     public DateTime RequestedAtUtc { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAtUtc { get; set; } = DateTime.UtcNow;
 }

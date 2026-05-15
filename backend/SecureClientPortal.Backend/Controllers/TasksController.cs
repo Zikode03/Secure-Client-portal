@@ -30,6 +30,7 @@ public class TasksController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(request.Id)) request.Id = $"task_{Guid.NewGuid():N}";
         request.CreatedAtUtc = DateTime.UtcNow;
+        request.UpdatedAtUtc = request.CreatedAtUtc;
 
         _db.Tasks.Add(request);
         await _db.SaveChangesAsync();
@@ -54,6 +55,7 @@ public class TasksController : ControllerBase
         item.Status = request.Status;
         item.Priority = request.Priority;
         item.DueDateUtc = request.DueDateUtc;
+        item.UpdatedAtUtc = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
         return Ok(item);

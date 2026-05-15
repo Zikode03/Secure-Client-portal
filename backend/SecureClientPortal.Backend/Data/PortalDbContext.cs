@@ -29,6 +29,11 @@ public class PortalDbContext : DbContext
             entity.Property(x => x.ProfileJson).HasColumnType("nvarchar(max)");
             entity.Property(x => x.SecurityJson).HasColumnType("nvarchar(max)");
             entity.Property(x => x.CreatedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()");
+            entity.Property(x => x.UpdatedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()");
+            entity.ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_AppUsers_Role", "[Role] IN ('admin','accountant','client')");
+            });
         });
 
         modelBuilder.Entity<Client>(entity =>
@@ -43,6 +48,14 @@ public class PortalDbContext : DbContext
             entity.Property(x => x.PrimaryContact).HasMaxLength(200).IsRequired();
             entity.Property(x => x.Email).HasMaxLength(320).IsRequired();
             entity.Property(x => x.CreatedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()");
+            entity.Property(x => x.UpdatedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()");
+            entity.HasIndex(x => x.AssignedAccountantId);
+            entity.HasIndex(x => x.Status);
+            entity.ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_AppClients_Status", "[Status] IN ('pending','active','at_risk','archived')");
+                table.HasCheckConstraint("CK_AppClients_ComplianceHealth", "[ComplianceHealth] >= 0 AND [ComplianceHealth] <= 100");
+            });
         });
 
         modelBuilder.Entity<Document>(entity =>
@@ -57,7 +70,13 @@ public class PortalDbContext : DbContext
             entity.Property(x => x.StorageKey).HasMaxLength(500);
             entity.Property(x => x.UploadedByUserId).HasMaxLength(100).IsRequired();
             entity.Property(x => x.UploadedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()");
+            entity.Property(x => x.UpdatedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()");
             entity.HasIndex(x => new { x.ClientId, x.Status });
+            entity.HasIndex(x => x.UploadedAtUtc);
+            entity.ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_AppDocuments_Status", "[Status] IN ('pending','under_review','accepted','rejected','filed')");
+            });
         });
 
         modelBuilder.Entity<TaskItem>(entity =>
@@ -71,7 +90,14 @@ public class PortalDbContext : DbContext
             entity.Property(x => x.Priority).HasMaxLength(20).IsRequired();
             entity.Property(x => x.CreatedByUserId).HasMaxLength(100).IsRequired();
             entity.Property(x => x.CreatedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()");
+            entity.Property(x => x.UpdatedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()");
             entity.HasIndex(x => new { x.ClientId, x.Status });
+            entity.HasIndex(x => x.DueDateUtc);
+            entity.ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_AppTasks_Status", "[Status] IN ('todo','in_progress','blocked','done')");
+                table.HasCheckConstraint("CK_AppTasks_Priority", "[Priority] IN ('low','medium','high','urgent')");
+            });
         });
 
         modelBuilder.Entity<RequestItem>(entity =>
@@ -86,7 +112,14 @@ public class PortalDbContext : DbContext
             entity.Property(x => x.Status).HasMaxLength(30).IsRequired();
             entity.Property(x => x.RequestedByUserId).HasMaxLength(100).IsRequired();
             entity.Property(x => x.RequestedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()");
+            entity.Property(x => x.UpdatedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()");
             entity.HasIndex(x => new { x.ClientId, x.Status });
+            entity.HasIndex(x => x.DueDateUtc);
+            entity.ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_AppRequests_Status", "[Status] IN ('open','awaiting_client','awaiting_accountant','resolved')");
+                table.HasCheckConstraint("CK_AppRequests_Priority", "[Priority] IN ('low','medium','high','urgent')");
+            });
         });
     }
 }

@@ -76,5 +76,6 @@ public static class SeedData
         byId.PasswordHash = expected.PasswordHash;
         byId.Role = expected.Role;
         byId.ClientIdsJson = expected.ClientIdsJson;
+        byId.UpdatedAtUtc = DateTime.UtcNow;
     }
 }

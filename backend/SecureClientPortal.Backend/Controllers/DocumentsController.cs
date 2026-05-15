@@ -29,6 +29,7 @@ public class DocumentsController : ControllerBase
     {
         if (string.IsNullOrWhiteSpace(request.Id)) request.Id = $"doc_{Guid.NewGuid():N}";
         request.UploadedAtUtc = DateTime.UtcNow;
+        request.UpdatedAtUtc = request.UploadedAtUtc;
 
         _db.Documents.Add(request);
         await _db.SaveChangesAsync();
@@ -55,6 +56,7 @@ public class DocumentsController : ControllerBase
         item.Status = request.Status;
         item.SizeBytes = request.SizeBytes;
         item.StorageKey = request.StorageKey;
+        item.UpdatedAtUtc = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
         return Ok(item);

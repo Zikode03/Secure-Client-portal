@@ -11,4 +11,5 @@ public class User
     public string? ProfileJson { get; set; }
     public string? SecurityJson { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAtUtc { get; set; } = DateTime.UtcNow;
 }

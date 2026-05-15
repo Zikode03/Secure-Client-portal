@@ -37,6 +37,9 @@ public class AuthController : ControllerBase
             return Unauthorized(new { error = "Invalid credentials" });
         }
 
+        user.UpdatedAtUtc = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
         var claims = new List<Claim>
         {
             new(JwtRegisteredClaimNames.Sub, user.Id),

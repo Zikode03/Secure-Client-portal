@@ -11,4 +11,5 @@ public class Document
     public string? StorageKey { get; set; }
     public string UploadedByUserId { get; set; } = string.Empty;
     public DateTime UploadedAtUtc { get; set; } = DateTime.UtcNow;
+    public DateTime UpdatedAtUtc { get; set; } = DateTime.UtcNow;
 }

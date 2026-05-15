@@ -6,16 +6,27 @@ using SecureClientPortal.Backend.Data;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? Environment.GetEnvironmentVariable("DB_CONNECTION_STRING");
+
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    throw new InvalidOperationException("Database connection is missing. Set ConnectionStrings:DefaultConnection or DB_CONNECTION_STRING.");
+}
 
 builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.Section));
 var jwt = builder.Configuration.GetSection(JwtOptions.Section).Get<JwtOptions>() ?? new JwtOptions();
+var jwtSigningKeyFromEnv = Environment.GetEnvironmentVariable("JWT_SIGNING_KEY");
+if (!string.IsNullOrWhiteSpace(jwtSigningKeyFromEnv))
+{
+    jwt.SigningKey = jwtSigningKeyFromEnv;
+}
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddDbContext<PortalDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddDbContext<PortalDbContext>(options => options.UseSqlServer(connectionString));
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
