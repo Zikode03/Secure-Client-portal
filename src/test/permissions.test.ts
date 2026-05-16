@@ -7,6 +7,7 @@ import {
   canAccessRoute,
   getScopedClients,
   getScopedDocuments,
+  getScopedReviewQueue,
 } from "../utils/permissions";
 
 const adminUser: SessionUser = {
@@ -96,5 +97,72 @@ describe("permission and scoping helpers", () => {
   it("admin can access system settings while accountants cannot", () => {
     expect(canAccessRoute(adminUser, "/firm/admin/system-settings")).toBe(true);
     expect(canAccessRoute(accountantUser, "/firm/admin/system-settings")).toBe(false);
+  });
+
+  it("scoping follows dynamic assignment changes and ignores stale assignedClientIds", () => {
+    const reassignedClients = clients.map((client) =>
+      client.id === "firm-client-2"
+        ? {
+            ...client,
+            assignedAccountant: accountantUser.fullName,
+            assignedAccountantUserId: accountantUser.id,
+          }
+        : client,
+    );
+
+    const visibleAfterAssign = getScopedClients(accountantUser, reassignedClients).map(
+      (client) => client.id,
+    );
+    expect(visibleAfterAssign).toContain("firm-client-2");
+
+    const movedAwayClients = reassignedClients.map((client) =>
+      client.id === "firm-client-1"
+        ? {
+            ...client,
+            assignedAccountant: "Lerato Nkosi",
+            assignedAccountantUserId: "user-accountant-2",
+          }
+        : client,
+    );
+    const visibleAfterReassign = getScopedClients(accountantUser, movedAwayClients).map(
+      (client) => client.id,
+    );
+    expect(visibleAfterReassign).not.toContain("firm-client-1");
+  });
+
+  it("review queue visibility follows reassignment-aware client assignee mapping", () => {
+    const queue = [
+      {
+        id: "q-1",
+        clientName: "Apex Trading Ltd",
+        documentType: "Invoices",
+        monthLabel: "April 2026",
+        submittedAt: "2026-05-01T08:40:00.000Z",
+        status: "uploaded" as const,
+        assignedAccountant: "Daniel Mokoena",
+      },
+      {
+        id: "q-2",
+        clientName: "Blue Peak Logistics",
+        documentType: "Payroll Summary",
+        monthLabel: "April 2026",
+        submittedAt: "2026-05-01T08:40:00.000Z",
+        status: "uploaded" as const,
+        assignedAccountant: "Lerato Nkosi",
+      },
+    ];
+
+    const reassignedClients = clients.map((client) =>
+      client.id === "firm-client-2"
+        ? {
+            ...client,
+            assignedAccountant: accountantUser.fullName,
+            assignedAccountantUserId: accountantUser.id,
+          }
+        : client,
+    );
+
+    const scoped = getScopedReviewQueue(accountantUser, queue, reassignedClients);
+    expect(scoped.map((item) => item.id)).toContain("q-2");
   });
 });

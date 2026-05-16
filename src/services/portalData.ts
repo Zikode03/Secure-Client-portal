@@ -125,7 +125,7 @@ const demoUsers: Record<Role, SessionUser> = {
     company: "Finwell Advisory",
     initials: "DM",
     clientIds: [],
-    assignedClientIds: ["client-apex", "firm-client-1", "firm-client-3", "firm-client-4"],
+    assignedClientIds: [],
   },
   admin: {
     id: "user-admin-1",
@@ -1346,6 +1346,7 @@ const adminDashboardData: AdminDashboardData = {
       clientName: "Apex Trading Ltd",
       industry: "Wholesale",
       assignedAccountant: "Daniel Mokoena",
+      assignedAccountantUserId: "user-accountant-1",
       requiredPack: "Trading monthly pack",
       completionRate: 67,
       deadlinePolicy: "6th working day",
@@ -1356,6 +1357,7 @@ const adminDashboardData: AdminDashboardData = {
       clientName: "Blue Peak Logistics",
       industry: "Transport",
       assignedAccountant: "Lerato Nkosi",
+      assignedAccountantUserId: "user-accountant-2",
       requiredPack: "Transport monthly pack",
       completionRate: 52,
       deadlinePolicy: "5th working day",
@@ -1366,6 +1368,7 @@ const adminDashboardData: AdminDashboardData = {
       clientName: "Cloud Nine Retail",
       industry: "Retail",
       assignedAccountant: "Daniel Mokoena",
+      assignedAccountantUserId: "user-accountant-1",
       requiredPack: "Retail monthly pack",
       completionRate: 91,
       deadlinePolicy: "7th working day",
@@ -1376,6 +1379,7 @@ const adminDashboardData: AdminDashboardData = {
       clientName: "Coastal Auto Group",
       industry: "Automotive",
       assignedAccountant: "Daniel Mokoena",
+      assignedAccountantUserId: "user-accountant-1",
       requiredPack: "Automotive monthly pack",
       completionRate: 64,
       deadlinePolicy: "6th working day",
@@ -1386,6 +1390,7 @@ const adminDashboardData: AdminDashboardData = {
       clientName: "Summit Consulting",
       industry: "Professional Services",
       assignedAccountant: "Lerato Nkosi",
+      assignedAccountantUserId: "user-accountant-2",
       requiredPack: "Consulting monthly pack",
       completionRate: 78,
       deadlinePolicy: "6th working day",
@@ -1395,6 +1400,55 @@ const adminDashboardData: AdminDashboardData = {
   policies: adminPolicies,
   notifications: sharedNotifications,
 };
+
+const ADMIN_CLIENT_ASSIGNMENTS_STORAGE_KEY = "secure-client-portal.admin-client-assignments";
+
+function readPersistedAdminClients() {
+  if (typeof window === "undefined") {
+    return clone(adminDashboardData.clients);
+  }
+
+  const raw = window.localStorage.getItem(ADMIN_CLIENT_ASSIGNMENTS_STORAGE_KEY);
+  if (!raw) {
+    return clone(adminDashboardData.clients);
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Array<{
+      id: string;
+      assignedAccountant: string;
+      assignedAccountantUserId?: string;
+    }>;
+    const persistedById = new Map(parsed.map((item) => [item.id, item]));
+    return clone(adminDashboardData.clients).map((client) => {
+      const persisted = persistedById.get(client.id);
+      if (!persisted) {
+        return client;
+      }
+
+      return {
+        ...client,
+        assignedAccountant: persisted.assignedAccountant,
+        assignedAccountantUserId: persisted.assignedAccountantUserId,
+      };
+    });
+  } catch {
+    return clone(adminDashboardData.clients);
+  }
+}
+
+function persistAdminClients(clients: AdminDashboardData["clients"]) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const payload = clients.map((client) => ({
+    id: client.id,
+    assignedAccountant: client.assignedAccountant,
+    assignedAccountantUserId: client.assignedAccountantUserId,
+  }));
+  window.localStorage.setItem(ADMIN_CLIENT_ASSIGNMENTS_STORAGE_KEY, JSON.stringify(payload));
+}
 
 export const portalService = {
   getDemoUser(role: Role) {
@@ -1439,7 +1493,20 @@ export const portalService = {
     return clone(adminDashboardData);
   },
   getAdminClients() {
-    return clone(adminDashboardData.clients);
+    return readPersistedAdminClients();
+  },
+  updateClientAssignment(
+    clientId: string,
+    assignedAccountant: string,
+    assignedAccountantUserId?: string,
+  ) {
+    const next = readPersistedAdminClients().map((client) =>
+      client.id === clientId
+        ? { ...client, assignedAccountant, assignedAccountantUserId }
+        : client,
+    );
+    persistAdminClients(next);
+    return clone(next.find((client) => client.id === clientId) ?? next[0]);
   },
   getAdminPolicies() {
     return clone(adminPolicies);

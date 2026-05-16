@@ -91,6 +91,15 @@ describe("role-based route access", () => {
     expect(await screen.findByRole("heading", { name: "System settings" })).toBeInTheDocument();
   });
 
+  it("shows admin-only header badge only for admin role", async () => {
+    renderAppAt("/firm/dashboard", createUser("admin"));
+    expect(await screen.findByText("Admin only")).toBeInTheDocument();
+
+    window.localStorage.clear();
+    renderAppAt("/firm/dashboard", createUser("accountant"));
+    expect(screen.queryByText("Admin only")).not.toBeInTheDocument();
+  });
+
   it("navigation hides admin-only items from accountants", async () => {
     renderAppAt("/firm/dashboard", createUser("accountant"));
 
@@ -126,11 +135,17 @@ describe("role-based route access", () => {
     expect(await screen.findByText("Document workspace")).toBeInTheDocument();
   });
 
-  it("request detail route is directly reachable", async () => {
+  it("legacy firm request detail route redirects to inbox detail view", async () => {
     renderAppAt("/firm/requests/request-1", createUser("accountant"));
 
     expect(await screen.findByRole("heading", { name: /Re-upload invoice support/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Mark resolved" })).toBeInTheDocument();
+  });
+
+  it("legacy firm requests list route redirects to inbox list view", async () => {
+    renderAppAt("/firm/requests", createUser("accountant"));
+
+    expect(await screen.findByText("Firm inbox and requests")).toBeInTheDocument();
   });
 
   it("admin can open request SLA state machine page", async () => {

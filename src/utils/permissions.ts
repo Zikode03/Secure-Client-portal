@@ -111,12 +111,20 @@ function getAssignedClientIds(
     return expandClientIds(user.clientIds);
   }
 
-  const assignmentIdsFromUser = expandClientIds(user.assignedClientIds);
   const assignmentIdsFromPortfolio = clients
-    .filter((client) => client.assignedAccountant === user.fullName)
+    .filter((client) => {
+      if (client.assignedAccountantUserId) {
+        return (
+          client.assignedAccountantUserId === user.id ||
+          client.assignedAccountant === user.fullName
+        );
+      }
+
+      return client.assignedAccountant === user.fullName;
+    })
     .map((client) => client.id);
 
-  return uniqueStrings([...assignmentIdsFromUser, ...expandClientIds(assignmentIdsFromPortfolio)]);
+  return uniqueStrings([...expandClientIds(assignmentIdsFromPortfolio)]);
 }
 
 export function canViewClient(
@@ -240,7 +248,10 @@ export function getScopedReviewQueue(
   }
 
   if (user.role === "accountant") {
-    return queue.filter((item) => item.assignedAccountant === user.fullName);
+    const visibleNames = new Set(getScopedClients(user, clients).map((client) => client.clientName));
+    return queue.filter(
+      (item) => item.assignedAccountant === user.fullName || visibleNames.has(item.clientName),
+    );
   }
 
   const visibleNames = new Set(getScopedClients(user, clients).map((client) => client.clientName));
@@ -297,6 +308,10 @@ export function canAccessRoute(
   }
 
   if (route.startsWith("/firm/admin/system-settings")) {
+    return hasPermission(user, "manage:system_settings");
+  }
+
+  if (route.startsWith("/firm/admin/request-state-machine")) {
     return hasPermission(user, "manage:system_settings");
   }
 

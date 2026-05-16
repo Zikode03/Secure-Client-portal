@@ -33,22 +33,61 @@ export function AdminAssignmentsPage() {
 
       <SurfaceCard className="space-y-4">
         {portal.adminClients.map((client) => (
-          <div className="grid gap-4 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 md:grid-cols-[1fr_260px_auto]" key={client.id}>
+          <div className="grid gap-4 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 md:grid-cols-[1fr_220px_220px_auto]" key={client.id}>
             <div>
               <p className="text-sm font-semibold text-slate-950">{client.clientName}</p>
               <p className="mt-1 text-sm text-slate-500">{client.industry}</p>
+              <p className="mt-1 text-xs text-slate-500">
+                Backup: {client.backupAccountant ?? "None"} / {(client.isActive ?? true) ? "Active" : "Inactive"}
+              </p>
             </div>
             <SelectField
-              label="Assigned accountant"
+              label="Primary accountant"
               onChange={(event) => {
-                const result = portal.assignClientAccountant(client.id, event.target.value);
+                const selectedAccountant = portal.managedAccountants.find(
+                  (accountant) => accountant.id === event.target.value,
+                );
+                const result = portal.assignClientAccountant(
+                  client.id,
+                  selectedAccountant?.name ?? event.target.value,
+                  selectedAccountant?.id,
+                );
                 setFeedbackMessage(result.message);
               }}
               options={portal.managedAccountants.map((accountant) => ({
                 label: accountant.name,
-                value: accountant.name,
+                value: accountant.id,
               }))}
-              value={client.assignedAccountant}
+              value={
+                client.assignedAccountantUserId ??
+                portal.managedAccountants.find(
+                  (accountant) => accountant.name === client.assignedAccountant,
+                )?.id ??
+                portal.managedAccountants[0]?.id ??
+                ""
+              }
+            />
+            <SelectField
+              label="Backup accountant"
+              onChange={(event) => {
+                const selectedAccountant = portal.managedAccountants.find(
+                  (accountant) => accountant.id === event.target.value,
+                );
+                const result = portal.assignClientAccountantBackup(
+                  client.id,
+                  selectedAccountant?.name ?? event.target.value,
+                  selectedAccountant?.id,
+                );
+                setFeedbackMessage(result.message);
+              }}
+              options={[
+                { label: "None", value: "" },
+                ...portal.managedAccountants.map((accountant) => ({
+                  label: accountant.name,
+                  value: accountant.id,
+                })),
+              ]}
+              value={client.backupAccountantUserId ?? ""}
             />
             <div className="flex items-end">
               <Button

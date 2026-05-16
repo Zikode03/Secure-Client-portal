@@ -567,10 +567,14 @@ export interface FirmClientAccount {
   clientName: string;
   industry: string;
   assignedAccountant: string;
+  assignedAccountantUserId?: string;
+  backupAccountant?: string;
+  backupAccountantUserId?: string;
   requiredPack: string;
   completionRate: number;
   deadlinePolicy: string;
   status: PortfolioStatus;
+  isActive?: boolean;
 }
 
 export interface DocumentPolicy {
@@ -606,6 +610,33 @@ export interface UserAccountRecord {
   role: Role;
   status: "active" | "invited" | "suspended";
   company?: string;
+}
+
+export interface DocumentRequirementRule {
+  id: string;
+  name: string;
+  required: boolean;
+  acceptedFormats: string[];
+}
+
+export interface MonthlyPackRules {
+  submissionDeadlineDay: number;
+  requiredDocumentIds: string[];
+  optionalDocumentIds: string[];
+  blockingDocumentIds: string[];
+  reminderDaysBeforeDue: number[];
+}
+
+export interface ComplianceTemplate {
+  id: string;
+  category: string;
+  description: string;
+  active: boolean;
+}
+
+export interface RolePermissionMatrix {
+  role: Role;
+  permissions: Permission[];
 }
 
 export type ComplianceCategoryId =

@@ -12,6 +12,7 @@ public class PortalDbContext : DbContext
     public DbSet<Document> Documents => Set<Document>();
     public DbSet<TaskItem> Tasks => Set<TaskItem>();
     public DbSet<RequestItem> Requests => Set<RequestItem>();
+    public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -120,6 +121,15 @@ public class PortalDbContext : DbContext
                 table.HasCheckConstraint("CK_AppRequests_Status", "[Status] IN ('open','awaiting_client','awaiting_accountant','resolved')");
                 table.HasCheckConstraint("CK_AppRequests_Priority", "[Priority] IN ('low','medium','high','urgent')");
             });
+        });
+
+        modelBuilder.Entity<SystemSetting>(entity =>
+        {
+            entity.ToTable("AppSystemSettings");
+            entity.HasKey(x => x.Key);
+            entity.Property(x => x.Key).HasMaxLength(120);
+            entity.Property(x => x.ValueJson).HasColumnType("nvarchar(max)").IsRequired();
+            entity.Property(x => x.UpdatedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()");
         });
     }
 }

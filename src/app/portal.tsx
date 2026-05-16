@@ -51,6 +51,7 @@ import type {
   ClientSecuritySettings,
   ClientSettingsState,
   ClientWorkflowSeed,
+  ComplianceTemplate,
   ComplianceCentreData,
   ComplianceClientStatus,
   ComplianceDocumentRecord,
@@ -61,6 +62,7 @@ import type {
   FirmClientAccount,
   InvoiceRecord,
   ManagedAccountant,
+  MonthlyPackRules,
   MonthlyPack,
   NotificationActivityEntry,
   NotificationItem,
@@ -70,24 +72,17 @@ import type {
   Role,
   ScheduledReport,
   SessionUser,
+  RolePermissionMatrix,
   Tone,
   UnifiedSearchFilters,
   UnifiedSearchResult,
   UploadSubmission,
   UserAccountRecord,
+  DocumentRequirementRule,
   WorkflowRequest,
 } from "../types/portal";
 
 const clone = <Value,>(value: Value): Value => JSON.parse(JSON.stringify(value)) as Value;
-
-const accountantAssignments: Record<string, string> = {
-  "client-apex": "Daniel Mokoena",
-  "firm-client-1": "Daniel Mokoena",
-  "firm-client-2": "Lerato Nkosi",
-  "firm-client-3": "Daniel Mokoena",
-  "firm-client-4": "Daniel Mokoena",
-  "firm-client-5": "Lerato Nkosi",
-};
 
 const initialProfile: BusinessProfile = {
   clientId: "client-apex",
@@ -171,7 +166,7 @@ const initialRequests: WorkflowRequest[] = [
 
 const initialAccountants: ManagedAccountant[] = [
   {
-    id: "accountant-1",
+    id: "user-accountant-1",
     name: "Daniel Mokoena",
     email: "accountant@example.com",
     title: "Senior Accountant",
@@ -180,7 +175,7 @@ const initialAccountants: ManagedAccountant[] = [
     status: "busy",
   },
   {
-    id: "accountant-2",
+    id: "user-accountant-2",
     name: "Lerato Nkosi",
     email: "lerato@finwelladvisory.co.za",
     title: "Accounting Manager",
@@ -189,7 +184,7 @@ const initialAccountants: ManagedAccountant[] = [
     status: "active",
   },
   {
-    id: "accountant-3",
+    id: "user-accountant-3",
     name: "Sipho Maseko",
     email: "sipho@finwelladvisory.co.za",
     title: "Compliance Accountant",
@@ -225,6 +220,45 @@ const initialUsers: UserAccountRecord[] = [
     company: "Finwell Advisory",
   },
 ];
+
+const initialDocumentRequirementRules: DocumentRequirementRule[] = [
+  { id: "bank_statement", name: "Bank statement", required: true, acceptedFormats: ["PDF"] },
+  { id: "sales_invoices", name: "Sales invoices", required: true, acceptedFormats: ["PDF", "ZIP"] },
+  { id: "expense_invoices", name: "Expense invoices", required: true, acceptedFormats: ["PDF", "ZIP"] },
+  { id: "vat_documents", name: "VAT documents", required: true, acceptedFormats: ["PDF", "XLSX"] },
+  { id: "payroll_documents", name: "Payroll documents", required: true, acceptedFormats: ["PDF", "XLSX"] },
+  { id: "signed_documents", name: "Signed documents", required: true, acceptedFormats: ["PDF"] },
+];
+
+const initialMonthlyPackRules: MonthlyPackRules = {
+  submissionDeadlineDay: 5,
+  requiredDocumentIds: initialDocumentRequirementRules.filter((rule) => rule.required).map((rule) => rule.id),
+  optionalDocumentIds: [],
+  blockingDocumentIds: ["bank_statement", "sales_invoices", "expense_invoices", "vat_documents", "payroll_documents", "signed_documents"],
+  reminderDaysBeforeDue: [10, 3, 1],
+};
+
+const initialComplianceTemplates: ComplianceTemplate[] = [
+  { id: "tax_compliance", category: "Tax Compliance", description: "SARS registrations, returns, and tax standing records.", active: true },
+  { id: "cipc_compliance", category: "CIPC Compliance", description: "Company registration, annual return, and governance records.", active: true },
+  { id: "payroll_compliance", category: "Payroll Compliance", description: "EMP201/EMP501, payslips, and payroll reconciliation evidence.", active: true },
+  { id: "popia_compliance", category: "POPIA Compliance", description: "POPIA policy, privacy notice, and data processing register.", active: true },
+  { id: "tender_compliance", category: "Tender Compliance", description: "B-BBEE, CSD, bank letter, and supplier onboarding records.", active: true },
+];
+
+const initialRolePermissionMatrix: RolePermissionMatrix[] = [
+  { role: "admin", permissions: ["view:assigned_clients", "view:all_clients", "view:assigned_documents", "view:all_documents", "view:assigned_review_queue", "view:firm_review_queue", "view:assigned_compliance", "view:firm_compliance", "manage:users", "manage:roles", "manage:assignments", "manage:templates", "manage:deadline_rules", "manage:system_settings", "export:firm_reports", "export:client_reports", "request:documents", "review:documents", "comment:documents", "comment:requests"] },
+  { role: "accountant", permissions: ["view:assigned_clients", "view:assigned_documents", "view:assigned_review_queue", "view:assigned_compliance", "export:client_reports", "request:documents", "review:documents", "comment:documents", "comment:requests"] },
+  { role: "client", permissions: ["export:client_reports", "comment:documents", "comment:requests"] },
+];
+
+function findAccountantById(accountantId: string) {
+  return initialAccountants.find((accountant) => accountant.id === accountantId);
+}
+
+function findAccountantByName(accountantName: string) {
+  return initialAccountants.find((accountant) => accountant.name === accountantName);
+}
 
 const CLIENT_PORTAL_STORAGE_KEY = "accounting-document-control-client-portal";
 
@@ -518,6 +552,10 @@ interface PortalContextValue {
   adminPolicies: DocumentPolicy[];
   managedAccountants: ManagedAccountant[];
   userAccounts: UserAccountRecord[];
+  documentRequirementRules: DocumentRequirementRule[];
+  monthlyPackRules: MonthlyPackRules;
+  complianceTemplates: ComplianceTemplate[];
+  rolePermissionMatrix: RolePermissionMatrix[];
   clientComplianceCentre: ComplianceCentreData;
   accountantComplianceCentre: ComplianceCentreData;
   uploadToSlot: (
@@ -565,7 +603,42 @@ interface PortalContextValue {
     recipients: string[],
     actorName: string,
   ) => PortalActionResult;
-  assignClientAccountant: (clientId: string, accountantName: string) => PortalActionResult;
+  assignClientAccountant: (
+    clientId: string,
+    accountantName: string,
+    accountantUserId?: string,
+  ) => PortalActionResult;
+  assignClientAccountantBackup: (
+    clientId: string,
+    backupAccountantName: string,
+    backupAccountantUserId?: string,
+  ) => PortalActionResult;
+  createUserAccount: (payload: {
+    name: string;
+    email: string;
+    role: Role;
+    company?: string;
+  }) => PortalActionResult;
+  disableUserAccount: (userId: string) => PortalActionResult;
+  resetUserAccess: (userId: string) => PortalActionResult;
+  assignUserRole: (userId: string, role: Role) => PortalActionResult;
+  addClientBusiness: (payload: {
+    clientName: string;
+    industry: string;
+    requiredPack: string;
+    deadlinePolicy: string;
+    assignedAccountantUserId?: string;
+    backupAccountantUserId?: string;
+  }) => PortalActionResult;
+  updateClientBusiness: (
+    clientId: string,
+    updates: Partial<Pick<FirmClientAccount, "clientName" | "industry" | "requiredPack" | "deadlinePolicy">>,
+  ) => PortalActionResult;
+  setClientActiveState: (clientId: string, isActive: boolean) => PortalActionResult;
+  updateDocumentRequirements: (rules: DocumentRequirementRule[]) => PortalActionResult;
+  updateMonthlyPackRules: (rules: MonthlyPackRules) => PortalActionResult;
+  updateComplianceTemplates: (templates: ComplianceTemplate[]) => PortalActionResult;
+  updateRolePermissionMatrix: (matrix: RolePermissionMatrix[]) => PortalActionResult;
   updateClientDeadlinePolicy: (clientId: string, deadlinePolicy: string) => PortalActionResult;
   filterSearchResults: (
     results: UnifiedSearchResult[],
@@ -967,8 +1040,18 @@ export function PortalProvider({ children }: { children: ReactNode }) {
   );
   const [adminClients, setAdminClients] = useState(() => clone(baseAdminClients));
   const adminPolicies = useMemo(() => clone(baseAdminPolicies), [baseAdminPolicies]);
-  const [managedAccountants] = useState(() => clone(initialAccountants));
-  const [userAccounts] = useState(() => clone(initialUsers));
+  const [managedAccountants, setManagedAccountants] = useState(() => clone(initialAccountants));
+  const [userAccounts, setUserAccounts] = useState(() => clone(initialUsers));
+  const [documentRequirementRules, setDocumentRequirementRules] = useState(
+    () => clone(initialDocumentRequirementRules),
+  );
+  const [monthlyPackRules, setMonthlyPackRules] = useState(() => clone(initialMonthlyPackRules));
+  const [complianceTemplates, setComplianceTemplates] = useState(
+    () => clone(initialComplianceTemplates),
+  );
+  const [rolePermissionMatrix, setRolePermissionMatrix] = useState(
+    () => clone(initialRolePermissionMatrix),
+  );
 
 // Reactive sync: this block responds when dependencies change.
   useEffect(() => {
@@ -1203,7 +1286,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
           industry: "Wholesale",
           assignedAccountant:
             adminClients.find((client) => client.id === "firm-client-1")?.assignedAccountant ??
-            accountantAssignments["client-apex"],
+            "Daniel Mokoena",
           requiredPack: "Trading monthly pack",
           completionRate: monthPack.progressPercent,
           deadlinePolicy: "6th working day",
@@ -1242,7 +1325,17 @@ export function PortalProvider({ children }: { children: ReactNode }) {
 
 const assignedAccountantForApex =
     adminClients.find((client) => client.id === "firm-client-1")?.assignedAccountant ??
-    accountantAssignments["client-apex"];
+    "Daniel Mokoena";
+
+  function resolveAssignedAccountantByClientName(
+    clientName: string,
+    fallbackAccountant: string,
+  ) {
+    return (
+      adminClients.find((client) => client.clientName === clientName)?.assignedAccountant ??
+      fallbackAccountant
+    );
+  }
 
   function uploadToSlot(
     submission: UploadSubmission,
@@ -2244,14 +2337,314 @@ const assignedAccountantForApex =
   function assignClientAccountant(
     clientId: string,
     accountantName: string,
+    accountantUserId?: string,
   ): PortalActionResult {
+    const resolvedAccountant =
+      (accountantUserId ? findAccountantById(accountantUserId) : undefined) ??
+      findAccountantByName(accountantName);
+    const nextAssignedName = resolvedAccountant?.name ?? accountantName;
+    const nextAssignedUserId = resolvedAccountant?.id ?? accountantUserId;
+
     setAdminClients((current) =>
       current.map((client) =>
-        client.id === clientId ? { ...client, assignedAccountant: accountantName } : client,
+        client.id === clientId
+          ? {
+              ...client,
+              assignedAccountant: nextAssignedName,
+              assignedAccountantUserId: nextAssignedUserId,
+            }
+          : client,
       ),
     );
-    accountantAssignments[clientId] = accountantName;
+
+    setComplianceClients((current) =>
+      current.map((client) =>
+        client.clientId === clientId
+          ? { ...client, assignedAccountant: nextAssignedName }
+          : client,
+      ),
+    );
+
+    void portalServiceApi.updateClientAssignment(clientId, nextAssignedName, nextAssignedUserId);
+
     return { ok: true, message: "Accountant assignment updated." };
+  }
+
+  function assignClientAccountantBackup(
+    clientId: string,
+    backupAccountantName: string,
+    backupAccountantUserId?: string,
+  ): PortalActionResult {
+    const resolvedBackup =
+      (backupAccountantUserId ? findAccountantById(backupAccountantUserId) : undefined) ??
+      findAccountantByName(backupAccountantName);
+    const nextBackupName = resolvedBackup?.name ?? backupAccountantName;
+    const nextBackupUserId = resolvedBackup?.id ?? backupAccountantUserId;
+
+    setAdminClients((current) =>
+      current.map((client) =>
+        client.id === clientId
+          ? {
+              ...client,
+              backupAccountant: nextBackupName,
+              backupAccountantUserId: nextBackupUserId,
+            }
+          : client,
+      ),
+    );
+
+    return { ok: true, message: "Backup accountant assignment updated." };
+  }
+
+  function createUserAccount(payload: {
+    name: string;
+    email: string;
+    role: Role;
+    company?: string;
+  }): PortalActionResult {
+    const normalizedEmail = payload.email.trim().toLowerCase();
+    if (!payload.name.trim() || !normalizedEmail.includes("@")) {
+      return { ok: false, message: "Provide a valid name and email for the new user." };
+    }
+
+    if (userAccounts.some((user) => user.email.toLowerCase() === normalizedEmail)) {
+      return { ok: false, message: "A user with that email already exists." };
+    }
+
+    const nextUser: UserAccountRecord = {
+      id: `user-local-${Date.now()}`,
+      name: payload.name.trim(),
+      email: normalizedEmail,
+      role: payload.role,
+      status: "invited",
+      company: payload.company?.trim() || undefined,
+    };
+
+    setUserAccounts((current) => [nextUser, ...current]);
+
+    if (payload.role === "accountant") {
+      setManagedAccountants((current) => [
+        {
+          id: nextUser.id,
+          name: nextUser.name,
+          email: nextUser.email,
+          title: "Accountant",
+          assignedClientCount: 0,
+          openReviews: 0,
+          status: "capacity_available",
+        },
+        ...current,
+      ]);
+    }
+
+    void portalServiceApi.createUserAccount({
+      fullName: payload.name.trim(),
+      email: normalizedEmail,
+      role: payload.role,
+      company: payload.company,
+    });
+
+    return { ok: true, message: "User account created and invite queued." };
+  }
+
+  function disableUserAccount(userId: string): PortalActionResult {
+    let found = false;
+    setUserAccounts((current) =>
+      current.map((user) => {
+        if (user.id !== userId) return user;
+        found = true;
+        return { ...user, status: "suspended" };
+      }),
+    );
+    void portalServiceApi.setUserStatus(userId, "suspended");
+
+    return found
+      ? { ok: true, message: "User access has been disabled." }
+      : { ok: false, message: "User account not found." };
+  }
+
+  function resetUserAccess(userId: string): PortalActionResult {
+    const target = userAccounts.find((user) => user.id === userId);
+    if (!target) {
+      return { ok: false, message: "User account not found." };
+    }
+
+    setActivity((current) =>
+      appendActivity(
+        current,
+        "Access reset issued",
+        `Admin requested access reset for ${target.name}.`,
+        "info",
+        "Admin",
+        target.email,
+      ),
+    );
+    void portalServiceApi.resetUserAccess(userId, "admin_reset");
+
+    return { ok: true, message: "Access reset instructions were issued." };
+  }
+
+  function assignUserRole(userId: string, role: Role): PortalActionResult {
+    const target = userAccounts.find((user) => user.id === userId);
+    if (!target) {
+      return { ok: false, message: "User account not found." };
+    }
+
+    setUserAccounts((current) =>
+      current.map((user) => (user.id === userId ? { ...user, role } : user)),
+    );
+    void portalServiceApi.setUserRole(userId, role);
+
+    if (role === "accountant") {
+      setManagedAccountants((current) => {
+        if (current.some((accountant) => accountant.id === userId)) {
+          return current;
+        }
+        return [
+          ...current,
+          {
+            id: userId,
+            name: target.name,
+            email: target.email,
+            title: "Accountant",
+            assignedClientCount: 0,
+            openReviews: 0,
+            status: "capacity_available",
+          },
+        ];
+      });
+    }
+
+    return { ok: true, message: "User role updated." };
+  }
+
+  function addClientBusiness(payload: {
+    clientName: string;
+    industry: string;
+    requiredPack: string;
+    deadlinePolicy: string;
+    assignedAccountantUserId?: string;
+    backupAccountantUserId?: string;
+  }): PortalActionResult {
+    if (!payload.clientName.trim() || !payload.industry.trim()) {
+      return { ok: false, message: "Client name and industry are required." };
+    }
+
+    const primary = payload.assignedAccountantUserId
+      ? findAccountantById(payload.assignedAccountantUserId)
+      : undefined;
+    const backup = payload.backupAccountantUserId
+      ? findAccountantById(payload.backupAccountantUserId)
+      : undefined;
+    const nextClient: FirmClientAccount = {
+      id: `firm-client-local-${Date.now()}`,
+      clientName: payload.clientName.trim(),
+      industry: payload.industry.trim(),
+      assignedAccountant: primary?.name ?? "Unassigned",
+      assignedAccountantUserId: primary?.id,
+      backupAccountant: backup?.name,
+      backupAccountantUserId: backup?.id,
+      requiredPack: payload.requiredPack.trim() || "Standard monthly pack",
+      completionRate: 0,
+      deadlinePolicy: payload.deadlinePolicy.trim() || "6th working day",
+      status: "attention",
+      isActive: true,
+    };
+
+    setAdminClients((current) => [nextClient, ...current]);
+    void portalServiceApi.createClientBusiness({
+      id: nextClient.id,
+      name: nextClient.clientName,
+      entityType: nextClient.industry,
+      status: "active",
+      complianceHealth: nextClient.completionRate,
+      assignedAccountantId: nextClient.assignedAccountantUserId ?? "",
+      primaryContact: "Primary contact",
+      email: "client@example.com",
+    });
+    return { ok: true, message: "Client business added." };
+  }
+
+  function updateClientBusiness(
+    clientId: string,
+    updates: Partial<Pick<FirmClientAccount, "clientName" | "industry" | "requiredPack" | "deadlinePolicy">>,
+  ): PortalActionResult {
+    let found = false;
+    setAdminClients((current) =>
+      current.map((client) => {
+        if (client.id !== clientId) return client;
+        found = true;
+        return { ...client, ...updates };
+      }),
+    );
+    const client = adminClients.find((item) => item.id === clientId);
+    if (client) {
+      void portalServiceApi.updateClientBusiness(clientId, {
+        id: clientId,
+        name: updates.clientName ?? client.clientName,
+        entityType: updates.industry ?? client.industry,
+        status: client.status === "overdue" ? "at_risk" : "active",
+        complianceHealth: client.completionRate,
+        assignedAccountantId: client.assignedAccountantUserId ?? "",
+        primaryContact: "Primary contact",
+        email: "client@example.com",
+      });
+    }
+
+    return found
+      ? { ok: true, message: "Client details updated." }
+      : { ok: false, message: "Client not found." };
+  }
+
+  function setClientActiveState(clientId: string, isActive: boolean): PortalActionResult {
+    let found = false;
+    setAdminClients((current) =>
+      current.map((client) => {
+        if (client.id !== clientId) return client;
+        found = true;
+        return { ...client, isActive, status: isActive ? client.status : "overdue" };
+      }),
+    );
+    const client = adminClients.find((item) => item.id === clientId);
+    if (client) {
+      void portalServiceApi.updateClientBusiness(clientId, {
+        id: clientId,
+        name: client.clientName,
+        entityType: client.industry,
+        status: isActive ? "active" : "archived",
+        complianceHealth: client.completionRate,
+        assignedAccountantId: client.assignedAccountantUserId ?? "",
+        primaryContact: "Primary contact",
+        email: "client@example.com",
+      });
+    }
+    return found
+      ? { ok: true, message: `Client ${isActive ? "activated" : "deactivated"}.` }
+      : { ok: false, message: "Client not found." };
+  }
+
+  function updateDocumentRequirements(rules: DocumentRequirementRule[]): PortalActionResult {
+    setDocumentRequirementRules(clone(rules));
+    void portalServiceApi.putAdminSetting("document-requirements", rules);
+    return { ok: true, message: "Document requirements updated." };
+  }
+
+  function updateMonthlyPackRules(rules: MonthlyPackRules): PortalActionResult {
+    setMonthlyPackRules(clone(rules));
+    void portalServiceApi.putAdminSetting("monthly-pack-rules", rules);
+    return { ok: true, message: "Monthly pack rules updated." };
+  }
+
+  function updateComplianceTemplates(templates: ComplianceTemplate[]): PortalActionResult {
+    setComplianceTemplates(clone(templates));
+    void portalServiceApi.putAdminSetting("compliance-templates", templates);
+    return { ok: true, message: "Compliance templates updated." };
+  }
+
+  function updateRolePermissionMatrix(matrix: RolePermissionMatrix[]): PortalActionResult {
+    setRolePermissionMatrix(clone(matrix));
+    void portalServiceApi.putAdminSetting("role-permission-matrix", matrix);
+    return { ok: true, message: "Role permissions updated." };
   }
 
   function updateClientDeadlinePolicy(
@@ -2306,9 +2699,15 @@ const assignedAccountantForApex =
     );
     const dynamicQueue = [...dynamicDocumentQueue, ...dynamicInvoiceQueue];
     const dynamicIds = new Set(dynamicQueue.map((item) => item.id));
-    const seededFirmQueue = baseAccountantDashboard.reviewQueue.filter(
-      (item) => !dynamicIds.has(item.id),
-    );
+    const seededFirmQueue = baseAccountantDashboard.reviewQueue
+      .filter((item) => !dynamicIds.has(item.id))
+      .map((item) => ({
+        ...item,
+        assignedAccountant: resolveAssignedAccountantByClientName(
+          item.clientName,
+          item.assignedAccountant,
+        ),
+      }));
 
     return [...dynamicQueue, ...seededFirmQueue]
       .sort(
@@ -2356,9 +2755,15 @@ const assignedAccountantForApex =
   }
 
   const accountantDashboard = useMemo<AccountantDashboardData>(() => {
-    const otherPortfolioRows = baseAccountantDashboard.portfolio.filter(
-      (row) => row.clientName !== "Apex Trading Ltd",
-    );
+    const otherPortfolioRows = baseAccountantDashboard.portfolio
+      .filter((row) => row.clientName !== "Apex Trading Ltd")
+      .map((row) => ({
+        ...row,
+        assignedAccountant: resolveAssignedAccountantByClientName(
+          row.clientName,
+          row.assignedAccountant,
+        ),
+      }));
     const apexMissingDocuments = buildMissingDocuments(monthPack, clientProfile.legalName);
     const apexPortfolioRow = {
       id: "portfolio-1",
@@ -2511,6 +2916,10 @@ const assignedAccountantForApex =
       adminPolicies,
       managedAccountants,
       userAccounts,
+      documentRequirementRules,
+      monthlyPackRules,
+      complianceTemplates,
+      rolePermissionMatrix,
       clientComplianceCentre,
       accountantComplianceCentre,
       uploadToSlot,
@@ -2525,6 +2934,13 @@ const assignedAccountantForApex =
       createComplianceRequest,
       uploadComplianceVersion,
       resolveRequest,
+      createUserAccount,
+      disableUserAccount,
+      resetUserAccess,
+      assignUserRole,
+      addClientBusiness,
+      updateClientBusiness,
+      setClientActiveState,
       updateBusinessProfile,
       updateClientNotificationPreferences,
       updateClientDocumentPreferences,
@@ -2532,6 +2948,11 @@ const assignedAccountantForApex =
       downloadComplianceReport,
       scheduleComplianceReport,
       assignClientAccountant,
+      assignClientAccountantBackup,
+      updateDocumentRequirements,
+      updateMonthlyPackRules,
+      updateComplianceTemplates,
+      updateRolePermissionMatrix,
       updateClientDeadlinePolicy,
       filterSearchResults: filterUnifiedSearchResults,
       resetClientPortalDemoState,
@@ -2549,7 +2970,9 @@ const assignedAccountantForApex =
       clientSettings,
       clientProfile,
       clientSeed,
+      complianceTemplates,
       complianceClients,
+      documentRequirementRules,
       documents,
       downloadComplianceReport,
       expiringDocuments,
@@ -2560,6 +2983,7 @@ const assignedAccountantForApex =
       liveClientRequests,
       managedAccountants,
       missingRequiredDocuments,
+      monthlyPackRules,
       monthPack,
       notifications,
       previousMonthComparison,
@@ -2570,8 +2994,20 @@ const assignedAccountantForApex =
       scheduledReports,
       createClientRequest,
       createComplianceRequest,
+      createUserAccount,
+      disableUserAccount,
+      resetUserAccess,
+      assignUserRole,
+      addClientBusiness,
+      updateClientBusiness,
+      setClientActiveState,
+      updateDocumentRequirements,
+      updateMonthlyPackRules,
+      updateComplianceTemplates,
+      updateRolePermissionMatrix,
       uploadComplianceVersion,
       resolveRequest,
+      rolePermissionMatrix,
       rejectedDocuments,
       requests,
       smartAlerts,

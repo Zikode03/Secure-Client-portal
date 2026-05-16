@@ -2,7 +2,7 @@
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
 import { Suspense, lazy } from "react";
-import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation, useParams } from "react-router-dom";
 import { defaultPathForRole, useAuth } from "./auth";
 import type { Permission, Role } from "../types/portal";
 import { canAccessRoute, hasPermission } from "../utils/permissions";
@@ -307,6 +307,16 @@ function LegacyWorkspaceRedirect({ role }: { role: Extract<Role, "admin" | "acco
   return <Navigate replace to={`${nextPath}${location.search}`} />;
 }
 
+function LegacyFirmRequestDetailRedirect() {
+  const { requestId } = useParams();
+
+  if (!requestId) {
+    return <Navigate replace to="/firm/inbox" />;
+  }
+
+  return <Navigate replace to={`/firm/inbox/${requestId}`} />;
+}
+
 export default function App() {
 // Render output: this is the visual state users interact with.
   return (
@@ -366,8 +376,7 @@ export default function App() {
           <Route element={<Navigate replace to="/firm/inbox" />} path="requests" />
           <Route element={<FirmRequestsPage />} path="inbox" />
           <Route element={<FirmRequestDetailPage />} path="inbox/:requestId" />
-          <Route element={<FirmRequestsPage />} path="requests" />
-          <Route element={<FirmRequestDetailPage />} path="requests/:requestId" />
+          <Route element={<LegacyFirmRequestDetailRedirect />} path="requests/:requestId" />
           <Route element={<FirmActivityFeedPage />} path="activity" />
           <Route element={<FirmExceptionsQueuePage />} path="exceptions" />
           <Route element={<FirmComplianceCentrePage />} path="compliance" />

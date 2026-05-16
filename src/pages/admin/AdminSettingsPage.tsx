@@ -8,7 +8,7 @@ import { PageHeader } from "../../components/ui/PageHeader";
 import { SelectField } from "../../components/ui/SelectField";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
 import { TextField } from "../../components/ui/TextField";
-import type { Permission } from "../../types/portal";
+import type { Permission, Role } from "../../types/portal";
 import {
   getPermissionOverride,
   removePermissionOverride,
@@ -16,7 +16,16 @@ import {
 } from "../../utils/userPermissionOverrides";
 
 // Shared shape notes: these types keep UI and data contracts aligned.
-type SettingsPage = "profile" | "team" | "submission_rules" | "notifications";
+type SettingsPage =
+  | "profile"
+  | "users"
+  | "clients"
+  | "team"
+  | "requirements"
+  | "compliance_templates"
+  | "permissions"
+  | "monitoring"
+  | "notifications";
 type PermissionKey =
   | "review_documents"
   | "manage_requests"
@@ -39,6 +48,29 @@ const permissionMapByKey: Record<PermissionKey, Permission[]> = {
   assign_clients: ["manage:assignments", "view:assigned_clients"],
   manage_team: ["manage:users", "manage:roles", "manage:system_settings"],
 };
+
+const rolePermissionOptions: Permission[] = [
+  "view:assigned_clients",
+  "view:all_clients",
+  "view:assigned_documents",
+  "view:all_documents",
+  "view:assigned_review_queue",
+  "view:firm_review_queue",
+  "view:assigned_compliance",
+  "view:firm_compliance",
+  "manage:users",
+  "manage:roles",
+  "manage:assignments",
+  "manage:templates",
+  "manage:deadline_rules",
+  "manage:system_settings",
+  "export:firm_reports",
+  "export:client_reports",
+  "request:documents",
+  "review:documents",
+  "comment:documents",
+  "comment:requests",
+];
 
 // Component flow: gather data first, then render a focused UI state.
 function keysToPermissions(keys: PermissionKey[]): Permission[] {
@@ -90,7 +122,11 @@ export function AdminSettingsPage() {
   );
   const [assignmentClientId, setAssignmentClientId] = useState(portal.adminClients[0]?.id ?? "");
   const [assignmentAccountant, setAssignmentAccountant] = useState(
-    portal.adminClients[0]?.assignedAccountant ?? "",
+    portal.adminClients[0]?.assignedAccountantUserId ??
+      portal.managedAccountants.find(
+        (accountant) => accountant.name === portal.adminClients[0]?.assignedAccountant,
+      )?.id ??
+      "",
   );
   const [monthlySubmissionDeadline, setMonthlySubmissionDeadline] = useState("5th of each month");
   const [requiredMonthlyDocuments, setRequiredMonthlyDocuments] = useState("Standard monthly pack");
@@ -99,10 +135,19 @@ export function AdminSettingsPage() {
   const [emailReminders, setEmailReminders] = useState("enabled");
   const [accountantAlerts, setAccountantAlerts] = useState("enabled");
   const [clientReminders, setClientReminders] = useState("enabled");
+  const [newUserName, setNewUserName] = useState("");
+  const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserRole, setNewUserRole] = useState<Role>("accountant");
+  const [newClientName, setNewClientName] = useState("");
+  const [newClientIndustry, setNewClientIndustry] = useState("");
+  const [newClientRequiredPack, setNewClientRequiredPack] = useState("Standard monthly pack");
+  const [newClientDeadlinePolicy, setNewClientDeadlinePolicy] = useState("6th working day");
+  const [newClientPrimaryAccountantId, setNewClientPrimaryAccountantId] = useState("");
+  const [newClientBackupAccountantId, setNewClientBackupAccountantId] = useState("");
 
   const assignmentOptions = useMemo(
-    () => teamMembers.map((member) => ({ label: member.name, value: member.name })),
-    [teamMembers],
+    () => portal.managedAccountants.map((member) => ({ label: member.name, value: member.id })),
+    [portal.managedAccountants],
   );
 
   function togglePermission(
@@ -174,7 +219,14 @@ export function AdminSettingsPage() {
       return;
     }
 
-    const result = portal.assignClientAccountant(assignmentClientId, assignmentAccountant);
+    const selectedAccountant = portal.managedAccountants.find(
+      (accountant) => accountant.id === assignmentAccountant,
+    );
+    const result = portal.assignClientAccountant(
+      assignmentClientId,
+      selectedAccountant?.name ?? assignmentAccountant,
+      selectedAccountant?.id,
+    );
     setFeedbackMessage(result.message);
   }
 
@@ -202,21 +254,82 @@ export function AdminSettingsPage() {
     };
 
     localStorage.setItem(settingsStorageKey, JSON.stringify(snapshot));
+    const parsedDeadlineDay = monthlySubmissionDeadline.startsWith("3")
+      ? 3
+      : monthlySubmissionDeadline.startsWith("7")
+        ? 7
+        : 5;
+    const rulesResult = portal.updateMonthlyPackRules({
+      submissionDeadlineDay: parsedDeadlineDay,
+      requiredDocumentIds: portal.documentRequirementRules
+        .filter((rule) => rule.required)
+        .map((rule) => rule.id),
+      optionalDocumentIds: portal.documentRequirementRules
+        .filter((rule) => !rule.required)
+        .map((rule) => rule.id),
+      blockingDocumentIds: portal.documentRequirementRules
+        .filter((rule) => rule.required)
+        .map((rule) => rule.id),
+      reminderDaysBeforeDue: autoReminders.startsWith("2")
+        ? [7, 1]
+        : autoReminders === "Off"
+          ? []
+          : [10, 3, 1],
+    });
     setFeedbackMessage("System settings saved.");
+    if (!rulesResult.ok) {
+      setFeedbackMessage(rulesResult.message);
+    }
+  }
+
+  function createUser() {
+    const result = portal.createUserAccount({
+      name: newUserName,
+      email: newUserEmail,
+      role: newUserRole,
+      company: newUserRole === "client" ? "Client business" : "Finwell Advisory",
+    });
+    setFeedbackMessage(result.message);
+    if (result.ok) {
+      setNewUserName("");
+      setNewUserEmail("");
+      setNewUserRole("accountant");
+    }
+  }
+
+  function createClient() {
+    const result = portal.addClientBusiness({
+      clientName: newClientName,
+      industry: newClientIndustry,
+      requiredPack: newClientRequiredPack,
+      deadlinePolicy: newClientDeadlinePolicy,
+      assignedAccountantUserId: newClientPrimaryAccountantId || undefined,
+      backupAccountantUserId: newClientBackupAccountantId || undefined,
+    });
+    setFeedbackMessage(result.message);
+    if (result.ok) {
+      setNewClientName("");
+      setNewClientIndustry("");
+    }
   }
 
   function renderPageNavigation() {
     const items: Array<{ id: SettingsPage; label: string }> = [
       { id: "profile", label: "Firm Profile" },
+      { id: "users", label: "Users & Roles" },
+      { id: "clients", label: "Clients" },
       { id: "team", label: "Team Management" },
-      { id: "submission_rules", label: "Client Submission Rules" },
+      { id: "requirements", label: "Requirements & Rules" },
+      { id: "compliance_templates", label: "Compliance Templates" },
+      { id: "permissions", label: "Permission Matrix" },
+      { id: "monitoring", label: "Firm Monitoring" },
       { id: "notifications", label: "Notifications" },
     ];
 
 // Render output: this is the visual state users interact with.
     return (
       <SurfaceCard className="rounded-[1.35rem] border border-slate-200/80 bg-white p-3 shadow-[0_18px_36px_rgba(15,23,42,0.05)]">
-        <div className="grid gap-2 md:grid-cols-4">
+        <div className="grid gap-2 md:grid-cols-3 lg:grid-cols-5">
           {items.map((item) => {
             const active = item.id === activePage;
             return (
@@ -234,6 +347,127 @@ export function AdminSettingsPage() {
               </button>
             );
           })}
+        </div>
+      </SurfaceCard>
+    );
+  }
+
+  function renderUsersPage() {
+    return (
+      <SurfaceCard className="space-y-5">
+        <h2 className="text-xl font-semibold text-slate-950">Manage users</h2>
+        <div className="grid gap-4 md:grid-cols-4">
+          <TextField label="Full name" onChange={(event) => setNewUserName(event.target.value)} value={newUserName} />
+          <TextField label="Email" onChange={(event) => setNewUserEmail(event.target.value)} value={newUserEmail} />
+          <SelectField
+            label="Role"
+            onChange={(event) => setNewUserRole(event.target.value as Role)}
+            options={[
+              { label: "Admin", value: "admin" },
+              { label: "Accountant", value: "accountant" },
+              { label: "Client", value: "client" },
+            ]}
+            value={newUserRole}
+          />
+          <div className="flex items-end">
+            <Button onClick={createUser}>Create user</Button>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          {portal.userAccounts.map((account) => (
+            <div className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 md:grid-cols-[1.2fr_0.8fr_0.8fr_auto_auto_auto] md:items-center" key={account.id}>
+              <div>
+                <p className="text-sm font-semibold text-slate-900">{account.name}</p>
+                <p className="text-xs text-slate-500">{account.email}</p>
+              </div>
+              <SelectField
+                label="Role"
+                onChange={(event) => {
+                  const result = portal.assignUserRole(account.id, event.target.value as Role);
+                  setFeedbackMessage(result.message);
+                }}
+                options={[
+                  { label: "Admin", value: "admin" },
+                  { label: "Accountant", value: "accountant" },
+                  { label: "Client", value: "client" },
+                ]}
+                value={account.role}
+              />
+              <p className="text-sm text-slate-600">{account.status}</p>
+              <Button onClick={() => setFeedbackMessage(portal.resetUserAccess(account.id).message)} size="sm" variant="secondary">Reset access</Button>
+              <Button onClick={() => setFeedbackMessage(portal.disableUserAccount(account.id).message)} size="sm" variant="secondary">Disable</Button>
+            </div>
+          ))}
+        </div>
+      </SurfaceCard>
+    );
+  }
+
+  function renderClientsPage() {
+    return (
+      <SurfaceCard className="space-y-5">
+        <h2 className="text-xl font-semibold text-slate-950">Manage clients</h2>
+        <div className="grid gap-4 md:grid-cols-3">
+          <TextField label="Client name" onChange={(event) => setNewClientName(event.target.value)} value={newClientName} />
+          <TextField label="Industry" onChange={(event) => setNewClientIndustry(event.target.value)} value={newClientIndustry} />
+          <TextField label="Required pack" onChange={(event) => setNewClientRequiredPack(event.target.value)} value={newClientRequiredPack} />
+          <TextField label="Deadline policy" onChange={(event) => setNewClientDeadlinePolicy(event.target.value)} value={newClientDeadlinePolicy} />
+          <SelectField
+            label="Primary accountant"
+            onChange={(event) => setNewClientPrimaryAccountantId(event.target.value)}
+            options={[{ label: "Unassigned", value: "" }, ...assignmentOptions]}
+            value={newClientPrimaryAccountantId}
+          />
+          <SelectField
+            label="Backup accountant"
+            onChange={(event) => setNewClientBackupAccountantId(event.target.value)}
+            options={[{ label: "None", value: "" }, ...assignmentOptions]}
+            value={newClientBackupAccountantId}
+          />
+          <div className="md:col-span-3">
+            <Button onClick={createClient}>Add client business</Button>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          {portal.adminClients.map((client) => (
+            <div className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 md:grid-cols-[1.2fr_0.9fr_0.9fr_auto_auto] md:items-center" key={client.id}>
+              <div>
+                <p className="text-sm font-semibold text-slate-900">{client.clientName}</p>
+                <p className="text-xs text-slate-500">{client.industry} / {client.deadlinePolicy}</p>
+              </div>
+              <SelectField
+                label="Primary"
+                onChange={(event) => {
+                  const selected = portal.managedAccountants.find((acct) => acct.id === event.target.value);
+                  setFeedbackMessage(
+                    portal.assignClientAccountant(client.id, selected?.name ?? event.target.value, selected?.id).message,
+                  );
+                }}
+                options={[{ label: "Unassigned", value: "" }, ...assignmentOptions]}
+                value={client.assignedAccountantUserId ?? ""}
+              />
+              <SelectField
+                label="Backup"
+                onChange={(event) => {
+                  const selected = portal.managedAccountants.find((acct) => acct.id === event.target.value);
+                  setFeedbackMessage(
+                    portal.assignClientAccountantBackup(client.id, selected?.name ?? event.target.value, selected?.id).message,
+                  );
+                }}
+                options={[{ label: "None", value: "" }, ...assignmentOptions]}
+                value={client.backupAccountantUserId ?? ""}
+              />
+              <Button
+                onClick={() => setFeedbackMessage(portal.setClientActiveState(client.id, !(client.isActive ?? true)).message)}
+                size="sm"
+                variant="secondary"
+              >
+                {(client.isActive ?? true) ? "Deactivate" : "Activate"}
+              </Button>
+            </div>
+          ))}
         </div>
       </SurfaceCard>
     );
@@ -449,6 +683,136 @@ export function AdminSettingsPage() {
     );
   }
 
+  function renderRequirementsAndRulesPage() {
+    return (
+      <div className="space-y-5">
+        <SurfaceCard className="space-y-5">
+          <h2 className="text-xl font-semibold text-slate-950">Document requirements</h2>
+          <div className="space-y-2">
+            {portal.documentRequirementRules.map((rule) => (
+              <label className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2" key={rule.id}>
+                <span className="text-sm font-medium text-slate-800">{rule.name}</span>
+                <input
+                  checked={rule.required}
+                  onChange={(event) => {
+                    const next = portal.documentRequirementRules.map((item) =>
+                      item.id === rule.id ? { ...item, required: event.target.checked } : item,
+                    );
+                    setFeedbackMessage(portal.updateDocumentRequirements(next).message);
+                  }}
+                  type="checkbox"
+                />
+              </label>
+            ))}
+          </div>
+        </SurfaceCard>
+        {renderSubmissionRulesPage()}
+      </div>
+    );
+  }
+
+  function renderComplianceTemplatesPage() {
+    return (
+      <SurfaceCard className="space-y-5">
+        <h2 className="text-xl font-semibold text-slate-950">Compliance templates</h2>
+        <div className="space-y-2">
+          {portal.complianceTemplates.map((template) => (
+            <label className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2" key={template.id}>
+              <div>
+                <p className="text-sm font-semibold text-slate-900">{template.category}</p>
+                <p className="text-xs text-slate-500">{template.description}</p>
+              </div>
+              <input
+                checked={template.active}
+                onChange={(event) => {
+                  const next = portal.complianceTemplates.map((item) =>
+                    item.id === template.id ? { ...item, active: event.target.checked } : item,
+                  );
+                  setFeedbackMessage(portal.updateComplianceTemplates(next).message);
+                }}
+                type="checkbox"
+              />
+            </label>
+          ))}
+        </div>
+      </SurfaceCard>
+    );
+  }
+
+  function renderPermissionsPage() {
+    return (
+      <SurfaceCard className="space-y-5">
+        <h2 className="text-xl font-semibold text-slate-950">Permission matrix</h2>
+        <div className="space-y-3">
+          {portal.rolePermissionMatrix.map((entry) => (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3" key={entry.role}>
+              <p className="text-sm font-semibold uppercase tracking-[0.08em] text-slate-700">{entry.role}</p>
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                {rolePermissionOptions.map((permission) => (
+                  <label className="inline-flex items-center gap-2 text-xs text-slate-700" key={`${entry.role}-${permission}`}>
+                    <input
+                      checked={entry.permissions.includes(permission)}
+                      onChange={(event) => {
+                        const nextMatrix = portal.rolePermissionMatrix.map((matrixEntry) => {
+                          if (matrixEntry.role !== entry.role) {
+                            return matrixEntry;
+                          }
+
+                          const nextPermissions = event.target.checked
+                            ? Array.from(new Set([...matrixEntry.permissions, permission]))
+                            : matrixEntry.permissions.filter((item) => item !== permission);
+
+                          return {
+                            ...matrixEntry,
+                            permissions: nextPermissions,
+                          };
+                        });
+
+                        const result = portal.updateRolePermissionMatrix(nextMatrix);
+                        setFeedbackMessage(result.message);
+                      }}
+                      type="checkbox"
+                    />
+                    {permission}
+                  </label>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </SurfaceCard>
+    );
+  }
+
+  function renderMonitoringPage() {
+    const portfolio = portal.accountantDashboard.portfolio;
+    const missing = portfolio.filter((row) => row.missingCount > 0).length;
+    const overdue = portfolio.filter((row) => row.status === "overdue").length;
+    const workloadByAccountant = portal.managedAccountants.map((accountant) => ({
+      name: accountant.name,
+      clients: portfolio.filter((row) => row.assignedAccountant === accountant.name).length,
+    }));
+    return (
+      <SurfaceCard className="space-y-5">
+        <h2 className="text-xl font-semibold text-slate-950">Firm-wide monitoring</h2>
+        <div className="grid gap-3 md:grid-cols-4">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3"><p className="text-xs text-slate-500">Clients missing docs</p><p className="text-xl font-semibold text-slate-900">{missing}</p></div>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3"><p className="text-xs text-slate-500">Overdue submissions</p><p className="text-xl font-semibold text-slate-900">{overdue}</p></div>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3"><p className="text-xs text-slate-500">Review queue</p><p className="text-xl font-semibold text-slate-900">{portal.getReviewQueue().length}</p></div>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-3"><p className="text-xs text-slate-500">Compliance risks</p><p className="text-xl font-semibold text-slate-900">{portal.accountantComplianceCentre.expiredCount + portal.accountantComplianceCentre.missingRequiredCount}</p></div>
+        </div>
+        <div className="space-y-2">
+          {workloadByAccountant.map((row) => (
+            <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2" key={row.name}>
+              <span className="text-sm text-slate-700">{row.name}</span>
+              <span className="text-sm font-semibold text-slate-900">{row.clients} clients</span>
+            </div>
+          ))}
+        </div>
+      </SurfaceCard>
+    );
+  }
+
   function renderNotificationsPage() {
     return (
       <SurfaceCard className="space-y-5">
@@ -509,11 +873,21 @@ export function AdminSettingsPage() {
 
       {activePage === "profile"
         ? renderProfilePage()
+        : activePage === "users"
+          ? renderUsersPage()
+          : activePage === "clients"
+            ? renderClientsPage()
         : activePage === "team"
           ? renderTeamPage()
-          : activePage === "submission_rules"
-            ? renderSubmissionRulesPage()
-            : renderNotificationsPage()}
+          : activePage === "requirements"
+            ? renderRequirementsAndRulesPage()
+            : activePage === "compliance_templates"
+              ? renderComplianceTemplatesPage()
+              : activePage === "permissions"
+                ? renderPermissionsPage()
+                : activePage === "monitoring"
+                  ? renderMonitoringPage()
+                  : renderNotificationsPage()}
     </div>
   );
 }

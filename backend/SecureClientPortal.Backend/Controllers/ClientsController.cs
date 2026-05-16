@@ -62,6 +62,21 @@ public class ClientsController : ControllerBase
         return Ok(existing);
     }
 
+    [HttpPut("{id}/assignment")]
+    public async Task<ActionResult<Client>> UpdateAssignment(
+        string id,
+        [FromBody] UpdateClientAssignmentRequest request)
+    {
+        var existing = await _db.Clients.FindAsync(id);
+        if (existing is null) return NotFound();
+
+        existing.AssignedAccountantId = request.AssignedAccountantId;
+        existing.UpdatedAtUtc = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
+        return Ok(existing);
+    }
+
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(string id)
     {
@@ -72,4 +87,9 @@ public class ClientsController : ControllerBase
         await _db.SaveChangesAsync();
         return NoContent();
     }
+}
+
+public class UpdateClientAssignmentRequest
+{
+    public string AssignedAccountantId { get; set; } = string.Empty;
 }

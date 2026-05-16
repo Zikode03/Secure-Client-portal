@@ -35,6 +35,29 @@ export async function apiGetJson<T>(path: string, init?: RequestInit): Promise<T
   return (await response.json()) as T;
 }
 
+export async function apiPutJson<TResponse, TBody>(
+  path: string,
+  body: TBody,
+  init?: RequestInit,
+): Promise<TResponse> {
+  const response = await fetch(buildUrl(path), {
+    ...init,
+    method: "PUT",
+    headers: {
+      Accept: "application/json",
+      "Content-Type": "application/json",
+      ...(init?.headers ?? {}),
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    throw new Error(`API request failed (${response.status}) for ${path}`);
+  }
+
+  return (await response.json()) as TResponse;
+}
+
 export function hasApiBaseUrl() {
   return USE_BACKEND;
 }
