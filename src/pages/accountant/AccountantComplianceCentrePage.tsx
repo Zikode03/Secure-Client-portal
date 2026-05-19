@@ -1,15 +1,18 @@
 // Friendly guide: this module (AccountantComplianceCentrePage) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
 import { Button } from "../../components/ui/Button";
+import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
 import { SelectField } from "../../components/ui/SelectField";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
 import { TextField } from "../../components/ui/TextField";
 import { formatDateLabel } from "../../utils/formatters";
 import { getScopedComplianceStatuses, hasPermission } from "../../utils/permissions";
+import type { Tone } from "../../types/portal";
 
 // Shared shape notes: these types keep UI and data contracts aligned.
 type RiskFilter = "all" | "low" | "medium" | "high";
@@ -91,6 +94,7 @@ function mapComplianceState(score: number): SupplierComplianceState {
 }
 
 export function AccountantComplianceCentrePage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const portal = usePortal();
   const isAdmin = user?.role === "admin";
@@ -99,6 +103,7 @@ export function AccountantComplianceCentrePage() {
   const [riskFilter, setRiskFilter] = useState<RiskFilter>("all");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [dueAttentionOnly, setDueAttentionOnly] = useState(false);
   const [openClientActionsId, setOpenClientActionsId] = useState("");
   const [selectedClientId, setSelectedClientId] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -109,11 +114,15 @@ export function AccountantComplianceCentrePage() {
   const [boardAuditTrail, setBoardAuditTrail] = useState<
     Array<{ id: string; itemName: string; from: ComplianceBoardStatus; to: ComplianceBoardStatus; actor: string; timestamp: string }>
   >([]);
+  const [feedbackNotice, setFeedbackNotice] = useState<
+    { tone: Tone; title: string; message: string } | null
+  >(null);
   const pageSize = 5;
   const canRequestDocuments = hasPermission(user, "request:documents");
   const canExportReports =
     hasPermission(user, "export:client_reports") || hasPermission(user, "export:firm_reports");
   const canReviewDocuments = hasPermission(user, "review:documents");
+  const complianceItemsRef = useRef<HTMLDivElement | null>(null);
 
   const clientStatuses = useMemo(
     () =>
@@ -167,10 +176,12 @@ export function AccountantComplianceCentrePage() {
       const riskMatch = riskFilter === "all" || row.riskLevel === riskFilter;
       const statusMatch = statusFilter === "all" || row.complianceState === statusFilter;
       const categoryMatch = categoryFilter === "all" || row.category === categoryFilter;
+      const dueAttentionMatch =
+        !dueAttentionOnly || dueStatusLabel(row.contractExpiry) !== "Compliant";
 
-      return queryMatch && riskMatch && statusMatch && categoryMatch;
+      return queryMatch && riskMatch && statusMatch && categoryMatch && dueAttentionMatch;
     });
-  }, [categoryFilter, riskFilter, searchQuery, statusFilter, supplierRows]);
+  }, [categoryFilter, dueAttentionOnly, riskFilter, searchQuery, statusFilter, supplierRows]);
 
   const totalPages = Math.max(1, Math.ceil(filteredSuppliers.length / pageSize));
   const pagedSuppliers = useMemo(() => {
@@ -250,6 +261,64 @@ export function AccountantComplianceCentrePage() {
   const expiringPercent = Math.round((expiringSoonCount / totalStatusCount) * 100);
   const expiredPercent = Math.max(0, 100 - compliantPercent - expiringPercent);
 
+  function showNotice(tone: Tone, title: string, message: string) {
+    setFeedbackNotice({ tone, title, message });
+  }
+
+  function focusComplianceItems() {
+    setActiveView("list");
+    setSearchQuery("");
+    setRiskFilter("all");
+    setStatusFilter("all");
+    setCategoryFilter("all");
+    setDueAttentionOnly(false);
+    setCurrentPage(1);
+    setTimeout(() => {
+      complianceItemsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
+  }
+
+  function focusExpiringAndOverdueItems() {
+    setActiveView("list");
+    setSearchQuery("");
+    setRiskFilter("all");
+    setStatusFilter("all");
+    setCategoryFilter("all");
+    setDueAttentionOnly(true);
+    setCurrentPage(1);
+    setTimeout(() => {
+      complianceItemsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
+  }
+
+  function openSelectedClientWorkspace(clientId: string) {
+    setSelectedClientId(clientId);
+    navigate(`/firm/clients/${clientId}`);
+  }
+
+  function createComplianceFollowUp(client: SupplierRow | undefined) {
+    if (!client || !user || !canRequestDocuments) {
+      return;
+    }
+
+    const dueDate = new Date();
+    dueDate.setDate(dueDate.getDate() + 7);
+
+    const result = portal.createClientRequest({
+      clientId: client.id,
+      clientName: client.name,
+      monthLabel: formatDateLabel(new Date().toISOString()),
+      title: `Compliance follow-up: ${client.category}`,
+      description: `Please upload/refresh the required ${client.category} compliance records before the due date.`,
+      dueDate: dueDate.toISOString(),
+      priority: "high",
+      actor: user,
+      assignedAccountant: user.fullName,
+    });
+
+    showNotice(result.ok ? "success" : "danger", result.ok ? "Request created" : "Request failed", result.message);
+  }
+
   function downloadComplianceCsv() {
     const headers = [
       "Item Name",
@@ -293,13 +362,26 @@ export function AccountantComplianceCentrePage() {
 // Render output: this is the visual state users interact with.
   return (
     <div className="space-y-6">
+      {feedbackNotice ? (
+        <FeedbackBanner
+          message={feedbackNotice.message}
+          onDismiss={() => setFeedbackNotice(null)}
+          title={feedbackNotice.title}
+          tone={feedbackNotice.tone}
+        />
+      ) : null}
+
       <div className="space-y-3 rounded-2xl border border-slate-200 bg-white px-5 py-4">
         <h1 className="text-3xl font-semibold text-slate-950">
           {isAdmin ? "Firm Compliance Centre" : "My Compliance Workspace"}
         </h1>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-base text-slate-600">Client compliance tracking and action workspace</p>
-          {isAdmin ? <Button>Open system settings</Button> : <Button>Add Supplier</Button>}
+          {isAdmin ? (
+            <Button onClick={() => navigate("/firm/admin/system-settings")}>Open system settings</Button>
+          ) : (
+            <Button onClick={() => navigate("/firm/clients")}>Add Supplier</Button>
+          )}
         </div>
       </div>
 
@@ -375,9 +457,15 @@ export function AccountantComplianceCentrePage() {
               <SelectField
                 className="w-[120px]"
                 label=""
-                onChange={() => undefined}
-                options={[{ label: "All Clients", value: "all" }]}
-                value="all"
+                onChange={(event) => {
+                  setSelectedClientId(event.target.value);
+                  setCurrentPage(1);
+                }}
+                options={[
+                  { label: "All Clients", value: "" },
+                  ...supplierRows.map((row) => ({ label: row.name, value: row.id })),
+                ]}
+                value={selectedClientId}
               />
             </div>
             <div className="grid gap-3 sm:grid-cols-[150px_minmax(0,1fr)] sm:items-center">
@@ -409,14 +497,22 @@ export function AccountantComplianceCentrePage() {
             </div>
             <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
               <p>Keep your compliance up to date to avoid penalties and disruptions.</p>
-              <button className="font-semibold text-brand-700" type="button">View full report</button>
+              <button className="font-semibold text-brand-700" onClick={focusComplianceItems} type="button">
+                View full report
+              </button>
             </div>
           </div>
 
           <div className="rounded-2xl border border-slate-200 bg-white p-4">
             <div className="mb-3 flex items-center justify-between gap-2">
               <h2 className="text-base font-semibold text-slate-900">Upcoming Expiry</h2>
-              <button className="text-xs font-semibold text-brand-700" type="button">View all</button>
+              <button
+                className="text-xs font-semibold text-brand-700"
+                onClick={focusExpiringAndOverdueItems}
+                type="button"
+              >
+                View all
+              </button>
             </div>
             <div className="space-y-2">
               {upcomingExpirations.map((item) => {
@@ -441,9 +537,21 @@ export function AccountantComplianceCentrePage() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
+        <div className="rounded-2xl border border-slate-200 bg-white p-4" ref={complianceItemsRef}>
           <h2 className="mb-1 text-base font-semibold text-slate-900">Compliance Items</h2>
           <p className="mb-3 text-sm font-medium text-slate-500">Active clients</p>
+          {dueAttentionOnly ? (
+            <div className="mb-3 flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+              <span>Showing expiring and overdue items only.</span>
+              <button
+                className="font-semibold text-amber-800 underline"
+                onClick={focusComplianceItems}
+                type="button"
+              >
+                Clear filter
+              </button>
+            </div>
+          ) : null}
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
               <button
@@ -483,9 +591,15 @@ export function AccountantComplianceCentrePage() {
             <SelectField
               className="w-[130px]"
               label=""
-              onChange={() => undefined}
-              options={[{ label: "All Clients", value: "all" }]}
-              value="all"
+              onChange={(event) => {
+                setSelectedClientId(event.target.value);
+                setCurrentPage(1);
+              }}
+              options={[
+                { label: "All Clients", value: "" },
+                ...supplierRows.map((row) => ({ label: row.name, value: row.id })),
+              ]}
+              value={selectedClientId}
             />
             <SelectField
               className="w-[140px]"
@@ -568,7 +682,13 @@ export function AccountantComplianceCentrePage() {
                       <td className="px-2 py-2 text-sm text-slate-700">{user?.fullName ?? "Nayan Dhali"}</td>
                       <td className="relative px-2 py-2">
                         <div className="flex items-center gap-2">
-                          <Button size="sm" variant="secondary">View</Button>
+                          <Button
+                            onClick={() => openSelectedClientWorkspace(row.id)}
+                            size="sm"
+                            variant="secondary"
+                          >
+                            View
+                          </Button>
                           <button
                             aria-label="Open client actions"
                             className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
@@ -584,21 +704,32 @@ export function AccountantComplianceCentrePage() {
                           <div className="absolute right-2 top-[calc(100%+0.45rem)] z-10 min-w-[220px] rounded-xl border border-slate-200 bg-white p-2 shadow-[0_20px_42px_rgba(15,23,42,0.14)]">
                             <button
                               className="block w-full rounded-lg px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
-                              onClick={() => setOpenClientActionsId("")}
+                              onClick={() => {
+                                setSelectedClientId(row.id);
+                                setOpenClientActionsId("");
+                                showNotice("info", "Compliance history opened", `Loaded compliance history context for ${row.name}.`);
+                              }}
                               type="button"
                             >
                               View compliance history
                             </button>
                             <button
                               className="block w-full rounded-lg px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
-                              onClick={() => setOpenClientActionsId("")}
+                              onClick={() => {
+                                setOpenClientActionsId("");
+                                navigate(`/firm/clients/${row.id}`);
+                              }}
                               type="button"
                             >
                               Open document centre
                             </button>
                             <button
                               className="block w-full rounded-lg px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
-                              onClick={() => setOpenClientActionsId("")}
+                              onClick={() => {
+                                setOpenClientActionsId("");
+                                setSelectedClientId(row.id);
+                                downloadComplianceCsv();
+                              }}
                               type="button"
                             >
                               Export client compliance report
@@ -665,14 +796,27 @@ export function AccountantComplianceCentrePage() {
               Showing {startIndex} to {endIndex} of {filteredSuppliers.length} items
             </p>
             <div className="flex items-center gap-2">
-              {isAdmin ? <Button size="sm">Assign accountant</Button> : null}
+              {isAdmin ? (
+                <Button onClick={() => navigate("/firm/admin/assignments")} size="sm">
+                  Assign accountant
+                </Button>
+              ) : null}
               {!isAdmin ? (
-                <Button disabled={!canRequestDocuments} size="sm">
+                <Button
+                  disabled={!canRequestDocuments}
+                  onClick={() => createComplianceFollowUp(selectedClient)}
+                  size="sm"
+                >
                   Request documents
                 </Button>
               ) : null}
               {!isAdmin ? (
-                <Button disabled={!canExportReports} size="sm" variant="secondary">
+                <Button
+                  disabled={!canExportReports}
+                  onClick={downloadComplianceCsv}
+                  size="sm"
+                  variant="secondary"
+                >
                   Download client compliance report
                 </Button>
               ) : null}
@@ -732,13 +876,15 @@ export function AccountantComplianceCentrePage() {
                 {!isAdmin ? (
                   <Button
                     disabled={!canRequestDocuments}
-                    onClick={() => setOpenClientActionsId("")}
+                    onClick={() => createComplianceFollowUp(selectedClient)}
                     size="sm"
                   >
                     Request client documents
                   </Button>
                 ) : (
-                  <Button size="sm">Assign accountant</Button>
+                  <Button onClick={() => navigate("/firm/admin/assignments")} size="sm">
+                    Assign accountant
+                  </Button>
                 )}
               </div>
               <div className="mt-3 grid gap-3 sm:grid-cols-3">

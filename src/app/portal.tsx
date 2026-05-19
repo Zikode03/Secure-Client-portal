@@ -607,6 +607,12 @@ interface PortalContextValue {
     clientId: string,
     accountantName: string,
     accountantUserId?: string,
+    handover?: {
+      reason: string;
+      message: string;
+      effectiveDate: string;
+      assignedBy: string;
+    },
   ) => PortalActionResult;
   assignClientAccountantBackup: (
     clientId: string,
@@ -620,6 +626,7 @@ interface PortalContextValue {
     company?: string;
   }) => PortalActionResult;
   disableUserAccount: (userId: string) => PortalActionResult;
+  activateUserAccount: (userId: string) => PortalActionResult;
   resetUserAccess: (userId: string) => PortalActionResult;
   assignUserRole: (userId: string, role: Role) => PortalActionResult;
   addClientBusiness: (payload: {
@@ -2338,13 +2345,25 @@ const assignedAccountantForApex =
     clientId: string,
     accountantName: string,
     accountantUserId?: string,
+    handover?: {
+      reason: string;
+      message: string;
+      effectiveDate: string;
+      assignedBy: string;
+    },
   ): PortalActionResult {
+    const isUnassign = accountantUserId === undefined && accountantName.trim() === "";
     const resolvedAccountant =
-      (accountantUserId ? findAccountantById(accountantUserId) : undefined) ??
-      findAccountantByName(accountantName);
-    const nextAssignedName = resolvedAccountant?.name ?? accountantName;
-    const nextAssignedUserId = resolvedAccountant?.id ?? accountantUserId;
+      isUnassign
+        ? undefined
+        : (accountantUserId ? findAccountantById(accountantUserId) : undefined) ??
+          findAccountantByName(accountantName);
+    const nextAssignedName = isUnassign
+      ? "Unassigned"
+      : (resolvedAccountant?.name ?? accountantName);
+    const nextAssignedUserId = isUnassign ? undefined : (resolvedAccountant?.id ?? accountantUserId);
 
+    const assignedAt = new Date().toISOString();
     setAdminClients((current) =>
       current.map((client) =>
         client.id === clientId
@@ -2352,6 +2371,11 @@ const assignedAccountantForApex =
               ...client,
               assignedAccountant: nextAssignedName,
               assignedAccountantUserId: nextAssignedUserId,
+              lastAssignmentReason: handover?.reason,
+              lastAssignmentMessage: handover?.message,
+              lastAssignmentEffectiveDate: handover?.effectiveDate,
+              lastAssignmentBy: handover?.assignedBy,
+              lastAssignmentAt: assignedAt,
             }
           : client,
       ),
@@ -2364,6 +2388,50 @@ const assignedAccountantForApex =
           : client,
       ),
     );
+
+    if (handover?.reason && handover.message && nextAssignedName) {
+      setNotifications((current) => [
+        {
+          id: `assignment-note-${Date.now()}`,
+          kind: "deadline_reminder",
+          title: `New client assignment: ${clientId}`,
+          message: `${nextAssignedName} assigned to client ${clientId}. Reason: ${handover.reason}.`,
+          createdAt: assignedAt,
+          dueDate: handover.effectiveDate,
+          tone: "info",
+          actionLabel: "Open client workspace",
+          actionHref: `/firm/clients/${clientId}`,
+          linkedRecordLabel: clientId,
+          linkedWorkspace: "requests",
+          impactLabel: "Ownership updated",
+          blockingLabel: "Assignment handover",
+          nextStep: handover.message,
+          state: "unread",
+          activity: [
+            {
+              id: `assignment-note-activity-${Date.now()}`,
+              title: "Assignment handover",
+              detail: `${handover.assignedBy} assigned ${nextAssignedName}. ${handover.message}`,
+              timestamp: assignedAt,
+              tone: "info",
+              actor: handover.assignedBy,
+            },
+          ],
+        },
+        ...current,
+      ]);
+
+      setActivity((current) =>
+        appendActivity(
+          current,
+          "Client reassigned",
+          `${handover.assignedBy} assigned ${nextAssignedName} to ${clientId}. Reason: ${handover.reason}.`,
+          "info",
+          handover.assignedBy,
+          clientId,
+        ),
+      );
+    }
 
     void portalServiceApi.updateClientAssignment(clientId, nextAssignedName, nextAssignedUserId);
 
@@ -2448,19 +2516,41 @@ const assignedAccountantForApex =
   }
 
   function disableUserAccount(userId: string): PortalActionResult {
-    let found = false;
+    const exists = userAccounts.some((user) => user.id === userId);
+    if (!exists) {
+      return { ok: false, message: "User account not found." };
+    }
+
     setUserAccounts((current) =>
       current.map((user) => {
-        if (user.id !== userId) return user;
-        found = true;
+        if (user.id !== userId) {
+          return user;
+        }
         return { ...user, status: "suspended" };
       }),
     );
     void portalServiceApi.setUserStatus(userId, "suspended");
 
-    return found
-      ? { ok: true, message: "User access has been disabled." }
-      : { ok: false, message: "User account not found." };
+    return { ok: true, message: "User access has been disabled." };
+  }
+
+  function activateUserAccount(userId: string): PortalActionResult {
+    const exists = userAccounts.some((user) => user.id === userId);
+    if (!exists) {
+      return { ok: false, message: "User account not found." };
+    }
+
+    setUserAccounts((current) =>
+      current.map((user) => {
+        if (user.id !== userId) {
+          return user;
+        }
+        return { ...user, status: "active" };
+      }),
+    );
+    void portalServiceApi.setUserStatus(userId, "active");
+
+    return { ok: true, message: "User access has been activated." };
   }
 
   function resetUserAccess(userId: string): PortalActionResult {
@@ -2513,6 +2603,27 @@ const assignedAccountantForApex =
           },
         ];
       });
+    } else {
+      setManagedAccountants((current) =>
+        current.filter((accountant) => accountant.id !== userId),
+      );
+      setAdminClients((current) =>
+        current.map((client) => {
+          const clearsPrimary = client.assignedAccountantUserId === userId;
+          const clearsBackup = client.backupAccountantUserId === userId;
+          if (!clearsPrimary && !clearsBackup) {
+            return client;
+          }
+
+          return {
+            ...client,
+            assignedAccountant: clearsPrimary ? "Unassigned" : client.assignedAccountant,
+            assignedAccountantUserId: clearsPrimary ? undefined : client.assignedAccountantUserId,
+            backupAccountant: clearsBackup ? undefined : client.backupAccountant,
+            backupAccountantUserId: clearsBackup ? undefined : client.backupAccountantUserId,
+          };
+        }),
+      );
     }
 
     return { ok: true, message: "User role updated." };
@@ -2936,6 +3047,7 @@ const assignedAccountantForApex =
       resolveRequest,
       createUserAccount,
       disableUserAccount,
+      activateUserAccount,
       resetUserAccess,
       assignUserRole,
       addClientBusiness,
@@ -2996,6 +3108,7 @@ const assignedAccountantForApex =
       createComplianceRequest,
       createUserAccount,
       disableUserAccount,
+      activateUserAccount,
       resetUserAccess,
       assignUserRole,
       addClientBusiness,

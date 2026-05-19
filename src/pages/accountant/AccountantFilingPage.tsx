@@ -1,4 +1,4 @@
-// Friendly guide: this module (AccountantDocumentsPage) supports the Secure Client Portal workflow.
+// Friendly guide: this module (AccountantFilingPage) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
 import { useEffect, useMemo, useState } from "react";
@@ -49,6 +49,17 @@ const resultsPerPage = 7;
 // Shared shape notes: these types keep UI and data contracts aligned.
 type ResultTab = "all" | "documents" | "invoices" | "requests" | "compliance";
 type ViewerTab = "details" | "history" | "related";
+const allowedFilingTypeLabels = new Set([
+  "bank statement",
+  "invoices",
+  "signed documents",
+  "compliance record",
+  "payroll summary",
+  "tax working papers",
+  "proof of payment",
+  "credit notes",
+  "debit notes",
+]);
 
 // Component flow: gather data first, then render a focused UI state.
 function SearchIcon() {
@@ -226,6 +237,13 @@ function belongsToResultTab(result: UnifiedSearchResult, tab: ResultTab) {
     "signed_document",
     "monthly_pack_item",
   ].includes(result.resultType);
+}
+
+function isAllowedFilingType(result: UnifiedSearchResult) {
+  if (result.resultType === "invoice") {
+    return true;
+  }
+  return allowedFilingTypeLabels.has(result.typeLabel.trim().toLowerCase());
 }
 
 function buildSelectOptions(values: string[], allLabel: string) {
@@ -737,12 +755,12 @@ function Pagination({
   );
 }
 
-export function AccountantDocumentsPage() {
+export function AccountantFilingPage() {
   const { user } = useAuth();
   const portal = usePortal();
   const [searchParams] = useSearchParams();
   const [filters, setFilters] = useState<UnifiedSearchFilters>(defaultFilters);
-  const [activeResultTab, setActiveResultTab] = useState<ResultTab>("all");
+  const [activeResultTab, setActiveResultTab] = useState<ResultTab>("documents");
 // Local UI state: keeps track of what the user is seeing or editing right now.
   const [selectedResultId, setSelectedResultId] = useState("");
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -780,7 +798,11 @@ export function AccountantDocumentsPage() {
   );
 
   const filteredResults = useMemo(
-    () => portal.filterSearchResults(allResults, filters),
+    () =>
+      portal
+        .filterSearchResults(allResults, filters)
+        .filter((result) => result.status === "accepted")
+        .filter((result) => isAllowedFilingType(result)),
     [allResults, filters, portal],
   );
 
@@ -858,11 +880,9 @@ export function AccountantDocumentsPage() {
   const statusOptions = useMemo(
     () => [
       { label: "All statuses", value: "" },
-      ...Array.from(new Set(allResults.map((result) => result.status)))
-        .sort((left, right) => left.localeCompare(right))
-        .map((value) => ({ label: formatStatusLabel(value), value })),
+      { label: formatStatusLabel("accepted"), value: "accepted" },
     ],
-    [allResults],
+    [],
   );
 
   const uploadedByOptions = useMemo(
@@ -1029,7 +1049,7 @@ export function AccountantDocumentsPage() {
 
   function handleClearFilters() {
     setFilters(defaultFilters);
-    setActiveResultTab("all");
+    setActiveResultTab("documents");
     setSelectedResultId("");
     setViewerOpen(false);
     setViewerTab("details");
@@ -1041,10 +1061,10 @@ export function AccountantDocumentsPage() {
       <section className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-1.5">
           <h1 className="text-[2.05rem] font-semibold tracking-tight text-slate-950">
-            Document Centre
+            Document Filing Register
           </h1>
           <p className="max-w-3xl text-[0.96rem] leading-7 text-slate-500">
-            Search all client document records across every status, period, and document type.
+            Filed records only. This register shows documents accepted by the accountant and ready for controlled reference.
           </p>
         </div>
       </section>
@@ -1069,7 +1089,7 @@ export function AccountantDocumentsPage() {
                     onChange={(event) =>
                       setFilters((current) => ({ ...current, query: event.target.value }))
                     }
-                    placeholder="Search documents, clients, reference numbers..."
+                    placeholder="Search filed records, clients, reference numbers..."
                     value={filters.query}
                   />
                 </div>
@@ -1077,7 +1097,7 @@ export function AccountantDocumentsPage() {
                 <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
                   <Button className="h-11 rounded-xl px-4 text-brand-700" variant="secondary">
                     <FilterIcon />
-                    <span>Filters</span>
+                    <span>Filing filters</span>
                   </Button>
                   <button
                     className="text-sm font-medium text-brand-600 transition hover:text-brand-700"
@@ -1104,7 +1124,7 @@ export function AccountantDocumentsPage() {
                   }
                 />
                 <ResultFilterSelect
-                  label="Month / period"
+                  label="Filing period"
                   onChange={(value) => setFilters((current) => ({ ...current, month: value }))}
                   options={monthOptions}
                   value={filters.month}
@@ -1118,7 +1138,7 @@ export function AccountantDocumentsPage() {
                   value={filters.documentType}
                 />
                 <ResultFilterSelect
-                  label="Status"
+                  label="Filing status"
                   onChange={(value) => setFilters((current) => ({ ...current, status: value }))}
                   options={statusOptions}
                   value={filters.status}
@@ -1167,13 +1187,13 @@ export function AccountantDocumentsPage() {
                       ...current,
                       requiredFlag: "required",
                       expiryStatus: "expiring",
-                      status: current.status || "uploaded",
+                      status: current.status || "accepted",
                     }));
                     setFeedbackMessage("Applied priority filter preset for required and expiring items.");
                   }}
                   type="button"
                 >
-                  <span>More filters</span>
+                  <span>More filing filters</span>
                   <ChevronRightIcon />
                 </button>
               </div>
@@ -1184,11 +1204,7 @@ export function AccountantDocumentsPage() {
             <div className="border-b border-slate-100 px-5 pt-4">
               <div className="flex flex-nowrap items-center gap-6 overflow-x-auto pb-1">
                 {[
-                  { id: "all" as const, label: "All results", count: tabCounts.all },
-                  { id: "documents" as const, label: "Documents", count: tabCounts.documents },
-                  { id: "invoices" as const, label: "Invoices", count: tabCounts.invoices },
-                  { id: "requests" as const, label: "Requests", count: tabCounts.requests },
-                  { id: "compliance" as const, label: "Compliance", count: tabCounts.compliance },
+                  { id: "documents" as const, label: "Filed documents", count: tabCounts.documents },
                 ].map((tab) => (
                   <button
                     className={cn(
@@ -1225,18 +1241,18 @@ export function AccountantDocumentsPage() {
                 <EmptyState
                   description={
                     assignedClients.length === 0 && user?.role === "accountant"
-                      ? "No records found in your assigned client portfolio."
-                      : "Try broadening the search terms or removing a few filters."
+                      ? "No filed records found in your assigned client portfolio."
+                      : "Only accepted core filing types are shown here (for example invoices, bank statements, signed documents, and compliance records)."
                   }
-                  title="No results match this view"
+                  title="No filed records match this view"
                 />
               </div>
             ) : (
               <>
                 <div className="hidden border-b border-slate-100 px-5 py-4 text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-slate-400 lg:grid lg:grid-cols-[minmax(0,1.85fr)_0.9fr_0.72fr_3.5rem] lg:gap-4">
-                  <div>Document</div>
-                  <div>Uploaded</div>
-                  <div>Status</div>
+                  <div>Filed record</div>
+                  <div>Filed on</div>
+                  <div>Filing status</div>
                   <div aria-hidden="true" />
                 </div>
 

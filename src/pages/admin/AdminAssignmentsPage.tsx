@@ -15,6 +15,34 @@ export function AdminAssignmentsPage() {
   const portal = usePortal();
 // Local UI state: keeps track of what the user is seeing or editing right now.
   const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [handoverByClientId, setHandoverByClientId] = useState<
+    Record<string, { reason: string; message: string; effectiveDate: string }>
+  >({});
+
+  function getHandover(clientId: string) {
+    return (
+      handoverByClientId[clientId] ?? {
+        reason: "",
+        message: "",
+        effectiveDate: new Date().toISOString().slice(0, 10),
+      }
+    );
+  }
+
+  function updateHandover(
+    clientId: string,
+    key: "reason" | "message" | "effectiveDate",
+    value: string,
+  ) {
+    const current = getHandover(clientId);
+    setHandoverByClientId((state) => ({
+      ...state,
+      [clientId]: {
+        ...current,
+        [key]: value,
+      },
+    }));
+  }
 
 // Render output: this is the visual state users interact with.
   return (
@@ -40,6 +68,11 @@ export function AdminAssignmentsPage() {
               <p className="mt-1 text-xs text-slate-500">
                 Backup: {client.backupAccountant ?? "None"} / {(client.isActive ?? true) ? "Active" : "Inactive"}
               </p>
+              {client.lastAssignmentReason ? (
+                <p className="mt-2 text-xs text-slate-500">
+                  Last handover: {client.lastAssignmentReason} / {client.lastAssignmentEffectiveDate?.slice(0, 10)} by {client.lastAssignmentBy}
+                </p>
+              ) : null}
             </div>
             <SelectField
               label="Primary accountant"
@@ -47,23 +80,33 @@ export function AdminAssignmentsPage() {
                 const selectedAccountant = portal.managedAccountants.find(
                   (accountant) => accountant.id === event.target.value,
                 );
+                const handover = getHandover(client.id);
+                if (!handover.reason.trim() || !handover.message.trim() || !handover.effectiveDate) {
+                  setFeedbackMessage("Provide assignment reason, handover message, and effective date before assigning.");
+                  return;
+                }
                 const result = portal.assignClientAccountant(
                   client.id,
                   selectedAccountant?.name ?? event.target.value,
                   selectedAccountant?.id,
+                  {
+                    reason: handover.reason.trim(),
+                    message: handover.message.trim(),
+                    effectiveDate: new Date(handover.effectiveDate).toISOString(),
+                    assignedBy: "Admin",
+                  },
                 );
                 setFeedbackMessage(result.message);
               }}
               options={portal.managedAccountants.map((accountant) => ({
                 label: accountant.name,
                 value: accountant.id,
-              }))}
+              })).concat([{ label: "Unassigned", value: "" }])}
               value={
                 client.assignedAccountantUserId ??
                 portal.managedAccountants.find(
                   (accountant) => accountant.name === client.assignedAccountant,
                 )?.id ??
-                portal.managedAccountants[0]?.id ??
                 ""
               }
             />
@@ -96,6 +139,26 @@ export function AdminAssignmentsPage() {
               >
                 Open client
               </Button>
+            </div>
+            <div className="md:col-span-4 grid gap-3 rounded-xl border border-slate-200 bg-white p-3 md:grid-cols-[1fr_1fr_180px]">
+              <input
+                className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                onChange={(event) => updateHandover(client.id, "reason", event.target.value)}
+                placeholder="Assignment reason (required)"
+                value={getHandover(client.id).reason}
+              />
+              <input
+                className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                onChange={(event) => updateHandover(client.id, "message", event.target.value)}
+                placeholder="Message to accountant (required)"
+                value={getHandover(client.id).message}
+              />
+              <input
+                className="rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                onChange={(event) => updateHandover(client.id, "effectiveDate", event.target.value)}
+                type="date"
+                value={getHandover(client.id).effectiveDate}
+              />
             </div>
           </div>
         ))}

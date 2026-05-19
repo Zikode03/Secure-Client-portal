@@ -575,6 +575,11 @@ export interface FirmClientAccount {
   deadlinePolicy: string;
   status: PortfolioStatus;
   isActive?: boolean;
+  lastAssignmentReason?: string;
+  lastAssignmentMessage?: string;
+  lastAssignmentEffectiveDate?: string;
+  lastAssignmentBy?: string;
+  lastAssignmentAt?: string;
 }
 
 export interface DocumentPolicy {

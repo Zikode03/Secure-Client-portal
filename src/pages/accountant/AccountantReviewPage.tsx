@@ -3,6 +3,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
 import { Button } from "../../components/ui/Button";
@@ -28,12 +29,6 @@ const reviewSnapshotDate = new Date("2026-05-08T08:00:00.000Z");
 type QueueStatusFilter = "all" | "under_review" | "overdue" | "attention" | "on_track";
 type DueWindowFilter = "all" | "overdue" | "soon" | "later";
 type QueueOrder = "priority" | "recent";
-type WorkspaceDecision =
-  | "accepted"
-  | "rejected"
-  | "under_review"
-  | "request_reupload";
-
 interface ReviewVersionEntry {
   id: string;
   isLatest: boolean;
@@ -262,21 +257,6 @@ function QueueFileIcon({ documentType, fileName }: { documentType: string; fileN
   );
 }
 
-function ViewIcon() {
-  return (
-    <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
-      <path
-        d="M2.75 12s3.75-6 9.25-6 9.25 6 9.25 6-3.75 6-9.25 6-9.25-6-9.25-6Z"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.8" />
-    </svg>
-  );
-}
-
 function DownloadIcon() {
   return (
     <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
@@ -394,16 +374,6 @@ function RefreshIcon() {
         strokeLinejoin="round"
         strokeWidth="1.8"
       />
-    </svg>
-  );
-}
-
-function MoreHorizontalIcon() {
-  return (
-    <svg aria-hidden="true" className="h-4.5 w-4.5" fill="currentColor" viewBox="0 0 24 24">
-      <circle cx="5" cy="12" r="1.7" />
-      <circle cx="12" cy="12" r="1.7" />
-      <circle cx="19" cy="12" r="1.7" />
     </svg>
   );
 }
@@ -591,6 +561,7 @@ function PreviewCanvas({
 export function AccountantReviewPage() {
   const { user } = useAuth();
   const portal = usePortal();
+  const navigate = useNavigate();
   const workspaceRef = useRef<HTMLDivElement | null>(null);
   const queue = useMemo(
     () => getScopedReviewQueue(user, portal.getReviewQueue(), portal.adminClients),
@@ -606,20 +577,13 @@ export function AccountantReviewPage() {
   const [queueOrder, setQueueOrder] = useState<QueueOrder>("priority");
   const [selectedRecordId, setSelectedRecordId] = useState(queue[0]?.id ?? "");
   const [viewerOpen, setViewerOpen] = useState(false);
-  const [reviewReason, setReviewReason] = useState("");
-  const [internalNoteDraft, setInternalNoteDraft] = useState("");
   const [reviewMessage, setReviewMessage] = useState("");
-  const [decisionMessage, setDecisionMessage] = useState("");
-  const [commentDraft, setCommentDraft] = useState("");
-  const [commentError, setCommentError] = useState("");
-  const [openMenuRecordId, setOpenMenuRecordId] = useState("");
   const [previewPage, setPreviewPage] = useState(1);
   const [previewZoom, setPreviewZoom] = useState(100);
   const [showReviewGuidance, setShowReviewGuidance] = useState(false);
   const [workspaceAuditEntries, setWorkspaceAuditEntries] = useState<
     Record<string, AuditTrailEntry[]>
   >({});
-  const [savedInternalNotes, setSavedInternalNotes] = useState<Record<string, string>>({});
 
   const queueRows = useMemo(
     () =>
@@ -723,11 +687,7 @@ export function AccountantReviewPage() {
     selectedRowIndex >= 0 && selectedRowIndex < orderedRows.length - 1
       ? orderedRows[selectedRowIndex + 1]?.item.id ?? ""
       : "";
-  const hasUnsavedDraft =
-    commentDraft.trim().length > 0 ||
-    reviewReason.trim() !== (activeDocument?.rejectionReason ?? "").trim() ||
-    internalNoteDraft.trim() !==
-      (activeDocument ? (savedInternalNotes[activeDocument.id] ?? "").trim() : "");
+  const hasUnsavedDraft = false;
 
   const combinedAuditTrail = useMemo(() => {
     if (!activeDocument) {
@@ -810,33 +770,14 @@ export function AccountantReviewPage() {
   }, [filteredRows, selectedRecordId]);
 
   useEffect(() => {
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setOpenMenuRecordId("");
-      }
-    }
-
-    window.addEventListener("keydown", handleEscape);
-    return () => window.removeEventListener("keydown", handleEscape);
-  }, []);
-
-  useEffect(() => {
     if (!activeDocument) {
-      setReviewReason("");
-      setInternalNoteDraft("");
-      setDecisionMessage("");
       return;
     }
 
-    setReviewReason(activeDocument.rejectionReason ?? "");
-    setInternalNoteDraft(savedInternalNotes[activeDocument.id] ?? "");
-    setCommentDraft("");
-    setCommentError("");
-    setDecisionMessage("");
     setPreviewPage(1);
     setPreviewZoom(100);
     setShowReviewGuidance(false);
-  }, [activeDocument?.id, activeDocument, savedInternalNotes]);
+  }, [activeDocument?.id, activeDocument]);
 
   useEffect(() => {
     if (!viewerOpen || !activeDocument || !workspaceRef.current) {
@@ -868,9 +809,34 @@ export function AccountantReviewPage() {
     setSelectedAccountant("all");
   }
 
+  function openInClientWorkspace(recordId: string) {
+    const row = queueRows.find((item) => item.item.id === recordId);
+    if (!row) {
+      return;
+    }
+    const targetClientId = row.record?.clientId;
+    if (!targetClientId) {
+      setReviewMessage("Could not resolve client workspace for this record.");
+      return;
+    }
+    const documentType = row.item.documentType.trim().toLowerCase();
+    const tab =
+      documentType === "bank statement"
+        ? "bank_statement"
+        : documentType === "invoices"
+          ? "invoices"
+          : documentType === "signed documents"
+            ? "signed_documents"
+            : documentType === "compliance record"
+              ? "compliance_record"
+              : "packs";
+    navigate(
+      `/firm/clients/${targetClientId}?tab=${tab}&documentId=${encodeURIComponent(row.record.id)}`,
+    );
+  }
+
   function openViewer(recordId: string) {
     if (viewerOpen && selectedRecordId === recordId) {
-      setOpenMenuRecordId("");
       workspaceRef.current?.scrollIntoView({
         behavior: "smooth",
         block: "start",
@@ -881,7 +847,6 @@ export function AccountantReviewPage() {
     const viewedAt = new Date().toISOString();
     setSelectedRecordId(recordId);
     setViewerOpen(true);
-    setOpenMenuRecordId("");
 
     appendWorkspaceAudit(recordId, {
       id: `${recordId}-viewed-${viewedAt}`,
@@ -915,125 +880,6 @@ export function AccountantReviewPage() {
       return;
     }
     openViewer(nextRecordId);
-  }
-
-  function handleDownloadRecord(record: DocumentRecord) {
-    downloadPreview(
-      record.fileName,
-      record.extractedText ?? `${record.documentType}\n${record.fileName}\n${record.description}`,
-    );
-    setOpenMenuRecordId("");
-  }
-
-  function handleQuickStatus(recordId: string, action: "accepted" | "under_review") {
-    const result = portal.reviewRecord({
-      recordId,
-      action,
-      reviewer: user?.fullName ?? "Accountant",
-    });
-
-    setReviewMessage(result.message);
-    setOpenMenuRecordId("");
-    if (result.ok && selectedRecordId === recordId) {
-      setDecisionMessage(result.message);
-      setViewerOpen(true);
-    }
-  }
-
-  function handleWorkspaceDecision(decision: WorkspaceDecision) {
-    if (!selectedRecordId || !activeDocument) {
-      return;
-    }
-
-    const trimmedReason = reviewReason.trim();
-    const trimmedInternalNote = internalNoteDraft.trim();
-
-    if ((decision === "rejected" || decision === "request_reupload") && !trimmedReason) {
-      setDecisionMessage("Add a rejection or re-upload reason before sending the document back.");
-      return;
-    }
-
-    const result = portal.reviewRecord({
-      recordId: selectedRecordId,
-      action: decision === "request_reupload" ? "rejected" : decision,
-      reviewer: user?.fullName ?? "Accountant",
-      reason: decision === "rejected" || decision === "request_reupload" ? trimmedReason : reviewReason,
-    });
-
-    setReviewMessage(result.message);
-    if (!result.ok) {
-      setDecisionMessage(result.message);
-      return;
-    }
-
-    if (trimmedInternalNote) {
-      setSavedInternalNotes((current) => ({
-        ...current,
-        [selectedRecordId]: trimmedInternalNote,
-      }));
-    }
-
-    if (decision === "request_reupload") {
-      const requestedAt = new Date().toISOString();
-      appendWorkspaceAudit(selectedRecordId, {
-        id: `${selectedRecordId}-reupload-${requestedAt}`,
-        status: "Re-upload requested",
-        actor: user?.fullName ?? "Accountant",
-        timestamp: requestedAt,
-        note: trimmedReason,
-      });
-    }
-
-    setDecisionMessage(
-      decision === "accepted"
-        ? "Document accepted. The workflow has been updated and the decision is now visible in the queue."
-        : decision === "under_review"
-          ? "Document marked as under review. The client can see it is still in progress."
-          : decision === "request_reupload"
-            ? "A corrected version has been requested. The client must re-upload through the structured slot."
-            : "Document rejected with the supplied reason.",
-    );
-  }
-
-  function handleWorkspaceDecisionWithValidation(decision: WorkspaceDecision) {
-    if (
-      (decision === "rejected" || decision === "request_reupload") &&
-      !reviewReason.trim()
-    ) {
-      setDecisionMessage("Reason is required before rejecting or requesting re-upload.");
-      return;
-    }
-
-    handleWorkspaceDecision(decision);
-  }
-
-  function handleCommentSubmit() {
-    if (!activeDocument || !selectedRecordId) {
-      setCommentError("Open a record before posting a comment.");
-      return;
-    }
-
-    const trimmed = commentDraft.trim();
-    if (!trimmed) {
-      setCommentError("Write a clear document-specific note before posting.");
-      return;
-    }
-
-    const result = portal.addDocumentComment(
-      activeDocument.id,
-      user?.fullName ?? "Firm reviewer",
-      user?.role ?? "accountant",
-      trimmed,
-    );
-
-    setReviewMessage(result.message);
-    if (!result.ok) {
-      setCommentError(result.message);
-      return;
-    }
-
-    setCommentDraft("");
-    setCommentError("");
   }
 
   function renderSelectField(
@@ -1108,21 +954,11 @@ export function AccountantReviewPage() {
         return;
       }
 
-      if (event.key.toLowerCase() === "a") {
-        event.preventDefault();
-        handleWorkspaceDecisionWithValidation("accepted");
-        return;
-      }
-
-      if (event.key.toLowerCase() === "r") {
-        event.preventDefault();
-        handleWorkspaceDecisionWithValidation("rejected");
-      }
     }
 
     window.addEventListener("keydown", handleViewerShortcuts);
     return () => window.removeEventListener("keydown", handleViewerShortcuts);
-  }, [viewerOpen, previousRecordId, nextRecordId, reviewReason, hasUnsavedDraft]);
+  }, [viewerOpen, previousRecordId, nextRecordId, hasUnsavedDraft]);
 
   return (
     <div className="mx-auto max-w-[1500px] space-y-5">
@@ -1342,55 +1178,14 @@ export function AccountantReviewPage() {
                         className="relative mt-3 flex items-center lg:mt-0 lg:justify-end"
                         onClick={(event) => event.stopPropagation()}
                       >
-                        <button
-                          aria-label="Open record actions"
-                          className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
-                          onClick={() =>
-                            setOpenMenuRecordId((current) =>
-                              current === row.item.id ? "" : row.item.id,
-                            )
-                          }
+                        <Button
+                          className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                          onClick={() => openViewer(row.item.id)}
                           type="button"
+                          variant="ghost"
                         >
-                          <MoreHorizontalIcon />
-                        </button>
-
-                        {openMenuRecordId === row.item.id ? (
-                          <div className="absolute right-0 top-[calc(100%+0.55rem)] z-10 min-w-[220px] rounded-[1rem] border border-slate-200 bg-white p-2 shadow-[0_20px_42px_rgba(15,23,42,0.14)]">
-                            <button
-                              className="flex w-full items-center justify-between rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
-                              onClick={() => openViewer(row.item.id)}
-                              type="button"
-                            >
-                              View / review
-                              <ViewIcon />
-                            </button>
-                            <button
-                              className="flex w-full items-center justify-between rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
-                              onClick={() => handleDownloadRecord(row.record)}
-                              type="button"
-                            >
-                              Download file
-                              <DownloadIcon />
-                            </button>
-                            <button
-                              className="flex w-full items-center justify-between rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
-                              onClick={() => handleQuickStatus(row.item.id, "under_review")}
-                              type="button"
-                            >
-                              Mark under review
-                              <span>!</span>
-                            </button>
-                            <button
-                              className="flex w-full items-center justify-between rounded-[0.8rem] px-3 py-2 text-left text-sm text-emerald-700 transition hover:bg-emerald-50"
-                              onClick={() => handleQuickStatus(row.item.id, "accepted")}
-                              type="button"
-                            >
-                              Accept document
-                              <span>OK</span>
-                            </button>
-                          </div>
-                        ) : null}
+                          View
+                        </Button>
                       </div>
                     </div>
                   );
@@ -1422,7 +1217,7 @@ export function AccountantReviewPage() {
                   />
                   <div className="min-w-0">
                     <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                      Review Queue
+                      Work Queue
                     </p>
                     <div className="flex flex-wrap items-center gap-2">
                       <span
@@ -1448,13 +1243,20 @@ export function AccountantReviewPage() {
 
                 <div className="flex items-center gap-2">
                   <Button
+                    className="h-10 rounded-xl px-4"
+                    onClick={() => openInClientWorkspace(activeRow.item.id)}
+                    size="sm"
+                  >
+                    Open Monthly Pack
+                  </Button>
+                  <Button
                     className="h-10 rounded-xl px-4 text-slate-700"
                     onClick={closeViewer}
                     size="sm"
                     variant="secondary"
                   >
                     <ChevronLeftIcon />
-                    <span>Back to Queue</span>
+                    <span>Back to Work Queue</span>
                   </Button>
                   <button
                   aria-label="Close review workspace"
@@ -1862,31 +1664,8 @@ export function AccountantReviewPage() {
                       )}
                     </div>
 
-                    <div className="mt-4 space-y-3 rounded-[1.15rem] border border-slate-200 bg-slate-50 p-4">
-                      <label
-                        className="text-[0.9rem] font-semibold text-slate-950"
-                        htmlFor="review-comment"
-                      >
-                        Add comment
-                      </label>
-                      <textarea
-                        className="min-h-[108px] w-full rounded-[1rem] border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-300 focus:ring-4 focus:ring-brand-100"
-                        id="review-comment"
-                        onChange={(event) => setCommentDraft(event.target.value)}
-                        placeholder="Leave a file-specific review note for the client."
-                        value={commentDraft}
-                      />
-                      {commentError ? (
-                        <p className="text-sm text-rose-600">{commentError}</p>
-                      ) : null}
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <p className="text-[0.82rem] text-slate-500">
-                          Posting as {user?.fullName ?? "Firm reviewer"}.
-                        </p>
-                        <Button className="h-10 rounded-xl px-4" onClick={handleCommentSubmit} size="sm">
-                          Post comment
-                        </Button>
-                      </div>
+                    <div className="mt-4 rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                      Commenting is disabled in Work Queue view. Open Monthly Pack to add comments.
                     </div>
                   </section>
 
@@ -1914,92 +1693,9 @@ export function AccountantReviewPage() {
                       </div>
                     ) : null}
 
-                    <div className="mt-4 space-y-2">
-                      <label
-                        className="text-[0.9rem] font-semibold text-slate-950"
-                        htmlFor="review-reason"
-                      >
-                        Rejection / re-upload reason
-                      </label>
-                      <textarea
-                        className={cn(
-                          "min-h-[110px] w-full rounded-[1.15rem] border bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:ring-4",
-                          reviewReason.trim().length === 0
-                            ? "border-rose-300 focus:border-rose-300 focus:ring-rose-100"
-                            : "border-slate-200 focus:border-brand-300 focus:ring-brand-100",
-                        )}
-                        id="review-reason"
-                        onChange={(event) => setReviewReason(event.target.value)}
-                        placeholder="Required when rejecting a file or requesting a corrected re-upload."
-                        value={reviewReason}
-                      />
-                      {reviewReason.trim().length === 0 ? (
-                        <p className="text-[0.8rem] text-rose-600">
-                          Reason is required for Reject and Needs correction actions.
-                        </p>
-                      ) : null}
+                    <div className="mt-4 rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                      This is a view-only preview. Use <span className="font-semibold text-slate-900">Open Monthly Pack</span> to mark the document as under review, return, reject, or accept.
                     </div>
-
-                    <div className="mt-4 space-y-2">
-                      <label
-                        className="text-[0.9rem] font-semibold text-slate-950"
-                        htmlFor="internal-note"
-                      >
-                        Internal firm note
-                      </label>
-                      <textarea
-                        className="min-h-[96px] w-full rounded-[1.15rem] border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-300 focus:ring-4 focus:ring-brand-100"
-                        id="internal-note"
-                        onChange={(event) => setInternalNoteDraft(event.target.value)}
-                        placeholder="Optional note for the internal firm team only."
-                        value={internalNoteDraft}
-                      />
-                      <p className="text-[0.8rem] text-slate-500">
-                        This note stays internal to the firm review workflow.
-                      </p>
-                    </div>
-
-                    <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                      <Button
-                        className="h-11 rounded-xl bg-emerald-600 text-white shadow-[0_10px_24px_rgba(5,150,105,0.22)] hover:bg-emerald-500"
-                        onClick={() => handleWorkspaceDecisionWithValidation("accepted")}
-                      >
-                        Approve
-                      </Button>
-                      <Button
-                        className="h-11 rounded-xl border border-amber-200 bg-white text-amber-700 hover:bg-amber-50"
-                        onClick={() => handleWorkspaceDecisionWithValidation("under_review")}
-                        variant="secondary"
-                      >
-                        Still reviewing
-                      </Button>
-                      <Button
-                        className="h-11 rounded-xl border border-brand-200 bg-white text-brand-700 hover:bg-brand-50"
-                        onClick={() => handleWorkspaceDecisionWithValidation("request_reupload")}
-                        variant="secondary"
-                      >
-                        Needs correction (re-upload)
-                      </Button>
-                      <Button
-                        className="h-11 rounded-xl border border-rose-200 bg-white text-rose-600 hover:bg-rose-50"
-                        onClick={() => handleWorkspaceDecisionWithValidation("rejected")}
-                        variant="secondary"
-                      >
-                        Reject
-                      </Button>
-                    </div>
-
-                    {decisionMessage ? (
-                      <div className="mt-4 rounded-[1rem] border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-700">
-                        {decisionMessage}
-                      </div>
-                    ) : null}
-
-                    {activeDocument.id in savedInternalNotes ? (
-                      <div className="mt-3 rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                        Saved internal note: {savedInternalNotes[activeDocument.id]}
-                      </div>
-                    ) : null}
                   </section>
 
                 </div>

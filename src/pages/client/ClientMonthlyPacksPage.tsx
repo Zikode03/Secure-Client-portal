@@ -533,6 +533,8 @@ export function ClientMonthlyPacksPage() {
       <PreviousMonthComparisonCard
         actionLabel="Open documents"
         comparison={previousMonthComparison}
+        onCreateFollowUps={() => navigate("/client/inbox")}
+        onOpenAffectedRecords={() => navigate("/client/documents")}
         onAction={() => navigate("/client/documents")}
       />
 

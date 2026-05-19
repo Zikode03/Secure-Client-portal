@@ -83,6 +83,11 @@ const FirmDocumentsPage = lazy(() =>
     default: module.FirmDocumentsPage,
   })),
 );
+const FirmFilingPage = lazy(() =>
+  import("../pages/firm/FirmFilingPage").then((module) => ({
+    default: module.FirmFilingPage,
+  })),
+);
 const FirmNotificationsPage = lazy(() =>
   import("../pages/firm/FirmNotificationsPage").then((module) => ({
     default: module.FirmNotificationsPage,
@@ -372,6 +377,7 @@ export default function App() {
           <Route element={<FirmClientWorkspacePage />} path="clients/:clientId" />
           <Route element={<FirmClientWorkspacePage />} path="clients/:clientId/packs" />
           <Route element={<FirmDocumentsPage />} path="documents" />
+          <Route element={<FirmFilingPage />} path="filing" />
           <Route element={<FirmReviewQueuePage />} path="review" />
           <Route element={<Navigate replace to="/firm/inbox" />} path="requests" />
           <Route element={<FirmRequestsPage />} path="inbox" />

@@ -11,6 +11,7 @@ import { CommentThread } from "../../components/workflow/CommentThread";
 import { DocumentPreviewPane } from "../../components/workflow/DocumentPreviewPane";
 import { RequestBoard } from "../../components/workflow/RequestBoard";
 import { Button } from "../../components/ui/Button";
+import { Modal } from "../../components/ui/Modal";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { ProgressBar } from "../../components/ui/ProgressBar";
 import { StatusBadge } from "../../components/ui/StatusBadge";
@@ -21,16 +22,15 @@ import { formatDateLabel, formatStatusLabel } from "../../utils/formatters";
 
 const workspaceTabs = [
   { id: "packs", label: "Monthly Packs" },
-  { id: "documents", label: "Documents" },
+  { id: "bank_statement", label: "Bank Statement" },
   { id: "invoices", label: "Invoices" },
-  { id: "compliance", label: "Compliance" },
-  { id: "requests", label: "Requests" },
-  { id: "messages", label: "Messages" },
-  { id: "audit", label: "Audit Trail" },
+  { id: "signed_documents", label: "Signed Documents" },
+  { id: "compliance_record", label: "Compliance Record" },
 ] as const;
 
 // Shared shape notes: these types keep UI and data contracts aligned.
 type WorkspaceTab = (typeof workspaceTabs)[number]["id"];
+type WorkspaceDocumentDecision = "under_review" | "accepted" | "rejected" | "request_reupload";
 
 const complianceTabs = [
   { id: "overview", label: "Overview" },
@@ -43,6 +43,40 @@ const complianceTabs = [
 
 type ComplianceWorkspaceTab = (typeof complianceTabs)[number]["id"];
 
+function isWorkspaceTab(value: string | null): value is WorkspaceTab {
+  return !!value && workspaceTabs.some((tab) => tab.id === value);
+}
+
+function tabForDocumentType(documentType: string): WorkspaceTab {
+  if (documentType === "Bank Statement") {
+    return "bank_statement";
+  }
+  if (documentType === "Invoices") {
+    return "invoices";
+  }
+  if (documentType === "Signed Documents") {
+    return "signed_documents";
+  }
+  if (documentType === "Compliance Record") {
+    return "compliance_record";
+  }
+  return "packs";
+}
+
+function statusPillClass(status: string) {
+  const normalized = status.toLowerCase();
+  if (normalized.includes("reject") || normalized.includes("overdue")) {
+    return "bg-rose-50 text-rose-600 ring-rose-200";
+  }
+  if (normalized.includes("review") || normalized.includes("pending") || normalized.includes("attention")) {
+    return "bg-amber-50 text-amber-600 ring-amber-200";
+  }
+  if (normalized.includes("approved") || normalized.includes("complete") || normalized.includes("on track")) {
+    return "bg-emerald-50 text-emerald-600 ring-emerald-200";
+  }
+  return "bg-slate-50 text-slate-600 ring-slate-200";
+}
+
 // Component flow: gather data first, then render a focused UI state.
 export function AccountantClientWorkspacePage() {
   const { clientId = "firm-client-1" } = useParams();
@@ -52,19 +86,28 @@ export function AccountantClientWorkspacePage() {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const searchParamString = searchParams.toString();
-  const initialTab =
-    (searchParams.get("tab") as WorkspaceTab | null) ??
-    (location.pathname.endsWith("/packs") ? "packs" : "documents");
+  const initialTab = isWorkspaceTab(searchParams.get("tab"))
+    ? searchParams.get("tab")
+    : location.pathname.endsWith("/packs")
+      ? "packs"
+      : "packs";
   const [activeTab, setActiveTab] = useState<WorkspaceTab>(initialTab);
   const [activeComplianceView, setActiveComplianceView] = useState<ComplianceWorkspaceTab>(
     (searchParams.get("view") as ComplianceWorkspaceTab | null) ?? "overview",
   );
 // Local UI state: keeps track of what the user is seeing or editing right now.
   const [selectedDocumentId, setSelectedDocumentId] = useState("");
+  const [isDocumentModalOpen, setIsDocumentModalOpen] = useState(false);
   const [selectedRequestId, setSelectedRequestId] = useState("");
   const [selectedComplianceCategoryId, setSelectedComplianceCategoryId] = useState("");
   const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [decisionReason, setDecisionReason] = useState("");
+  const [decisionMessage, setDecisionMessage] = useState("");
   const workspace = portal.getClientWorkspace(clientId);
+  const acceptedDocuments = useMemo(
+    () => workspace.documents.filter((document) => document.status === "accepted"),
+    [workspace.documents],
+  );
 
   const selectedDocument =
     workspace.documents.find((document) => document.id === selectedDocumentId) ??
@@ -99,11 +142,45 @@ export function AccountantClientWorkspacePage() {
   const complianceMissingItems = workspace.compliance?.documents.filter(
     (document) => document.status === "missing",
   ) ?? [];
+  const visiblePackSlots = useMemo(() => {
+    if (activeTab === "bank_statement") {
+      return workspace.monthPack.slots.filter((slot) => slot.documentType === "Bank Statement");
+    }
+    if (activeTab === "signed_documents") {
+      return workspace.monthPack.slots.filter((slot) => slot.documentType === "Signed Documents");
+    }
+    if (activeTab === "compliance_record") {
+      return workspace.monthPack.slots.filter((slot) => slot.documentType === "Compliance Record");
+    }
+    if (activeTab === "invoices") {
+      return workspace.monthPack.slots.filter((slot) => slot.documentType === "Invoices");
+    }
+    return workspace.monthPack.slots;
+  }, [activeTab, workspace.monthPack.slots]);
+  const activePackDocumentType = useMemo(() => {
+    if (activeTab === "bank_statement") return "Bank Statement";
+    if (activeTab === "invoices") return "Invoices";
+    if (activeTab === "signed_documents") return "Signed Documents";
+    if (activeTab === "compliance_record") return "Compliance Record";
+    return null;
+  }, [activeTab]);
+  const submittedPackDocuments = useMemo(() => {
+    if (!activePackDocumentType) {
+      return [];
+    }
+    return workspace.documents.filter(
+      (document) =>
+        document.documentType === activePackDocumentType &&
+        document.monthLabel === workspace.monthPack.monthLabel,
+    );
+  }, [activePackDocumentType, workspace.documents, workspace.monthPack.monthLabel]);
 
   useEffect(() => {
-    const requestedTab =
-      (searchParams.get("tab") as WorkspaceTab | null) ??
-      (location.pathname.endsWith("/packs") ? "packs" : "documents");
+    const requestedTab = isWorkspaceTab(searchParams.get("tab"))
+      ? searchParams.get("tab")
+      : location.pathname.endsWith("/packs")
+        ? "packs"
+        : "packs";
     setActiveTab(requestedTab);
   }, [location.pathname, searchParamString]);
 
@@ -112,18 +189,46 @@ export function AccountantClientWorkspacePage() {
       return;
     }
 
-    if (workspace.documents.length === 0) {
+    if (acceptedDocuments.length === 0) {
       return;
     }
 
-    const selectedStillExists = workspace.documents.some(
+    const selectedStillExists = acceptedDocuments.some(
       (document) => document.id === selectedDocumentId,
     );
 
     if (!selectedDocumentId || !selectedStillExists) {
-      setSelectedDocumentId(workspace.documents[0].id);
+      setSelectedDocumentId(acceptedDocuments[0].id);
     }
-  }, [activeTab, selectedDocumentId, workspace.documents]);
+  }, [acceptedDocuments, activeTab, selectedDocumentId]);
+
+  useEffect(() => {
+    const requestedTab = searchParams.get("tab");
+    if (requestedTab === "documents") {
+      navigate(`/firm/documents?client=${workspace.client.id}`, { replace: true });
+    }
+  }, [navigate, searchParamString, searchParams, workspace.client.id]);
+
+  useEffect(() => {
+    const documentId = searchParams.get("documentId");
+    if (!documentId) {
+      return;
+    }
+    const targetDocument = workspace.documents.find((document) => document.id === documentId);
+    if (!targetDocument) {
+      return;
+    }
+    navigate(`/firm/documents?client=${workspace.client.id}`, { replace: true });
+  }, [navigate, searchParamString, searchParams, workspace.client.id, workspace.documents]);
+
+  useEffect(() => {
+    setDecisionMessage("");
+    if (!isDocumentModalOpen) {
+      setDecisionReason("");
+      return;
+    }
+    setDecisionReason(selectedDocument?.rejectionReason ?? "");
+  }, [isDocumentModalOpen, selectedDocument?.id, selectedDocument?.rejectionReason]);
 
   function switchTab(tab: WorkspaceTab) {
     setActiveTab(tab);
@@ -132,6 +237,16 @@ export function AccountantClientWorkspacePage() {
       next.set("tab", tab);
       return next;
     });
+  }
+
+  function openDocument(_documentId: string) {
+    navigate(`/firm/documents?client=${workspace.client.id}`);
+  }
+
+  function handlePackSlotOpen(documentType: string) {
+    const targetTab = tabForDocumentType(documentType);
+    setIsDocumentModalOpen(false);
+    switchTab(targetTab);
   }
 
   function switchComplianceView(view: ComplianceWorkspaceTab) {
@@ -160,6 +275,27 @@ export function AccountantClientWorkspacePage() {
     );
     setFeedbackMessage(result.message);
     return result;
+  }
+
+  function handleWorkspaceDocumentDecision(decision: WorkspaceDocumentDecision) {
+    if (!selectedDocument || !user) {
+      return;
+    }
+    const trimmedReason = decisionReason.trim();
+    if ((decision === "rejected" || decision === "request_reupload") && !trimmedReason) {
+      setDecisionMessage("Add a reason before rejecting or returning this document.");
+      return;
+    }
+
+    const result = portal.reviewRecord({
+      recordId: selectedDocument.id,
+      action: decision === "request_reupload" ? "rejected" : decision,
+      reviewer: user.fullName,
+      reason: decision === "rejected" || decision === "request_reupload" ? trimmedReason : undefined,
+    });
+
+    setDecisionMessage(result.message);
+    setFeedbackMessage(result.message);
   }
 
   function handleRequestComment(message: string) {
@@ -260,15 +396,15 @@ export function AccountantClientWorkspacePage() {
         <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-3">
-              <h2 className="text-xl font-semibold text-slate-950">{workspace.client.clientName}</h2>
+              <h2 className="text-xl font-semibold text-brand-700">{workspace.client.clientName}</h2>
               <StatusBadge status={workspace.client.status} />
             </div>
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-brand-700/75">
               {workspace.client.industry} / {workspace.client.assignedAccountant} / {workspace.client.deadlinePolicy}
             </p>
           </div>
-          <div className="space-y-2 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
-            <div className="flex items-center justify-between text-sm text-slate-600">
+          <div className="space-y-2 rounded-[1.5rem] border border-brand-100 bg-brand-50 p-4">
+            <div className="flex items-center justify-between text-sm text-brand-700/80">
               <span>Month pack progress</span>
               <span>{workspace.monthPack.progressPercent}%</span>
             </div>
@@ -276,135 +412,287 @@ export function AccountantClientWorkspacePage() {
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {workspaceTabs.map((tab) => (
-            <button
-              className={cn(
-                "rounded-full px-4 py-2 text-sm font-medium transition",
-                activeTab === tab.id
-                  ? "bg-slate-950 text-white"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200",
-              )}
-              key={tab.id}
-              onClick={() => switchTab(tab.id)}
-              type="button"
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        {activeTab !== "packs" ? (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-brand-100 bg-brand-50 px-3 py-2.5">
+            <p className="text-sm text-brand-700/80">
+              Viewing:{" "}
+              <span className="font-semibold text-brand-700">
+                {workspaceTabs.find((tab) => tab.id === activeTab)?.label ?? "Section"}
+              </span>
+            </p>
+            <Button className="h-8 rounded-lg px-3 text-xs" onClick={() => switchTab("packs")} size="sm" variant="secondary">
+              Back to Monthly Packs
+            </Button>
+          </div>
+        ) : null}
       </SurfaceCard>
 
-      {activeTab === "packs" ? (
+      {["packs", "bank_statement", "invoices", "signed_documents", "compliance_record"].includes(activeTab) ? (
         <SurfaceCard className="space-y-4">
           <div>
-            <h2 className="text-xl font-semibold text-slate-950">Client monthly pack</h2>
-            <p className="mt-1 text-sm text-slate-500">
+            <h2 className="text-xl font-semibold text-brand-700">Client monthly pack</h2>
+            <p className="mt-1 text-sm text-brand-700/75">
               Review the structured slots and focus on anything still missing, rejected, or pending.
             </p>
           </div>
-          <div className="space-y-3">
-            {workspace.monthPack.slots.map((slot) => (
-              <div
-                className="grid gap-4 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 lg:grid-cols-[1fr_140px_140px_auto]"
-                key={slot.id}
-              >
-                <div>
-                  <p className="text-sm font-semibold text-slate-950">{slot.documentType}</p>
-                  <p className="mt-1 text-sm text-slate-500">{slot.description}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-slate-500">Required</p>
-                  <p className="mt-1 text-sm font-medium text-slate-950">
-                    {slot.isRequired ? "Yes" : "Optional"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-slate-500">Due</p>
-                  <p className="mt-1 text-sm font-medium text-slate-950">
-                    {formatDateLabel(slot.dueDate ?? workspace.monthPack.dueDate)}
-                  </p>
-                </div>
-                <div className="flex items-center justify-end gap-2">
-                  <StatusBadge status={slot.status} />
-                  <Button
-                    onClick={() => {
-                      const directMatch = workspace.documents.find(
-                        (document) =>
-                          document.documentType === slot.documentType &&
-                          document.monthLabel === workspace.monthPack.monthLabel,
-                      );
-                      const typeMatch = workspace.documents.find(
-                        (document) => document.documentType === slot.documentType,
-                      );
-                      const fallbackDocument = directMatch ?? typeMatch ?? workspace.documents[0] ?? null;
-                      setSelectedDocumentId(fallbackDocument?.id ?? "");
-                      switchTab("documents");
-                    }}
-                    variant="secondary"
+          <div className="overflow-hidden rounded-2xl border border-brand-100 bg-white">
+            <div className="hidden border-b border-brand-100 bg-brand-50 px-5 py-3 text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-brand-700/60 lg:grid lg:grid-cols-[minmax(0,1fr)_120px_140px_220px] lg:gap-4">
+              <div>Document slot</div>
+              <div>Required</div>
+              <div>Due date</div>
+              <div className="text-right">Status and action</div>
+            </div>
+            <div className="divide-y divide-brand-100/70">
+            {visiblePackSlots.map((slot) => (
+              (() => {
+                const slotDueDate = slot.dueDate ?? workspace.monthPack.dueDate;
+                const dueDeltaDays = Math.ceil(
+                  (new Date(slotDueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+                );
+                const relatedDocs = workspace.documents.filter(
+                  (document) =>
+                    document.documentType === slot.documentType &&
+                    document.monthLabel === workspace.monthPack.monthLabel,
+                );
+                const hasRejected = relatedDocs.some((document) =>
+                  document.status.toLowerCase().includes("reject"),
+                );
+                const hasUnderReview = relatedDocs.some((document) =>
+                  document.status.toLowerCase().includes("review"),
+                );
+                const slotStatusLabel =
+                  relatedDocs.length === 0
+                    ? slot.status
+                    : hasRejected && hasUnderReview
+                      ? "Attention"
+                      : hasRejected
+                        ? "Rejected"
+                        : hasUnderReview
+                          ? "Under Review"
+                          : slot.status;
+
+                return (
+                  <div
+                    className="grid gap-3 px-4 py-4 lg:grid-cols-[minmax(0,1fr)_120px_140px_220px] lg:items-center lg:gap-4 lg:px-5"
+                    key={slot.id}
                   >
-                    Open
-                  </Button>
-                </div>
-              </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-brand-700">{slot.documentType}</p>
+                      <p className="mt-1 line-clamp-2 text-sm text-brand-700/75">{slot.description}</p>
+                    </div>
+                    <div>
+                      <p className="text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-brand-700/60 lg:hidden">
+                        Required
+                      </p>
+                      <p className="mt-1 text-sm font-medium text-brand-700 lg:mt-0">
+                        {slot.isRequired ? "Yes" : "Optional"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-brand-700/60 lg:hidden">
+                        Due date
+                      </p>
+                      <p className="mt-1 text-sm font-medium text-brand-700 lg:mt-0">
+                        {formatDateLabel(slotDueDate)}
+                      </p>
+                      {dueDeltaDays < 0 ? (
+                        <p className="mt-1 text-xs font-medium text-rose-600">
+                          {Math.abs(dueDeltaDays)} day{Math.abs(dueDeltaDays) === 1 ? "" : "s"} overdue
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+                      <span
+                        className={cn(
+                          "inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset",
+                          statusPillClass(slotStatusLabel),
+                        )}
+                      >
+                        {formatStatusLabel(slotStatusLabel)}
+                      </span>
+                      {activeTab === "packs" ? (
+                        <Button
+                          className="h-8 rounded-lg px-3 text-xs"
+                          onClick={() => handlePackSlotOpen(slot.documentType)}
+                          size="sm"
+                          variant="secondary"
+                        >
+                          Open
+                        </Button>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              })()
             ))}
+            </div>
           </div>
+          {activePackDocumentType ? (
+            <div className="space-y-3">
+              <div>
+                <h3 className="text-base font-semibold text-brand-700">
+                  Submitted {activePackDocumentType.toLowerCase()} files ({workspace.monthPack.monthLabel})
+                </h3>
+                <p className="mt-1 text-sm text-brand-700/75">
+                  These are the client files currently attached to this pack for the selected month.
+                </p>
+              </div>
+              {submittedPackDocuments.length > 0 ? (
+                <div className="overflow-hidden rounded-2xl border border-brand-100 bg-white">
+                  <div className="divide-y divide-brand-100/70">
+                    {submittedPackDocuments.map((document) => (
+                      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3" key={document.id}>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-brand-700">{document.fileName}</p>
+                          <p className="mt-1 text-xs text-brand-700/70">
+                            {document.documentType} / {document.monthLabel}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <StatusBadge status={document.status} />
+                          <Button
+                            className="h-8 rounded-lg px-3 text-xs"
+                            onClick={() => openDocument(document.id)}
+                            size="sm"
+                            variant="secondary"
+                          >
+                            Open
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-700/80">
+                  No client files have been submitted for this pack in {workspace.monthPack.monthLabel} yet.
+                </div>
+              )}
+            </div>
+          ) : null}
         </SurfaceCard>
       ) : null}
 
       {activeTab === "documents" ? (
-        <section className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-          <SurfaceCard className="space-y-4">
+        <section className="mx-auto w-full max-w-[1040px] space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-brand-100 bg-white px-4 py-3">
             <div>
-              <h2 className="text-xl font-semibold text-slate-950">Documents</h2>
-              <p className="mt-1 text-sm text-slate-500">
+              <h2 className="text-xl font-semibold text-brand-700">Documents</h2>
+              <p className="mt-1 text-sm text-brand-700/75">
                 Open a document to inspect the file, review context, and leave controlled feedback.
               </p>
             </div>
-            <div className="space-y-3">
-              {workspace.documents.map((document) => (
-                <button
-                  className={`w-full rounded-[1.5rem] border p-4 text-left transition ${
-                    selectedDocument?.id === document.id
-                      ? "border-slate-950 bg-slate-950 text-white"
-                      : "border-slate-200 bg-slate-50 hover:border-brand-200 hover:bg-brand-50"
-                  }`}
-                  key={document.id}
-                  onClick={() => setSelectedDocumentId(document.id)}
-                  type="button"
-                >
-                  <p className="text-sm font-semibold">{document.fileName}</p>
-                  <p className={`mt-1 text-sm ${selectedDocument?.id === document.id ? "text-white/75" : "text-slate-500"}`}>
-                    {document.documentType} / {document.monthLabel}
-                  </p>
-                </button>
-              ))}
-            </div>
-          </SurfaceCard>
-
-          <div className="space-y-6">
-            {selectedDocument ? <DocumentPreviewPane document={selectedDocument} /> : null}
-            <SurfaceCard className="space-y-4">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-950">Document comments</h2>
-                <p className="mt-1 text-sm text-slate-500">
-                  File-specific feedback stays attached to the exact document.
-                </p>
-              </div>
-              {selectedDocument ? (
-                <CommentThread
-                  comments={selectedDocument.comments}
-                  currentAuthor={user?.fullName ?? "Accountant"}
-                  currentRole={user?.role ?? "accountant"}
-                  onSubmitComment={handleDocumentComment}
-                />
-              ) : null}
-            </SurfaceCard>
           </div>
+
+          {acceptedDocuments.length === 0 ? (
+            <SurfaceCard>
+              <EmptyState
+                description="Only accepted documents appear in this section. Rejected or in-review files are excluded."
+                title="No accepted documents yet"
+              />
+            </SurfaceCard>
+          ) : null}
+
+          {acceptedDocuments.length > 0 ? (
+            <SurfaceCard className="overflow-hidden p-0">
+              <div className="grid grid-cols-[minmax(0,1.25fr)_180px_120px_auto] gap-4 border-b border-brand-100 bg-brand-50 px-5 py-3 text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-brand-700/60">
+                <div>File</div>
+                <div>Type/Month</div>
+                <div>Status</div>
+                <div>Action</div>
+              </div>
+              <div className="divide-y divide-brand-100/60">
+                {acceptedDocuments.map((document) => (
+                  <div className="grid grid-cols-[minmax(0,1.25fr)_180px_120px_auto] items-center gap-4 px-5 py-3" key={document.id}>
+                    <p className="truncate text-sm font-medium text-brand-700">{document.fileName}</p>
+                    <p className="text-sm text-brand-700/75">{document.documentType} / {document.monthLabel}</p>
+                    <StatusBadge status={document.status} />
+                    <Button className="h-8 rounded-lg px-3 text-xs" onClick={() => openDocument(document.id)} size="sm" variant="secondary">
+                      Open
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </SurfaceCard>
+          ) : null}
         </section>
       ) : null}
 
-      {activeTab === "invoices" ? (
+      <Modal
+        description="Review the file and add controlled feedback."
+        isOpen={isDocumentModalOpen && !!selectedDocument}
+        onClose={() => setIsDocumentModalOpen(false)}
+        title={selectedDocument?.fileName ?? "Document preview"}
+      >
+        <div className="space-y-6">
+          {selectedDocument ? <DocumentPreviewPane document={selectedDocument} /> : null}
+          {selectedDocument ? (
+            <section className="space-y-3 rounded-xl border border-brand-100 bg-brand-50/55 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="text-sm font-semibold text-brand-700">Review actions (workspace only)</p>
+                <StatusBadge status={selectedDocument.status} />
+              </div>
+              <label className="block space-y-1">
+                <span className="text-xs font-medium uppercase tracking-[0.08em] text-brand-700/70">
+                  Reason (required for return/reject)
+                </span>
+                <textarea
+                  className="min-h-[88px] w-full rounded-lg border border-brand-100 bg-white px-3 py-2 text-sm text-brand-700 outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
+                  onChange={(event) => setDecisionReason(event.target.value)}
+                  placeholder="Add review notes for the client or team..."
+                  value={decisionReason}
+                />
+              </label>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Button
+                  className="h-9 rounded-lg border border-amber-200 bg-white text-amber-700 hover:bg-amber-50"
+                  onClick={() => handleWorkspaceDocumentDecision("under_review")}
+                  size="sm"
+                  variant="secondary"
+                >
+                  Mark under review
+                </Button>
+                <Button
+                  className="h-9 rounded-lg border border-brand-200 bg-white text-brand-700 hover:bg-brand-50"
+                  onClick={() => handleWorkspaceDocumentDecision("request_reupload")}
+                  size="sm"
+                  variant="secondary"
+                >
+                  Return to client
+                </Button>
+                <Button
+                  className="h-9 rounded-lg border border-rose-200 bg-white text-rose-600 hover:bg-rose-50"
+                  onClick={() => handleWorkspaceDocumentDecision("rejected")}
+                  size="sm"
+                  variant="secondary"
+                >
+                  Reject
+                </Button>
+                <Button
+                  className="h-9 rounded-lg bg-emerald-600 text-white hover:bg-emerald-500"
+                  onClick={() => handleWorkspaceDocumentDecision("accepted")}
+                  size="sm"
+                >
+                  Accept
+                </Button>
+              </div>
+              {decisionMessage ? (
+                <p className="text-sm text-brand-700">{decisionMessage}</p>
+              ) : null}
+            </section>
+          ) : null}
+          {selectedDocument ? (
+            <CommentThread
+              comments={selectedDocument.comments}
+              currentAuthor={user?.fullName ?? "Accountant"}
+              currentRole={user?.role ?? "accountant"}
+              onSubmitComment={handleDocumentComment}
+            />
+          ) : null}
+        </div>
+      </Modal>
+
+      {(activeTab as string) === "invoices_legacy" ? (
         <SurfaceCard className="space-y-4">
           <div>
             <h2 className="text-xl font-semibold text-slate-950">Invoices</h2>
@@ -428,7 +716,7 @@ export function AccountantClientWorkspacePage() {
         </SurfaceCard>
       ) : null}
 
-      {activeTab === "compliance" ? (
+      {(activeTab as string) === "compliance_legacy" ? (
         workspace.compliance ? (
           <section className="space-y-6">
             <SurfaceCard className="space-y-5">
@@ -878,7 +1166,7 @@ export function AccountantClientWorkspacePage() {
         )
       ) : null}
 
-      {activeTab === "requests" ? (
+      {(activeTab as string) === "requests_legacy" ? (
         <section className="grid gap-6 xl:grid-cols-[0.85fr_1.15fr]">
           <RequestBoard
             description="Requests track both accountant follow-ups and client questions so each task stays in one accountable thread."
@@ -954,7 +1242,7 @@ export function AccountantClientWorkspacePage() {
         </section>
       ) : null}
 
-      {activeTab === "messages" ? (
+      {(activeTab as string) === "messages_legacy" ? (
         <SurfaceCard className="space-y-4">
           <div>
             <h2 className="text-xl font-semibold text-slate-950">Controlled messages</h2>
@@ -970,7 +1258,7 @@ export function AccountantClientWorkspacePage() {
         </SurfaceCard>
       ) : null}
 
-      {activeTab === "audit" ? (
+      {(activeTab as string) === "audit_legacy" ? (
         <SurfaceCard className="space-y-4">
           <div>
             <h2 className="text-xl font-semibold text-slate-950">Audit trail</h2>

@@ -144,6 +144,7 @@ export function AdminSettingsPage() {
   const [newClientDeadlinePolicy, setNewClientDeadlinePolicy] = useState("6th working day");
   const [newClientPrimaryAccountantId, setNewClientPrimaryAccountantId] = useState("");
   const [newClientBackupAccountantId, setNewClientBackupAccountantId] = useState("");
+  const [clientStatusFilter, setClientStatusFilter] = useState<"all" | "active" | "inactive">("all");
 
   const assignmentOptions = useMemo(
     () => portal.managedAccountants.map((member) => ({ label: member.name, value: member.id })),
@@ -214,8 +215,8 @@ export function AdminSettingsPage() {
   }
 
   function assignAccountantToClient() {
-    if (!assignmentClientId || !assignmentAccountant) {
-      setFeedbackMessage("Choose a client and accountant before assigning.");
+    if (!assignmentClientId) {
+      setFeedbackMessage("Choose a client before assigning.");
       return;
     }
 
@@ -224,7 +225,7 @@ export function AdminSettingsPage() {
     );
     const result = portal.assignClientAccountant(
       assignmentClientId,
-      selectedAccountant?.name ?? assignmentAccountant,
+      selectedAccountant?.name ?? "Unassigned",
       selectedAccountant?.id,
     );
     setFeedbackMessage(result.message);
@@ -310,6 +311,8 @@ export function AdminSettingsPage() {
     if (result.ok) {
       setNewClientName("");
       setNewClientIndustry("");
+      setNewClientPrimaryAccountantId("");
+      setNewClientBackupAccountantId("");
     }
   }
 
@@ -396,7 +399,19 @@ export function AdminSettingsPage() {
               />
               <p className="text-sm text-slate-600">{account.status}</p>
               <Button onClick={() => setFeedbackMessage(portal.resetUserAccess(account.id).message)} size="sm" variant="secondary">Reset access</Button>
-              <Button onClick={() => setFeedbackMessage(portal.disableUserAccount(account.id).message)} size="sm" variant="secondary">Disable</Button>
+              <Button
+                onClick={() =>
+                  setFeedbackMessage(
+                    account.status === "suspended"
+                      ? portal.activateUserAccount(account.id).message
+                      : portal.disableUserAccount(account.id).message,
+                  )
+                }
+                size="sm"
+                variant="secondary"
+              >
+                {account.status === "suspended" ? "Activate" : "Disable"}
+              </Button>
             </div>
           ))}
         </div>
@@ -405,9 +420,41 @@ export function AdminSettingsPage() {
   }
 
   function renderClientsPage() {
+    const filteredClients = portal.adminClients.filter((client) => {
+      if (clientStatusFilter === "active") {
+        return (client.isActive ?? true) === true;
+      }
+
+      if (clientStatusFilter === "inactive") {
+        return (client.isActive ?? true) === false;
+      }
+
+      return true;
+    });
+
     return (
       <SurfaceCard className="space-y-5">
         <h2 className="text-xl font-semibold text-slate-950">Manage clients</h2>
+        <div className="flex flex-wrap items-center gap-2">
+          {[
+            { id: "all" as const, label: "All clients" },
+            { id: "active" as const, label: "Active only" },
+            { id: "inactive" as const, label: "Inactive only" },
+          ].map((filter) => (
+            <button
+              className={
+                clientStatusFilter === filter.id
+                  ? "rounded-full border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-700"
+                  : "rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+              }
+              key={filter.id}
+              onClick={() => setClientStatusFilter(filter.id)}
+              type="button"
+            >
+              {filter.label}
+            </button>
+          ))}
+        </div>
         <div className="grid gap-4 md:grid-cols-3">
           <TextField label="Client name" onChange={(event) => setNewClientName(event.target.value)} value={newClientName} />
           <TextField label="Industry" onChange={(event) => setNewClientIndustry(event.target.value)} value={newClientIndustry} />
@@ -431,11 +478,20 @@ export function AdminSettingsPage() {
         </div>
 
         <div className="space-y-2">
-          {portal.adminClients.map((client) => (
+          {filteredClients.map((client) => (
             <div className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 md:grid-cols-[1.2fr_0.9fr_0.9fr_auto_auto] md:items-center" key={client.id}>
               <div>
                 <p className="text-sm font-semibold text-slate-900">{client.clientName}</p>
                 <p className="text-xs text-slate-500">{client.industry} / {client.deadlinePolicy}</p>
+                <span
+                  className={
+                    (client.isActive ?? true)
+                      ? "mt-1 inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[0.68rem] font-semibold text-emerald-700"
+                      : "mt-1 inline-flex rounded-full border border-slate-300 bg-slate-100 px-2 py-0.5 text-[0.68rem] font-semibold text-slate-600"
+                  }
+                >
+                  {(client.isActive ?? true) ? "Active" : "Inactive"}
+                </span>
               </div>
               <SelectField
                 label="Primary"
@@ -622,7 +678,7 @@ export function AdminSettingsPage() {
           <SelectField
             label="Accountant"
             onChange={(event) => setAssignmentAccountant(event.target.value)}
-            options={assignmentOptions}
+            options={[{ label: "Unassigned", value: "" }, ...assignmentOptions]}
             value={assignmentAccountant}
           />
           <div className="flex items-end">

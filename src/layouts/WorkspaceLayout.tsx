@@ -178,6 +178,7 @@ const routePrefetchers: Array<{ match: (path: string) => boolean; load: () => Pr
   { match: (path) => path.startsWith("/firm/dashboard"), load: () => import("../pages/firm/FirmDashboardPage") },
   { match: (path) => path.startsWith("/firm/clients"), load: () => import("../pages/firm/FirmClientsPage") },
   { match: (path) => path.startsWith("/firm/documents"), load: () => import("../pages/firm/FirmDocumentsPage") },
+  { match: (path) => path.startsWith("/firm/filing"), load: () => import("../pages/firm/FirmFilingPage") },
   { match: (path) => path.startsWith("/firm/review"), load: () => import("../pages/firm/FirmReviewQueuePage") },
   { match: (path) => path.startsWith("/firm/inbox"), load: () => import("../pages/firm/FirmRequestsPage") },
   { match: (path) => path.startsWith("/firm/inbox/"), load: () => import("../pages/firm/FirmRequestDetailPage") },
