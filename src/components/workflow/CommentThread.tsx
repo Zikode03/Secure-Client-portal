@@ -13,6 +13,7 @@ interface CommentThreadProps {
   comments: DocumentComment[];
   currentRole: Role;
   currentAuthor: string;
+  readOnly?: boolean;
   onSubmitComment?: (message: string) => { ok: boolean; message: string };
   composerLabel?: string;
   composerPlaceholder?: string;
@@ -29,6 +30,7 @@ export function CommentThread({
   composerPlaceholder = "Keep the feedback tied to the file so the next person in the workflow has the full context.",
   currentAuthor,
   currentRole,
+  readOnly = false,
   emptyDescription = "No one has commented on this document yet. Any note left here stays attached to the exact file being reviewed.",
   emptyTitle = "No comments yet",
   helperText,
@@ -93,19 +95,27 @@ export function CommentThread({
       )}
 
       <div className="space-y-4 rounded-[1.75rem] border border-slate-200 bg-slate-50 p-5">
-        <TextAreaField
-          error={error}
-          label={composerLabel}
-          onChange={(event) => setMessage(event.target.value)}
-          placeholder={composerPlaceholder}
-          value={message}
-        />
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-sm text-slate-500">
-            {helperText ?? `Posting as ${currentAuthor} (${currentRole})`}
+        {readOnly ? (
+          <p className="text-sm text-slate-600">
+            {helperText ?? "Comments are disabled while this file is still in client draft state."}
           </p>
-          <Button onClick={handleSubmit}>{submitLabel}</Button>
-        </div>
+        ) : (
+          <>
+            <TextAreaField
+              error={error}
+              label={composerLabel}
+              onChange={(event) => setMessage(event.target.value)}
+              placeholder={composerPlaceholder}
+              value={message}
+            />
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm text-slate-500">
+                {helperText ?? `Posting as ${currentAuthor} (${currentRole})`}
+              </p>
+              <Button onClick={handleSubmit}>{submitLabel}</Button>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

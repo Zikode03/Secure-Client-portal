@@ -37,6 +37,12 @@ function RequirementBadge({ isRequired }: { isRequired: boolean }) {
 
 function statusMeta(slot: MonthlyDocumentSlot) {
   switch (slot.status) {
+    case "draft":
+      return {
+        label: "Draft",
+        classes: "text-slate-600",
+        dot: "bg-slate-500",
+      };
     case "uploaded":
     case "accepted":
     case "filed":
@@ -92,6 +98,10 @@ function statusMeta(slot: MonthlyDocumentSlot) {
 function actionLabel(slot: MonthlyDocumentSlot) {
   if (slot.status === "rejected") {
     return "Re-upload";
+  }
+
+  if (slot.status === "draft") {
+    return "Upload more";
   }
 
   if (["uploaded", "accepted", "under_review", "filed"].includes(slot.status)) {
@@ -267,7 +277,10 @@ function MoreActionsButton({
           ? "bg-slate-100 text-slate-700"
           : "text-slate-400 hover:bg-slate-100 hover:text-slate-600"
       }`}
-      onClick={onClick}
+      onClick={(event) => {
+        event.stopPropagation();
+        onClick();
+      }}
       type="button"
     >
       <svg aria-hidden="true" className="h-[18px] w-[18px]" fill="currentColor" viewBox="0 0 24 24">
@@ -340,7 +353,10 @@ export function MonthlyPackChecklist({
         />
 
         {openMenuId === slot.id ? (
-          <div className="absolute right-0 top-[calc(100%+0.35rem)] z-20 min-w-[196px] rounded-xl border border-slate-200 bg-white p-2 shadow-[0_16px_32px_rgba(15,23,42,0.12)]">
+          <div
+            className="absolute right-0 top-[calc(100%+0.35rem)] z-20 min-w-[196px] rounded-xl border border-slate-200 bg-white p-2 shadow-[0_16px_32px_rgba(15,23,42,0.12)]"
+            onClick={(event) => event.stopPropagation()}
+          >
             {!isReadOnly ? (
               <button
                 className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
@@ -407,7 +423,10 @@ export function MonthlyPackChecklist({
   }
 
   return (
-    <SurfaceCard className="overflow-hidden rounded-[1.4rem] p-0">
+    <SurfaceCard
+      className="overflow-hidden rounded-[1.4rem] p-0"
+      onClick={() => closeMenu()}
+    >
       <div className="flex flex-col gap-2 px-5 pb-4 pt-5 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap items-center gap-3">
           <h2 className="text-base font-semibold text-slate-950">Monthly Pack Checklist</h2>
@@ -594,6 +613,7 @@ export function MonthlyPackChecklist({
           <div className="border-t border-slate-100 px-5 py-4">
             <div className="flex flex-wrap gap-x-6 gap-y-3">
               <LegendItem dotClass="bg-emerald-500" label="Ready" />
+              <LegendItem dotClass="bg-slate-500" label="Draft" />
               <LegendItem dotClass="bg-rose-500" label="Missing" />
               <LegendItem dotClass="bg-rose-400" label="Rejected" />
               <LegendItem dotClass="bg-sky-500" label="Under review" />

@@ -29,6 +29,7 @@ export type Tone = "neutral" | "info" | "success" | "warning" | "danger";
 
 export type SlotStatus =
   | "missing"
+  | "draft"
   | "uploaded"
   | "partial"
   | "pending"
@@ -39,6 +40,7 @@ export type SlotStatus =
   | "filed";
 
 export type LifecycleStatus =
+  | "draft"
   | "uploaded"
   | "under_review"
   | "accepted"
@@ -177,6 +179,8 @@ export interface DocumentRecord {
   rejectionReason?: string;
   comments: DocumentComment[];
   auditTrail: AuditTrailEntry[];
+  fileDataUrl?: string;
+  fileMimeType?: string;
 }
 
 export interface InvoiceRecord {
@@ -198,6 +202,8 @@ export interface InvoiceRecord {
   reviewedAt?: string;
   comments?: DocumentComment[];
   auditTrail?: AuditTrailEntry[];
+  fileDataUrl?: string;
+  fileMimeType?: string;
 }
 
 export type NotificationState = "unread" | "reviewed" | "resolved" | "snoozed";
@@ -395,6 +401,8 @@ export interface UploadSubmission {
   year: number;
   description: string;
   expiryDate?: string;
+  fileDataUrl?: string;
+  fileMimeType?: string;
 }
 
 export interface ClientWorkflowSeed {

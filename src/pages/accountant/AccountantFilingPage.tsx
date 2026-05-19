@@ -484,6 +484,11 @@ function downloadPreview(fileName: string, content: string) {
 }
 
 function openPreviewInNewTab(document: DocumentRecord) {
+  if (document.fileDataUrl) {
+    const fileWindow = window.open(document.fileDataUrl, "_blank", "noopener,noreferrer");
+    return Boolean(fileWindow);
+  }
+
   const previewWindow = window.open("", "_blank", "noopener,noreferrer");
   if (!previewWindow) {
     return false;
@@ -512,6 +517,18 @@ function openPreviewInNewTab(document: DocumentRecord) {
 </html>`);
   previewWindow.document.close();
   return true;
+}
+
+function downloadDocumentFile(fileRecord: DocumentRecord) {
+  if (fileRecord.fileDataUrl) {
+    const link = document.createElement("a");
+    link.href = fileRecord.fileDataUrl;
+    link.download = fileRecord.fileName;
+    link.click();
+    return;
+  }
+
+  downloadPreview(fileRecord.fileName, buildPreviewText(fileRecord));
 }
 
 function formatPreviewMoney(value: number) {
@@ -602,8 +619,46 @@ function PreviewShell({
 }) {
   const previewScale = Math.max(0.85, zoomLevel / 100);
   const previewLines = documentPreviewLines(document);
+  const hasRealFile = Boolean(document.fileDataUrl);
+  const mimeType = (document.fileMimeType ?? "").toLowerCase();
+  const dataUrl = document.fileDataUrl ?? "";
+  const isImage =
+    mimeType.startsWith("image/") ||
+    dataUrl.startsWith("data:image/") ||
+    /\.(png|jpe?g|gif|bmp|webp|svg)$/i.test(document.fileName);
+  const isPdf =
+    mimeType === "application/pdf" ||
+    dataUrl.startsWith("data:application/pdf") ||
+    /\.pdf$/i.test(document.fileName);
   const showInvoicePreview =
     result.resultType === "invoice" || document.documentType.toLowerCase().includes("invoice");
+
+  if (hasRealFile) {
+    return (
+      <div
+        className="mx-auto w-full max-w-[900px] origin-top rounded-[1rem] bg-white p-4 shadow-[0_10px_32px_rgba(15,23,42,0.08)]"
+        style={{ transform: `scale(${previewScale})`, transformOrigin: "top center" }}
+      >
+        {isImage ? (
+          <img
+            alt={document.fileName}
+            className="max-h-[72vh] w-full rounded-lg border border-slate-200 object-contain"
+            src={document.fileDataUrl}
+          />
+        ) : isPdf ? (
+          <iframe
+            className="h-[72vh] w-full rounded-lg border border-slate-200 bg-white"
+            src={document.fileDataUrl}
+            title={document.fileName}
+          />
+        ) : (
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+            This file type cannot be embedded here. Use Open in new tab to view it.
+          </div>
+        )}
+      </div>
+    );
+  }
 
   if (showInvoicePreview) {
     const invoiceLayout = buildInvoiceLineItems(document.amountLabel);
@@ -1104,7 +1159,7 @@ export function AccountantFilingPage() {
 
   function handleDownloadResult(result: UnifiedSearchResult) {
     const document = resolveDocumentForResult(result);
-    downloadPreview(document.fileName, buildPreviewText(document));
+    downloadDocumentFile(document);
     setFeedbackMessage(`${displayResultTitle(result)} downloaded as a preview file.`);
     setOpenMenuResultId("");
   }
@@ -1514,7 +1569,7 @@ export function AccountantFilingPage() {
               </Button>
               <Button
                 className="h-10 flex-1 rounded-xl bg-[linear-gradient(135deg,#4f46e5,#4338ca)] px-4 hover:bg-[linear-gradient(135deg,#4338ca,#3730a3)]"
-                onClick={() => downloadPreview(selectedDocument.fileName, buildPreviewText(selectedDocument))}
+                onClick={() => downloadDocumentFile(selectedDocument)}
               >
                 <DownloadIcon />
                 <span>Download</span>

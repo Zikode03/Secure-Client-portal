@@ -1274,11 +1274,6 @@ const accountantDashboardData: AccountantDashboardData = {
   latestOverallDocuments: latestOverallDocumentsForAccountant,
 };
 
-const reviewWorkspaceData: ReviewWorkspaceData = {
-  queue: accountantDashboardData.reviewQueue,
-  selectedDocument: clientDocuments[0],
-};
-
 const adminPolicies: DocumentPolicy[] = [
   {
     id: "policy-1",
@@ -1405,12 +1400,12 @@ const ADMIN_CLIENT_ASSIGNMENTS_STORAGE_KEY = "secure-client-portal.admin-client-
 
 function readPersistedAdminClients() {
   if (typeof window === "undefined") {
-    return clone(adminDashboardData.clients);
+    return clone(cleanAdminClients);
   }
 
   const raw = window.localStorage.getItem(ADMIN_CLIENT_ASSIGNMENTS_STORAGE_KEY);
   if (!raw) {
-    return clone(adminDashboardData.clients);
+    return clone(cleanAdminClients);
   }
 
   try {
@@ -1420,7 +1415,7 @@ function readPersistedAdminClients() {
       assignedAccountantUserId?: string;
     }>;
     const persistedById = new Map(parsed.map((item) => [item.id, item]));
-    return clone(adminDashboardData.clients).map((client) => {
+    return clone(cleanAdminClients).map((client) => {
       const persisted = persistedById.get(client.id);
       if (!persisted) {
         return client;
@@ -1433,7 +1428,7 @@ function readPersistedAdminClients() {
       };
     });
   } catch {
-    return clone(adminDashboardData.clients);
+    return clone(cleanAdminClients);
   }
 }
 
@@ -1450,47 +1445,184 @@ function persistAdminClients(clients: AdminDashboardData["clients"]) {
   window.localStorage.setItem(ADMIN_CLIENT_ASSIGNMENTS_STORAGE_KEY, JSON.stringify(payload));
 }
 
+function createEmptyReviewDocument(): DocumentRecord {
+  const nowIso = new Date().toISOString();
+  return {
+    id: "doc-empty-seed",
+    clientId: "client-apex",
+    clientName: "Apex Trading Ltd",
+    documentType: "Monthly Pack",
+    fileName: "No_Submitted_Documents_Yet.txt",
+    monthLabel: "April 2026",
+    description: "No submitted documents yet. Upload drafts and submit the monthly pack to start review.",
+    status: "draft",
+    uploadedBy: "Client",
+    uploadedAt: nowIso,
+    sizeLabel: "0 KB",
+    keywordTags: ["empty", "seed"],
+    comments: [],
+    auditTrail: [
+      {
+        id: "audit-empty-seed",
+        status: "Seed reset",
+        actor: "System",
+        timestamp: nowIso,
+        note: "Workspace reset to a clean upload state.",
+      },
+    ],
+  };
+}
+
+function createCleanClientWorkflowSeed(): ClientWorkflowSeed {
+  const cleanSlots = clientWorkflowSeed.monthPack.slots.map((slot) => ({
+    ...slot,
+    status: "missing" as const,
+    progress: 0,
+    lastSubmission: undefined,
+    rejectionReason: undefined,
+  }));
+
+  return {
+    ...clone(clientWorkflowSeed),
+    monthPack: {
+      ...clone(clientWorkflowSeed.monthPack),
+      progressPercent: 0,
+      completedCount: 0,
+      totalCount: cleanSlots.length,
+      canComplete: false,
+      completionMessage:
+        "Upload documents into the required slots. Drafts stay in your workspace until you submit the month.",
+      submissionStatus: "open",
+      submittedAt: undefined,
+      slots: cleanSlots,
+    },
+    documents: [],
+    invoices: [],
+    bankTransactions: [],
+    notifications: [],
+    activity: [],
+    currentMonthInvoiceCount: 0,
+    previousMonthInvoiceCount: 0,
+  };
+}
+
+const cleanClientWorkflowSeed = createCleanClientWorkflowSeed();
+const emptyReviewDocument = createEmptyReviewDocument();
+const cleanAdminClients: AdminDashboardData["clients"] = [
+  {
+    id: "firm-client-1",
+    clientName: "Apex Trading Ltd",
+    industry: "Wholesale",
+    assignedAccountant: "Daniel Mokoena",
+    assignedAccountantUserId: "user-accountant-1",
+    requiredPack: "Trading monthly pack",
+    completionRate: 0,
+    deadlinePolicy: "6th working day",
+    status: "on_track",
+  },
+];
+
+const cleanAccountantDashboardData: AccountantDashboardData = {
+  ...clone(accountantDashboardData),
+  summaryMetrics: [
+    {
+      id: "acc-metric-1",
+      label: "Total clients",
+      value: String(cleanAdminClients.length),
+      helper: "Active clients with structured monthly workflows.",
+      tone: "info",
+    },
+    {
+      id: "acc-metric-2",
+      label: "Clients missing documents",
+      value: "0",
+      helper: "No submitted documents are waiting yet.",
+      tone: "success",
+    },
+    {
+      id: "acc-metric-3",
+      label: "Overdue submissions",
+      value: "0",
+      helper: "No overdue submitted packs.",
+      tone: "success",
+    },
+    {
+      id: "acc-metric-4",
+      label: "Pending review",
+      value: "0",
+      helper: "No documents in review queue yet.",
+      tone: "success",
+    },
+  ],
+  portfolio: [
+    {
+      id: "portfolio-1",
+      clientId: "firm-client-1",
+      clientName: "Apex Trading Ltd",
+      monthLabel: cleanClientWorkflowSeed.monthPack.monthLabel,
+      progressPercent: 0,
+      status: "on_track",
+      assignedAccountant: "Daniel Mokoena",
+      missingCount: 0,
+      overdueCount: 0,
+      deadline: "06 May 2026",
+    },
+  ],
+  reviewQueue: [],
+  deadlines: [],
+  notifications: [],
+  smartAlerts: [],
+  reconciliationIssues: [],
+  missingDocuments: [],
+  expiringDocuments: [],
+  rejectedDocuments: [],
+  latestOverallDocuments: [],
+};
+
+const cleanReviewWorkspaceData: ReviewWorkspaceData = {
+  queue: [],
+  selectedDocument: emptyReviewDocument,
+};
+
 export const portalService = {
   getDemoUser(role: Role) {
     return clone(demoUsers[role]);
   },
   getClientWorkflowSeed() {
-    return clone(clientWorkflowSeed);
+    return clone(cleanClientWorkflowSeed);
   },
   getClientNotifications() {
-    return clone(sharedNotifications);
+    return [];
   },
   getClientComplianceCentre() {
     return getClientComplianceCentreData();
   },
   getClientDocumentCenter(): ClientDocumentCenterData {
     return {
-      latestDocuments: clone(clientDocuments),
-      previousMonthDocuments: clone(
-        clientDocuments.filter((document) => document.monthLabel === "March 2026"),
-      ),
-      expiringDocuments: clone(
-        clientDocuments.filter((document) => Boolean(document.expiryDate)),
-      ),
-      rejectedDocuments: clone(
-        clientDocuments.filter((document) => document.status === "rejected"),
-      ),
+      latestDocuments: [],
+      previousMonthDocuments: [],
+      expiringDocuments: [],
+      rejectedDocuments: [],
     };
   },
   getAccountantDashboard() {
-    return clone(accountantDashboardData);
+    return clone(cleanAccountantDashboardData);
   },
   getAccountantComplianceCentre() {
     return getAccountantComplianceCentreData();
   },
   getAccountantNotifications() {
-    return clone(sharedNotifications);
+    return [];
   },
   getReviewWorkspace() {
-    return clone(reviewWorkspaceData);
+    return clone(cleanReviewWorkspaceData);
   },
   getAdminDashboard() {
-    return clone(adminDashboardData);
+    return clone({
+      ...adminDashboardData,
+      clients: cleanAdminClients,
+      notifications: [],
+    });
   },
   getAdminClients() {
     return readPersistedAdminClients();
@@ -1512,8 +1644,7 @@ export const portalService = {
     return clone(adminPolicies);
   },
   getDocumentById(documentId: string) {
-    const document =
-      clientDocuments.find((item) => item.id === documentId) ?? clientDocuments[0];
+    const document = clientDocuments.find((item) => item.id === documentId) ?? emptyReviewDocument;
     return clone(document);
   },
 };

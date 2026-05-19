@@ -243,6 +243,56 @@ function downloadPreview(fileName: string, content: string) {
   window.URL.revokeObjectURL(url);
 }
 
+function openDocumentInNewTab(record: DocumentRecord) {
+  if (record.fileDataUrl) {
+    const fileWindow = window.open(record.fileDataUrl, "_blank", "noopener,noreferrer");
+    return Boolean(fileWindow);
+  }
+
+  const previewWindow = window.open("", "_blank", "noopener,noreferrer");
+  if (!previewWindow) {
+    return false;
+  }
+
+  const previewText =
+    record.extractedText ??
+    `${record.documentType}\n${record.fileName}\n${record.description}`;
+
+  previewWindow.document.write(`<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${record.fileName}</title>
+    <style>
+      body { margin: 0; padding: 24px; font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif; background: #f8fafc; color: #0f172a; }
+      pre { white-space: pre-wrap; line-height: 1.6; font-size: 14px; }
+    </style>
+  </head>
+  <body>
+    <h1 style="font-size:20px; margin:0 0 12px;">${record.fileName}</h1>
+    <pre>${previewText}</pre>
+  </body>
+</html>`);
+  previewWindow.document.close();
+  return true;
+}
+
+function downloadDocumentFile(record: DocumentRecord) {
+  if (record.fileDataUrl) {
+    const link = window.document.createElement("a");
+    link.href = record.fileDataUrl;
+    link.download = record.fileName;
+    link.click();
+    return;
+  }
+
+  downloadPreview(
+    record.fileName,
+    record.extractedText ?? `${record.documentType}\n${record.fileName}\n${record.description}`,
+  );
+}
+
 function QueueFileIcon({ documentType, fileName }: { documentType: string; fileName: string }) {
 // Render output: this is the visual state users interact with.
   return (
@@ -512,6 +562,18 @@ function PreviewCanvas({
   previewPages: string[][];
   previewZoom: number;
 }) {
+  const hasRealFile = Boolean(document.fileDataUrl);
+  const mimeType = (document.fileMimeType ?? "").toLowerCase();
+  const dataUrl = document.fileDataUrl ?? "";
+  const isImage =
+    mimeType.startsWith("image/") ||
+    dataUrl.startsWith("data:image/") ||
+    /\.(png|jpe?g|gif|bmp|webp|svg)$/i.test(document.fileName);
+  const isPdf =
+    mimeType === "application/pdf" ||
+    dataUrl.startsWith("data:application/pdf") ||
+    /\.pdf$/i.test(document.fileName);
+
   return (
     <div className="flex min-h-[32rem] items-start justify-center overflow-auto bg-[linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)] px-4 py-6">
       <div
@@ -542,17 +604,38 @@ function PreviewCanvas({
             <p className="mt-2 text-sm font-medium text-slate-700">{document.documentType}</p>
           </div>
         </div>
-
-        <div className="mt-6 space-y-3 font-mono text-[0.88rem] leading-7 text-slate-600">
-          {previewPages[previewPage - 1].map((line, index) => (
-            <div className="flex gap-4" key={`${document.id}-preview-${previewPage}-${index}`}>
-              <span className="w-7 shrink-0 text-right text-slate-300">
-                {(previewPage - 1) * previewPages[previewPage - 1].length + index + 1}
-              </span>
-              <p className="min-w-0 flex-1">{line}</p>
-            </div>
-          ))}
-        </div>
+        {hasRealFile ? (
+          <div className="mt-6">
+            {isImage ? (
+              <img
+                alt={document.fileName}
+                className="max-h-[70vh] w-full rounded-lg border border-slate-200 object-contain"
+                src={document.fileDataUrl}
+              />
+            ) : isPdf ? (
+              <iframe
+                className="h-[70vh] w-full rounded-lg border border-slate-200"
+                src={document.fileDataUrl}
+                title={document.fileName}
+              />
+            ) : (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                This file type cannot be embedded here. Use Open in new tab to view it.
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="mt-6 space-y-3 font-mono text-[0.88rem] leading-7 text-slate-600">
+            {previewPages[previewPage - 1].map((line, index) => (
+              <div className="flex gap-4" key={`${document.id}-preview-${previewPage}-${index}`}>
+                <span className="w-7 shrink-0 text-right text-slate-300">
+                  {(previewPage - 1) * previewPages[previewPage - 1].length + index + 1}
+                </span>
+                <p className="min-w-0 flex-1">{line}</p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -1320,18 +1403,24 @@ export function AccountantReviewPage() {
                     <div className="flex flex-wrap items-center justify-between gap-2 rounded-[1rem] border border-slate-200 bg-slate-50/60 px-3 py-2.5">
                       <Button
                         className="h-9 rounded-xl px-3 text-brand-700"
-                        onClick={() =>
-                          downloadPreview(
-                            activeDocument.fileName,
-                            activeDocument.extractedText ??
-                              `${activeDocument.documentType}\n${activeDocument.fileName}\n${activeDocument.description}`,
-                          )
-                        }
+                        onClick={() => downloadDocumentFile(activeDocument)}
                         size="sm"
                         variant="secondary"
                       >
                         <DownloadIcon />
                         <span>Download</span>
+                      </Button>
+                      <Button
+                        className="h-9 rounded-xl px-3 text-slate-700"
+                        onClick={() => {
+                          if (!openDocumentInNewTab(activeDocument)) {
+                            setReviewMessage("Pop-up blocked. Please allow pop-ups to open the file.");
+                          }
+                        }}
+                        size="sm"
+                        variant="secondary"
+                      >
+                        <span>Open in new tab</span>
                       </Button>
                       <div className="flex flex-wrap items-center gap-2">
                       <Button
@@ -1358,59 +1447,61 @@ export function AccountantReviewPage() {
                     </div>
 
                     <section className="overflow-hidden rounded-[1.35rem] border border-slate-200 bg-white">
-                      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <button
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
-                            disabled={previewPage === 1}
-                            onClick={() => setPreviewPage((current) => Math.max(1, current - 1))}
-                            type="button"
-                          >
-                            <ChevronLeftIcon />
-                          </button>
-                          <span className="min-w-[86px] text-center text-sm font-medium text-slate-700">
-                            Page {previewPage} / {previewPages.length}
-                          </span>
-                          <button
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
-                            disabled={previewPage === previewPages.length}
-                            onClick={() =>
-                              setPreviewPage((current) =>
-                                Math.min(previewPages.length, current + 1),
-                              )
-                            }
-                            type="button"
-                          >
-                            <ChevronRightIcon />
-                          </button>
-                        </div>
+                      {!activeDocument.fileDataUrl ? (
+                        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <button
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                              disabled={previewPage === 1}
+                              onClick={() => setPreviewPage((current) => Math.max(1, current - 1))}
+                              type="button"
+                            >
+                              <ChevronLeftIcon />
+                            </button>
+                            <span className="min-w-[86px] text-center text-sm font-medium text-slate-700">
+                              Page {previewPage} / {previewPages.length}
+                            </span>
+                            <button
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                              disabled={previewPage === previewPages.length}
+                              onClick={() =>
+                                setPreviewPage((current) =>
+                                  Math.min(previewPages.length, current + 1),
+                                )
+                              }
+                              type="button"
+                            >
+                              <ChevronRightIcon />
+                            </button>
+                          </div>
 
-                        <div className="flex items-center gap-2">
-                          <button
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
-                            disabled={previewZoom <= 80}
-                            onClick={() =>
-                              setPreviewZoom((current) => Math.max(80, current - 10))
-                            }
-                            type="button"
-                          >
-                            <ZoomOutIcon />
-                          </button>
-                          <span className="min-w-[62px] text-center text-sm font-medium text-slate-700">
-                            {previewZoom}%
-                          </span>
-                          <button
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
-                            disabled={previewZoom >= 140}
-                            onClick={() =>
-                              setPreviewZoom((current) => Math.min(140, current + 10))
-                            }
-                            type="button"
-                          >
-                            <ZoomInIcon />
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                              disabled={previewZoom <= 80}
+                              onClick={() =>
+                                setPreviewZoom((current) => Math.max(80, current - 10))
+                              }
+                              type="button"
+                            >
+                              <ZoomOutIcon />
+                            </button>
+                            <span className="min-w-[62px] text-center text-sm font-medium text-slate-700">
+                              {previewZoom}%
+                            </span>
+                            <button
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                              disabled={previewZoom >= 140}
+                              onClick={() =>
+                                setPreviewZoom((current) => Math.min(140, current + 10))
+                              }
+                              type="button"
+                            >
+                              <ZoomInIcon />
+                            </button>
+                          </div>
                         </div>
-                      </div>
+                      ) : null}
 
                       <PreviewCanvas
                         document={activeDocument}

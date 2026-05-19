@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
+import { buildReviewDocumentFromInvoice } from "../../services/workflowEngine";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { AuditTrail } from "../../components/workflow/AuditTrail";
 import { CommentThread } from "../../components/workflow/CommentThread";
@@ -16,7 +17,7 @@ import { PageHeader } from "../../components/ui/PageHeader";
 import { ProgressBar } from "../../components/ui/ProgressBar";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
-import type { ComplianceDocumentRecord } from "../../types/portal";
+import type { ComplianceDocumentRecord, DocumentRecord } from "../../types/portal";
 import { cn } from "../../utils/cn";
 import { formatDateLabel, formatStatusLabel } from "../../utils/formatters";
 
@@ -45,6 +46,18 @@ type ComplianceWorkspaceTab = (typeof complianceTabs)[number]["id"];
 
 function isWorkspaceTab(value: string | null): value is WorkspaceTab {
   return !!value && workspaceTabs.some((tab) => tab.id === value);
+}
+
+function resolveWorkspaceTab(value: string | null, pathname: string): WorkspaceTab {
+  if (isWorkspaceTab(value)) {
+    return value;
+  }
+
+  if (pathname.endsWith("/packs")) {
+    return "packs";
+  }
+
+  return "packs";
 }
 
 function tabForDocumentType(documentType: string): WorkspaceTab {
@@ -86,11 +99,7 @@ export function AccountantClientWorkspacePage() {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const searchParamString = searchParams.toString();
-  const initialTab = isWorkspaceTab(searchParams.get("tab"))
-    ? searchParams.get("tab")
-    : location.pathname.endsWith("/packs")
-      ? "packs"
-      : "packs";
+  const initialTab = resolveWorkspaceTab(searchParams.get("tab"), location.pathname);
   const [activeTab, setActiveTab] = useState<WorkspaceTab>(initialTab);
   const [activeComplianceView, setActiveComplianceView] = useState<ComplianceWorkspaceTab>(
     (searchParams.get("view") as ComplianceWorkspaceTab | null) ?? "overview",
@@ -109,9 +118,22 @@ export function AccountantClientWorkspacePage() {
     [workspace.documents],
   );
 
+  const workspaceViewDocuments = useMemo<DocumentRecord[]>(() => {
+    const monthLabel = workspace.monthPack.monthLabel;
+    const invoiceDocuments = workspace.invoices
+      .filter((invoice) => invoice.monthLabel === monthLabel)
+      .map((invoice) => buildReviewDocumentFromInvoice(invoice));
+
+    const byId = new Map<string, DocumentRecord>();
+    for (const document of [...invoiceDocuments, ...workspace.documents]) {
+      byId.set(document.id, document);
+    }
+    return [...byId.values()];
+  }, [workspace.documents, workspace.invoices, workspace.monthPack.monthLabel]);
+
   const selectedDocument =
-    workspace.documents.find((document) => document.id === selectedDocumentId) ??
-    workspace.documents[0] ??
+    workspaceViewDocuments.find((document) => document.id === selectedDocumentId) ??
+    workspaceViewDocuments[0] ??
     null;
   const selectedRequest =
     workspace.requests.find((request) => request.id === selectedRequestId) ??
@@ -168,24 +190,25 @@ export function AccountantClientWorkspacePage() {
     if (!activePackDocumentType) {
       return [];
     }
+    if (activePackDocumentType === "Invoices") {
+      return workspace.invoices
+        .filter((invoice) => invoice.monthLabel === workspace.monthPack.monthLabel)
+        .map((invoice) => buildReviewDocumentFromInvoice(invoice));
+    }
     return workspace.documents.filter(
       (document) =>
         document.documentType === activePackDocumentType &&
         document.monthLabel === workspace.monthPack.monthLabel,
     );
-  }, [activePackDocumentType, workspace.documents, workspace.monthPack.monthLabel]);
+  }, [activePackDocumentType, workspace.documents, workspace.invoices, workspace.monthPack.monthLabel]);
 
   useEffect(() => {
-    const requestedTab = isWorkspaceTab(searchParams.get("tab"))
-      ? searchParams.get("tab")
-      : location.pathname.endsWith("/packs")
-        ? "packs"
-        : "packs";
+    const requestedTab = resolveWorkspaceTab(searchParams.get("tab"), location.pathname);
     setActiveTab(requestedTab);
   }, [location.pathname, searchParamString]);
 
   useEffect(() => {
-    if (activeTab !== "documents") {
+    if ((activeTab as string) !== "documents") {
       return;
     }
 
@@ -239,8 +262,9 @@ export function AccountantClientWorkspacePage() {
     });
   }
 
-  function openDocument(_documentId: string) {
-    navigate(`/firm/documents?client=${workspace.client.id}`);
+  function openDocument(documentId: string) {
+    setSelectedDocumentId(documentId);
+    setIsDocumentModalOpen(true);
   }
 
   function handlePackSlotOpen(documentType: string) {
@@ -266,6 +290,12 @@ export function AccountantClientWorkspacePage() {
         message: "This seeded workspace is read-only for document comments outside the live client.",
       };
     }
+    if (selectedDocument.status === "draft") {
+      return {
+        ok: false,
+        message: "This file is still in client draft. Accountants can only view it until submission.",
+      };
+    }
 
     const result = portal.addDocumentComment(
       selectedDocument.id,
@@ -279,6 +309,12 @@ export function AccountantClientWorkspacePage() {
 
   function handleWorkspaceDocumentDecision(decision: WorkspaceDocumentDecision) {
     if (!selectedDocument || !user) {
+      return;
+    }
+    if (selectedDocument.status === "draft") {
+      setDecisionMessage(
+        "This file is still in client draft. You can only view it until the client submits the month pack.",
+      );
       return;
     }
     const trimmedReason = decisionReason.trim();
@@ -511,7 +547,7 @@ export function AccountantClientWorkspacePage() {
                           statusPillClass(slotStatusLabel),
                         )}
                       >
-                        {formatStatusLabel(slotStatusLabel)}
+                        {slotStatusLabel}
                       </span>
                       {activeTab === "packs" ? (
                         <Button
@@ -576,7 +612,7 @@ export function AccountantClientWorkspacePage() {
         </SurfaceCard>
       ) : null}
 
-      {activeTab === "documents" ? (
+      {(activeTab as string) === "documents" ? (
         <section className="mx-auto w-full max-w-[1040px] space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-brand-100 bg-white px-4 py-3">
             <div>
@@ -629,6 +665,11 @@ export function AccountantClientWorkspacePage() {
       >
         <div className="space-y-6">
           {selectedDocument ? <DocumentPreviewPane document={selectedDocument} /> : null}
+          {selectedDocument?.status === "draft" ? (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              This document is in client draft state. Accountant actions are locked until submission.
+            </div>
+          ) : null}
           {selectedDocument ? (
             <section className="space-y-3 rounded-xl border border-brand-100 bg-brand-50/55 p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -641,6 +682,7 @@ export function AccountantClientWorkspacePage() {
                 </span>
                 <textarea
                   className="min-h-[88px] w-full rounded-lg border border-brand-100 bg-white px-3 py-2 text-sm text-brand-700 outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
+                  disabled={selectedDocument.status === "draft"}
                   onChange={(event) => setDecisionReason(event.target.value)}
                   placeholder="Add review notes for the client or team..."
                   value={decisionReason}
@@ -649,6 +691,7 @@ export function AccountantClientWorkspacePage() {
               <div className="grid gap-2 sm:grid-cols-2">
                 <Button
                   className="h-9 rounded-lg border border-amber-200 bg-white text-amber-700 hover:bg-amber-50"
+                  disabled={selectedDocument.status === "draft"}
                   onClick={() => handleWorkspaceDocumentDecision("under_review")}
                   size="sm"
                   variant="secondary"
@@ -657,6 +700,7 @@ export function AccountantClientWorkspacePage() {
                 </Button>
                 <Button
                   className="h-9 rounded-lg border border-brand-200 bg-white text-brand-700 hover:bg-brand-50"
+                  disabled={selectedDocument.status === "draft"}
                   onClick={() => handleWorkspaceDocumentDecision("request_reupload")}
                   size="sm"
                   variant="secondary"
@@ -665,6 +709,7 @@ export function AccountantClientWorkspacePage() {
                 </Button>
                 <Button
                   className="h-9 rounded-lg border border-rose-200 bg-white text-rose-600 hover:bg-rose-50"
+                  disabled={selectedDocument.status === "draft"}
                   onClick={() => handleWorkspaceDocumentDecision("rejected")}
                   size="sm"
                   variant="secondary"
@@ -673,6 +718,7 @@ export function AccountantClientWorkspacePage() {
                 </Button>
                 <Button
                   className="h-9 rounded-lg bg-emerald-600 text-white hover:bg-emerald-500"
+                  disabled={selectedDocument.status === "draft"}
                   onClick={() => handleWorkspaceDocumentDecision("accepted")}
                   size="sm"
                 >
@@ -689,6 +735,12 @@ export function AccountantClientWorkspacePage() {
               comments={selectedDocument.comments}
               currentAuthor={user?.fullName ?? "Accountant"}
               currentRole={user?.role ?? "accountant"}
+              helperText={
+                selectedDocument.status === "draft"
+                  ? "Comments are disabled while this file is still in client draft."
+                  : undefined
+              }
+              readOnly={selectedDocument.status === "draft"}
               onSubmitComment={handleDocumentComment}
             />
           ) : null}

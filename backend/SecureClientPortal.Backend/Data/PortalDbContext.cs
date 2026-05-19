@@ -10,6 +10,7 @@ public class PortalDbContext : DbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<Client> Clients => Set<Client>();
     public DbSet<Document> Documents => Set<Document>();
+    public DbSet<DocumentComment> DocumentComments => Set<DocumentComment>();
     public DbSet<FilingRule> FilingRules => Set<FilingRule>();
     public DbSet<TaskItem> Tasks => Set<TaskItem>();
     public DbSet<RequestItem> Requests => Set<RequestItem>();
@@ -79,7 +80,24 @@ public class PortalDbContext : DbContext
             entity.HasIndex(x => x.UploadedAtUtc);
             entity.ToTable(table =>
             {
-                table.HasCheckConstraint("CK_AppDocuments_Status", "[Status] IN ('pending','under_review','accepted','rejected','filed')");
+                table.HasCheckConstraint("CK_AppDocuments_Status", "[Status] IN ('draft','pending','under_review','accepted','rejected','filed')");
+            });
+        });
+
+        modelBuilder.Entity<DocumentComment>(entity =>
+        {
+            entity.ToTable("AppDocumentComments");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(100);
+            entity.Property(x => x.DocumentId).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.AuthorUserId).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.AuthorRole).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Message).HasMaxLength(2000).IsRequired();
+            entity.Property(x => x.CreatedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()");
+            entity.HasIndex(x => new { x.DocumentId, x.CreatedAtUtc });
+            entity.ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_AppDocumentComments_AuthorRole", "[AuthorRole] IN ('admin','accountant','client')");
             });
         });
 

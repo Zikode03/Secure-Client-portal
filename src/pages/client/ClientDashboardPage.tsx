@@ -26,6 +26,7 @@ import { cn } from "../../utils/cn";
 import { formatDateLabel, formatDateTimeLabel, formatStatusLabel } from "../../utils/formatters";
 
 const readyStatuses = new Set<MonthlyDocumentSlot["status"]>([
+  "draft",
   "uploaded",
   "under_review",
   "accepted",
@@ -535,9 +536,11 @@ export function ClientDashboardPage() {
   const [optionsOpen, setOptionsOpen] = useState(false);
   const {
     activity,
+    documents,
     dismissFeedbackNotice,
     expiringDocuments,
     feedbackNotice,
+    invoices,
     latestOverallDocuments,
     monthPack,
     requests,
@@ -573,6 +576,28 @@ export function ClientDashboardPage() {
   );
 
   const highlightedSlot = useMemo(() => getHighlightedSlot(monthPack), [monthPack]);
+  const existingSlotFileNames = useMemo(() => {
+    if (!selectedSlot) {
+      return [];
+    }
+
+    const targetMonthLabel = `${selectedSlot.month} ${selectedSlot.year}`;
+    const documentFileNames = documents
+      .filter(
+        (document) =>
+          document.documentType === selectedSlot.documentType &&
+          document.monthLabel === targetMonthLabel,
+      )
+      .map((document) => document.fileName);
+    const invoiceFileNames =
+      selectedSlot.documentType.toLowerCase().includes("invoice")
+        ? invoices
+            .filter((invoice) => invoice.monthLabel === targetMonthLabel)
+            .map((invoice) => invoice.fileName)
+        : [];
+
+    return [...documentFileNames, ...invoiceFileNames];
+  }, [documents, invoices, selectedSlot]);
   const expiringPreview = useMemo(() => expiringDocuments.slice(0, 2), [expiringDocuments]);
   const requestsPreview = useMemo(() => requests.slice(0, 2), [requests]);
   const alertsPreview = useMemo(() => smartAlerts.slice(0, 2), [smartAlerts]);
@@ -1086,6 +1111,7 @@ export function ClientDashboardPage() {
 
       <DocumentUploadModal
         clientName={user?.company ?? "Apex Trading Ltd"}
+        existingFileNames={existingSlotFileNames}
         isOpen={uploadModal.isOpen}
         onClose={uploadModal.close}
         onUploaded={uploadToSlot}

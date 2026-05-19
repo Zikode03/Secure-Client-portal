@@ -22,7 +22,13 @@ import type {
   UnifiedSearchResult,
 } from "../types/portal";
 
-const slotReadyStatuses = new Set<SlotStatus>(["uploaded", "under_review", "accepted", "filed"]);
+const slotReadyStatuses = new Set<SlotStatus>([
+  "draft",
+  "uploaded",
+  "under_review",
+  "accepted",
+  "filed",
+]);
 const slotBlockingStatuses = new Set<SlotStatus>([
   "missing",
   "partial",
@@ -531,6 +537,8 @@ export function buildReviewDocumentFromInvoice(invoice: InvoiceRecord): Document
     extractedText: invoice.extractedText,
     rejectionReason: invoice.rejectionReason,
     comments: invoiceComments,
+    fileDataUrl: invoice.fileDataUrl,
+    fileMimeType: invoice.fileMimeType,
     auditTrail: [
       {
         id: `${invoice.id}-audit-1`,

@@ -11,6 +11,7 @@ import { EmptyState } from "../../components/ui/EmptyState";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
 import { useDisclosure } from "../../hooks/useDisclosure";
+import { buildReviewDocumentFromInvoice } from "../../services/workflowEngine";
 import type {
   DocumentRecord,
   MonthlyDocumentSlot,
@@ -429,7 +430,13 @@ export function ClientDocumentsPage() {
     }
 
     if (selectedResult.resultType === "invoice") {
-      return portal.getReviewRecord(selectedResult.id);
+      const exactInvoice = portal.clientWorkflow.invoices.find(
+        (invoice) => invoice.id === selectedResult.id,
+      );
+      if (exactInvoice) {
+        return buildReviewDocumentFromInvoice(exactInvoice);
+      }
+      return null;
     }
 
     const directMatch =
@@ -457,6 +464,28 @@ export function ClientDocumentsPage() {
     () => inferSlotFromResult(selectedResult, portal.clientWorkflow.monthPack.slots),
     [portal.clientWorkflow.monthPack.slots, selectedResult],
   );
+  const existingSlotFileNames = useMemo(() => {
+    if (!selectedSlot) {
+      return [];
+    }
+
+    const targetMonthLabel = `${selectedSlot.month} ${selectedSlot.year}`;
+    const documentFileNames = portal.clientWorkflow.documents
+      .filter(
+        (document) =>
+          document.documentType === selectedSlot.documentType &&
+          document.monthLabel === targetMonthLabel,
+      )
+      .map((document) => document.fileName);
+    const invoiceFileNames =
+      selectedSlot.documentType.toLowerCase().includes("invoice")
+        ? portal.clientWorkflow.invoices
+            .filter((invoice) => invoice.monthLabel === targetMonthLabel)
+            .map((invoice) => invoice.fileName)
+        : [];
+
+    return [...documentFileNames, ...invoiceFileNames];
+  }, [portal.clientWorkflow.documents, portal.clientWorkflow.invoices, selectedSlot]);
 
   const selectedComments = useMemo(() => {
     if (!selectedResult) {
@@ -1443,6 +1472,7 @@ export function ClientDocumentsPage() {
 
       <DocumentUploadModal
         clientName={user?.company ?? "Apex Trading Ltd"}
+        existingFileNames={existingSlotFileNames}
         isOpen={uploadModal.isOpen}
         onClose={uploadModal.close}
         onUploaded={handleUploadToSlot}
@@ -1471,49 +1501,76 @@ export function ClientDocumentsPage() {
             </div>
 
             <div className="bg-[radial-gradient(circle_at_top,#f8fafc_0%,#eef2ff_100%)] px-4 py-6 sm:px-6">
-              <div
-                className="mx-auto w-full max-w-[520px] rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-[0_18px_32px_rgba(15,23,42,0.08)]"
-                style={{ transform: `scale(${previewZoom / 100})`, transformOrigin: "top center" }}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-[1.35rem] font-semibold tracking-tight text-slate-950">{selectedSupplier}</p>
-                    <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                      {selectedResult.typeLabel}
-                    </p>
-                  </div>
-                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[0.72rem] font-semibold text-slate-600">
-                    {selectedResult.monthLabel}
-                  </span>
-                </div>
-
-                <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                    <p className="text-[0.72rem] uppercase tracking-[0.16em] text-slate-400">Reference</p>
-                    <p className="mt-2 text-sm font-semibold text-slate-900">{selectedReference}</p>
-                  </div>
-                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                    <p className="text-[0.72rem] uppercase tracking-[0.16em] text-slate-400">Amount</p>
-                    <p className="mt-2 text-sm font-semibold text-slate-900">{selectedAmount}</p>
-                  </div>
-                </div>
-
-                <div className="mt-5 space-y-3 rounded-[1.2rem] border border-slate-200 bg-white p-4">
-                  {previewLines.length > 0 ? (
-                    previewLines.map((line) => (
-                      <p className="text-[0.85rem] leading-6 text-slate-600" key={line}>
-                        {line}.
-                      </p>
-                    ))
+              {selectedDocument?.fileDataUrl ? (
+                <div className="mx-auto w-full max-w-[900px] rounded-[1.2rem] border border-slate-200 bg-white p-4 shadow-[0_18px_32px_rgba(15,23,42,0.08)]">
+                  {(() => {
+                    const mimeType = (selectedDocument.fileMimeType ?? "").toLowerCase();
+                    const dataUrl = selectedDocument.fileDataUrl ?? "";
+                    const isImage =
+                      mimeType.startsWith("image/") ||
+                      dataUrl.startsWith("data:image/") ||
+                      /\.(png|jpe?g|gif|bmp|webp|svg)$/i.test(selectedDocument.fileName);
+                    return isImage;
+                  })() ? (
+                    <img
+                      alt={selectedDocument.fileName}
+                      className="max-h-[72vh] w-full rounded-lg object-contain"
+                      src={selectedDocument.fileDataUrl}
+                      style={{ transform: `scale(${previewZoom / 100})`, transformOrigin: "top center" }}
+                    />
                   ) : (
-                    <>
-                      <div className="h-3 w-4/5 rounded-full bg-slate-100" />
-                      <div className="h-3 w-5/6 rounded-full bg-slate-100" />
-                      <div className="h-3 w-3/5 rounded-full bg-slate-100" />
-                    </>
+                    <iframe
+                      className="h-[72vh] w-full rounded-lg border border-slate-200 bg-white"
+                      src={selectedDocument.fileDataUrl}
+                      title={selectedDocument.fileName}
+                    />
                   )}
                 </div>
-              </div>
+              ) : (
+                <div
+                  className="mx-auto w-full max-w-[520px] rounded-[1.5rem] border border-slate-200 bg-white p-5 shadow-[0_18px_32px_rgba(15,23,42,0.08)]"
+                  style={{ transform: `scale(${previewZoom / 100})`, transformOrigin: "top center" }}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[1.35rem] font-semibold tracking-tight text-slate-950">{selectedSupplier}</p>
+                      <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
+                        {selectedResult.typeLabel}
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[0.72rem] font-semibold text-slate-600">
+                      {selectedResult.monthLabel}
+                    </span>
+                  </div>
+
+                  <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                      <p className="text-[0.72rem] uppercase tracking-[0.16em] text-slate-400">Reference</p>
+                      <p className="mt-2 text-sm font-semibold text-slate-900">{selectedReference}</p>
+                    </div>
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
+                      <p className="text-[0.72rem] uppercase tracking-[0.16em] text-slate-400">Amount</p>
+                      <p className="mt-2 text-sm font-semibold text-slate-900">{selectedAmount}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 space-y-3 rounded-[1.2rem] border border-slate-200 bg-white p-4">
+                    {previewLines.length > 0 ? (
+                      previewLines.map((line) => (
+                        <p className="text-[0.85rem] leading-6 text-slate-600" key={line}>
+                          {line}.
+                        </p>
+                      ))
+                    ) : (
+                      <>
+                        <div className="h-3 w-4/5 rounded-full bg-slate-100" />
+                        <div className="h-3 w-5/6 rounded-full bg-slate-100" />
+                        <div className="h-3 w-3/5 rounded-full bg-slate-100" />
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3">

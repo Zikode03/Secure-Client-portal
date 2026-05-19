@@ -260,7 +260,7 @@ function findAccountantByName(accountantName: string) {
   return initialAccountants.find((accountant) => accountant.name === accountantName);
 }
 
-const CLIENT_PORTAL_STORAGE_KEY = "accounting-document-control-client-portal";
+const CLIENT_PORTAL_STORAGE_KEY = "accounting-document-control-client-portal-v2";
 
 // Component flow: gather data first, then render a focused UI state.
 function createInitialMonthPack(seed: ClientWorkflowSeed) {
@@ -1269,17 +1269,14 @@ export function PortalProvider({ children }: { children: ReactNode }) {
         documents,
         invoices,
         monthPack,
-        requests: liveClientRequests,
-        complianceDocuments: clientComplianceCentre.categoryGroups.flatMap(
-          (group) => group.documents,
-        ),
+        // Keep document workspace data clean: only live document/invoice records.
+        requests: [],
+        complianceDocuments: [],
       }),
     [
-      clientComplianceCentre.categoryGroups,
       clientProfile.legalName,
       documents,
       invoices,
-      liveClientRequests,
       monthPack,
     ],
   );
@@ -1324,10 +1321,103 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     ],
   );
 
-  function isStrictUploadName(value: string) {
+function isStrictUploadName(value: string) {
   return /^[A-Za-z0-9]+_[A-Za-z0-9]+_[A-Za-z]+_\d{4}\.(pdf|png|jpe?g|docx|xlsx)$/i.test(
     value.trim(),
   );
+}
+
+function isSlotDocumentTypeMatch(slotType: string, submittedType: string) {
+  return slotType.trim().toLowerCase() === submittedType.trim().toLowerCase();
+}
+
+function isLikelyWrongSlotFile(fileName: string, slotType: string) {
+  const name = fileName.toLowerCase();
+  const slot = slotType.toLowerCase();
+
+  if (slot.includes("bank statement")) {
+    return name.includes("invoice") || name.includes("inv-");
+  }
+
+  if (slot.includes("invoice")) {
+    return name.includes("statement") || name.includes("bank");
+  }
+
+  return false;
+}
+
+function normaliseAcceptedFileToken(value: string) {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function fileExtension(value: string) {
+  return value.split(".").pop()?.toLowerCase() ?? "";
+}
+
+function isAcceptedFileForSlot(
+  fileName: string,
+  fileMimeType: string | undefined,
+  acceptedFiles: string[],
+) {
+  if (acceptedFiles.length === 0) {
+    return true;
+  }
+
+  const ext = fileExtension(fileName);
+  const mime = (fileMimeType ?? "").toLowerCase();
+  const accepted = acceptedFiles.map((item) => normaliseAcceptedFileToken(item));
+
+  return accepted.some((token) => {
+    if (token === "pdf") {
+      return ext === "pdf" || mime === "application/pdf";
+    }
+    if (token === "png") {
+      return ext === "png" || mime === "image/png";
+    }
+    if (token === "jpg" || token === "jpeg") {
+      return ext === "jpg" || ext === "jpeg" || mime === "image/jpeg";
+    }
+    if (token === "docx") {
+      return (
+        ext === "docx" ||
+        mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      );
+    }
+    if (token === "xlsx") {
+      return (
+        ext === "xlsx" ||
+        mime === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      );
+    }
+    if (token === "csv") {
+      return ext === "csv" || mime === "text/csv";
+    }
+    if (token === "zip") {
+      return ext === "zip" || mime === "application/zip" || mime === "application/x-zip-compressed";
+    }
+    return token === ext;
+  });
+}
+
+function violatesSlotIntent(fileName: string, slotType: string) {
+  const name = fileName.toLowerCase();
+  const slot = slotType.toLowerCase();
+
+  if (slot.includes("bank statement")) {
+    const hasBankSignal = /(bank|statement|stmt)/i.test(name);
+    return !hasBankSignal;
+  }
+
+  if (slot.includes("invoice")) {
+    const hasInvoiceSignal = /(invoice|inv|bill|receipt)/i.test(name);
+    return !hasInvoiceSignal;
+  }
+
+  return false;
+}
+
+function normaliseFileToken(value: string) {
+  return value.trim().toLowerCase();
 }
 
 const assignedAccountantForApex =
@@ -1363,6 +1453,73 @@ const assignedAccountantForApex =
       };
     }
 
+    if (!isSlotDocumentTypeMatch(targetSlot.documentType, submission.documentType)) {
+      return {
+        ok: false,
+        message: `Upload blocked: this is the ${targetSlot.documentType} slot, but the selected document type is ${submission.documentType}.`,
+      };
+    }
+
+    if (isLikelyWrongSlotFile(submission.fileName, targetSlot.documentType)) {
+      return {
+        ok: false,
+        message: `Upload blocked: the file name looks like it belongs to a different slot. Upload ${targetSlot.documentType} here.`,
+      };
+    }
+
+    if (
+      !isAcceptedFileForSlot(
+        submission.fileName,
+        submission.fileMimeType,
+        targetSlot.acceptedFiles,
+      )
+    ) {
+      return {
+        ok: false,
+        message: `Upload blocked: ${targetSlot.documentType} accepts only ${targetSlot.acceptedFiles.join(", ")} files.`,
+      };
+    }
+
+    if (violatesSlotIntent(submission.fileName, targetSlot.documentType)) {
+      return {
+        ok: false,
+        message: `Upload blocked: file naming does not match the ${targetSlot.documentType} slot intent. Rename the file with a clear ${targetSlot.documentType.toLowerCase()} reference and try again.`,
+      };
+    }
+
+    const targetMonthLabel = `${submission.month} ${submission.year}`;
+    const submittedAutoName = normaliseFileToken(submission.autoName);
+    const submittedOriginalName = normaliseFileToken(submission.fileName);
+    const duplicateDocument = documents.some((document) => {
+      if (
+        document.documentType !== submission.documentType ||
+        document.monthLabel !== targetMonthLabel
+      ) {
+        return false;
+      }
+
+      const existingName = normaliseFileToken(document.fileName);
+      return existingName === submittedAutoName || existingName === submittedOriginalName;
+    });
+    const duplicateInvoice = submission.documentType.toLowerCase().includes("invoice")
+      ? invoices.some((invoice) => {
+          if (invoice.monthLabel !== targetMonthLabel) {
+            return false;
+          }
+
+          const existingName = normaliseFileToken(invoice.fileName);
+          return existingName === submittedAutoName || existingName === submittedOriginalName;
+        })
+      : false;
+
+    if (duplicateDocument || duplicateInvoice) {
+      return {
+        ok: false,
+        message:
+          "Upload blocked: this file was already uploaded for this slot and month. Remove duplicates and upload only new documents.",
+      };
+    }
+
     const actorName = actor.fullName || actor.name;
     const wasRejected = targetSlot.status === "rejected";
 
@@ -1374,8 +1531,9 @@ const assignedAccountantForApex =
           slot.id === submission.slotId
             ? {
                 ...slot,
-                status: "uploaded",
-                progress: 100,
+                // Keep client uploads in draft until the monthly pack is formally submitted.
+                status: "draft",
+                progress: 70,
                 lastSubmission: uploadedAt,
                 rejectionReason: undefined,
               }
@@ -1393,13 +1551,16 @@ const assignedAccountantForApex =
         fileName: submission.autoName,
         monthLabel: `${submission.month} ${submission.year}`,
         description: submission.description,
-        status: "uploaded",
+        // Draft uploads are visible to the client, but not yet queued for accountant review.
+        status: "draft",
         uploadedBy: actorName,
         uploadedAt,
         sizeLabel: "New upload",
         keywordTags: [submission.documentType.toLowerCase(), submission.month.toLowerCase()],
         expiryDate: submission.expiryDate || undefined,
         comments: [],
+        fileDataUrl: submission.fileDataUrl,
+        fileMimeType: submission.fileMimeType,
         auditTrail: [
           {
             id: `audit-${documents.length + 4001}`,
@@ -1432,8 +1593,10 @@ const assignedAccountantForApex =
           description: submission.description,
           amountLabel: "R 0.00",
           uploadedAt,
-          status: "uploaded",
+          status: "draft",
           keywordTags: ["invoice", submission.month.toLowerCase()],
+          fileDataUrl: submission.fileDataUrl,
+          fileMimeType: submission.fileMimeType,
         },
         ...current,
       ]);
@@ -1457,8 +1620,8 @@ const assignedAccountantForApex =
     return {
       ok: true,
       message: wasRejected
-        ? `${targetSlot.documentType} re-uploaded successfully. The corrected version is now back in the workflow.`
-        : `${targetSlot.documentType} uploaded successfully. The file is now tied to the correct checklist slot.`,
+        ? `${targetSlot.documentType} re-uploaded successfully and saved as a draft for this month.`
+        : `${targetSlot.documentType} uploaded successfully and saved as a draft for this month.`,
     };
   }
 
@@ -1490,11 +1653,63 @@ const assignedAccountantForApex =
     }
 
     const submittedAt = new Date().toISOString();
-    setMonthPack({
-      ...nextPack,
-      submissionStatus: "under_accountant_review",
-      submittedAt,
-    });
+    // Submit the month: draft slot content is now sent to the accountant queue.
+    setMonthPack(
+      recalculatePack({
+        ...nextPack,
+        submissionStatus: "under_accountant_review",
+        submittedAt,
+        slots: nextPack.slots.map((slot) =>
+          slot.status === "draft"
+            ? {
+                ...slot,
+                status: "uploaded",
+                progress: Math.max(slot.progress, 100),
+              }
+            : slot,
+        ),
+      }),
+    );
+    setDocuments((current) =>
+      current.map((document) =>
+        document.monthLabel === nextPack.monthLabel && document.status === "draft"
+          ? {
+              ...document,
+              status: "uploaded",
+              auditTrail: [
+                {
+                  id: `audit-${document.auditTrail.length + 6001}`,
+                  status: "Submitted",
+                  actor: actorName,
+                  timestamp: submittedAt,
+                  note: `${document.documentType} moved from draft to submitted as part of monthly pack submission.`,
+                },
+                ...document.auditTrail,
+              ],
+            }
+          : document,
+      ),
+    );
+    setInvoices((current) =>
+      current.map((invoice) =>
+        invoice.monthLabel === nextPack.monthLabel && invoice.status === "draft"
+          ? {
+              ...invoice,
+              status: "uploaded",
+              auditTrail: [
+                {
+                  id: `invoice-audit-${(invoice.auditTrail?.length ?? 0) + 1}`,
+                  status: "Submitted",
+                  actor: actorName,
+                  timestamp: submittedAt,
+                  note: "Invoice moved from draft to submitted as part of monthly pack submission.",
+                },
+                ...(invoice.auditTrail ?? []),
+              ],
+            }
+          : invoice,
+      ),
+    );
     setActivity((current) =>
       appendActivity(
         current,

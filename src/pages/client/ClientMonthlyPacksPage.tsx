@@ -36,6 +36,7 @@ function downloadSlotFile(slot: MonthlyDocumentSlot, clientName: string) {
 }
 
 const readyStatuses = new Set<MonthlyDocumentSlot["status"]>([
+  "draft",
   "uploaded",
   "under_review",
   "accepted",
@@ -227,8 +228,10 @@ export function ClientMonthlyPacksPage() {
 // Local UI state: keeps track of what the user is seeing or editing right now.
   const {
     clientName,
+    documents,
     dismissFeedbackNotice,
     feedbackNotice,
+    invoices,
     monthPack,
     previousMonthComparison,
     showFeedbackNotice,
@@ -285,6 +288,28 @@ export function ClientMonthlyPacksPage() {
       null,
     [blockingSlots, monthPack.slots, requiredSlots],
   );
+  const existingSlotFileNames = useMemo(() => {
+    if (!selectedSlot) {
+      return [];
+    }
+
+    const targetMonthLabel = `${selectedSlot.month} ${selectedSlot.year}`;
+    const documentFileNames = documents
+      .filter(
+        (document) =>
+          document.documentType === selectedSlot.documentType &&
+          document.monthLabel === targetMonthLabel,
+      )
+      .map((document) => document.fileName);
+    const invoiceFileNames =
+      selectedSlot.documentType.toLowerCase().includes("invoice")
+        ? invoices
+            .filter((invoice) => invoice.monthLabel === targetMonthLabel)
+            .map((invoice) => invoice.fileName)
+        : [];
+
+    return [...documentFileNames, ...invoiceFileNames];
+  }, [documents, invoices, selectedSlot]);
 
   const submissionState = useMemo(() => {
     if (monthPack.submissionStatus === "under_accountant_review") {
@@ -540,6 +565,7 @@ export function ClientMonthlyPacksPage() {
 
       <DocumentUploadModal
         clientName={clientName ?? user?.company ?? "Apex Trading Ltd"}
+        existingFileNames={existingSlotFileNames}
         isOpen={uploadModal.isOpen}
         onClose={uploadModal.close}
         onUploaded={uploadToSlot}

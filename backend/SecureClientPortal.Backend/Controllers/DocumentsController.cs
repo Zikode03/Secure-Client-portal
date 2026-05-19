@@ -9,6 +9,7 @@ namespace SecureClientPortal.Backend.Controllers;
 
 public record UpdateDocumentStatusRequest(string Status);
 public record FilingRuleUpdateRequest(bool IsEnabled);
+public record AddDocumentCommentRequest(string Message);
 
 [ApiController]
 [Route("api/documents")]
@@ -69,6 +70,14 @@ public class DocumentsController : ControllerBase
     public async Task<ActionResult<Document>> Create([FromBody] Document request)
     {
         if (string.IsNullOrWhiteSpace(request.Id)) request.Id = $"doc_{Guid.NewGuid():N}";
+        var normalizedStatus = string.IsNullOrWhiteSpace(request.Status)
+            ? "draft"
+            : request.Status.Trim().ToLowerInvariant();
+        if (!IsAllowedStatus(normalizedStatus))
+        {
+            return BadRequest(new { error = "Invalid status value." });
+        }
+        request.Status = normalizedStatus;
         request.UploadedAtUtc = DateTime.UtcNow;
         request.UpdatedAtUtc = request.UploadedAtUtc;
 
@@ -95,9 +104,13 @@ public class DocumentsController : ControllerBase
         item.Name = request.Name;
         item.Category = request.Category;
         var normalizedStatus = request.Status.Trim().ToLowerInvariant();
-        if (normalizedStatus is not ("pending" or "under_review" or "accepted" or "rejected" or "filed"))
+        if (!IsAllowedStatus(normalizedStatus))
         {
             return BadRequest(new { error = "Invalid status value." });
+        }
+        if (IsDraftLockedTransition(item.Status, normalizedStatus))
+        {
+            return BadRequest(new { error = "Draft documents are view-only for accountant actions until submitted by client." });
         }
         item.SizeBytes = request.SizeBytes;
         item.StorageKey = request.StorageKey;
@@ -114,13 +127,57 @@ public class DocumentsController : ControllerBase
         if (item is null) return NotFound();
 
         var normalizedStatus = request.Status.Trim().ToLowerInvariant();
-        if (normalizedStatus is not ("pending" or "under_review" or "accepted" or "rejected" or "filed"))
+        if (!IsAllowedStatus(normalizedStatus))
         {
             return BadRequest(new { error = "Invalid status value." });
+        }
+        if (IsDraftLockedTransition(item.Status, normalizedStatus))
+        {
+            return BadRequest(new { error = "Draft documents are view-only for accountant actions until submitted by client." });
         }
 
         await ApplyStatusAndFilingAsync(item, normalizedStatus);
         return Ok(item);
+    }
+
+    // Commenting on draft files by accountant/admin is disallowed until client submission.
+    [HttpPost("{id}/comments")]
+    public async Task<ActionResult<DocumentComment>> AddComment(string id, [FromBody] AddDocumentCommentRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Message))
+        {
+            return BadRequest(new { error = "Comment message is required." });
+        }
+
+        var item = await _db.Documents.FindAsync(id);
+        if (item is null) return NotFound();
+
+        var isAccountantSide = User.IsInRole("accountant") || User.IsInRole("admin");
+        if (isAccountantSide && item.Status.Trim().ToLowerInvariant() == "draft")
+        {
+            return BadRequest(new { error = "Comments are disabled while the document is still in client draft state." });
+        }
+
+        var authorId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value ?? "unknown";
+        var authorRole = User.IsInRole("admin")
+            ? "admin"
+            : User.IsInRole("accountant")
+                ? "accountant"
+                : "client";
+
+        var comment = new DocumentComment
+        {
+            Id = $"dc_{Guid.NewGuid():N}",
+            DocumentId = item.Id,
+            AuthorUserId = authorId,
+            AuthorRole = authorRole,
+            Message = request.Message.Trim(),
+            CreatedAtUtc = DateTime.UtcNow,
+        };
+
+        _db.DocumentComments.Add(comment);
+        await _db.SaveChangesAsync();
+        return Ok(comment);
     }
 
     [HttpDelete("{id}")]
@@ -160,6 +217,24 @@ public class DocumentsController : ControllerBase
             "debit_notes" => "debit_notes",
             _ => raw
         };
+    }
+
+    private static bool IsAllowedStatus(string value)
+    {
+        return value is "draft" or "pending" or "under_review" or "accepted" or "rejected" or "filed";
+    }
+
+    private static bool IsDraftLockedTransition(string currentStatus, string nextStatus)
+    {
+        var current = currentStatus.Trim().ToLowerInvariant();
+        var next = nextStatus.Trim().ToLowerInvariant();
+        if (current != "draft")
+        {
+            return false;
+        }
+
+        // Client submission may move draft -> pending. Accountant outcomes must stay blocked.
+        return next is "under_review" or "accepted" or "rejected" or "filed";
     }
 
     // Keeps status updates consistent across endpoints and enforces auto-filing policy.

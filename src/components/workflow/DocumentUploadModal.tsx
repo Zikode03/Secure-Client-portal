@@ -12,6 +12,7 @@ import { TextField } from "../ui/TextField";
 // Shared shape notes: these types keep UI and data contracts aligned.
 interface DocumentUploadModalProps {
   clientName: string;
+  existingFileNames?: string[];
   isOpen: boolean;
   selectedSlot: MonthlyDocumentSlot | null;
   onClose: () => void;
@@ -47,6 +48,42 @@ const allowedTypes = [
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 ];
+
+function normaliseAcceptedFileToken(value: string) {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function fileExtension(value: string) {
+  return value.split(".").pop()?.toLowerCase() ?? "";
+}
+
+function matchesAcceptedFiles(file: File, acceptedFiles: string[]) {
+  if (acceptedFiles.length === 0) {
+    return true;
+  }
+
+  const ext = fileExtension(file.name);
+  const accepted = acceptedFiles.map((item) => normaliseAcceptedFileToken(item));
+
+  const extensionMap: Record<string, string[]> = {
+    pdf: ["pdf"],
+    png: ["png"],
+    jpg: ["jpg", "jpeg"],
+    jpeg: ["jpg", "jpeg"],
+    docx: ["docx"],
+    xlsx: ["xlsx"],
+    csv: ["csv"],
+    zip: ["zip"],
+  };
+
+  return accepted.some((token) => {
+    const mapped = extensionMap[token];
+    if (mapped) {
+      return mapped.includes(ext);
+    }
+    return token === ext;
+  });
+}
 
 // Component flow: gather data first, then render a focused UI state.
 function sanitiseNameSegment(value: string) {
@@ -84,6 +121,7 @@ function shouldTrackExpiryDate(documentType: string, selectedSlot: MonthlyDocume
 
 export function DocumentUploadModal({
   clientName,
+  existingFileNames = [],
   isOpen,
   onClose,
   onUploaded,
@@ -117,8 +155,11 @@ export function DocumentUploadModal({
   }, [clientName, selectedSlot]);
 
   const documentTypeOptions = useMemo(() => {
+    // Lock type to the structured slot to prevent cross-slot misfiling.
     const uniqueDocumentTypes = new Set(
-      [selectedSlot?.documentType, ...baseDocumentTypes].filter(Boolean),
+      selectedSlot?.documentType
+        ? [selectedSlot.documentType]
+        : baseDocumentTypes,
     );
 
     return [...uniqueDocumentTypes].map((value) => ({
@@ -139,6 +180,10 @@ export function DocumentUploadModal({
     () => shouldTrackExpiryDate(documentType, selectedSlot),
     [documentType, selectedSlot],
   );
+  const normalisedExistingNames = useMemo(
+    () => new Set(existingFileNames.map((name) => name.trim().toLowerCase())),
+    [existingFileNames],
+  );
 
   function validateFile(file: File) {
     if (!allowedTypes.includes(file.type)) {
@@ -151,6 +196,14 @@ export function DocumentUploadModal({
 
     if (hasGenericFileName(file.name)) {
       return "File name is too generic. Rename it to something specific like INV_May_ABCCompany_2026.pdf before uploading.";
+    }
+
+    if (normalisedExistingNames.has(file.name.trim().toLowerCase())) {
+      return "This file was already uploaded for this slot and month. Remove duplicates and upload only new documents.";
+    }
+
+    if (selectedSlot && !matchesAcceptedFiles(file, selectedSlot.acceptedFiles)) {
+      return `This slot only accepts: ${selectedSlot.acceptedFiles.join(", ")}.`;
     }
 
     return "";
@@ -171,7 +224,16 @@ export function DocumentUploadModal({
     setErrors((current) => ({ ...current, file: "" }));
   }
 
-  function handleSubmit() {
+  function readFileAsDataUrl(file: File) {
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result ?? ""));
+      reader.onerror = () => reject(new Error("Could not read file"));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function handleSubmit() {
     const nextErrors: Record<string, string> = {};
 
     if (!selectedSlot) {
@@ -210,6 +272,26 @@ export function DocumentUploadModal({
       return;
     }
 
+    const normalisedAutoName = autoNamePreview.trim().toLowerCase();
+    if (normalisedExistingNames.has(normalisedAutoName)) {
+      setErrors((current) => ({
+        ...current,
+        file: "This file already exists in this slot for this month.",
+      }));
+      return;
+    }
+
+    let fileDataUrl = "";
+    try {
+      fileDataUrl = await readFileAsDataUrl(selectedFile);
+    } catch {
+      setErrors((current) => ({
+        ...current,
+        file: "Could not prepare this file for preview. Please try again.",
+      }));
+      return;
+    }
+
     onUploaded({
       slotId: selectedSlot.id,
       fileName: selectedFile.name,
@@ -220,6 +302,8 @@ export function DocumentUploadModal({
       year: Number(year),
       description,
       expiryDate: expiryDate || undefined,
+      fileDataUrl,
+      fileMimeType: selectedFile.type,
     });
     onClose();
   }
