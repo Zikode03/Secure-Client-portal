@@ -909,7 +909,7 @@ export function AccountantDocumentsPage() {
   const viewerTabs = useMemo(
     () => [
       { id: "details" as const, label: "Details" },
-      { id: "history" as const, label: "History" },
+      { id: "history" as const, label: "Workflow log" },
       { id: "related" as const, label: "Related" },
     ],
     [],
@@ -1015,11 +1015,6 @@ export function AccountantDocumentsPage() {
     handleOpenResultTab(result, "details");
   }
 
-  function handleViewVersionHistory(result: UnifiedSearchResult) {
-    handleOpenResultTab(result, "history");
-    setFeedbackMessage(`Opened version history for ${displayResultTitle(result)}.`);
-  }
-
   function handleDownloadResult(result: UnifiedSearchResult) {
     const document = resolveDocumentForResult(result);
     downloadPreview(document.fileName, buildPreviewText(document));
@@ -1037,7 +1032,10 @@ export function AccountantDocumentsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[1280px] space-y-6">
+    <div
+      className="mx-auto max-w-[1280px] space-y-6"
+      onClick={() => setOpenMenuResultId("")}
+    >
       <section className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-1.5">
           <h1 className="text-[2.05rem] font-semibold tracking-tight text-slate-950">
@@ -1317,18 +1315,22 @@ export function AccountantDocumentsPage() {
                           <button
                             aria-label="Open result actions"
                             className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
-                            onClick={() =>
+                            onClick={(event) => {
+                              event.stopPropagation();
                               setOpenMenuResultId((current) =>
                                 current === result.id ? "" : result.id,
-                              )
-                            }
+                              );
+                            }}
                             type="button"
                           >
                             <MoreHorizontalIcon />
                           </button>
 
                           {openMenuResultId === result.id ? (
-                            <div className="absolute right-0 top-[calc(100%+0.45rem)] z-10 min-w-[220px] rounded-[1rem] border border-slate-200 bg-white p-2 shadow-[0_20px_42px_rgba(15,23,42,0.14)]">
+                            <div
+                              className="absolute right-0 top-[calc(100%+0.45rem)] z-10 min-w-[220px] rounded-[1rem] border border-slate-200 bg-white p-2 shadow-[0_20px_42px_rgba(15,23,42,0.14)]"
+                              onClick={(event) => event.stopPropagation()}
+                            >
                               <button
                                 className="block w-full rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
                                 onClick={() => handleOpenResult(result)}
@@ -1342,13 +1344,6 @@ export function AccountantDocumentsPage() {
                                 type="button"
                               >
                                 Download
-                              </button>
-                              <button
-                                className="block w-full rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
-                                onClick={() => handleViewVersionHistory(result)}
-                                type="button"
-                              >
-                                View version history
                               </button>
                             </div>
                           ) : null}
@@ -1576,8 +1571,8 @@ export function AccountantDocumentsPage() {
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                    Filed records are read-only. Review actions are only available before filing.
+                  <div className="rounded-xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-700">
+                    This is the active workflow view. Use workspace actions to review, return, reject, or accept this document.
                   </div>
                 </div>
               ) : null}
@@ -1587,7 +1582,7 @@ export function AccountantDocumentsPage() {
                   <AuditTrail entries={selectedDocument.auditTrail} />
                 ) : (
                   <EmptyState
-                    description="History will appear here once this record has moved through the workflow."
+                    description="Workflow events appear here as this item moves through review and approval."
                     title="No history yet"
                   />
                 )

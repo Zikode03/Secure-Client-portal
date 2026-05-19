@@ -440,7 +440,7 @@ export function AccountantClientWorkspacePage() {
               <div>Document slot</div>
               <div>Required</div>
               <div>Due date</div>
-              <div className="text-right">Status and action</div>
+              <div className="text-right">Pack progress</div>
             </div>
             <div className="divide-y divide-brand-100/70">
             {visiblePackSlots.map((slot) => (
@@ -460,16 +460,19 @@ export function AccountantClientWorkspacePage() {
                 const hasUnderReview = relatedDocs.some((document) =>
                   document.status.toLowerCase().includes("review"),
                 );
+                const hasAccepted = relatedDocs.some((document) =>
+                  document.status.toLowerCase().includes("accept"),
+                );
                 const slotStatusLabel =
                   relatedDocs.length === 0
-                    ? slot.status
-                    : hasRejected && hasUnderReview
-                      ? "Attention"
-                      : hasRejected
-                        ? "Rejected"
-                        : hasUnderReview
-                          ? "Under Review"
-                          : slot.status;
+                    ? "Not submitted"
+                    : hasRejected
+                      ? "Needs correction"
+                      : hasUnderReview
+                        ? "In review"
+                        : hasAccepted
+                          ? "Submitted"
+                          : "Uploaded";
 
                 return (
                   <div
@@ -517,7 +520,7 @@ export function AccountantClientWorkspacePage() {
                           size="sm"
                           variant="secondary"
                         >
-                          Open
+                          View files
                         </Button>
                       ) : null}
                     </div>

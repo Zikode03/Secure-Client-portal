@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
-import { AuditTrail } from "../../components/workflow/AuditTrail";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
@@ -49,6 +48,15 @@ const resultsPerPage = 7;
 // Shared shape notes: these types keep UI and data contracts aligned.
 type ResultTab = "all" | "documents" | "invoices" | "requests" | "compliance";
 type ViewerTab = "details" | "history" | "related";
+type FiledHistoryEntry = {
+  id: string;
+  actionLabel: string;
+  actor: string;
+  isFinalFiledVersion: boolean;
+  note: string;
+  timestamp: string;
+  versionLabel: string;
+};
 const allowedFilingTypeLabels = new Set([
   "bank statement",
   "invoices",
@@ -244,6 +252,56 @@ function isAllowedFilingType(result: UnifiedSearchResult) {
     return true;
   }
   return allowedFilingTypeLabels.has(result.typeLabel.trim().toLowerCase());
+}
+
+function buildFiledHistoryEntries(document: DocumentRecord): FiledHistoryEntry[] {
+  const sortedTrail = [...document.auditTrail].sort(
+    (left, right) =>
+      new Date(left.timestamp).getTime() - new Date(right.timestamp).getTime(),
+  );
+
+  const entries = sortedTrail.map((entry, index) => {
+    const normalizedStatus = entry.status.trim().toLowerCase();
+    const actionLabel =
+      normalizedStatus.includes("accepted")
+        ? "Accepted by accountant"
+        : normalizedStatus.includes("reject")
+          ? "Rejected during review"
+          : normalizedStatus.includes("review")
+            ? "Under review"
+            : normalizedStatus.includes("submit") || normalizedStatus.includes("upload")
+              ? "Uploaded by client"
+              : entry.status;
+
+    return {
+      id: entry.id,
+      actionLabel,
+      actor: entry.actor,
+      isFinalFiledVersion: false,
+      note: entry.note,
+      timestamp: entry.timestamp,
+      versionLabel: `v${index + 1}`,
+    };
+  });
+
+  if (entries.length === 0) {
+    return [];
+  }
+
+  const acceptedIndex =
+    [...entries]
+      .map((entry, index) => ({ entry, index }))
+      .reverse()
+      .find((item) => item.entry.actionLabel === "Accepted by accountant")?.index ??
+    entries.length - 1;
+
+  entries[acceptedIndex] = {
+    ...entries[acceptedIndex],
+    actionLabel: "Filed (accepted and locked)",
+    isFinalFiledVersion: true,
+  };
+
+  return entries.reverse();
 }
 
 function buildSelectOptions(values: string[], allLabel: string) {
@@ -834,6 +892,10 @@ export function AccountantFilingPage() {
 
     return resolveDocumentForResult(selectedResult);
   }, [portal, selectedResult]);
+  const filedHistoryEntries = useMemo(
+    () => (selectedDocument ? buildFiledHistoryEntries(selectedDocument) : []),
+    [selectedDocument],
+  );
 
   const tabCounts = useMemo(
     () => ({
@@ -928,9 +990,9 @@ export function AccountantFilingPage() {
 
   const viewerTabs = useMemo(
     () => [
-      { id: "details" as const, label: "Details" },
-      { id: "history" as const, label: "History" },
-      { id: "related" as const, label: "Related" },
+      { id: "details" as const, label: "Filing details" },
+      { id: "history" as const, label: "Version history" },
+      { id: "related" as const, label: "Related filings" },
     ],
     [],
   );
@@ -1057,14 +1119,17 @@ export function AccountantFilingPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[1280px] space-y-6">
+    <div
+      className="mx-auto max-w-[1280px] space-y-6"
+      onClick={() => setOpenMenuResultId("")}
+    >
       <section className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-1.5">
           <h1 className="text-[2.05rem] font-semibold tracking-tight text-slate-950">
             Document Filing Register
           </h1>
           <p className="max-w-3xl text-[0.96rem] leading-7 text-slate-500">
-            Filed records only. This register shows documents accepted by the accountant and ready for controlled reference.
+            Archive-only register of accepted records. Use this page for retrieval, audit trace, and version reference.
           </p>
         </div>
       </section>
@@ -1097,7 +1162,7 @@ export function AccountantFilingPage() {
                 <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
                   <Button className="h-11 rounded-xl px-4 text-brand-700" variant="secondary">
                     <FilterIcon />
-                    <span>Filing filters</span>
+                    <span>Archive filters</span>
                   </Button>
                   <button
                     className="text-sm font-medium text-brand-600 transition hover:text-brand-700"
@@ -1155,7 +1220,7 @@ export function AccountantFilingPage() {
                   value={filters.uploadedBy}
                 />
                 <ResultFilterSelect
-                  label="Reviewed by"
+                  label="Filed by"
                   onChange={(value) =>
                     setFilters((current) => ({ ...current, reviewedBy: value }))
                   }
@@ -1193,7 +1258,7 @@ export function AccountantFilingPage() {
                   }}
                   type="button"
                 >
-                  <span>More filing filters</span>
+                  <span>More archive filters</span>
                   <ChevronRightIcon />
                 </button>
               </div>
@@ -1252,7 +1317,7 @@ export function AccountantFilingPage() {
                 <div className="hidden border-b border-slate-100 px-5 py-4 text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-slate-400 lg:grid lg:grid-cols-[minmax(0,1.85fr)_0.9fr_0.72fr_3.5rem] lg:gap-4">
                   <div>Filed record</div>
                   <div>Filed on</div>
-                  <div>Filing status</div>
+                  <div>Archive status</div>
                   <div aria-hidden="true" />
                 </div>
 
@@ -1333,18 +1398,22 @@ export function AccountantFilingPage() {
                           <button
                             aria-label="Open result actions"
                             className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
-                            onClick={() =>
+                            onClick={(event) => {
+                              event.stopPropagation();
                               setOpenMenuResultId((current) =>
                                 current === result.id ? "" : result.id,
-                              )
-                            }
+                              );
+                            }}
                             type="button"
                           >
                             <MoreHorizontalIcon />
                           </button>
 
                           {openMenuResultId === result.id ? (
-                            <div className="absolute right-0 top-[calc(100%+0.45rem)] z-10 min-w-[220px] rounded-[1rem] border border-slate-200 bg-white p-2 shadow-[0_20px_42px_rgba(15,23,42,0.14)]">
+                            <div
+                              className="absolute right-0 top-[calc(100%+0.45rem)] z-10 min-w-[220px] rounded-[1rem] border border-slate-200 bg-white p-2 shadow-[0_20px_42px_rgba(15,23,42,0.14)]"
+                              onClick={(event) => event.stopPropagation()}
+                            >
                               <button
                                 className="block w-full rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
                                 onClick={() => handleOpenResult(result)}
@@ -1567,10 +1636,10 @@ export function AccountantFilingPage() {
                     </div>
                     <div>
                       <p className="text-[0.76rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
-                        Reviewed by
+                        Filed by
                       </p>
                       <p className="mt-2 text-sm font-medium text-slate-950">
-                        {detailValue(selectedDocument.reviewedBy, "Waiting for review")}
+                        {detailValue(selectedDocument.reviewedBy, "Filed by assigned accountant")}
                       </p>
                     </div>
                     <div>
@@ -1593,17 +1662,48 @@ export function AccountantFilingPage() {
                   </div>
 
                   <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                    Filed records are read-only. Review actions are only available before filing.
+                    Archived records are locked. Review decisions happen in the Documents workflow page.
                   </div>
                 </div>
               ) : null}
 
               {viewerTab === "history" ? (
-                selectedDocument.auditTrail.length > 0 ? (
-                  <AuditTrail entries={selectedDocument.auditTrail} />
+                filedHistoryEntries.length > 0 ? (
+                  <div className="space-y-3">
+                    {filedHistoryEntries.map((entry) => (
+                      <article
+                        className={cn(
+                          "rounded-[1rem] border px-4 py-3",
+                          entry.isFinalFiledVersion
+                            ? "border-emerald-200 bg-emerald-50/70"
+                            : "border-slate-200 bg-slate-50",
+                        )}
+                        key={entry.id}
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="rounded-full bg-white px-2 py-0.5 text-[0.7rem] font-semibold text-slate-600 ring-1 ring-slate-200">
+                              {entry.versionLabel}
+                            </span>
+                            <p className="text-sm font-semibold text-slate-950">{entry.actionLabel}</p>
+                            {entry.isFinalFiledVersion ? (
+                              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[0.68rem] font-semibold text-emerald-700">
+                                Final filed version
+                              </span>
+                            ) : null}
+                          </div>
+                          <p className="text-xs text-slate-500">
+                            {formatDateTimeLabel(entry.timestamp)}
+                          </p>
+                        </div>
+                        <p className="mt-1 text-sm text-slate-600">By {entry.actor}</p>
+                        <p className="mt-2 text-sm text-slate-600">{entry.note}</p>
+                      </article>
+                    ))}
+                  </div>
                 ) : (
                   <EmptyState
-                    description="History will appear here once this record has moved through the workflow."
+                    description="Version timeline will appear once this record has workflow events."
                     title="No history yet"
                   />
                 )

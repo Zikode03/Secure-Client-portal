@@ -360,7 +360,10 @@ export function FirmSettingsPage() {
       );
       for (const rule of updates) {
         // Save only changed toggles to keep updates targeted and auditable.
-        await portalServiceApi.updateFilingRule(rule.category, rule.isEnabled);
+        const result = await portalServiceApi.updateFilingRule(rule.category, rule.isEnabled);
+        if (!result.ok) {
+          throw new Error("Failed to update filing rule.");
+        }
       }
       setSavedFilingRules(filingRules);
       showSavedNotice(
