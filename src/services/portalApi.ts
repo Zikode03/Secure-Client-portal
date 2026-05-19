@@ -230,4 +230,30 @@ export const portalServiceApi = {
       portalService.getDocumentById(documentId),
     );
   },
+  // Filing register is read-only and only contains auto-filed documents.
+  getFilingRegister(clientId?: string) {
+    const suffix = clientId ? `?clientId=${encodeURIComponent(clientId)}` : "";
+    return apiGetJson(`/api/documents/filing-register${suffix}`);
+  },
+  getFilingRules() {
+    return apiGetJson("/api/documents/filing-rules");
+  },
+  async updateFilingRule(category: string, isEnabled: boolean) {
+    if (!hasApiBaseUrl()) return { ok: true };
+    try {
+      await apiPutJson(`/api/documents/filing-rules/${encodeURIComponent(category)}`, { isEnabled });
+      return { ok: true };
+    } catch {
+      return { ok: false };
+    }
+  },
+  async updateDocumentStatus(documentId: string, status: string) {
+    if (!hasApiBaseUrl()) return { ok: true };
+    try {
+      await apiPutJson(`/api/documents/${encodeURIComponent(documentId)}/status`, { status });
+      return { ok: true };
+    } catch {
+      return { ok: false };
+    }
+  },
 };

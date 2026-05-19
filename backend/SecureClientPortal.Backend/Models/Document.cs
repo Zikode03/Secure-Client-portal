@@ -10,6 +10,10 @@ public class Document
     public long SizeBytes { get; set; }
     public string? StorageKey { get; set; }
     public string UploadedByUserId { get; set; } = string.Empty;
+    // Set when the document enters the immutable filing register.
+    public bool IsFiled { get; set; }
+    public DateTime? FiledAtUtc { get; set; }
+    public string? FiledByUserId { get; set; }
     public DateTime UploadedAtUtc { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAtUtc { get; set; } = DateTime.UtcNow;
 }

@@ -1,10 +1,11 @@
 // Friendly guide: this module (FirmSettingsPage) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
+import { portalServiceApi } from "../../services/portalApi";
 import { Button } from "../../components/ui/Button";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
 import { PageHeader } from "../../components/ui/PageHeader";
@@ -23,6 +24,13 @@ interface FeedbackNotice {
   tone: Tone;
   title: string;
   message: string;
+}
+
+interface FilingRuleRecord {
+  id: string;
+  category: string;
+  isEnabled: boolean;
+  description: string;
 }
 
 const permissionCatalogue: Permission[] = [
@@ -246,6 +254,11 @@ export function FirmSettingsPage() {
     accountant: getPermissionsForRole("accountant"),
     client: getPermissionsForRole("client"),
   });
+  // Filing rule state controls which accepted categories are auto-filed.
+  const [filingRules, setFilingRules] = useState<FilingRuleRecord[]>([]);
+  const [savedFilingRules, setSavedFilingRules] = useState<FilingRuleRecord[]>([]);
+  const [filingRulesLoading, setFilingRulesLoading] = useState(true);
+  const [filingRulesSaving, setFilingRulesSaving] = useState(false);
 
   const complianceCentre = portal.accountantComplianceCentre;
   const notificationCount = portal.accountantDashboard.notifications.filter(
@@ -291,6 +304,79 @@ export function FirmSettingsPage() {
     ],
     [complianceCentre, isAdmin],
   );
+  const filingRulesChanged = useMemo(
+    () =>
+      filingRules.length !== savedFilingRules.length ||
+      filingRules.some((rule, index) => rule.isEnabled !== savedFilingRules[index]?.isEnabled),
+    [filingRules, savedFilingRules],
+  );
+
+  useEffect(() => {
+    let mounted = true;
+    async function loadFilingRules() {
+      setFilingRulesLoading(true);
+      try {
+        const response = await portalServiceApi.getFilingRules();
+        if (!mounted) return;
+        const normalized = ((response as FilingRuleRecord[]) ?? []).map((rule) => ({
+          id: rule.id,
+          category: rule.category,
+          isEnabled: !!rule.isEnabled,
+          description: rule.description,
+        }));
+        setFilingRules(normalized);
+        setSavedFilingRules(normalized);
+      } catch {
+        if (!mounted) return;
+        setFeedbackNotice({
+          tone: "warning",
+          title: "Filing rules unavailable",
+          message: "Could not load filing rules right now. Please try again shortly.",
+        });
+      } finally {
+        if (mounted) setFilingRulesLoading(false);
+      }
+    }
+
+    void loadFilingRules();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  function toggleFilingRule(category: string) {
+    setFilingRules((current) =>
+      current.map((rule) =>
+        rule.category === category ? { ...rule, isEnabled: !rule.isEnabled } : rule,
+      ),
+    );
+  }
+
+  async function saveFilingRules() {
+    setFilingRulesSaving(true);
+    try {
+      const updates = filingRules.filter(
+        (rule, index) => rule.isEnabled !== savedFilingRules[index]?.isEnabled,
+      );
+      for (const rule of updates) {
+        // Save only changed toggles to keep updates targeted and auditable.
+        await portalServiceApi.updateFilingRule(rule.category, rule.isEnabled);
+      }
+      setSavedFilingRules(filingRules);
+      showSavedNotice(
+        "Auto-filing rules saved",
+        "Filed-document category rules were updated. New accepted records will follow these rules automatically.",
+      );
+    } catch {
+      setFeedbackNotice({
+        tone: "warning",
+        title: "Save failed",
+        message: "Could not save filing rules. Please retry.",
+      });
+    } finally {
+      setFilingRulesSaving(false);
+    }
+  }
 
   const sections: Array<{
     id: SettingsSection;
@@ -757,6 +843,42 @@ export function FirmSettingsPage() {
               <p className="mt-1 text-[0.84rem] text-slate-500">{item.helper}</p>
             </div>
           ))}
+        </div>
+
+        <div className="space-y-3 rounded-[1.2rem] border border-slate-200 bg-white p-4">
+          <div className="space-y-1">
+            <h3 className="text-[1.08rem] font-semibold text-slate-950">Auto-filing rules</h3>
+            <p className="text-[0.88rem] leading-6 text-slate-500">
+              Only enabled categories are automatically moved into the filing register once accepted.
+            </p>
+          </div>
+          {filingRulesLoading ? (
+            <p className="text-sm text-slate-500">Loading filing rules...</p>
+          ) : filingRules.length === 0 ? (
+            <p className="text-sm text-slate-500">
+              No filing rules configured yet. Add rules from backend configuration.
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {filingRules.map((rule) => (
+                <Toggle
+                  checked={rule.isEnabled}
+                  description={rule.description}
+                  key={rule.id}
+                  label={rule.category.replace(/_/g, " ")}
+                  onChange={() => toggleFilingRule(rule.category)}
+                />
+              ))}
+            </div>
+          )}
+          <div className="flex flex-wrap gap-3">
+            <Button
+              disabled={!filingRulesChanged || filingRulesSaving || filingRulesLoading}
+              onClick={() => void saveFilingRules()}
+            >
+              {filingRulesSaving ? "Saving..." : "Save filing rules"}
+            </Button>
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-3">

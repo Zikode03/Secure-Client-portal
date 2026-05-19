@@ -59,6 +59,70 @@ public static class SeedData
             });
         }
 
+        await UpsertFilingRule(db, new FilingRule
+        {
+            Id = "filing_bank_statement",
+            Category = "bank_statement",
+            Description = "Business account bank statements eligible for auto-filing.",
+            IsEnabled = true,
+        });
+        await UpsertFilingRule(db, new FilingRule
+        {
+            Id = "filing_invoices",
+            Category = "invoices",
+            Description = "Sales and supplier invoice evidence eligible for auto-filing.",
+            IsEnabled = true,
+        });
+        await UpsertFilingRule(db, new FilingRule
+        {
+            Id = "filing_signed_documents",
+            Category = "signed_documents",
+            Description = "Signed approvals and authorisations eligible for auto-filing.",
+            IsEnabled = true,
+        });
+        await UpsertFilingRule(db, new FilingRule
+        {
+            Id = "filing_compliance_record",
+            Category = "compliance_record",
+            Description = "Compliance support records eligible for auto-filing.",
+            IsEnabled = true,
+        });
+        await UpsertFilingRule(db, new FilingRule
+        {
+            Id = "filing_payroll_summary",
+            Category = "payroll_summary",
+            Description = "Payroll summaries and payroll support eligible for auto-filing.",
+            IsEnabled = true,
+        });
+        await UpsertFilingRule(db, new FilingRule
+        {
+            Id = "filing_tax_working_papers",
+            Category = "tax_working_papers",
+            Description = "Tax working papers and VAT support eligible for auto-filing.",
+            IsEnabled = true,
+        });
+        await UpsertFilingRule(db, new FilingRule
+        {
+            Id = "filing_proof_of_payment",
+            Category = "proof_of_payment",
+            Description = "Payment confirmations and remittance evidence eligible for auto-filing.",
+            IsEnabled = true,
+        });
+        await UpsertFilingRule(db, new FilingRule
+        {
+            Id = "filing_credit_notes",
+            Category = "credit_notes",
+            Description = "Credit note support eligible for auto-filing.",
+            IsEnabled = true,
+        });
+        await UpsertFilingRule(db, new FilingRule
+        {
+            Id = "filing_debit_notes",
+            Category = "debit_notes",
+            Description = "Debit note support eligible for auto-filing.",
+            IsEnabled = true,
+        });
+
         await db.SaveChangesAsync();
     }
 
@@ -76,6 +140,21 @@ public static class SeedData
         byId.PasswordHash = expected.PasswordHash;
         byId.Role = expected.Role;
         byId.ClientIdsJson = expected.ClientIdsJson;
+        byId.UpdatedAtUtc = DateTime.UtcNow;
+    }
+
+    private static async Task UpsertFilingRule(PortalDbContext db, FilingRule expected)
+    {
+        var byId = await db.FilingRules.FirstOrDefaultAsync(x => x.Id == expected.Id);
+        if (byId is null)
+        {
+            db.FilingRules.Add(expected);
+            return;
+        }
+
+        byId.Category = expected.Category;
+        byId.Description = expected.Description;
+        byId.IsEnabled = expected.IsEnabled;
         byId.UpdatedAtUtc = DateTime.UtcNow;
     }
 }

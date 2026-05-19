@@ -33,3 +33,17 @@ powershell -ExecutionPolicy Bypass -File database/scripts/backup-sqlserver.ps1 -
 ```powershell
 powershell -ExecutionPolicy Bypass -File database/scripts/restore-sqlserver.ps1 -Server "localhost,1433" -Database "SecureClientPortal_Dev" -User "sa" -Password "<password>" -BackupFile "database/backups/SecureClientPortal_Dev_YYYYMMDD_HHMMSS.bak"
 ```
+
+## Filing Register Update
+
+Automatic filing support is now included in backend schema and API.
+
+- `AppDocuments` now tracks filed-state metadata:
+  - `IsFiled` (`bit`)
+  - `FiledAtUtc` (`datetime2`, nullable)
+  - `FiledByUserId` (`nvarchar(100)`, nullable)
+- New table `AppFilingRules` controls which document categories are eligible for auto-filing when accepted.
+
+Migration shipped:
+
+- `20260519110000_AddFilingRulesAndDocumentFiledFlags`

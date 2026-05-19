@@ -10,6 +10,7 @@ public class PortalDbContext : DbContext
     public DbSet<User> Users => Set<User>();
     public DbSet<Client> Clients => Set<Client>();
     public DbSet<Document> Documents => Set<Document>();
+    public DbSet<FilingRule> FilingRules => Set<FilingRule>();
     public DbSet<TaskItem> Tasks => Set<TaskItem>();
     public DbSet<RequestItem> Requests => Set<RequestItem>();
     public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
@@ -70,14 +71,28 @@ public class PortalDbContext : DbContext
             entity.Property(x => x.Status).HasMaxLength(30).IsRequired();
             entity.Property(x => x.StorageKey).HasMaxLength(500);
             entity.Property(x => x.UploadedByUserId).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.FiledByUserId).HasMaxLength(100);
             entity.Property(x => x.UploadedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()");
             entity.Property(x => x.UpdatedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()");
+            entity.HasIndex(x => new { x.ClientId, x.IsFiled });
             entity.HasIndex(x => new { x.ClientId, x.Status });
             entity.HasIndex(x => x.UploadedAtUtc);
             entity.ToTable(table =>
             {
                 table.HasCheckConstraint("CK_AppDocuments_Status", "[Status] IN ('pending','under_review','accepted','rejected','filed')");
             });
+        });
+
+        modelBuilder.Entity<FilingRule>(entity =>
+        {
+            entity.ToTable("AppFilingRules");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(100);
+            entity.Property(x => x.Category).HasMaxLength(80).IsRequired();
+            entity.Property(x => x.Description).HasMaxLength(280).IsRequired();
+            entity.Property(x => x.CreatedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()");
+            entity.Property(x => x.UpdatedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()");
+            entity.HasIndex(x => x.Category).IsUnique();
         });
 
         modelBuilder.Entity<TaskItem>(entity =>
