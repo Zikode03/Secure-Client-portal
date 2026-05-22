@@ -652,11 +652,11 @@ export function ClientDashboardPage() {
     if (openRequest) {
       items.push({
         id: `request-${openRequest.id}`,
-        title: "Respond to accountant request",
-        detail: openRequest.title,
-        ctaLabel: "Open",
+        title: "Monthly pack follow-up",
+        detail: openRequest.description,
+        ctaLabel: "Open monthly pack",
         tone: "info",
-        onAction: () => navigate("/client/inbox"),
+        onAction: () => navigate("/client/packs"),
       });
     }
 

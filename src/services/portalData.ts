@@ -63,24 +63,7 @@ function buildExpiringItem(
 }
 
 function buildComments(): DocumentComment[] {
-  return [
-    {
-      id: "comment-1",
-      author: "Daniel Mokoena",
-      role: "accountant",
-      message:
-        "The batch is almost ready. I still need the signed credit note before I can accept the full April invoice pack.",
-      createdAt: "2026-05-02T11:20:00.000Z",
-    },
-    {
-      id: "comment-2",
-      author: "Sarah Jacobs",
-      role: "client",
-      message:
-        "Thanks. I have requested the signed credit note internally and will upload it into the same slot this afternoon.",
-      createdAt: "2026-05-02T12:05:00.000Z",
-    },
-  ];
+  return [];
 }
 
 function buildAuditTrail(): AuditTrailEntry[] {
@@ -298,16 +281,7 @@ const clientDocuments: DocumentRecord[] = [
       "Makro office supplies invoice. April 2026 procurement record with VAT details and branch reference.",
     expiryDate: undefined,
     rejectionReason: "Three receipts were cropped and two VAT numbers are unreadable.",
-    comments: [
-      {
-        id: "comment-3",
-        author: "Daniel Mokoena",
-        role: "accountant",
-        message:
-          "Please re-upload the stationery and fuel invoice support. The totals are fine, but the supporting images are not audit-ready yet.",
-        createdAt: "2026-04-30T09:15:00.000Z",
-      },
-    ],
+    comments: [],
     auditTrail: [
       {
         id: "audit-3",
