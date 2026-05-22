@@ -256,4 +256,79 @@ export const portalServiceApi = {
       return { ok: false };
     }
   },
+  async getRequestWithComments(requestId: string) {
+    if (!hasApiBaseUrl()) {
+      return portalService.getRequestDetail(requestId);
+    }
+    try {
+      return await apiGetJson(`/api/requests/${encodeURIComponent(requestId)}`);
+    } catch {
+      return portalService.getRequestDetail(requestId);
+    }
+  },
+  async addRequestComment(requestId: string, message: string) {
+    if (!hasApiBaseUrl()) {
+      return {
+        ok: true,
+        message: "Comment added",
+        comment: {
+          id: `cmt_${Date.now()}`,
+          author: "You",
+          role: "client",
+          message,
+          createdAt: new Date().toISOString(),
+        },
+      };
+    }
+    try {
+      const response = await fetch(`/api/requests/${encodeURIComponent(requestId)}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({ message }),
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      return { ok: true, message: "Comment added successfully" };
+    } catch (error) {
+      return {
+        ok: false,
+        message: error instanceof Error ? error.message : "Failed to add comment",
+      };
+    }
+  },
+  async updateRequestStatus(requestId: string, status: string) {
+    if (!hasApiBaseUrl()) {
+      return { ok: true, message: "Status updated" };
+    }
+    try {
+      await apiPutJson(`/api/requests/${encodeURIComponent(requestId)}/status`, { status });
+      return { ok: true, message: "Request status updated" };
+    } catch (error) {
+      return {
+        ok: false,
+        message: error instanceof Error ? error.message : "Failed to update status",
+      };
+    }
+  },
+  async archiveRequest(requestId: string) {
+    if (!hasApiBaseUrl()) {
+      return { ok: true, message: "Request archived" };
+    }
+    try {
+      const response = await fetch(`/api/requests/${encodeURIComponent(requestId)}`, {
+        method: "DELETE",
+        headers: { Accept: "application/json" },
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      return { ok: true, message: "Request archived successfully" };
+    } catch (error) {
+      return {
+        ok: false,
+        message: error instanceof Error ? error.message : "Failed to archive request",
+      };
+    }
+  },
 };

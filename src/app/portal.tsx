@@ -104,11 +104,11 @@ const initialRequests: WorkflowRequest[] = [
     id: "request-1",
     clientId: "client-apex",
     clientName: "Apex Trading Ltd",
-    title: "Re-upload invoice support with readable VAT details",
+    title: "Submit April invoice evidence bundle",
     description:
-      "Three supplier receipts are cropped and two VAT numbers cannot be read clearly enough for review.",
+      "Please upload the full April supplier and customer invoice evidence so review can begin.",
     monthLabel: "April 2026",
-    status: "awaiting_client",
+    status: "open",
     priority: "high",
     relatedDocumentId: "doc-1002",
     requestedBy: "Daniel Mokoena",
@@ -116,23 +116,14 @@ const initialRequests: WorkflowRequest[] = [
     assignedTo: "Sarah Jacobs",
     dueDate: "2026-05-05T17:00:00.000Z",
     createdAt: "2026-04-30T09:15:00.000Z",
-    comments: [
-      {
-        id: "request-comment-1",
-        author: "Daniel Mokoena",
-        role: "accountant",
-        message:
-          "Please upload the corrected stationery and fuel invoice support into the same April invoices slot.",
-        createdAt: "2026-04-30T09:15:00.000Z",
-      },
-    ],
+    comments: [],
     auditTrail: [
       {
         id: "request-audit-1",
         status: "Follow-up sent",
         actor: "Daniel Mokoena",
         timestamp: "2026-04-30T09:15:00.000Z",
-        note: "Requested corrected supplier evidence for the rejected April invoice support file.",
+        note: "Initial invoice evidence request opened for the April month pack.",
       },
     ],
   },
@@ -140,9 +131,9 @@ const initialRequests: WorkflowRequest[] = [
     id: "request-2",
     clientId: "client-apex",
     clientName: "Apex Trading Ltd",
-    title: "Upload missing bank statement",
+    title: "Monthly pack action: upload April bank statement",
     description:
-      "The April month pack cannot move into accountant review until the operating account statement is attached.",
+      "Go to Monthly Packs and upload the April bank statement in the Bank Statement slot.",
     monthLabel: "April 2026",
     status: "open",
     priority: "high",
@@ -158,7 +149,7 @@ const initialRequests: WorkflowRequest[] = [
         status: "Follow-up sent",
         actor: "Daniel Mokoena",
         timestamp: "2026-05-03T09:15:00.000Z",
-        note: "Raised because invoices were already uploaded without the matching bank statement.",
+        note: "Bank Statement slot is still pending for April. Upload it in Monthly Packs.",
       },
     ],
   },
@@ -260,7 +251,7 @@ function findAccountantByName(accountantName: string) {
   return initialAccountants.find((accountant) => accountant.name === accountantName);
 }
 
-const CLIENT_PORTAL_STORAGE_KEY = "accounting-document-control-client-portal-v2";
+const CLIENT_PORTAL_STORAGE_KEY = "accounting-document-control-client-portal-v3";
 
 // Component flow: gather data first, then render a focused UI state.
 function createInitialMonthPack(seed: ClientWorkflowSeed) {
@@ -2161,6 +2152,14 @@ const assignedAccountantForApex =
   }
 
   function createClientRequest(payload: ClientRequestPayload): PortalActionResult {
+    if (payload.actor.role === "client") {
+      return {
+        ok: false,
+        message:
+          "Request threads are created by accountant/admin only. Use reply in an existing thread to respond.",
+      };
+    }
+
     const trimmedTitle = payload.title.trim();
     const trimmedDescription = payload.description.trim();
 

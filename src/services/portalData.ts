@@ -63,24 +63,7 @@ function buildExpiringItem(
 }
 
 function buildComments(): DocumentComment[] {
-  return [
-    {
-      id: "comment-1",
-      author: "Daniel Mokoena",
-      role: "accountant",
-      message:
-        "The batch is almost ready. I still need the signed credit note before I can accept the full April invoice pack.",
-      createdAt: "2026-05-02T11:20:00.000Z",
-    },
-    {
-      id: "comment-2",
-      author: "Sarah Jacobs",
-      role: "client",
-      message:
-        "Thanks. I have requested the signed credit note internally and will upload it into the same slot this afternoon.",
-      createdAt: "2026-05-02T12:05:00.000Z",
-    },
-  ];
+  return [];
 }
 
 function buildAuditTrail(): AuditTrailEntry[] {
@@ -298,16 +281,7 @@ const clientDocuments: DocumentRecord[] = [
       "Makro office supplies invoice. April 2026 procurement record with VAT details and branch reference.",
     expiryDate: undefined,
     rejectionReason: "Three receipts were cropped and two VAT numbers are unreadable.",
-    comments: [
-      {
-        id: "comment-3",
-        author: "Daniel Mokoena",
-        role: "accountant",
-        message:
-          "Please re-upload the stationery and fuel invoice support. The totals are fine, but the supporting images are not audit-ready yet.",
-        createdAt: "2026-04-30T09:15:00.000Z",
-      },
-    ],
+    comments: [],
     auditTrail: [
       {
         id: "audit-3",
@@ -1646,5 +1620,56 @@ export const portalService = {
   getDocumentById(documentId: string) {
     const document = clientDocuments.find((item) => item.id === documentId) ?? emptyReviewDocument;
     return clone(document);
+  },
+  getRequestDetail(requestId: string) {
+    // Mock: return a sample request with comments
+    const mockRequest: any = {
+      id: requestId,
+      clientId: "client-apex",
+      clientName: "Apex Trading Ltd",
+      title: "May invoices needed",
+      description: "Please upload all May invoices to complete the monthly pack.",
+      status: "awaiting_client",
+      priority: "high",
+      dueDate: "2026-05-06T17:00:00.000Z",
+      createdAt: "2026-05-03T10:30:00.000Z",
+      requestedBy: "Daniel Mokoena",
+      requestedByRole: "accountant",
+      requestType: "monthly_pack_follow_up",
+      monthLabel: "May 2026",
+      comments: [
+        {
+          id: "cmt-1",
+          author: "Daniel Mokoena",
+          role: "accountant",
+          message: "Hi Sarah, I noticed the invoices slot is still empty for May. Can you upload them today?",
+          createdAt: "2026-05-03T10:30:00.000Z",
+        },
+      ],
+      auditTrail: [
+        {
+          id: "audit-1",
+          status: "Created",
+          actor: "Daniel Mokoena",
+          timestamp: "2026-05-03T10:30:00.000Z",
+          note: "Request created",
+        },
+      ],
+    };
+    return clone(mockRequest);
+  },
+  addRequestComment(requestId: string, message: string) {
+    // Mock: return success
+    return {
+      ok: true,
+      message: "Comment added successfully",
+      comment: {
+        id: `cmt_${Date.now()}`,
+        author: "Sarah Jacobs",
+        role: "client",
+        message,
+        createdAt: new Date().toISOString(),
+      },
+    };
   },
 };

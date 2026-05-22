@@ -14,6 +14,7 @@ public class PortalDbContext : DbContext
     public DbSet<FilingRule> FilingRules => Set<FilingRule>();
     public DbSet<TaskItem> Tasks => Set<TaskItem>();
     public DbSet<RequestItem> Requests => Set<RequestItem>();
+    public DbSet<RequestComment> RequestComments => Set<RequestComment>();
     public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -140,19 +141,50 @@ public class PortalDbContext : DbContext
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Id).HasMaxLength(100);
             entity.Property(x => x.ClientId).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.ClientName).HasMaxLength(250).IsRequired();
             entity.Property(x => x.Title).HasMaxLength(200).IsRequired();
             entity.Property(x => x.Description).HasColumnType("nvarchar(max)").IsRequired();
             entity.Property(x => x.Priority).HasMaxLength(20).IsRequired();
             entity.Property(x => x.Status).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.RequestType).HasMaxLength(50).IsRequired();
             entity.Property(x => x.RequestedByUserId).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.RequestedByName).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.RequestedByRole).HasMaxLength(50).IsRequired();
+            entity.Property(x => x.RelatedDocumentId).HasMaxLength(100);
+            entity.Property(x => x.MonthLabel).HasMaxLength(20);
+            entity.Property(x => x.ComplianceCategoryId).HasMaxLength(100);
+            entity.Property(x => x.ComplianceCategoryName).HasMaxLength(200);
+            entity.Property(x => x.ComplianceItemId).HasMaxLength(100);
+            entity.Property(x => x.ComplianceItemName).HasMaxLength(200);
             entity.Property(x => x.RequestedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()");
             entity.Property(x => x.UpdatedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()");
+            entity.Property(x => x.ArchivedByUserId).HasMaxLength(100);
             entity.HasIndex(x => new { x.ClientId, x.Status });
             entity.HasIndex(x => x.DueDateUtc);
+            entity.HasIndex(x => new { x.ClientId, x.ArchivedAtUtc });
+            entity.HasMany(x => x.Comments).WithOne().HasForeignKey("RequestId").OnDelete(DeleteBehavior.Cascade);
             entity.ToTable(table =>
             {
                 table.HasCheckConstraint("CK_AppRequests_Status", "[Status] IN ('open','awaiting_client','awaiting_accountant','resolved')");
                 table.HasCheckConstraint("CK_AppRequests_Priority", "[Priority] IN ('low','medium','high','urgent')");
+            });
+        });
+
+        modelBuilder.Entity<RequestComment>(entity =>
+        {
+            entity.ToTable("AppRequestComments");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(100);
+            entity.Property(x => x.RequestId).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.AuthorUserId).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.AuthorName).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.AuthorRole).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Message).HasColumnType("nvarchar(max)").IsRequired();
+            entity.Property(x => x.CreatedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()");
+            entity.HasIndex(x => new { x.RequestId, x.CreatedAtUtc });
+            entity.ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_AppRequestComments_AuthorRole", "[AuthorRole] IN ('admin','accountant','client')");
             });
         });
 

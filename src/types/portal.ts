@@ -435,29 +435,36 @@ export type RequestStatus =
 
 export type RequestPriority = "low" | "medium" | "high";
 
+export type ComplianceRequestType =
+  | "monthly_pack_follow_up"
+  | "document_review"
+  | "compliance_item"
+  | "general";
+
 export interface WorkflowRequest {
   id: string;
   clientId: string;
   clientName: string;
   title: string;
   description: string;
-  monthLabel: string;
+  monthLabel?: string;
   status: RequestStatus;
   priority: RequestPriority;
   relatedDocumentId?: string;
   requestedBy: string;
   requestedByRole: Role;
-  assignedTo: string;
+  assignedTo?: string;
   dueDate: string;
   createdAt: string;
   requestType?: ComplianceRequestType;
-  complianceCategoryId?: ComplianceCategoryId;
+  complianceCategoryId?: string;
   complianceCategoryName?: string;
   complianceItemId?: string;
   complianceItemName?: string;
   monthlyPeriod?: string;
   comments: DocumentComment[];
   auditTrail: AuditTrailEntry[];
+  archivedAtUtc?: string;
 }
 
 export interface BusinessProfile {
