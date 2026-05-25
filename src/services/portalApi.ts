@@ -1,8 +1,10 @@
-import { apiGetJson, apiPutJson, hasApiBaseUrl } from "./apiClient";
+import { apiGetJson, apiPostJson, apiPutJson, hasApiBaseUrl } from "./apiClient";
 import { portalService } from "./portalData";
 import type {
+  DocumentComment,
   FirmClientAccount,
   Role,
+  WorkflowRequest,
 } from "../types/portal";
 
 interface BackendClientRecord {
@@ -12,6 +14,23 @@ interface BackendClientRecord {
   status: string;
   complianceHealth: number;
   assignedAccountantId: string;
+}
+
+interface BackendRequestRecord {
+  id: string;
+  clientId: string;
+  title: string;
+  description: string;
+  priority: string;
+  status: string;
+  dueDateUtc?: string | null;
+  requestedByUserId: string;
+  requestedAtUtc: string;
+  updatedAtUtc: string;
+}
+
+interface RequestWithComments extends WorkflowRequest {
+  comments: DocumentComment[];
 }
 
 function toPortfolioStatus(status: string): FirmClientAccount["status"] {
@@ -254,6 +273,46 @@ export const portalServiceApi = {
       return { ok: true };
     } catch {
       return { ok: false };
+    }
+  },
+  async addRequestComment(requestId: string, message: string) {
+    if (!hasApiBaseUrl()) return { ok: true };
+    try {
+      const comment = await apiPostJson<DocumentComment, { message: string }>(
+        `/api/requests/${encodeURIComponent(requestId)}/comments`,
+        { message },
+      );
+      return { ok: true, comment };
+    } catch {
+      return { ok: false };
+    }
+  },
+  async updateRequestStatus(requestId: string, status: string) {
+    if (!hasApiBaseUrl()) return { ok: true };
+    try {
+      const request = await apiGetJson<BackendRequestRecord>(
+        `/api/requests/${encodeURIComponent(requestId)}`,
+      );
+      await apiPutJson<BackendRequestRecord, BackendRequestRecord>(
+        `/api/requests/${encodeURIComponent(requestId)}`,
+        {
+          ...request,
+          status,
+        },
+      );
+      return { ok: true };
+    } catch {
+      return { ok: false };
+    }
+  },
+  async getRequestWithComments(requestId: string): Promise<RequestWithComments | null> {
+    if (!hasApiBaseUrl()) return null;
+    try {
+      return await apiGetJson<RequestWithComments>(
+        `/api/requests/${encodeURIComponent(requestId)}`,
+      );
+    } catch {
+      return null;
     }
   },
 };

@@ -126,7 +126,7 @@ describe("role-based route access", () => {
   it("legacy client messages route redirects users to contextual workspaces", async () => {
     renderAppAt("/client/messages", createUser("client"));
 
-    expect(await screen.findByText("My requests and tasks")).toBeInTheDocument();
+    expect(await screen.findByText("Messages")).toBeInTheDocument();
   });
 
   it("legacy client invoices route redirects to the document workspace", async () => {

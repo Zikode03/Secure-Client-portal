@@ -1,13 +1,20 @@
-// Friendly guide: this module (clientRequestsPage.test) supports the Secure Client Portal workflow.
-// The goal is clear, maintainable code so future edits feel safe and straightforward.
-
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
-import { ClientRequestsPage } from "../pages/client/ClientRequestsPage";
-import type { DocumentRecord, MonthlyPack, WorkflowRequest } from "../types/portal";
 import { useAuth } from "../app/auth";
 import { useClientWorkflow } from "../hooks/useClientWorkflow";
+import { ClientRequestsPage } from "../pages/client/ClientRequestsPage";
+import type { WorkflowRequest } from "../types/portal";
+
+const mockedNavigate = vi.fn();
+
+vi.mock("react-router-dom", async () => {
+  const actual = await vi.importActual<typeof import("react-router-dom")>("react-router-dom");
+  return {
+    ...actual,
+    useNavigate: () => mockedNavigate,
+  };
+});
 
 vi.mock("../app/auth", () => ({
   useAuth: vi.fn(),
@@ -20,198 +27,48 @@ vi.mock("../hooks/useClientWorkflow", () => ({
 const mockedUseAuth = vi.mocked(useAuth);
 const mockedUseClientWorkflow = vi.mocked(useClientWorkflow);
 
-// Component flow: gather data first, then render a focused UI state.
-function createBasePack(): MonthlyPack {
+function createRequest(overrides: Partial<WorkflowRequest> = {}): WorkflowRequest {
   return {
+    id: "request-1",
+    clientId: "client-apex",
+    clientName: "Apex Trading Ltd",
+    title: "Expense invoice totals mismatch",
+    description: "Please upload corrected invoice support for April.",
     monthLabel: "April 2026",
-    dueDate: "2026-05-06T17:00:00.000Z",
-    deadlineStatus: "due",
-    progressPercent: 50,
-    completedCount: 2,
-    totalCount: 4,
-    canComplete: false,
-    completionMessage:
-      "You cannot submit this month because required documents are still missing or rejected.",
-    submissionStatus: "open",
-    slots: [
+    status: "open",
+    priority: "high",
+    requestedBy: "Daniel Mokoena",
+    requestedByRole: "accountant",
+    assignedTo: "Sarah Jacobs",
+    dueDate: "2026-05-07T17:00:00.000Z",
+    createdAt: "2026-05-02T09:00:00.000Z",
+    requestType: "missing_document_request",
+    comments: [
       {
-        id: "slot-bank",
-        documentType: "Bank Statement",
-        description: "Main business account statement for the month.",
-        status: "missing",
-        month: "April",
-        year: 2026,
-        acceptedFiles: ["PDF"],
-        progress: 0,
-        autoName: "ApexTrading_BankStatement_April_2026.pdf",
-        isRequired: true,
-        dueDate: "2026-05-06T17:00:00.000Z",
-      },
-      {
-        id: "slot-invoices",
-        documentType: "Invoices",
-        description: "Invoice evidence for the month.",
-        status: "rejected",
-        month: "April",
-        year: 2026,
-        acceptedFiles: ["PDF", "ZIP"],
-        progress: 60,
-        autoName: "ApexTrading_Invoices_April_2026.pdf",
-        isRequired: true,
-        dueDate: "2026-05-06T17:00:00.000Z",
-        rejectionReason:
-          "The invoice support is incomplete because three receipt scans are cropped and two VAT numbers are unreadable.",
-      },
-      {
-        id: "slot-signed",
-        documentType: "Signed Documents",
-        description: "Signed approvals for the month.",
-        status: "accepted",
-        month: "April",
-        year: 2026,
-        acceptedFiles: ["PDF"],
-        progress: 100,
-        autoName: "ApexTrading_SignedDocuments_April_2026.pdf",
-        isRequired: true,
-        dueDate: "2026-05-06T17:00:00.000Z",
-      },
-      {
-        id: "slot-compliance",
-        documentType: "Compliance Record",
-        description: "Compliance evidence for the period.",
-        status: "accepted",
-        month: "April",
-        year: 2026,
-        acceptedFiles: ["PDF"],
-        progress: 100,
-        autoName: "ApexTrading_ComplianceRecord_April_2026.pdf",
-        isRequired: true,
-        dueDate: "2026-05-06T17:00:00.000Z",
+        id: "comment-1",
+        author: "Daniel Mokoena",
+        role: "accountant",
+        message: "Please re-upload the complete invoice support.",
+        createdAt: "2026-05-02T09:15:00.000Z",
       },
     ],
-  };
-}
-
-function createDocuments(): DocumentRecord[] {
-  return [
-    {
-      id: "doc-invoices-1",
-      clientId: "client-apex",
-      clientName: "Apex Trading Ltd",
-      documentType: "Invoices",
-      fileName: "ApexTrading_Invoices_April_2026.pdf",
-      monthLabel: "April 2026",
-      description: "April invoice support bundle.",
-      status: "rejected",
-      uploadedBy: "Sarah Jacobs",
-      uploadedAt: "2026-05-01T08:00:00.000Z",
-      reviewedBy: "Daniel Mokoena",
-      reviewedAt: "2026-05-02T09:00:00.000Z",
-      sizeLabel: "2.4 MB",
-      keywordTags: ["invoice", "april"],
-      supplierName: "Makro (Pty) Ltd",
-      amountLabel: "R12 500.00",
-      rejectionReason:
-        "The invoice support is incomplete because three receipt scans are cropped and two VAT numbers are unreadable.",
-      comments: [],
-      auditTrail: [],
-    },
-  ];
-}
-
-function createRequests(): WorkflowRequest[] {
-  return [
-    {
-      id: "request-invoices",
-      clientId: "client-apex",
-      clientName: "Apex Trading Ltd",
-      title: "Expense invoice totals mismatch",
-      description:
-        "Your accountant needs the corrected April invoice support before the month-end review can be completed.",
-      monthLabel: "April 2026",
-      status: "open",
-      priority: "high",
-      relatedDocumentId: "doc-invoices-1",
-      requestedBy: "Daniel Mokoena",
-      requestedByRole: "accountant",
-      assignedTo: "Sarah Jacobs",
-      dueDate: "2026-05-07T17:00:00.000Z",
-      createdAt: "2026-05-02T09:00:00.000Z",
-      comments: [
-        {
-          id: "request-comment-1",
-          author: "Daniel Mokoena",
-          role: "accountant",
-          message: "Please upload the corrected invoice support into the same April invoices slot.",
-          createdAt: "2026-05-02T09:15:00.000Z",
-        },
-      ],
-      auditTrail: [
-        {
-          id: "audit-1",
-          status: "Request created",
-          actor: "Daniel Mokoena",
-          timestamp: "2026-05-02T09:00:00.000Z",
-          note: "Requested corrected invoice support.",
-        },
-      ],
-    },
-    {
-      id: "request-bank",
-      clientId: "client-apex",
-      clientName: "Apex Trading Ltd",
-      title: "Bank statement for reconciliation",
-      description:
-        "Your accountant needs the April bank statement to complete the reconciliation checks.",
-      monthLabel: "April 2026",
-      status: "awaiting_client",
-      priority: "medium",
-      requestedBy: "Daniel Mokoena",
-      requestedByRole: "accountant",
-      assignedTo: "Sarah Jacobs",
-      dueDate: "2026-05-10T17:00:00.000Z",
-      createdAt: "2026-05-03T08:30:00.000Z",
-      comments: [
-        {
-          id: "request-comment-2",
-          author: "Daniel Mokoena",
-          role: "accountant",
-          message: "Please upload the April bank statement in PDF format.",
-          createdAt: "2026-05-03T08:30:00.000Z",
-        },
-      ],
-      auditTrail: [
-        {
-          id: "audit-2",
-          status: "Request created",
-          actor: "Daniel Mokoena",
-          timestamp: "2026-05-03T08:30:00.000Z",
-          note: "Requested missing bank statement.",
-        },
-      ],
-    },
-  ];
-}
-
-function buildWorkflowState(overrides: Record<string, unknown> = {}) {
-  return {
-    assignedAccountantName: "Daniel Mokoena",
-    clientName: "Apex Trading Ltd",
-    createClientRequest: vi.fn(() => ({ ok: true, message: "Your request has been sent to your accountant." })),
-    dismissFeedbackNotice: vi.fn(),
-    documents: createDocuments(),
-    feedbackNotice: null,
-    monthPack: createBasePack(),
-    replyToRequest: vi.fn(() => ({ ok: true, message: "Reply added to request." })),
-    requests: createRequests(),
-    resolveRequest: vi.fn(() => ({ ok: true, message: "Request marked as resolved." })),
-    showFeedbackNotice: vi.fn(),
-    uploadToSlot: vi.fn(),
+    auditTrail: [],
     ...overrides,
   };
 }
 
-function renderPage(workflowOverrides: Record<string, unknown> = {}) {
+function renderPage(
+  requests: WorkflowRequest[],
+  overrides?: {
+    createClientRequest?: ReturnType<typeof vi.fn>;
+    replyToRequest?: ReturnType<typeof vi.fn>;
+    resolveRequest?: ReturnType<typeof vi.fn>;
+  },
+) {
+  const createClientRequest = overrides?.createClientRequest ?? vi.fn(() => ({ ok: true, message: "Request sent." }));
+  const replyToRequest = overrides?.replyToRequest ?? vi.fn(() => ({ ok: true, message: "Reply added." }));
+  const resolveRequest = overrides?.resolveRequest ?? vi.fn(() => ({ ok: true, message: "Resolved." }));
+
   mockedUseAuth.mockReturnValue({
     ready: true,
     user: {
@@ -232,8 +89,15 @@ function renderPage(workflowOverrides: Record<string, unknown> = {}) {
     logout: vi.fn(),
   });
 
-  const workflowState = buildWorkflowState(workflowOverrides);
-  mockedUseClientWorkflow.mockReturnValue(workflowState as never);
+  mockedUseClientWorkflow.mockReturnValue({
+    assignedAccountantName: "Daniel Mokoena",
+    createClientRequest,
+    dismissFeedbackNotice: vi.fn(),
+    feedbackNotice: null,
+    replyToRequest,
+    resolveRequest,
+    requests,
+  } as never);
 
   render(
     <MemoryRouter>
@@ -241,120 +105,81 @@ function renderPage(workflowOverrides: Record<string, unknown> = {}) {
     </MemoryRouter>,
   );
 
-  return workflowState;
+  return { createClientRequest, replyToRequest, resolveRequest };
 }
 
 describe("ClientRequestsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockedNavigate.mockReset();
   });
 
-  it("renders open requests in the request list", () => {
-    renderPage();
+  it("renders thread comments for the selected request", () => {
+    renderPage([createRequest()]);
 
-    expect(
-      screen.getByRole("button", { name: /expense invoice totals mismatch/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /bank statement for reconciliation/i }),
-    ).toBeInTheDocument();
+    expect(screen.getAllByText("Please re-upload the complete invoice support.").length).toBeGreaterThan(0);
   });
 
-  it("selecting a request updates the selected workspace", () => {
-    renderPage();
+  it("sends a reply using the client identity", () => {
+    const { replyToRequest } = renderPage([createRequest()]);
 
-    expect(
-      screen.getByRole("button", { name: /re-upload invoices/i }),
-    ).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText("Type your message..."), {
+      target: { value: "Uploaded the corrected version now." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
 
-    fireEvent.click(
-      screen.getByRole("button", { name: /bank statement for reconciliation/i }),
+    expect(replyToRequest).toHaveBeenCalledWith(
+      "request-1",
+      "client",
+      "Sarah Jacobs",
+      "Uploaded the corrected version now.",
     );
-
-    expect(
-      screen.getByRole("button", { name: /upload bank statement/i }),
-    ).toBeInTheDocument();
-    expect(screen.getAllByText("Bank Statement - April 2026").length).toBeGreaterThan(0);
   });
 
-  it("displays request comments inside the selected request workspace", () => {
-    renderPage();
-
-    fireEvent.click(screen.getByRole("button", { name: /comments/i }));
+  it("shows request-type helper text for clarification requests", () => {
+    renderPage([createRequest({ requestType: "clarification_request" })]);
 
     expect(
       screen.getByText(
-        "Please upload the corrected invoice support into the same April invoices slot.",
+        "Clarification request: reply in this thread with details the accountant asked for.",
       ),
     ).toBeInTheDocument();
   });
 
-  it("does not allow document uploads through comments", () => {
-    renderPage();
-
-    fireEvent.click(screen.getByRole("button", { name: /comments/i }));
+  it("shows request-type helper text for renewal requests", () => {
+    renderPage([createRequest({ requestType: "renewal_request" })]);
 
     expect(
-      screen.getAllByText(
-        "Files must be uploaded through the structured document slot so they can be named, tracked, and reviewed properly.",
-      ).length,
-    ).toBeGreaterThan(0);
-    expect(document.querySelector('input[type="file"]')).toBeNull();
-  });
-
-  it("changes the primary action based on the selected request type", () => {
-    renderPage();
-
-    expect(
-      screen.getByRole("button", { name: /re-upload invoices/i }),
-    ).toBeInTheDocument();
-
-    fireEvent.click(
-      screen.getByRole("button", { name: /bank statement for reconciliation/i }),
-    );
-
-    expect(
-      screen.getByRole("button", { name: /upload bank statement/i }),
+      screen.getByText(
+        "Renewal request: upload the latest compliance renewal files with date evidence.",
+      ),
     ).toBeInTheDocument();
   });
 
-  it("lets the client start a new accountant request", () => {
-    const workflowState = renderPage();
+  it("lets the client create a formal document request", () => {
+    const { createClientRequest } = renderPage([createRequest()]);
 
-    fireEvent.click(screen.getByRole("button", { name: "Ask accountant" }));
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
-
-    fireEvent.change(screen.getByLabelText("Request type"), {
-      target: { value: "document" },
-    });
-    fireEvent.change(screen.getByPlaceholderText("What do you need from your accountant?"), {
+    fireEvent.click(screen.getByRole("button", { name: "Request document" }));
+    fireEvent.change(screen.getByLabelText("Document needed"), {
       target: { value: "Signed annual financial statements" },
     });
-    fireEvent.change(
-      screen.getByPlaceholderText(
-        "Explain what document, answer, or clarification you need and why.",
-      ),
-      {
-        target: { value: "Please send the signed annual financial statements for the board pack." },
-      },
-    );
+    fireEvent.change(screen.getByLabelText("Request details"), {
+      target: { value: "Please share the signed annual financial statements for board reporting." },
+    });
     fireEvent.change(screen.getByLabelText("Needed by"), {
-      target: { value: "2026-05-15" },
+      target: { value: "2026-05-30" },
     });
     fireEvent.change(screen.getByLabelText("Priority"), {
       target: { value: "high" },
     });
-
     fireEvent.click(screen.getByRole("button", { name: "Send request" }));
 
-    expect(workflowState.createClientRequest).toHaveBeenCalledWith(
-      {
+    expect(createClientRequest).toHaveBeenCalledWith(
+      expect.objectContaining({
         title: "Document request: Signed annual financial statements",
-        description: "Please send the signed annual financial statements for the board pack.",
-        dueDate: "2026-05-15T17:00:00.000Z",
+        description: "Please share the signed annual financial statements for board reporting.",
         priority: "high",
-        monthLabel: "April 2026",
-      },
+      }),
       expect.objectContaining({
         fullName: "Sarah Jacobs",
         role: "client",
@@ -362,42 +187,60 @@ describe("ClientRequestsPage", () => {
     );
   });
 
-  it("shows when a request is waiting on the accountant", () => {
-    renderPage({
-      requests: [
-        {
-          ...createRequests()[0],
-          id: "request-client-1",
-          title: "Document request: Signed annual financial statements",
-          status: "awaiting_accountant",
-          requestedBy: "Sarah Jacobs",
-          requestedByRole: "client",
-          assignedTo: "Daniel Mokoena",
-          comments: [
-            {
-              id: "request-comment-client-1",
-              author: "Sarah Jacobs",
-              role: "client",
-              message: "Please send the signed annual financial statements for our board pack.",
-              createdAt: "2026-05-04T10:00:00.000Z",
-            },
-          ],
-        },
-      ],
-    });
+  it("filters unresolved threads and supports back to all", () => {
+    renderPage([
+      createRequest({ id: "resolved-1", status: "resolved", title: "Resolved tax query", comments: [] }),
+      createRequest({ id: "open-1", status: "open", title: "Open bank statement task", comments: [] }),
+    ]);
 
-    expect(screen.getAllByText("Waiting on accountant").length).toBeGreaterThan(0);
-    expect(screen.getByText("Assigned accountant")).toBeInTheDocument();
-    expect(screen.getByText("Daniel Mokoena")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Unresolved" }));
+    expect(screen.queryByText("Resolved tax query")).not.toBeInTheDocument();
+    expect(screen.getAllByText("Open bank statement task").length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: "Back to all" }));
+    expect(screen.getAllByText("Resolved tax query").length).toBeGreaterThan(0);
   });
 
-  it("shows an empty state when there are no requests", () => {
-    renderPage({ requests: [] });
+  it("supports header menu quick filters", () => {
+    renderPage([createRequest()]);
 
-    expect(screen.getByText("No requests found")).toBeInTheDocument();
-    expect(screen.getByText("No open requests. You are up to date.")).toBeInTheDocument();
-    expect(
-      screen.getByText("Select a request to view details, comments, and audit history."),
-    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "?" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Show resolved" }));
+    expect(screen.getByText("No messages match your filters")).toBeInTheDocument();
+  });
+
+  it("navigates upload button with request context", () => {
+    renderPage([createRequest({ id: "request-context-1" })]);
+    fireEvent.click(screen.getByRole("button", { name: "Upload document" }));
+    expect(mockedNavigate).toHaveBeenCalledWith("/client/documents?requestId=request-context-1&from=inbox");
+  });
+
+  it("sends attachment payload in message", async () => {
+    const replyToRequest = vi.fn(() => ({ ok: true, message: "Reply added." }));
+    renderPage([createRequest()], { replyToRequest });
+
+    const file = new File(["test"], "statement.pdf", { type: "application/pdf" });
+    const attachInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    fireEvent.change(attachInput, { target: { files: [file] } });
+    await waitFor(() => expect(screen.getByText("Attached: statement.pdf")).toBeInTheDocument());
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    expect(replyToRequest).toHaveBeenCalled();
+    const sentMessage = ((replyToRequest as unknown as { mock: { calls: unknown[][] } }).mock.calls[0]?.[3] as string | undefined) ?? "";
+    expect(sentMessage).toContain("[[attachment:");
+  });
+
+  it("shows retry for failed reply sends", () => {
+    const replyToRequest = vi
+      .fn()
+      .mockReturnValueOnce({ ok: false, message: "Network failure" })
+      .mockReturnValueOnce({ ok: true, message: "Reply added." });
+    renderPage([createRequest()], { replyToRequest });
+
+    fireEvent.change(screen.getByPlaceholderText("Type your message..."), {
+      target: { value: "Please check this." },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    expect(screen.getByText("Network failure")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(replyToRequest).toHaveBeenCalledTimes(2);
   });
 });

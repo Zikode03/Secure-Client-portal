@@ -41,6 +41,7 @@ import {
   COMPLIANCE_REFERENCE_DATE,
   summariseComplianceRecords,
 } from "../utils/compliance";
+import { formatDateLabel } from "../utils/formatters";
 import type {
   AccountantDashboardData,
   ActivityItem,
@@ -578,6 +579,12 @@ interface PortalContextValue {
   createComplianceRequest: (payload: ComplianceRequestPayload) => PortalActionResult;
   uploadComplianceVersion: (payload: ComplianceVersionUploadPayload) => PortalActionResult;
   resolveRequest: (requestId: string, actorName: string) => PortalActionResult;
+  updateRequestControls: (
+    requestId: string,
+    updates: Pick<WorkflowRequest, "assignedTo" | "dueDate" | "priority">,
+    actorName: string,
+    options?: { addAuditNote?: boolean; auditNote?: string },
+  ) => PortalActionResult;
   updateBusinessProfile: (profile: BusinessProfile) => PortalActionResult;
   updateClientNotificationPreferences: (
     preferences: ClientNotificationPreferences,
@@ -2428,6 +2435,60 @@ const assignedAccountantForApex =
     return { ok: true, message: "Request marked as resolved." };
   }
 
+  function updateRequestControls(
+    requestId: string,
+    updates: Pick<WorkflowRequest, "assignedTo" | "dueDate" | "priority">,
+    actorName: string,
+    options?: { addAuditNote?: boolean; auditNote?: string },
+  ): PortalActionResult {
+    const targetRequest = requests.find((request) => request.id === requestId);
+    if (!targetRequest) {
+      return { ok: false, message: "The selected request could not be found." };
+    }
+
+    const nextAssignedTo = updates.assignedTo.trim();
+    if (!nextAssignedTo) {
+      return { ok: false, message: "Assigned to is required." };
+    }
+
+    const updatedAt = new Date().toISOString();
+    setRequests((current) =>
+      current.map((request) => {
+        if (request.id !== requestId) {
+          return request;
+        }
+
+        const shouldAddAudit = options?.addAuditNote === true;
+        const generatedAuditNote =
+          options?.auditNote?.trim() ||
+          `Controls updated by ${actorName}: assigned to ${nextAssignedTo}, due ${formatDateLabel(
+            updates.dueDate,
+          )}, priority ${updates.priority}.`;
+
+        return {
+          ...request,
+          assignedTo: nextAssignedTo,
+          dueDate: updates.dueDate,
+          priority: updates.priority,
+          auditTrail: shouldAddAudit
+            ? [
+                {
+                  id: `${requestId}-audit-${request.auditTrail.length + 1}`,
+                  status: "Assignment controls updated",
+                  actor: actorName,
+                  timestamp: updatedAt,
+                  note: generatedAuditNote,
+                },
+                ...request.auditTrail,
+              ]
+            : request.auditTrail,
+        };
+      }),
+    );
+
+    return { ok: true, message: "Request assignment updated." };
+  }
+
   function updateBusinessProfile(profile: BusinessProfile): PortalActionResult {
     setClientProfile(profile);
     setClientSettings((current) => ({
@@ -3259,6 +3320,7 @@ const assignedAccountantForApex =
       createComplianceRequest,
       uploadComplianceVersion,
       resolveRequest,
+      updateRequestControls,
       createUserAccount,
       disableUserAccount,
       activateUserAccount,
@@ -3334,6 +3396,7 @@ const assignedAccountantForApex =
       updateRolePermissionMatrix,
       uploadComplianceVersion,
       resolveRequest,
+      updateRequestControls,
       rolePermissionMatrix,
       rejectedDocuments,
       requests,
