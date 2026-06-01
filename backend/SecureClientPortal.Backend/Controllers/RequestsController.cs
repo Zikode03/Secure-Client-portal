@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using SecureClientPortal.Backend.Auth;
 using SecureClientPortal.Backend.Data;
 using SecureClientPortal.Backend.Models;
+using System.IdentityModel.Tokens.Jwt;
 
 namespace SecureClientPortal.Backend.Controllers;
 
@@ -21,13 +23,24 @@ public class RequestsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<RequestItem>>> GetAll()
     {
-        return Ok(await _db.Requests.OrderByDescending(x => x.RequestedAtUtc).ToListAsync());
+        var allowedClientIds = await User.GetAccessibleClientIdsAsync(_db);
+        return Ok(await _db.Requests
+            .Where(x => allowedClientIds.Contains(x.ClientId))
+            .OrderByDescending(x => x.RequestedAtUtc)
+            .ToListAsync());
     }
 
     [HttpPost]
     public async Task<ActionResult<RequestItem>> Create([FromBody] RequestItem request)
     {
+        var allowedClientIds = await User.GetAccessibleClientIdsAsync(_db);
+        if (!allowedClientIds.Contains(request.ClientId))
+        {
+            return Forbid();
+        }
+
         if (string.IsNullOrWhiteSpace(request.Id)) request.Id = $"req_{Guid.NewGuid():N}";
+        request.RequestedByUserId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value ?? request.RequestedByUserId;
         request.RequestedAtUtc = DateTime.UtcNow;
         request.UpdatedAtUtc = request.RequestedAtUtc;
 
@@ -41,6 +54,11 @@ public class RequestsController : ControllerBase
     {
         var item = await _db.Requests.FindAsync(id);
         if (item is null) return NotFound();
+        var allowedClientIds = await User.GetAccessibleClientIdsAsync(_db);
+        if (!allowedClientIds.Contains(item.ClientId))
+        {
+            return Forbid();
+        }
         return Ok(item);
     }
 
@@ -50,6 +68,11 @@ public class RequestsController : ControllerBase
     {
         var item = await _db.Requests.FindAsync(id);
         if (item is null) return NotFound();
+        var allowedClientIds = await User.GetAccessibleClientIdsAsync(_db);
+        if (!allowedClientIds.Contains(item.ClientId))
+        {
+            return Forbid();
+        }
 
         item.Title = request.Title;
         item.Description = request.Description;
@@ -68,6 +91,11 @@ public class RequestsController : ControllerBase
     {
         var item = await _db.Requests.FindAsync(id);
         if (item is null) return NotFound();
+        var allowedClientIds = await User.GetAccessibleClientIdsAsync(_db);
+        if (!allowedClientIds.Contains(item.ClientId))
+        {
+            return Forbid();
+        }
         _db.Requests.Remove(item);
         await _db.SaveChangesAsync();
         return NoContent();

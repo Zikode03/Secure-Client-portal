@@ -15,6 +15,11 @@ public class PortalDbContext : DbContext
     public DbSet<TaskItem> Tasks => Set<TaskItem>();
     public DbSet<RequestItem> Requests => Set<RequestItem>();
     public DbSet<SystemSetting> SystemSettings => Set<SystemSetting>();
+    public DbSet<ClientAssignment> ClientAssignments => Set<ClientAssignment>();
+    public DbSet<MonthlyPack> MonthlyPacks => Set<MonthlyPack>();
+    public DbSet<DocumentSlot> DocumentSlots => Set<DocumentSlot>();
+    public DbSet<DocumentVersion> DocumentVersions => Set<DocumentVersion>();
+    public DbSet<ReviewDecision> ReviewDecisions => Set<ReviewDecision>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -69,10 +74,12 @@ public class PortalDbContext : DbContext
             entity.Property(x => x.ClientId).HasMaxLength(100).IsRequired();
             entity.Property(x => x.Name).HasMaxLength(260).IsRequired();
             entity.Property(x => x.Category).HasMaxLength(80).IsRequired();
+            entity.Property(x => x.DocumentSlotId).HasMaxLength(100);
             entity.Property(x => x.Status).HasMaxLength(30).IsRequired();
             entity.Property(x => x.StorageKey).HasMaxLength(500);
             entity.Property(x => x.UploadedByUserId).HasMaxLength(100).IsRequired();
             entity.Property(x => x.FiledByUserId).HasMaxLength(100);
+            entity.Property(x => x.CurrentVersionNumber).HasDefaultValue(1);
             entity.Property(x => x.UploadedAtUtc).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             entity.Property(x => x.UpdatedAtUtc).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             entity.HasIndex(x => new { x.ClientId, x.IsFiled });
@@ -163,6 +170,91 @@ public class PortalDbContext : DbContext
             entity.Property(x => x.Key).HasMaxLength(120);
             entity.Property(x => x.ValueJson).HasColumnType("longtext").IsRequired();
             entity.Property(x => x.UpdatedAtUtc).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+        });
+
+        modelBuilder.Entity<ClientAssignment>(entity =>
+        {
+            entity.ToTable("AppClientAssignments");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(100);
+            entity.Property(x => x.AccountantUserId).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.ClientId).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.CreatedAtUtc).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.HasIndex(x => x.AccountantUserId);
+            entity.HasIndex(x => x.ClientId);
+            entity.HasIndex(x => new { x.AccountantUserId, x.ClientId }).IsUnique();
+        });
+
+        modelBuilder.Entity<MonthlyPack>(entity =>
+        {
+            entity.ToTable("AppMonthlyPacks");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(100);
+            entity.Property(x => x.ClientId).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.CreatedAtUtc).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.Property(x => x.UpdatedAtUtc).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.HasIndex(x => new { x.ClientId, x.Year, x.Month }).IsUnique();
+            entity.ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_AppMonthlyPacks_Status", "Status IN ('open','in_progress','ready_for_review','completed')");
+                table.HasCheckConstraint("CK_AppMonthlyPacks_Month", "Month >= 1 AND Month <= 12");
+            });
+        });
+
+        modelBuilder.Entity<DocumentSlot>(entity =>
+        {
+            entity.ToTable("AppDocumentSlots");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(100);
+            entity.Property(x => x.MonthlyPackId).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.ClientId).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.Category).HasMaxLength(80).IsRequired();
+            entity.Property(x => x.Label).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.CurrentDocumentId).HasMaxLength(100);
+            entity.Property(x => x.CreatedAtUtc).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.Property(x => x.UpdatedAtUtc).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.HasIndex(x => x.MonthlyPackId);
+            entity.HasIndex(x => new { x.MonthlyPackId, x.Category }).IsUnique();
+            entity.ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_AppDocumentSlots_Status", "Status IN ('missing','uploaded','under_review','accepted','rejected','filed')");
+            });
+        });
+
+        modelBuilder.Entity<DocumentVersion>(entity =>
+        {
+            entity.ToTable("AppDocumentVersions");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(100);
+            entity.Property(x => x.DocumentId).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.Name).HasMaxLength(260).IsRequired();
+            entity.Property(x => x.StorageKey).HasMaxLength(500);
+            entity.Property(x => x.UploadedByUserId).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.CreatedAtUtc).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.HasIndex(x => x.DocumentId);
+            entity.HasIndex(x => new { x.DocumentId, x.VersionNumber }).IsUnique();
+        });
+
+        modelBuilder.Entity<ReviewDecision>(entity =>
+        {
+            entity.ToTable("AppReviewDecisions");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(100);
+            entity.Property(x => x.DocumentId).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.Decision).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.ReviewerUserId).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.ReviewerRole).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Reason).HasMaxLength(1000);
+            entity.Property(x => x.DecidedAtUtc).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.HasIndex(x => x.DocumentId);
+            entity.HasIndex(x => x.DecidedAtUtc);
+            entity.ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_AppReviewDecisions_Decision", "Decision IN ('accepted','rejected')");
+                table.HasCheckConstraint("CK_AppReviewDecisions_ReviewerRole", "ReviewerRole IN ('admin','accountant')");
+            });
         });
     }
 }

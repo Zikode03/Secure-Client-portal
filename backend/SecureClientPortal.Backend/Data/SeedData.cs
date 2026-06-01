@@ -123,6 +123,42 @@ public static class SeedData
             IsEnabled = true,
         });
 
+        await UpsertClientAssignment(db, new ClientAssignment
+        {
+            Id = "ca_u_acc_001_c_001",
+            AccountantUserId = "u_acc_001",
+            ClientId = "c_001"
+        });
+
+        await UpsertMonthlyPack(db, new MonthlyPack
+        {
+            Id = "mp_c001_2026_06",
+            ClientId = "c_001",
+            Year = 2026,
+            Month = 6,
+            Status = "open"
+        });
+
+        await UpsertDocumentSlot(db, new DocumentSlot
+        {
+            Id = "slot_mp_c001_2026_06_bank_statement",
+            MonthlyPackId = "mp_c001_2026_06",
+            ClientId = "c_001",
+            Category = "bank_statement",
+            Label = "Bank Statement",
+            Status = "missing"
+        });
+
+        await UpsertDocumentSlot(db, new DocumentSlot
+        {
+            Id = "slot_mp_c001_2026_06_invoices",
+            MonthlyPackId = "mp_c001_2026_06",
+            ClientId = "c_001",
+            Category = "invoices",
+            Label = "Invoices",
+            Status = "missing"
+        });
+
         await db.SaveChangesAsync();
     }
 
@@ -156,5 +192,44 @@ public static class SeedData
         byId.Description = expected.Description;
         byId.IsEnabled = expected.IsEnabled;
         byId.UpdatedAtUtc = DateTime.UtcNow;
+    }
+
+    private static async Task UpsertClientAssignment(PortalDbContext db, ClientAssignment expected)
+    {
+        var byPair = await db.ClientAssignments.FirstOrDefaultAsync(x =>
+            x.AccountantUserId == expected.AccountantUserId && x.ClientId == expected.ClientId);
+        if (byPair is null)
+        {
+            db.ClientAssignments.Add(expected);
+        }
+    }
+
+    private static async Task UpsertMonthlyPack(PortalDbContext db, MonthlyPack expected)
+    {
+        var existing = await db.MonthlyPacks.FirstOrDefaultAsync(x =>
+            x.ClientId == expected.ClientId && x.Year == expected.Year && x.Month == expected.Month);
+        if (existing is null)
+        {
+            db.MonthlyPacks.Add(expected);
+            return;
+        }
+
+        existing.Status = expected.Status;
+        existing.UpdatedAtUtc = DateTime.UtcNow;
+    }
+
+    private static async Task UpsertDocumentSlot(PortalDbContext db, DocumentSlot expected)
+    {
+        var existing = await db.DocumentSlots.FirstOrDefaultAsync(x =>
+            x.MonthlyPackId == expected.MonthlyPackId && x.Category == expected.Category);
+        if (existing is null)
+        {
+            db.DocumentSlots.Add(expected);
+            return;
+        }
+
+        existing.Label = expected.Label;
+        existing.Status = expected.Status;
+        existing.UpdatedAtUtc = DateTime.UtcNow;
     }
 }

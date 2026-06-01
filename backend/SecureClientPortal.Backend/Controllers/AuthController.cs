@@ -45,8 +45,46 @@ public class AuthController : ControllerBase
             new(JwtRegisteredClaimNames.Sub, user.Id),
             new(JwtRegisteredClaimNames.Email, user.Email),
             new(ClaimTypes.Name, user.FullName),
+            new(ClaimTypes.NameIdentifier, user.Id),
             new(ClaimTypes.Role, user.Role),
         };
+
+        var normalizedRole = user.Role.Trim().ToLowerInvariant();
+        if (normalizedRole != user.Role)
+        {
+            claims.Add(new Claim(ClaimTypes.Role, normalizedRole));
+        }
+
+        if (normalizedRole == "client")
+        {
+            try
+            {
+                var clientIds = System.Text.Json.JsonSerializer.Deserialize<string[]>(user.ClientIdsJson)
+                    ?.Where(x => !string.IsNullOrWhiteSpace(x))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray() ?? [];
+                foreach (var clientId in clientIds)
+                {
+                    claims.Add(new Claim("client_id", clientId));
+                }
+            }
+            catch
+            {
+                // Keep login working even if legacy client scope JSON is malformed.
+            }
+        }
+        else if (normalizedRole == "accountant")
+        {
+            var assignedClientIds = await _db.ClientAssignments
+                .Where(x => x.AccountantUserId == user.Id)
+                .Select(x => x.ClientId)
+                .Distinct()
+                .ToListAsync();
+            foreach (var clientId in assignedClientIds)
+            {
+                claims.Add(new Claim("assigned_client_id", clientId));
+            }
+        }
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtOptions.SigningKey));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);

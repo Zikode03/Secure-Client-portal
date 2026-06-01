@@ -1,12 +1,16 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using SecureClientPortal.Backend.Auth;
 using SecureClientPortal.Backend.Data;
 using SecureClientPortal.Backend.Models;
+using System.IdentityModel.Tokens.Jwt;
 
 namespace SecureClientPortal.Backend.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize(Policy = "ClientOrAccountant")]
 public class ClientsController : ControllerBase
 {
     private readonly PortalDbContext _db;
@@ -19,20 +23,45 @@ public class ClientsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Client>>> GetAll()
     {
-        return Ok(await _db.Clients.OrderBy(x => x.Name).ToListAsync());
+        var allowedClientIds = await User.GetAccessibleClientIdsAsync(_db);
+        return Ok(await _db.Clients
+            .Where(x => allowedClientIds.Contains(x.Id))
+            .OrderBy(x => x.Name)
+            .ToListAsync());
     }
 
     [HttpGet("{id}")]
     public async Task<ActionResult<Client>> GetById(string id)
     {
+        var allowedClientIds = await User.GetAccessibleClientIdsAsync(_db);
+        if (!allowedClientIds.Contains(id))
+        {
+            return Forbid();
+        }
+
         var client = await _db.Clients.FindAsync(id);
         if (client is null) return NotFound();
         return Ok(client);
     }
 
     [HttpPost]
+    [Authorize(Policy = "AccountantOnly")]
     public async Task<ActionResult<Client>> Create([FromBody] Client request)
     {
+        var actorId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value ?? string.Empty;
+        if (User.IsAccountant() && !User.IsAdmin())
+        {
+            // Accountants can only create clients assigned to themselves.
+            if (string.IsNullOrWhiteSpace(request.AssignedAccountantId))
+            {
+                request.AssignedAccountantId = actorId;
+            }
+            else if (!string.Equals(request.AssignedAccountantId, actorId, StringComparison.OrdinalIgnoreCase))
+            {
+                return Forbid();
+            }
+        }
+
         if (string.IsNullOrWhiteSpace(request.Id)) request.Id = $"c_{Guid.NewGuid():N}";
         request.CreatedAtUtc = DateTime.UtcNow;
         request.UpdatedAtUtc = request.CreatedAtUtc;
@@ -44,8 +73,15 @@ public class ClientsController : ControllerBase
     }
 
     [HttpPut("{id}")]
+    [Authorize(Policy = "AccountantOnly")]
     public async Task<ActionResult<Client>> Update(string id, [FromBody] Client request)
     {
+        var allowedClientIds = await User.GetAccessibleClientIdsAsync(_db);
+        if (!allowedClientIds.Contains(id))
+        {
+            return Forbid();
+        }
+
         var existing = await _db.Clients.FindAsync(id);
         if (existing is null) return NotFound();
 
@@ -63,26 +99,53 @@ public class ClientsController : ControllerBase
     }
 
     [HttpPut("{id}/assignment")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<ActionResult<Client>> UpdateAssignment(
         string id,
         [FromBody] UpdateClientAssignmentRequest request)
     {
+        var targetAccountant = await _db.Users.FirstOrDefaultAsync(x =>
+            x.Id == request.AssignedAccountantId && x.Role == "accountant");
+        if (targetAccountant is null)
+        {
+            return BadRequest(new { error = "Assigned accountant user does not exist or is not an accountant." });
+        }
+
         var existing = await _db.Clients.FindAsync(id);
         if (existing is null) return NotFound();
 
         existing.AssignedAccountantId = request.AssignedAccountantId;
         existing.UpdatedAtUtc = DateTime.UtcNow;
 
+        var assignment = await _db.ClientAssignments.FirstOrDefaultAsync(x =>
+            x.AccountantUserId == request.AssignedAccountantId && x.ClientId == id);
+        if (assignment is null)
+        {
+            _db.ClientAssignments.Add(new ClientAssignment
+            {
+                Id = $"ca_{Guid.NewGuid():N}",
+                AccountantUserId = request.AssignedAccountantId,
+                ClientId = id,
+                CreatedAtUtc = DateTime.UtcNow
+            });
+        }
+
         await _db.SaveChangesAsync();
         return Ok(existing);
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> Delete(string id)
     {
         var existing = await _db.Clients.FindAsync(id);
         if (existing is null) return NotFound();
 
+        var assignments = await _db.ClientAssignments.Where(x => x.ClientId == id).ToListAsync();
+        if (assignments.Count > 0)
+        {
+            _db.ClientAssignments.RemoveRange(assignments);
+        }
         _db.Clients.Remove(existing);
         await _db.SaveChangesAsync();
         return NoContent();

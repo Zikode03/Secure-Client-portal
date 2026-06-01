@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using SecureClientPortal.Backend.Auth;
 using SecureClientPortal.Backend.Data;
 using SecureClientPortal.Backend.Models;
 using System.IdentityModel.Tokens.Jwt;
@@ -10,6 +11,7 @@ namespace SecureClientPortal.Backend.Controllers;
 public record UpdateDocumentStatusRequest(string Status);
 public record FilingRuleUpdateRequest(bool IsEnabled);
 public record AddDocumentCommentRequest(string Message);
+public record AddReviewDecisionRequest(string Decision, string? Reason);
 
 [ApiController]
 [Route("api/documents")]
@@ -27,16 +29,25 @@ public class DocumentsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Document>>> GetAll()
     {
-        return Ok(await _db.Documents.OrderByDescending(x => x.UploadedAtUtc).ToListAsync());
+        var allowedClientIds = await User.GetAccessibleClientIdsAsync(_db);
+        return Ok(await _db.Documents
+            .Where(x => allowedClientIds.Contains(x.ClientId))
+            .OrderByDescending(x => x.UploadedAtUtc)
+            .ToListAsync());
     }
 
     // Returns the read-only filing register (only documents that are actually filed).
     [HttpGet("filing-register")]
     public async Task<ActionResult<IEnumerable<Document>>> GetFilingRegister([FromQuery] string? clientId = null)
     {
-        var query = _db.Documents.Where(x => x.IsFiled);
+        var allowedClientIds = await User.GetAccessibleClientIdsAsync(_db);
+        var query = _db.Documents.Where(x => x.IsFiled && allowedClientIds.Contains(x.ClientId));
         if (!string.IsNullOrWhiteSpace(clientId))
         {
+            if (!allowedClientIds.Contains(clientId))
+            {
+                return Forbid();
+            }
             query = query.Where(x => x.ClientId == clientId);
         }
 
@@ -69,6 +80,12 @@ public class DocumentsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<Document>> Create([FromBody] Document request)
     {
+        var allowedClientIds = await User.GetAccessibleClientIdsAsync(_db);
+        if (!allowedClientIds.Contains(request.ClientId))
+        {
+            return Forbid();
+        }
+
         if (string.IsNullOrWhiteSpace(request.Id)) request.Id = $"doc_{Guid.NewGuid():N}";
         var normalizedStatus = string.IsNullOrWhiteSpace(request.Status)
             ? "draft"
@@ -77,11 +94,32 @@ public class DocumentsController : ControllerBase
         {
             return BadRequest(new { error = "Invalid status value." });
         }
+
+        request.Category = NormalizeCategory(request.Category);
+        var slotValidation = await ValidateDocumentSlotBindingAsync(request.ClientId, request.Category, request.DocumentSlotId);
+        if (!slotValidation.IsValid)
+        {
+            return BadRequest(new { error = slotValidation.ErrorMessage });
+        }
+
+        request.DocumentSlotId = slotValidation.SlotId;
         request.Status = normalizedStatus;
         request.UploadedAtUtc = DateTime.UtcNow;
         request.UpdatedAtUtc = request.UploadedAtUtc;
+        request.CurrentVersionNumber = 1;
 
         _db.Documents.Add(request);
+        _db.DocumentVersions.Add(new DocumentVersion
+        {
+            Id = $"dv_{Guid.NewGuid():N}",
+            DocumentId = request.Id,
+            VersionNumber = 1,
+            Name = request.Name,
+            SizeBytes = request.SizeBytes,
+            StorageKey = request.StorageKey,
+            UploadedByUserId = request.UploadedByUserId,
+            CreatedAtUtc = request.UploadedAtUtc
+        });
         await _db.SaveChangesAsync();
         return CreatedAtAction(nameof(GetById), new { id = request.Id }, request);
     }
@@ -91,7 +129,32 @@ public class DocumentsController : ControllerBase
     {
         var item = await _db.Documents.FindAsync(id);
         if (item is null) return NotFound();
+        var allowedClientIds = await User.GetAccessibleClientIdsAsync(_db);
+        if (!allowedClientIds.Contains(item.ClientId))
+        {
+            return Forbid();
+        }
         return Ok(item);
+    }
+
+    [HttpGet("{id}/versions")]
+    public async Task<ActionResult<IEnumerable<DocumentVersion>>> GetVersions(string id)
+    {
+        var item = await _db.Documents.FindAsync(id);
+        if (item is null) return NotFound();
+
+        var allowedClientIds = await User.GetAccessibleClientIdsAsync(_db);
+        if (!allowedClientIds.Contains(item.ClientId))
+        {
+            return Forbid();
+        }
+
+        var versions = await _db.DocumentVersions
+            .Where(x => x.DocumentId == id)
+            .OrderByDescending(x => x.VersionNumber)
+            .ThenByDescending(x => x.CreatedAtUtc)
+            .ToListAsync();
+        return Ok(versions);
     }
 
     [HttpPut("{id}")]
@@ -100,9 +163,25 @@ public class DocumentsController : ControllerBase
     {
         var item = await _db.Documents.FindAsync(id);
         if (item is null) return NotFound();
+        var allowedClientIds = await User.GetAccessibleClientIdsAsync(_db);
+        if (!allowedClientIds.Contains(item.ClientId))
+        {
+            return Forbid();
+        }
+
+        var nameChanged = item.Name != request.Name;
+        var sizeChanged = item.SizeBytes != request.SizeBytes;
+        var storageChanged = item.StorageKey != request.StorageKey;
+        var slotChanged = item.DocumentSlotId != request.DocumentSlotId;
 
         item.Name = request.Name;
-        item.Category = request.Category;
+        item.Category = NormalizeCategory(request.Category);
+        var slotValidation = await ValidateDocumentSlotBindingAsync(item.ClientId, item.Category, request.DocumentSlotId);
+        if (!slotValidation.IsValid)
+        {
+            return BadRequest(new { error = slotValidation.ErrorMessage });
+        }
+        item.DocumentSlotId = slotValidation.SlotId;
         var normalizedStatus = request.Status.Trim().ToLowerInvariant();
         if (!IsAllowedStatus(normalizedStatus))
         {
@@ -114,6 +193,21 @@ public class DocumentsController : ControllerBase
         }
         item.SizeBytes = request.SizeBytes;
         item.StorageKey = request.StorageKey;
+        if (nameChanged || sizeChanged || storageChanged || slotChanged)
+        {
+            item.CurrentVersionNumber += 1;
+            _db.DocumentVersions.Add(new DocumentVersion
+            {
+                Id = $"dv_{Guid.NewGuid():N}",
+                DocumentId = item.Id,
+                VersionNumber = item.CurrentVersionNumber,
+                Name = item.Name,
+                SizeBytes = item.SizeBytes,
+                StorageKey = item.StorageKey,
+                UploadedByUserId = request.UploadedByUserId,
+                CreatedAtUtc = DateTime.UtcNow
+            });
+        }
         await ApplyStatusAndFilingAsync(item, normalizedStatus);
         return Ok(item);
     }
@@ -125,6 +219,11 @@ public class DocumentsController : ControllerBase
     {
         var item = await _db.Documents.FindAsync(id);
         if (item is null) return NotFound();
+        var allowedClientIds = await User.GetAccessibleClientIdsAsync(_db);
+        if (!allowedClientIds.Contains(item.ClientId))
+        {
+            return Forbid();
+        }
 
         var normalizedStatus = request.Status.Trim().ToLowerInvariant();
         if (!IsAllowedStatus(normalizedStatus))
@@ -138,6 +237,40 @@ public class DocumentsController : ControllerBase
 
         await ApplyStatusAndFilingAsync(item, normalizedStatus);
         return Ok(item);
+    }
+
+    [HttpPost("{id}/review-decisions")]
+    [Authorize(Policy = "AccountantOnly")]
+    public async Task<ActionResult<ReviewDecision>> AddReviewDecision(string id, [FromBody] AddReviewDecisionRequest request)
+    {
+        var decision = request.Decision.Trim().ToLowerInvariant();
+        if (decision is not ("accepted" or "rejected"))
+        {
+            return BadRequest(new { error = "Decision must be accepted or rejected." });
+        }
+
+        var item = await _db.Documents.FindAsync(id);
+        if (item is null) return NotFound();
+        var allowedClientIds = await User.GetAccessibleClientIdsAsync(_db);
+        if (!allowedClientIds.Contains(item.ClientId))
+        {
+            return Forbid();
+        }
+
+        var decisionRow = new ReviewDecision
+        {
+            Id = $"rd_{Guid.NewGuid():N}",
+            DocumentId = item.Id,
+            Decision = decision,
+            ReviewerUserId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value ?? "unknown",
+            ReviewerRole = User.IsInRole("admin") ? "admin" : "accountant",
+            Reason = string.IsNullOrWhiteSpace(request.Reason) ? null : request.Reason.Trim(),
+            DecidedAtUtc = DateTime.UtcNow
+        };
+
+        _db.ReviewDecisions.Add(decisionRow);
+        await ApplyStatusAndFilingAsync(item, decision);
+        return Ok(decisionRow);
     }
 
     // Commenting on draft files by accountant/admin is disallowed until client submission.
@@ -151,6 +284,11 @@ public class DocumentsController : ControllerBase
 
         var item = await _db.Documents.FindAsync(id);
         if (item is null) return NotFound();
+        var allowedClientIds = await User.GetAccessibleClientIdsAsync(_db);
+        if (!allowedClientIds.Contains(item.ClientId))
+        {
+            return Forbid();
+        }
 
         var isAccountantSide = User.IsInRole("accountant") || User.IsInRole("admin");
         if (isAccountantSide && item.Status.Trim().ToLowerInvariant() == "draft")
@@ -186,6 +324,11 @@ public class DocumentsController : ControllerBase
     {
         var item = await _db.Documents.FindAsync(id);
         if (item is null) return NotFound();
+        var allowedClientIds = await User.GetAccessibleClientIdsAsync(_db);
+        if (!allowedClientIds.Contains(item.ClientId))
+        {
+            return Forbid();
+        }
         _db.Documents.Remove(item);
         await _db.SaveChangesAsync();
         return NoContent();
@@ -261,6 +404,8 @@ public class DocumentsController : ControllerBase
                 item.FiledAtUtc = null;
                 item.FiledByUserId = null;
             }
+
+            await AutoLinkAcceptedDocumentToSlotAsync(item);
         }
         else if (normalizedStatus != "filed")
         {
@@ -270,5 +415,62 @@ public class DocumentsController : ControllerBase
         }
 
         await _db.SaveChangesAsync();
+    }
+
+    private async Task<(bool IsValid, string? ErrorMessage, string? SlotId)> ValidateDocumentSlotBindingAsync(string clientId, string category, string? requestedSlotId)
+    {
+        if (string.IsNullOrWhiteSpace(requestedSlotId))
+        {
+            return (true, null, null);
+        }
+
+        var slot = await _db.DocumentSlots.FirstOrDefaultAsync(x => x.Id == requestedSlotId);
+        if (slot is null)
+        {
+            return (false, "Document slot was not found.", null);
+        }
+
+        if (slot.ClientId != clientId)
+        {
+            return (false, "Document slot belongs to a different client.", null);
+        }
+
+        if (NormalizeCategory(slot.Category) != NormalizeCategory(category))
+        {
+            return (false, "Document category must match the selected document slot category.", null);
+        }
+
+        return (true, null, slot.Id);
+    }
+
+    private async Task AutoLinkAcceptedDocumentToSlotAsync(Document item)
+    {
+        DocumentSlot? slot = null;
+        if (!string.IsNullOrWhiteSpace(item.DocumentSlotId))
+        {
+            slot = await _db.DocumentSlots.FirstOrDefaultAsync(x => x.Id == item.DocumentSlotId);
+        }
+
+        if (slot is null)
+        {
+            var normalizedCategory = NormalizeCategory(item.Category);
+            slot = await _db.DocumentSlots
+                .Where(x => x.ClientId == item.ClientId && x.Category == normalizedCategory)
+                .OrderByDescending(x => x.UpdatedAtUtc)
+                .FirstOrDefaultAsync();
+            if (slot is not null)
+            {
+                item.DocumentSlotId = slot.Id;
+            }
+        }
+
+        if (slot is null)
+        {
+            return;
+        }
+
+        slot.CurrentDocumentId = item.Id;
+        slot.Status = item.IsFiled ? "filed" : "accepted";
+        slot.UpdatedAtUtc = DateTime.UtcNow;
     }
 }
