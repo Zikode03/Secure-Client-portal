@@ -20,6 +20,12 @@ public class PortalDbContext : DbContext
     public DbSet<DocumentSlot> DocumentSlots => Set<DocumentSlot>();
     public DbSet<DocumentVersion> DocumentVersions => Set<DocumentVersion>();
     public DbSet<ReviewDecision> ReviewDecisions => Set<ReviewDecision>();
+    public DbSet<RequestComment> RequestComments => Set<RequestComment>();
+    public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<ComplianceCategory> ComplianceCategories => Set<ComplianceCategory>();
+    public DbSet<ComplianceItem> ComplianceItems => Set<ComplianceItem>();
+    public DbSet<ComplianceReminder> ComplianceReminders => Set<ComplianceReminder>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -254,6 +260,118 @@ public class PortalDbContext : DbContext
             {
                 table.HasCheckConstraint("CK_AppReviewDecisions_Decision", "Decision IN ('accepted','rejected')");
                 table.HasCheckConstraint("CK_AppReviewDecisions_ReviewerRole", "ReviewerRole IN ('admin','accountant')");
+            });
+        });
+
+        modelBuilder.Entity<RequestComment>(entity =>
+        {
+            entity.ToTable("AppRequestComments");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(100);
+            entity.Property(x => x.RequestId).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.ClientId).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.AuthorUserId).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.AuthorRole).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Message).HasMaxLength(2000).IsRequired();
+            entity.Property(x => x.CreatedAtUtc).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.HasIndex(x => new { x.RequestId, x.CreatedAtUtc });
+            entity.ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_AppRequestComments_AuthorRole", "AuthorRole IN ('admin','accountant','client')");
+            });
+        });
+
+        modelBuilder.Entity<Notification>(entity =>
+        {
+            entity.ToTable("AppNotifications");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(100);
+            entity.Property(x => x.UserId).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.ClientId).HasMaxLength(100);
+            entity.Property(x => x.Type).HasMaxLength(80).IsRequired();
+            entity.Property(x => x.Title).HasMaxLength(160).IsRequired();
+            entity.Property(x => x.Message).HasMaxLength(1000).IsRequired();
+            entity.Property(x => x.LinkUrl).HasMaxLength(500);
+            entity.Property(x => x.CreatedAtUtc).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.HasIndex(x => new { x.UserId, x.IsRead, x.CreatedAtUtc });
+            entity.HasIndex(x => x.ClientId);
+        });
+
+        modelBuilder.Entity<AuditLog>(entity =>
+        {
+            entity.ToTable("AppAuditLogs");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(100);
+            entity.Property(x => x.ActorUserId).HasMaxLength(100);
+            entity.Property(x => x.ActorRole).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Action).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.EntityType).HasMaxLength(80).IsRequired();
+            entity.Property(x => x.EntityId).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.ClientId).HasMaxLength(100);
+            entity.Property(x => x.MetadataJson).HasColumnType("longtext");
+            entity.Property(x => x.CreatedAtUtc).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.HasIndex(x => x.CreatedAtUtc);
+            entity.HasIndex(x => new { x.EntityType, x.EntityId });
+            entity.HasIndex(x => x.ClientId);
+            entity.ToTable(table =>
+            {
+                table.HasCheckConstraint("CK_AppAuditLogs_ActorRole", "ActorRole IN ('admin','accountant','client','unknown')");
+            });
+        });
+
+        modelBuilder.Entity<ComplianceCategory>(entity =>
+        {
+            entity.ToTable("AppComplianceCategories");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(100);
+            entity.Property(x => x.Name).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Description).HasMaxLength(1000).IsRequired();
+            entity.Property(x => x.CreatedAtUtc).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.Property(x => x.UpdatedAtUtc).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.HasIndex(x => x.Name).IsUnique();
+        });
+
+        modelBuilder.Entity<ComplianceItem>(entity =>
+        {
+            entity.ToTable("AppComplianceItems");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(100);
+            entity.Property(x => x.ClientId).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.CategoryId).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.Name).HasMaxLength(220).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.RequiredDocumentCategory).HasMaxLength(80);
+            entity.Property(x => x.LinkedDocumentId).HasMaxLength(100);
+            entity.Property(x => x.CreatedAtUtc).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.Property(x => x.UpdatedAtUtc).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.HasIndex(x => new { x.ClientId, x.CategoryId });
+            entity.HasIndex(x => new { x.ClientId, x.Status });
+            entity.ToTable(table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_AppComplianceItems_Status",
+                    "Status IN ('missing','pending','valid','expiring_soon','expired','rejected')");
+            });
+        });
+
+        modelBuilder.Entity<ComplianceReminder>(entity =>
+        {
+            entity.ToTable("AppComplianceReminders");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasMaxLength(100);
+            entity.Property(x => x.ComplianceItemId).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.ClientId).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.RecipientUserId).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.Type).HasMaxLength(50).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.CreatedAtUtc).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.HasIndex(x => new { x.ClientId, x.ScheduledForUtc });
+            entity.HasIndex(x => new { x.RecipientUserId, x.Status });
+            entity.ToTable(table =>
+            {
+                table.HasCheckConstraint(
+                    "CK_AppComplianceReminders_Status",
+                    "Status IN ('pending','sent','dismissed')");
             });
         });
     }

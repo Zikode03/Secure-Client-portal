@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using SecureClientPortal.Backend.Auth;
 using SecureClientPortal.Backend.Data;
+using System.Text.Json;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
@@ -39,6 +40,13 @@ public class AuthController : ControllerBase
 
         user.UpdatedAtUtc = DateTime.UtcNow;
         await _db.SaveChangesAsync();
+        await _db.WriteAuditLogAsync(
+            User,
+            "auth.login_success",
+            "user",
+            user.Id,
+            null,
+            JsonSerializer.Serialize(new { user.Email, user.Role }));
 
         var claims = new List<Claim>
         {

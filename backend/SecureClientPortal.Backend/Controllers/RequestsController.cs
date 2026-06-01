@@ -5,8 +5,11 @@ using SecureClientPortal.Backend.Auth;
 using SecureClientPortal.Backend.Data;
 using SecureClientPortal.Backend.Models;
 using System.IdentityModel.Tokens.Jwt;
+using System.Text.Json;
 
 namespace SecureClientPortal.Backend.Controllers;
+
+public record AddRequestCommentRequest(string Message);
 
 [ApiController]
 [Route("api/requests")]
@@ -46,6 +49,13 @@ public class RequestsController : ControllerBase
 
         _db.Requests.Add(request);
         await _db.SaveChangesAsync();
+        await _db.WriteAuditLogAsync(
+            User,
+            "request.created",
+            "request",
+            request.Id,
+            request.ClientId,
+            JsonSerializer.Serialize(new { request.Title, request.Priority, request.Status }));
         return CreatedAtAction(nameof(GetById), new { id = request.Id }, request);
     }
 
@@ -82,7 +92,96 @@ public class RequestsController : ControllerBase
         item.UpdatedAtUtc = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
+        await _db.WriteAuditLogAsync(
+            User,
+            "request.updated",
+            "request",
+            item.Id,
+            item.ClientId,
+            JsonSerializer.Serialize(new { item.Status, item.Priority }));
         return Ok(item);
+    }
+
+    [HttpGet("{id}/comments")]
+    public async Task<ActionResult<IEnumerable<RequestComment>>> GetComments(string id)
+    {
+        var item = await _db.Requests.FindAsync(id);
+        if (item is null) return NotFound();
+
+        var allowedClientIds = await User.GetAccessibleClientIdsAsync(_db);
+        if (!allowedClientIds.Contains(item.ClientId))
+        {
+            return Forbid();
+        }
+
+        var comments = await _db.RequestComments
+            .Where(x => x.RequestId == item.Id)
+            .OrderBy(x => x.CreatedAtUtc)
+            .ToListAsync();
+        return Ok(comments);
+    }
+
+    [HttpPost("{id}/comments")]
+    public async Task<ActionResult<RequestComment>> AddComment(string id, [FromBody] AddRequestCommentRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.Message))
+        {
+            return BadRequest(new { error = "Comment message is required." });
+        }
+
+        var item = await _db.Requests.FindAsync(id);
+        if (item is null) return NotFound();
+        var allowedClientIds = await User.GetAccessibleClientIdsAsync(_db);
+        if (!allowedClientIds.Contains(item.ClientId))
+        {
+            return Forbid();
+        }
+
+        var authorId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value ?? "unknown";
+        var authorRole = User.IsInRole("admin")
+            ? "admin"
+            : User.IsInRole("accountant")
+                ? "accountant"
+                : "client";
+        var comment = new RequestComment
+        {
+            Id = $"rc_{Guid.NewGuid():N}",
+            RequestId = item.Id,
+            ClientId = item.ClientId,
+            AuthorUserId = authorId,
+            AuthorRole = authorRole,
+            Message = request.Message.Trim(),
+            CreatedAtUtc = DateTime.UtcNow
+        };
+        _db.RequestComments.Add(comment);
+
+        var recipientRole = authorRole == "client" ? "accountant" : "client";
+        var recipientIds = await ResolveNotificationRecipientsAsync(item.ClientId, recipientRole);
+        foreach (var recipientUserId in recipientIds.Where(x => x != authorId))
+        {
+            _db.Notifications.Add(new Notification
+            {
+                Id = $"ntf_{Guid.NewGuid():N}",
+                UserId = recipientUserId,
+                ClientId = item.ClientId,
+                Type = "request.comment",
+                Title = "New request comment",
+                Message = $"New comment on request '{item.Title}'.",
+                LinkUrl = $"/requests/{item.Id}",
+                IsRead = false,
+                CreatedAtUtc = DateTime.UtcNow
+            });
+        }
+
+        await _db.SaveChangesAsync();
+        await _db.WriteAuditLogAsync(
+            User,
+            "request.comment_added",
+            "request",
+            item.Id,
+            item.ClientId,
+            JsonSerializer.Serialize(new { comment.Id, comment.AuthorRole }));
+        return Ok(comment);
     }
 
     [HttpDelete("{id}")]
@@ -96,8 +195,32 @@ public class RequestsController : ControllerBase
         {
             return Forbid();
         }
+
         _db.Requests.Remove(item);
         await _db.SaveChangesAsync();
+        await _db.WriteAuditLogAsync(User, "request.deleted", "request", item.Id, item.ClientId);
         return NoContent();
+    }
+
+    private async Task<List<string>> ResolveNotificationRecipientsAsync(string clientId, string role)
+    {
+        if (role == "client")
+        {
+            return await _db.Users
+                .Where(x => x.Role == "client" && x.ClientIdsJson.Contains(clientId))
+                .Select(x => x.Id)
+                .ToListAsync();
+        }
+
+        if (role == "accountant")
+        {
+            return await _db.ClientAssignments
+                .Where(x => x.ClientId == clientId)
+                .Select(x => x.AccountantUserId)
+                .Distinct()
+                .ToListAsync();
+        }
+
+        return [];
     }
 }
