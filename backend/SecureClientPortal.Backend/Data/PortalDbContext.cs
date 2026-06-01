@@ -28,14 +28,14 @@ public class PortalDbContext : DbContext
             entity.Property(x => x.FullName).HasMaxLength(200).IsRequired();
             entity.Property(x => x.Role).HasMaxLength(50).IsRequired();
             entity.Property(x => x.PasswordHash).HasMaxLength(500).IsRequired();
-            entity.Property(x => x.ClientIdsJson).HasColumnType("nvarchar(max)").IsRequired();
-            entity.Property(x => x.ProfileJson).HasColumnType("nvarchar(max)");
-            entity.Property(x => x.SecurityJson).HasColumnType("nvarchar(max)");
-            entity.Property(x => x.CreatedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()");
-            entity.Property(x => x.UpdatedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()");
+            entity.Property(x => x.ClientIdsJson).HasColumnType("longtext").IsRequired();
+            entity.Property(x => x.ProfileJson).HasColumnType("longtext");
+            entity.Property(x => x.SecurityJson).HasColumnType("longtext");
+            entity.Property(x => x.CreatedAtUtc).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.Property(x => x.UpdatedAtUtc).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             entity.ToTable(table =>
             {
-                table.HasCheckConstraint("CK_AppUsers_Role", "[Role] IN ('admin','accountant','client')");
+                table.HasCheckConstraint("CK_AppUsers_Role", "Role IN ('admin','accountant','client')");
             });
         });
 
@@ -50,14 +50,14 @@ public class PortalDbContext : DbContext
             entity.Property(x => x.AssignedAccountantId).HasMaxLength(100).IsRequired();
             entity.Property(x => x.PrimaryContact).HasMaxLength(200).IsRequired();
             entity.Property(x => x.Email).HasMaxLength(320).IsRequired();
-            entity.Property(x => x.CreatedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()");
-            entity.Property(x => x.UpdatedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()");
+            entity.Property(x => x.CreatedAtUtc).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.Property(x => x.UpdatedAtUtc).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             entity.HasIndex(x => x.AssignedAccountantId);
             entity.HasIndex(x => x.Status);
             entity.ToTable(table =>
             {
-                table.HasCheckConstraint("CK_AppClients_Status", "[Status] IN ('pending','active','at_risk','archived')");
-                table.HasCheckConstraint("CK_AppClients_ComplianceHealth", "[ComplianceHealth] >= 0 AND [ComplianceHealth] <= 100");
+                table.HasCheckConstraint("CK_AppClients_Status", "Status IN ('pending','active','at_risk','archived')");
+                table.HasCheckConstraint("CK_AppClients_ComplianceHealth", "ComplianceHealth >= 0 AND ComplianceHealth <= 100");
             });
         });
 
@@ -73,14 +73,14 @@ public class PortalDbContext : DbContext
             entity.Property(x => x.StorageKey).HasMaxLength(500);
             entity.Property(x => x.UploadedByUserId).HasMaxLength(100).IsRequired();
             entity.Property(x => x.FiledByUserId).HasMaxLength(100);
-            entity.Property(x => x.UploadedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()");
-            entity.Property(x => x.UpdatedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()");
+            entity.Property(x => x.UploadedAtUtc).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.Property(x => x.UpdatedAtUtc).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             entity.HasIndex(x => new { x.ClientId, x.IsFiled });
             entity.HasIndex(x => new { x.ClientId, x.Status });
             entity.HasIndex(x => x.UploadedAtUtc);
             entity.ToTable(table =>
             {
-                table.HasCheckConstraint("CK_AppDocuments_Status", "[Status] IN ('draft','pending','under_review','accepted','rejected','filed')");
+                table.HasCheckConstraint("CK_AppDocuments_Status", "Status IN ('draft','pending','under_review','accepted','rejected','filed')");
             });
         });
 
@@ -93,11 +93,11 @@ public class PortalDbContext : DbContext
             entity.Property(x => x.AuthorUserId).HasMaxLength(100).IsRequired();
             entity.Property(x => x.AuthorRole).HasMaxLength(30).IsRequired();
             entity.Property(x => x.Message).HasMaxLength(2000).IsRequired();
-            entity.Property(x => x.CreatedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()");
+            entity.Property(x => x.CreatedAtUtc).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             entity.HasIndex(x => new { x.DocumentId, x.CreatedAtUtc });
             entity.ToTable(table =>
             {
-                table.HasCheckConstraint("CK_AppDocumentComments_AuthorRole", "[AuthorRole] IN ('admin','accountant','client')");
+                table.HasCheckConstraint("CK_AppDocumentComments_AuthorRole", "AuthorRole IN ('admin','accountant','client')");
             });
         });
 
@@ -108,8 +108,8 @@ public class PortalDbContext : DbContext
             entity.Property(x => x.Id).HasMaxLength(100);
             entity.Property(x => x.Category).HasMaxLength(80).IsRequired();
             entity.Property(x => x.Description).HasMaxLength(280).IsRequired();
-            entity.Property(x => x.CreatedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()");
-            entity.Property(x => x.UpdatedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()");
+            entity.Property(x => x.CreatedAtUtc).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.Property(x => x.UpdatedAtUtc).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             entity.HasIndex(x => x.Category).IsUnique();
         });
 
@@ -123,14 +123,14 @@ public class PortalDbContext : DbContext
             entity.Property(x => x.Status).HasMaxLength(30).IsRequired();
             entity.Property(x => x.Priority).HasMaxLength(20).IsRequired();
             entity.Property(x => x.CreatedByUserId).HasMaxLength(100).IsRequired();
-            entity.Property(x => x.CreatedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()");
-            entity.Property(x => x.UpdatedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()");
+            entity.Property(x => x.CreatedAtUtc).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.Property(x => x.UpdatedAtUtc).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             entity.HasIndex(x => new { x.ClientId, x.Status });
             entity.HasIndex(x => x.DueDateUtc);
             entity.ToTable(table =>
             {
-                table.HasCheckConstraint("CK_AppTasks_Status", "[Status] IN ('todo','in_progress','blocked','done')");
-                table.HasCheckConstraint("CK_AppTasks_Priority", "[Priority] IN ('low','medium','high','urgent')");
+                table.HasCheckConstraint("CK_AppTasks_Status", "Status IN ('todo','in_progress','blocked','done')");
+                table.HasCheckConstraint("CK_AppTasks_Priority", "Priority IN ('low','medium','high','urgent')");
             });
         });
 
@@ -141,18 +141,18 @@ public class PortalDbContext : DbContext
             entity.Property(x => x.Id).HasMaxLength(100);
             entity.Property(x => x.ClientId).HasMaxLength(100).IsRequired();
             entity.Property(x => x.Title).HasMaxLength(200).IsRequired();
-            entity.Property(x => x.Description).HasColumnType("nvarchar(max)").IsRequired();
+            entity.Property(x => x.Description).HasColumnType("longtext").IsRequired();
             entity.Property(x => x.Priority).HasMaxLength(20).IsRequired();
             entity.Property(x => x.Status).HasMaxLength(30).IsRequired();
             entity.Property(x => x.RequestedByUserId).HasMaxLength(100).IsRequired();
-            entity.Property(x => x.RequestedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()");
-            entity.Property(x => x.UpdatedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()");
+            entity.Property(x => x.RequestedAtUtc).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
+            entity.Property(x => x.UpdatedAtUtc).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             entity.HasIndex(x => new { x.ClientId, x.Status });
             entity.HasIndex(x => x.DueDateUtc);
             entity.ToTable(table =>
             {
-                table.HasCheckConstraint("CK_AppRequests_Status", "[Status] IN ('open','awaiting_client','awaiting_accountant','resolved')");
-                table.HasCheckConstraint("CK_AppRequests_Priority", "[Priority] IN ('low','medium','high','urgent')");
+                table.HasCheckConstraint("CK_AppRequests_Status", "Status IN ('open','awaiting_client','awaiting_accountant','resolved')");
+                table.HasCheckConstraint("CK_AppRequests_Priority", "Priority IN ('low','medium','high','urgent')");
             });
         });
 
@@ -161,8 +161,11 @@ public class PortalDbContext : DbContext
             entity.ToTable("AppSystemSettings");
             entity.HasKey(x => x.Key);
             entity.Property(x => x.Key).HasMaxLength(120);
-            entity.Property(x => x.ValueJson).HasColumnType("nvarchar(max)").IsRequired();
-            entity.Property(x => x.UpdatedAtUtc).HasDefaultValueSql("SYSUTCDATETIME()");
+            entity.Property(x => x.ValueJson).HasColumnType("longtext").IsRequired();
+            entity.Property(x => x.UpdatedAtUtc).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
         });
     }
 }
+
+
+

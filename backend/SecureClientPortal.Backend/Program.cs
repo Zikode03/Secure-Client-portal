@@ -26,7 +26,8 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddDbContext<PortalDbContext>(options => options.UseSqlServer(connectionString));
+builder.Services.AddDbContext<PortalDbContext>(options =>
+    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
