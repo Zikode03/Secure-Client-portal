@@ -175,10 +175,11 @@ const routePrefetchers: Array<{ match: (path: string) => boolean; load: () => Pr
   { match: (path) => path.startsWith("/client/compliance"), load: () => import("../pages/client/ClientComplianceCentrePage") },
   { match: (path) => path.startsWith("/client/notifications"), load: () => import("../pages/client/ClientNotificationsPage") },
   { match: (path) => path.startsWith("/client/settings"), load: () => import("../pages/client/ClientSettingsPage") },
-  { match: (path) => path.startsWith("/firm/dashboard"), load: () => import("../pages/firm/FirmDashboardPage") },
-  { match: (path) => path.startsWith("/firm/clients"), load: () => import("../pages/firm/FirmClientsPage") },
-  { match: (path) => path.startsWith("/firm/documents"), load: () => import("../pages/firm/FirmDocumentsPage") },
-  { match: (path) => path.startsWith("/firm/filing"), load: () => import("../pages/firm/FirmFilingPage") },
+  { match: (path) => path.startsWith("/firm/dashboard"), load: () => import("../pages/accountant/AccountantDashboardPage") },
+  { match: (path) => /^\/firm\/clients\/[^/]+(?:\/packs)?$/.test(path), load: () => import("../pages/accountant/AccountantClientWorkspacePage") },
+  { match: (path) => path.startsWith("/firm/clients"), load: () => import("../pages/accountant/AccountantPortfolioPage") },
+  { match: (path) => path.startsWith("/firm/documents"), load: () => import("../pages/accountant/AccountantDocumentsPage") },
+  { match: (path) => path.startsWith("/firm/filing"), load: () => import("../pages/accountant/AccountantFilingPage") },
   { match: (path) => path.startsWith("/firm/review"), load: () => import("../pages/firm/FirmReviewQueuePage") },
   { match: (path) => path.startsWith("/firm/inbox"), load: () => import("../pages/firm/FirmRequestsPage") },
   { match: (path) => path.startsWith("/firm/inbox/"), load: () => import("../pages/firm/FirmRequestDetailPage") },
@@ -187,9 +188,9 @@ const routePrefetchers: Array<{ match: (path: string) => boolean; load: () => Pr
   { match: (path) => path.startsWith("/firm/activity"), load: () => import("../pages/firm/FirmActivityFeedPage") },
   { match: (path) => path.startsWith("/firm/exceptions"), load: () => import("../pages/firm/FirmExceptionsQueuePage") },
   { match: (path) => path.startsWith("/firm/compliance/calendar"), load: () => import("../pages/firm/FirmComplianceCalendarPage") },
-  { match: (path) => path.startsWith("/firm/compliance"), load: () => import("../pages/firm/FirmComplianceCentrePage") },
+  { match: (path) => path.startsWith("/firm/compliance"), load: () => import("../pages/accountant/AccountantComplianceCentrePage") },
   { match: (path) => path.startsWith("/firm/notifications/preferences"), load: () => import("../pages/shared/NotificationPreferencesPage") },
-  { match: (path) => path.startsWith("/firm/notifications"), load: () => import("../pages/firm/FirmNotificationsPage") },
+  { match: (path) => path.startsWith("/firm/notifications"), load: () => import("../pages/accountant/AccountantNotificationsPage") },
   { match: (path) => path.startsWith("/firm/settings"), load: () => import("../pages/firm/FirmSettingsPage") },
   { match: (path) => path.startsWith("/firm/clients/") && path.endsWith("/profile"), load: () => import("../pages/firm/FirmClient360Page") },
   { match: (path) => path.startsWith("/firm/admin/accountants"), load: () => import("../pages/admin/AdminAccountantsPage") },
@@ -241,44 +242,45 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
       <div className="flex min-h-screen flex-col lg:flex-row">
         <aside
           className={cn(
-            "fixed inset-y-0 left-0 z-40 w-[86vw] max-w-[320px] -translate-x-full border-b px-4 py-5 text-white shadow-[8px_0_30px_rgba(15,23,42,0.18)] transition-transform lg:static lg:w-[258px] lg:max-w-none lg:translate-x-0 lg:border-b-0 lg:border-r lg:px-3 lg:py-3",
+            "fixed inset-y-0 left-0 z-40 w-[86vw] max-w-[320px] -translate-x-full border-b px-4 py-5 text-white shadow-[8px_0_30px_rgba(15,23,42,0.18)] transition-transform lg:sticky lg:top-0 lg:h-screen lg:max-w-none lg:translate-x-0 lg:border-b-0 lg:border-r lg:px-3 lg:py-3",
+            "lg:w-[280px]",
             theme === "dark"
               ? "border-slate-900 bg-[linear-gradient(180deg,#0a0f1e_0%,#060b16_100%)] lg:border-slate-900"
               : "border-brand-900/70 bg-[linear-gradient(180deg,#0a2f66_0%,#07244f_100%)] lg:border-brand-900/70",
             mobileNavOpen && "translate-x-0",
           )}
         >
-          <div className="flex flex-col rounded-[1.4rem] border border-white/6 bg-[linear-gradient(180deg,rgba(255,255,255,0.028)_0%,rgba(255,255,255,0.012)_100%)] px-3.5 py-3.5 lg:min-h-[calc(100vh-1.5rem)]">
-            <div className="rounded-[1.15rem] border border-white/7 bg-white/[0.025] px-3.5 py-3">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-500/10 ring-1 ring-indigo-400/20">
+          <div className="flex h-full min-h-0 flex-col rounded-[1.25rem] border border-white/8 bg-white/[0.02] px-3 py-3">
+            <div className="rounded-xl border border-white/10 bg-black/10 px-3 py-3">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/5">
                   <PortalMark />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[0.98rem] font-semibold leading-5 text-white">Compliance Portal</p>
-                  <p className="mt-0.5 text-[0.66rem] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                  <p className="text-[0.92rem] font-semibold leading-5 text-white">Compliance Portal</p>
+                  <p className="text-[0.64rem] font-semibold uppercase tracking-[0.16em] text-slate-300/80">
                     {role} workspace
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="mt-5 flex-1 space-y-5">
+            <nav className="mt-4 flex-1 space-y-4 overflow-y-auto pr-1 [scrollbar-width:thin] [scrollbar-color:rgba(148,163,184,0.45)_transparent]">
               {Object.entries(groupedNavigation).map(([section, items]) => (
                 <div key={section}>
-                  <p className="px-3 text-[0.62rem] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                  <p className="px-2 text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-slate-300/65">
                     {section}
                   </p>
-                  <div className="mt-2 space-y-1.5">
+                  <div className="mt-2 space-y-1">
                     {items.map((item) => (
                       <NavLink
                         key={item.to}
                         className={({ isActive }) =>
                           cn(
-                            "group relative flex items-center gap-3 overflow-hidden rounded-[1rem] px-3 py-2.5 transition-all duration-150",
+                            "group relative flex items-center gap-3 overflow-hidden rounded-lg px-2.5 py-2 transition-all duration-150",
                             isActive
-                              ? "bg-[linear-gradient(135deg,rgba(24,172,95,0.28),rgba(10,47,102,0.4))] text-white ring-1 ring-white/8 shadow-[0_12px_24px_rgba(15,23,42,0.18)]"
-                              : "text-slate-300 hover:bg-white/[0.045] hover:text-white",
+                              ? "bg-white/12 text-white ring-1 ring-white/20"
+                              : "text-slate-200/90 hover:bg-white/7 hover:text-white",
                           )
                         }
                         to={item.to}
@@ -290,25 +292,25 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
                           <>
                             <span
                               className={cn(
-                                "absolute bottom-2 top-2 left-0 w-1 rounded-r-full transition",
-                                isActive ? "bg-brand-300" : "bg-transparent group-hover:bg-white/10",
+                                "absolute bottom-1.5 top-1.5 left-0 w-0.5 rounded-r-full transition",
+                                isActive ? "bg-brand-300" : "bg-transparent",
                               )}
                             />
                             <span
                               className={cn(
-                                "relative flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition",
+                                "relative flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition",
                                 isActive
-                                  ? "bg-brand-500/22 text-brand-100"
-                                  : "text-slate-400 group-hover:bg-white/[0.04] group-hover:text-slate-200",
+                                  ? "bg-white/15 text-white"
+                                  : "text-slate-300/80 group-hover:bg-white/8 group-hover:text-white",
                               )}
                             >
                               <NavIcon icon={item.icon} />
                             </span>
-                            <span className="min-w-0 flex-1 text-[0.85rem] font-medium">
+                            <span className="min-w-0 flex-1 text-[0.83rem] font-medium">
                               {item.label}
                             </span>
                             {item.badge ? (
-                              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-500 px-1.5 text-[0.66rem] font-semibold text-white shadow-[0_4px_10px_rgba(16,185,129,0.25)]">
+                              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-500 px-1.5 text-[0.64rem] font-semibold text-white">
                                 {item.badge}
                               </span>
                             ) : null}
@@ -319,41 +321,37 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
                   </div>
                 </div>
               ))}
-            </div>
+            </nav>
 
-            <div className="mt-5 border-t border-white/8 pt-4">
-              <div className="rounded-[1.15rem] border border-white/7 bg-[linear-gradient(180deg,rgba(255,255,255,0.05)_0%,rgba(255,255,255,0.03)_100%)] px-3.5 py-3.5 shadow-[0_14px_26px_rgba(15,23,42,0.16)]">
+            <div className="mt-4 border-t border-white/10 pt-3">
+              <div className="rounded-xl border border-white/10 bg-black/10 px-3 py-3">
                 <div className="flex items-center gap-3">
-                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,#18ac5f,#0a2f66)] text-sm font-semibold text-white shadow-[0_8px_20px_rgba(10,47,102,0.34)]">
+                  <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/15 text-sm font-semibold text-white">
                     {user?.initials}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[0.9rem] font-semibold text-white">{user?.name}</p>
-                    <p className="mt-0.5 truncate text-[0.73rem] text-slate-300">{user?.title}</p>
-                    <p className="mt-0.5 truncate text-[0.73rem] text-slate-400">{user?.company}</p>
+                    <p className="truncate text-[0.86rem] font-semibold text-white">{user?.name}</p>
+                    <p className="truncate text-[0.72rem] text-slate-300/90">{user?.title}</p>
                   </div>
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/[0.04] text-slate-500">
-                    ...
-                  </span>
                 </div>
               </div>
 
               <button
-                className="mt-3 flex w-full items-center gap-3 rounded-[1rem] px-3 py-3 text-left text-slate-300 transition hover:bg-white/[0.045] hover:text-white"
+                className="mt-2.5 flex w-full items-center gap-3 rounded-lg px-2.5 py-2.5 text-left text-slate-200/90 transition hover:bg-white/7 hover:text-white"
                 type="button"
               >
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/[0.04] text-slate-200">
+                <span className="flex h-8 w-8 items-center justify-center rounded-md bg-white/8 text-slate-100">
                   <SupportIcon />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[0.82rem] font-medium">Need help?</span>
-                  <span className="mt-0.5 block text-[0.72rem] text-slate-400">Contact support</span>
+                  <span className="block text-[0.81rem] font-medium">Need help?</span>
+                  <span className="block text-[0.7rem] text-slate-300/80">Contact support</span>
                 </span>
-                <span className="text-slate-500">{">"}</span>
+                <span className="text-slate-300/70">{">"}</span>
               </button>
 
               <button
-                className="mt-3 flex w-full items-center justify-center rounded-[0.95rem] border border-white/8 bg-white/[0.02] px-3 py-2.5 text-[0.82rem] font-medium text-slate-200 transition hover:bg-white/[0.06]"
+                className="mt-2 flex w-full items-center justify-center rounded-lg border border-white/15 bg-white/8 px-3 py-2.5 text-[0.8rem] font-medium text-white transition hover:bg-white/15"
                 onClick={logout}
                 type="button"
               >

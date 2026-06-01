@@ -1,5 +1,6 @@
 import { apiGetJson, apiPostJson, apiPutJson, hasApiBaseUrl } from "./apiClient";
 import { portalService } from "./portalData";
+import { getAccountantComplianceCentreData, getClientComplianceCentreData } from "./complianceData";
 import type {
   DocumentComment,
   FirmClientAccount,
@@ -68,9 +69,7 @@ export const portalServiceApi = {
     return getOrFallback("/api/client/notifications", () => portalService.getClientNotifications());
   },
   getClientComplianceCentre() {
-    return getOrFallback("/api/client/compliance-centre", () =>
-      portalService.getClientComplianceCentre(),
-    );
+    return getOrFallback("/api/client/compliance-centre", getClientComplianceCentreData);
   },
   getClientDocumentCenter() {
     return getOrFallback("/api/client/document-centre", () => portalService.getClientDocumentCenter());
@@ -79,9 +78,7 @@ export const portalServiceApi = {
     return getOrFallback("/api/accountant/dashboard", () => portalService.getAccountantDashboard());
   },
   getAccountantComplianceCentre() {
-    return getOrFallback("/api/accountant/compliance-centre", () =>
-      portalService.getAccountantComplianceCentre(),
-    );
+    return getOrFallback("/api/accountant/compliance-centre", getAccountantComplianceCentreData);
   },
   getAccountantNotifications() {
     return getOrFallback("/api/accountant/notifications", () =>

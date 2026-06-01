@@ -60,37 +60,39 @@ const ClientSettingsPage = lazy(() =>
     default: module.ClientSettingsPage,
   })),
 );
-const FirmClientWorkspacePage = lazy(() =>
-  import("../pages/firm/FirmClientWorkspacePage").then((module) => ({
-    default: module.FirmClientWorkspacePage,
+const AccountantClientWorkspacePage = lazy(() =>
+  import("../pages/accountant/AccountantClientWorkspacePage").then((module) => ({
+    default: module.AccountantClientWorkspacePage,
   })),
 );
-const FirmClientsPage = lazy(() =>
-  import("../pages/firm/FirmClientsPage").then((module) => ({ default: module.FirmClientsPage })),
-);
-const FirmComplianceCentrePage = lazy(() =>
-  import("../pages/firm/FirmComplianceCentrePage").then((module) => ({
-    default: module.FirmComplianceCentrePage,
+const AccountantPortfolioPage = lazy(() =>
+  import("../pages/accountant/AccountantPortfolioPage").then((module) => ({
+    default: module.AccountantPortfolioPage,
   })),
 );
-const FirmDashboardPage = lazy(() =>
-  import("../pages/firm/FirmDashboardPage").then((module) => ({
-    default: module.FirmDashboardPage,
+const AccountantComplianceCentrePage = lazy(() =>
+  import("../pages/accountant/AccountantComplianceCentrePage").then((module) => ({
+    default: module.AccountantComplianceCentrePage,
   })),
 );
-const FirmDocumentsPage = lazy(() =>
-  import("../pages/firm/FirmDocumentsPage").then((module) => ({
-    default: module.FirmDocumentsPage,
+const AccountantDashboardPage = lazy(() =>
+  import("../pages/accountant/AccountantDashboardPage").then((module) => ({
+    default: module.AccountantDashboardPage,
   })),
 );
-const FirmFilingPage = lazy(() =>
-  import("../pages/firm/FirmFilingPage").then((module) => ({
-    default: module.FirmFilingPage,
+const AccountantDocumentsPage = lazy(() =>
+  import("../pages/accountant/AccountantDocumentsPage").then((module) => ({
+    default: module.AccountantDocumentsPage,
   })),
 );
-const FirmNotificationsPage = lazy(() =>
-  import("../pages/firm/FirmNotificationsPage").then((module) => ({
-    default: module.FirmNotificationsPage,
+const AccountantFilingPage = lazy(() =>
+  import("../pages/accountant/AccountantFilingPage").then((module) => ({
+    default: module.AccountantFilingPage,
+  })),
+);
+const AccountantNotificationsPage = lazy(() =>
+  import("../pages/accountant/AccountantNotificationsPage").then((module) => ({
+    default: module.AccountantNotificationsPage,
   })),
 );
 const FirmRequestsPage = lazy(() =>
@@ -372,12 +374,12 @@ export default function App() {
 
         <Route element={<RequireFirmWorkspace />} path="/firm">
           <Route element={<Navigate replace to="dashboard" />} index />
-          <Route element={<FirmDashboardPage />} path="dashboard" />
-          <Route element={<FirmClientsPage />} path="clients" />
-          <Route element={<FirmClientWorkspacePage />} path="clients/:clientId" />
-          <Route element={<FirmClientWorkspacePage />} path="clients/:clientId/packs" />
-          <Route element={<FirmDocumentsPage />} path="documents" />
-          <Route element={<FirmFilingPage />} path="filing" />
+          <Route element={<AccountantDashboardPage />} path="dashboard" />
+          <Route element={<AccountantPortfolioPage />} path="clients" />
+          <Route element={<AccountantClientWorkspacePage />} path="clients/:clientId" />
+          <Route element={<AccountantClientWorkspacePage />} path="clients/:clientId/packs" />
+          <Route element={<AccountantDocumentsPage />} path="documents" />
+          <Route element={<AccountantFilingPage />} path="filing" />
           <Route element={<FirmReviewQueuePage />} path="review" />
           <Route element={<Navigate replace to="/firm/inbox" />} path="requests" />
           <Route element={<FirmRequestsPage />} path="inbox" />
@@ -385,9 +387,9 @@ export default function App() {
           <Route element={<LegacyFirmRequestDetailRedirect />} path="requests/:requestId" />
           <Route element={<FirmActivityFeedPage />} path="activity" />
           <Route element={<FirmExceptionsQueuePage />} path="exceptions" />
-          <Route element={<FirmComplianceCentrePage />} path="compliance" />
+          <Route element={<AccountantComplianceCentrePage />} path="compliance" />
           <Route element={<FirmComplianceCalendarPage />} path="compliance/calendar" />
-          <Route element={<FirmNotificationsPage />} path="notifications" />
+          <Route element={<AccountantNotificationsPage />} path="notifications" />
           <Route element={<NotificationPreferencesPage />} path="notifications/preferences" />
           <Route element={<FirmSettingsPage />} path="settings" />
           <Route element={<FirmClient360Page />} path="clients/:clientId/profile" />

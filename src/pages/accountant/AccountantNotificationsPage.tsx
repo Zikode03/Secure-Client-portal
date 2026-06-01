@@ -289,6 +289,7 @@ export function AccountantNotificationsPage() {
   const portal = usePortal();
   const [searchParams, setSearchParams] = useSearchParams();
   const [filter, setFilter] = useState<NotificationFilter>("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [feedback, setFeedback] = useState<FeedbackState | null>(null);
   const notifications = portal.accountantDashboard.notifications;
   const focusedNotificationId = searchParams.get("notification") ?? "";
@@ -306,8 +307,22 @@ export function AccountantNotificationsPage() {
   );
 
   const filteredNotifications = useMemo(
-    () => notifications.filter((item) => matchesFilter(item, filter)),
-    [filter, notifications],
+    () =>
+      notifications
+        .filter((item) => matchesFilter(item, filter))
+        .filter((item) => {
+          if (!searchQuery.trim()) {
+            return true;
+          }
+
+          const query = searchQuery.trim().toLowerCase();
+          return (
+            item.title.toLowerCase().includes(query) ||
+            item.message.toLowerCase().includes(query) ||
+            (item.linkedRecordLabel ?? "").toLowerCase().includes(query)
+          );
+        }),
+    [filter, notifications, searchQuery],
   );
 
   const orderedNotifications = useMemo(() => {
@@ -327,6 +342,21 @@ export function AccountantNotificationsPage() {
       return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
     });
   }, [filteredNotifications, focusedNotificationId]);
+
+  const groupedNotifications = useMemo(() => {
+    const now = notificationSnapshotDate.getTime();
+    const oneDayMs = 24 * 60 * 60 * 1000;
+    const sevenDaysMs = 7 * oneDayMs;
+
+    return {
+      today: orderedNotifications.filter((item) => now - new Date(item.createdAt).getTime() <= oneDayMs),
+      thisWeek: orderedNotifications.filter((item) => {
+        const age = now - new Date(item.createdAt).getTime();
+        return age > oneDayMs && age <= sevenDaysMs;
+      }),
+      earlier: orderedNotifications.filter((item) => now - new Date(item.createdAt).getTime() > sevenDaysMs),
+    };
+  }, [orderedNotifications]);
 
   function focusNotification(notificationId: string) {
     const next = new URLSearchParams(searchParams);
@@ -362,17 +392,31 @@ export function AccountantNotificationsPage() {
 
       <section className="space-y-2">
         <div>
-          <p className="text-[0.82rem] font-semibold uppercase tracking-[0.18em] text-brand-600">
-            {isAdmin ? "Firm alerts" : "Assigned alerts"}
-          </p>
+          <p className="text-[0.82rem] font-semibold uppercase tracking-[0.18em] text-brand-600">Inbox</p>
           <h1 className="mt-2 text-[2.2rem] font-semibold tracking-tight text-slate-950">
-            {isAdmin ? "Firm notifications" : "My notifications"}
+            {isAdmin ? "Firm alert inbox" : "My alert inbox"}
           </h1>
           <p className="mt-2 text-sm text-slate-500">
             {isAdmin
-              ? "Monitor operational signals across the full firm and route the right issues to the right workspace."
-              : "Review only the alerts linked to your assigned client portfolio and close the loop from one place."}
+              ? "Track operational alerts, open the right workspace, and close the loop quickly."
+              : "Review assigned alerts, open the linked record, and clear what needs attention."}
           </p>
+        </div>
+      </section>
+
+      <section className="rounded-[1.2rem] border border-slate-200 bg-white p-3 sm:p-4">
+        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+          <label className="space-y-2">
+            <span className="text-[0.78rem] font-semibold uppercase tracking-[0.1em] text-slate-500">
+              Search inbox
+            </span>
+            <input
+              className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-brand-300 focus:ring-4 focus:ring-brand-100"
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search alerts, records, or keywords..."
+              value={searchQuery}
+            />
+          </label>
         </div>
       </section>
 
@@ -413,8 +457,18 @@ export function AccountantNotificationsPage() {
       </div>
 
       {orderedNotifications.length > 0 ? (
-        <div className="space-y-3">
-          {orderedNotifications.map((notification) => {
+        <div className="space-y-6">
+          {[
+            { key: "today", label: "Today", items: groupedNotifications.today },
+            { key: "this-week", label: "This week", items: groupedNotifications.thisWeek },
+            { key: "earlier", label: "Earlier", items: groupedNotifications.earlier },
+          ].map((group) => (
+            group.items.length > 0 ? (
+              <section className="space-y-3" key={group.key}>
+                <h2 className="text-[0.76rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                  {group.label}
+                </h2>
+                {group.items.map((notification) => {
             const destination = destinationFor(notification);
             const tone = toneClasses(notification.tone);
             const focused = focusedNotificationId === notification.id;
@@ -576,6 +630,9 @@ export function AccountantNotificationsPage() {
               </SurfaceCard>
             );
           })}
+              </section>
+            ) : null
+          ))}
         </div>
       ) : (
         <SurfaceCard className="rounded-[1.45rem] border border-slate-200 bg-white p-6 shadow-[0_16px_34px_rgba(15,23,42,0.05)]">

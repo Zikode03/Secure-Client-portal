@@ -47,7 +47,7 @@ const previewReferenceDate = new Date("2026-05-08T08:00:00.000Z");
 const resultsPerPage = 7;
 
 // Shared shape notes: these types keep UI and data contracts aligned.
-type ResultTab = "all" | "documents" | "invoices" | "requests" | "compliance";
+type ResultTab = "all" | "documents" | "invoices" | "compliance";
 type ViewerTab = "details" | "history" | "related";
 
 // Component flow: gather data first, then render a focused UI state.
@@ -212,10 +212,6 @@ function belongsToResultTab(result: UnifiedSearchResult, tab: ResultTab) {
     return result.resultType === "invoice";
   }
 
-  if (tab === "requests") {
-    return result.resultType === "request";
-  }
-
   if (tab === "compliance") {
     return result.resultType === "compliance_document";
   }
@@ -259,8 +255,6 @@ function resultFamilyLabel(result: UnifiedSearchResult) {
   switch (result.resultType) {
     case "invoice":
       return "Invoices";
-    case "request":
-      return "Requests";
     case "compliance_document":
       return "Compliance";
     default:
@@ -337,10 +331,7 @@ function buildSyntheticDocument(result: UnifiedSearchResult): DocumentRecord {
   const safeTitle = displayResultTitle(result)
     .replace(/[^A-Za-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
-  const description =
-    result.resultType === "request"
-      ? "Workflow request attached to the client file in the unified document centre."
-      : `Preview shell for ${result.typeLabel.toLowerCase()} in the unified document centre.`;
+  const description = `Preview shell for ${result.typeLabel.toLowerCase()} in the unified document centre.`;
 
   return {
     id: result.id,
@@ -871,8 +862,6 @@ export function AccountantDocumentsPage() {
         .length,
       invoices: filteredResults.filter((result) => belongsToResultTab(result, "invoices"))
         .length,
-      requests: filteredResults.filter((result) => belongsToResultTab(result, "requests"))
-        .length,
       compliance: filteredResults.filter((result) => belongsToResultTab(result, "compliance"))
         .length,
     }),
@@ -1236,7 +1225,6 @@ export function AccountantDocumentsPage() {
                   { id: "all" as const, label: "All results", count: tabCounts.all },
                   { id: "documents" as const, label: "Documents", count: tabCounts.documents },
                   { id: "invoices" as const, label: "Invoices", count: tabCounts.invoices },
-                  { id: "requests" as const, label: "Requests", count: tabCounts.requests },
                   { id: "compliance" as const, label: "Compliance", count: tabCounts.compliance },
                 ].map((tab) => (
                   <button
@@ -1623,7 +1611,7 @@ export function AccountantDocumentsPage() {
                   </div>
 
                   <div className="rounded-xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-700">
-                    This is the active workflow view. Use workspace actions to review, return, reject, or accept this document.
+                    Archive view: inspect this record, trace its history, and collaborate through comments.
                   </div>
                 </div>
               ) : null}

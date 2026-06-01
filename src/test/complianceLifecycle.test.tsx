@@ -6,8 +6,8 @@ import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { AuthProvider } from "../app/auth";
 import { PortalProvider, usePortal } from "../app/portal";
+import { AccountantComplianceCentrePage } from "../pages/accountant/AccountantComplianceCentrePage";
 import { ClientComplianceCentrePage } from "../pages/client/ClientComplianceCentrePage";
-import { FirmComplianceCentrePage } from "../pages/firm/FirmComplianceCentrePage";
 import { portalService } from "../services/portalData";
 import type { SessionUser } from "../types/portal";
 import {
@@ -105,7 +105,7 @@ describe("compliance lifecycle", () => {
   });
 
   it("accountant can see the client compliance overview", () => {
-    renderWithProviders(<FirmComplianceCentrePage />, accountantUser);
+    renderWithProviders(<AccountantComplianceCentrePage />, accountantUser);
 
     expect(screen.getByRole("heading", { name: "My Compliance Workspace" })).toBeInTheDocument();
     expect(screen.getByText("Active clients")).toBeInTheDocument();
@@ -114,7 +114,7 @@ describe("compliance lifecycle", () => {
   });
 
   it("selecting a client updates the selected client panel", () => {
-    renderWithProviders(<FirmComplianceCentrePage />, accountantUser);
+    renderWithProviders(<AccountantComplianceCentrePage />, accountantUser);
 
     fireEvent.click(screen.getByRole("button", { name: /Cloud Nine Retail/i }));
 

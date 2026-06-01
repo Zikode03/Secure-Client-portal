@@ -5,10 +5,10 @@ import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { AuthProvider } from "../app/auth";
 import { PortalProvider } from "../app/portal";
-import { FirmClientsPage } from "../pages/firm/FirmClientsPage";
-import { FirmComplianceCentrePage } from "../pages/firm/FirmComplianceCentrePage";
-import { FirmDashboardPage } from "../pages/firm/FirmDashboardPage";
-import { FirmDocumentsPage } from "../pages/firm/FirmDocumentsPage";
+import { AccountantPortfolioPage } from "../pages/accountant/AccountantPortfolioPage";
+import { AccountantComplianceCentrePage } from "../pages/accountant/AccountantComplianceCentrePage";
+import { AccountantDashboardPage } from "../pages/accountant/AccountantDashboardPage";
+import { AccountantDocumentsPage } from "../pages/accountant/AccountantDocumentsPage";
 import { FirmRequestsPage } from "../pages/firm/FirmRequestsPage";
 import { FirmSettingsPage } from "../pages/firm/FirmSettingsPage";
 import type { SessionUser } from "../types/portal";
@@ -57,7 +57,7 @@ function renderWithProviders(page: JSX.Element, user: SessionUser) {
 
 describe("shared firm pages", () => {
   it("uses one shared dashboard skeleton with role-specific actions", async () => {
-    const adminView = renderWithProviders(<FirmDashboardPage />, adminUser);
+    const adminView = renderWithProviders(<AccountantDashboardPage />, adminUser);
 
     expect(await screen.findByRole("heading", { name: "Firm workspace" })).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "Manage assignments" }).length).toBeGreaterThan(0);
@@ -66,7 +66,7 @@ describe("shared firm pages", () => {
 
     adminView.unmount();
 
-    renderWithProviders(<FirmDashboardPage />, accountantUser);
+    renderWithProviders(<AccountantDashboardPage />, accountantUser);
 
     expect(await screen.findByRole("heading", { name: "Accountant workspace" })).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "View all clients" }).length).toBeGreaterThan(0);
@@ -75,7 +75,7 @@ describe("shared firm pages", () => {
   });
 
   it("shows all clients to admins and only assigned clients to accountants", async () => {
-    const adminView = renderWithProviders(<FirmClientsPage />, adminUser);
+    const adminView = renderWithProviders(<AccountantPortfolioPage />, adminUser);
 
     expect(await screen.findByText("Firm Clients")).toBeInTheDocument();
     expect(screen.getByText("Blue Peak Logistics")).toBeInTheDocument();
@@ -84,7 +84,7 @@ describe("shared firm pages", () => {
 
     adminView.unmount();
 
-    renderWithProviders(<FirmClientsPage />, accountantUser);
+    renderWithProviders(<AccountantPortfolioPage />, accountantUser);
 
     expect(await screen.findByText("Assigned Clients")).toBeInTheDocument();
     expect(screen.getByText("Apex Trading Ltd")).toBeInTheDocument();
@@ -93,7 +93,7 @@ describe("shared firm pages", () => {
   });
 
   it("renders different compliance actions for admin versus accountant", async () => {
-    const adminView = renderWithProviders(<FirmComplianceCentrePage />, adminUser);
+    const adminView = renderWithProviders(<AccountantComplianceCentrePage />, adminUser);
 
     expect(
       await screen.findByRole("heading", { name: "Firm Compliance Centre" }),
@@ -104,7 +104,7 @@ describe("shared firm pages", () => {
 
     adminView.unmount();
 
-    renderWithProviders(<FirmComplianceCentrePage />, accountantUser);
+    renderWithProviders(<AccountantComplianceCentrePage />, accountantUser);
 
     expect(
       await screen.findByRole("heading", { name: "My Compliance Workspace" }),
@@ -117,7 +117,7 @@ describe("shared firm pages", () => {
   });
 
   it("scopes the shared documents page by role", async () => {
-    const adminView = renderWithProviders(<FirmDocumentsPage />, adminUser);
+    const adminView = renderWithProviders(<AccountantDocumentsPage />, adminUser);
 
     const adminClientSelect = (await screen.findAllByLabelText("Client"))[0];
 
@@ -127,7 +127,7 @@ describe("shared firm pages", () => {
 
     adminView.unmount();
 
-    renderWithProviders(<FirmDocumentsPage />, accountantUser);
+    renderWithProviders(<AccountantDocumentsPage />, accountantUser);
 
     const accountantClientSelect = (await screen.findAllByLabelText("Client"))[0];
 
