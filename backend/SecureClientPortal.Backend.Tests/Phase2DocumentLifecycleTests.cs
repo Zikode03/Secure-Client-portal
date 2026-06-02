@@ -66,6 +66,13 @@ public class Phase2DocumentLifecycleTests
 
         var rejectedDocument = await db.Documents.SingleAsync();
         Assert.Equal("rejected", rejectedDocument.Status);
+        var reuploadRequest = await db.Requests.SingleAsync();
+        Assert.Equal("reupload", reuploadRequest.RequestType);
+        Assert.Equal("awaiting_client", reuploadRequest.Status);
+        Assert.Equal(document.Id, reuploadRequest.RelatedDocumentId);
+
+        var clientNotifications = await db.Notifications.Where(x => x.UserId == "u_client_001").ToListAsync();
+        Assert.Contains(clientNotifications, x => x.Type == "document.rejected");
 
         var clientReuploadController = new DocumentsController(db, storage)
         {
@@ -88,6 +95,16 @@ public class Phase2DocumentLifecycleTests
         Assert.Equal("pending", finalDocument.Status);
         Assert.Equal(2, finalDocument.CurrentVersionNumber);
 
+        var requestController = new RequestsController(db)
+        {
+            ControllerContext = BuildControllerContext(BuildUser("u_client_001", "client", ["c_001"]))
+        };
+        var commentResult = await requestController.AddComment(reuploadRequest.Id, new AddRequestCommentRequest("Corrected version uploaded."));
+        Assert.IsType<OkObjectResult>(commentResult.Result);
+
+        reuploadRequest = await db.Requests.SingleAsync();
+        Assert.Equal("awaiting_accountant", reuploadRequest.Status);
+
         var versionsResult = await clientReuploadController.GetVersions(document.Id, CancellationToken.None);
         var versionsOk = Assert.IsType<OkObjectResult>(versionsResult.Result);
         var versionsJson = JsonSerializer.Serialize(versionsOk.Value);
@@ -100,6 +117,16 @@ public class Phase2DocumentLifecycleTests
         Assert.Equal("submitted", finalPack.Status);
         Assert.Equal("uploaded", finalSlot.Status);
 
+        var accountantRequestController = new RequestsController(db)
+        {
+            ControllerContext = BuildControllerContext(BuildUser("u_acc_001", "accountant"))
+        };
+        var resolveResult = await accountantRequestController.Resolve(reuploadRequest.Id, new ResolveRequestRequest("Corrected document received."));
+        Assert.IsType<OkObjectResult>(resolveResult.Result);
+
+        reuploadRequest = await db.Requests.SingleAsync();
+        Assert.Equal("resolved", reuploadRequest.Status);
+
         var auditActions = await db.AuditLogs
             .OrderBy(x => x.CreatedAtUtc)
             .Select(x => x.Action)
@@ -107,7 +134,10 @@ public class Phase2DocumentLifecycleTests
 
         Assert.Contains("documents.uploaded", auditActions);
         Assert.Contains("documents.rejected", auditActions);
-        Assert.Equal(3, auditActions.Count(x => x is "documents.uploaded" or "documents.rejected"));
+        Assert.Contains("request.created", auditActions);
+        Assert.Contains("comment.added", auditActions);
+        Assert.Contains("request.resolved", auditActions);
+        Assert.Contains("notification.sent", auditActions);
     }
 
     [Fact]
@@ -147,6 +177,7 @@ public class Phase2DocumentLifecycleTests
 
         var auditActions = await db.AuditLogs.Select(x => x.Action).ToListAsync();
         Assert.Contains("documents.reupload_requested", auditActions);
+        Assert.Contains("request.created", auditActions);
 
         var download = await clientController.Download(document.Id, CancellationToken.None);
         Assert.IsType<FileStreamResult>(download);

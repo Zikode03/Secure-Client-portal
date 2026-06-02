@@ -7,6 +7,8 @@ public class ComplianceItem
     public string CategoryId { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string Status { get; set; } = "missing";
+    public string? OwnerUserId { get; set; }
+    public string RiskLevel { get; set; } = "medium";
     public string? RequiredDocumentCategory { get; set; }
     public string? LinkedDocumentId { get; set; }
     public DateTime? DueDateUtc { get; set; }

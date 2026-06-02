@@ -9,6 +9,7 @@ using System.Text.Json;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using System.Text.Json.Nodes;
 
 namespace SecureClientPortal.Backend.Controllers;
 
@@ -36,6 +37,12 @@ public class AuthController : ControllerBase
         if (user is null || !PasswordHasher.Verify(request.Password, user.PasswordHash))
         {
             return Unauthorized(new { error = "Invalid credentials" });
+        }
+
+        var securityStatus = GetSecurityStatus(user.SecurityJson);
+        if (securityStatus is "disabled" or "locked")
+        {
+            return Unauthorized(new { error = "User access is disabled." });
         }
 
         user.UpdatedAtUtc = DateTime.UtcNow;
@@ -145,5 +152,23 @@ public class AuthController : ControllerBase
                 clientIds = accessibleClientIds.OrderBy(x => x).ToArray()
             }
         });
+    }
+
+    private static string GetSecurityStatus(string? securityJson)
+    {
+        if (string.IsNullOrWhiteSpace(securityJson))
+        {
+            return "active";
+        }
+
+        try
+        {
+            var node = JsonNode.Parse(securityJson);
+            return node?["status"]?.GetValue<string>()?.Trim().ToLowerInvariant() ?? "active";
+        }
+        catch
+        {
+            return "active";
+        }
     }
 }

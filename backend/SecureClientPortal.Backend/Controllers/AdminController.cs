@@ -11,6 +11,7 @@ public record AdminCreateUserRequest(string FullName, string Email, string Role,
 public record AdminUpdateRoleRequest(string Role);
 public record AdminUpdateStatusRequest(string Status);
 public record AdminResetAccessRequest(string Reason);
+public record AdminResetPasswordRequest(string? NewPassword, string? Reason);
 public record AdminSettingRequest(string ValueJson);
 
 [ApiController]
@@ -93,10 +94,29 @@ public class AdminController : ControllerBase
     {
         var user = await _db.Users.FindAsync(id);
         if (user is null) return NotFound();
-        user.SecurityJson = $"{{\"status\":\"{request.Status}\"}}";
+        user.SecurityJson = JsonSerializer.Serialize(new { status = request.Status.Trim().ToLowerInvariant() });
         user.UpdatedAtUtc = DateTime.UtcNow;
         await _db.SaveChangesAsync();
+        await _db.WriteAuditLogAsync(
+            User,
+            "users.status_changed",
+            "user",
+            user.Id,
+            null,
+            JsonSerializer.Serialize(new { user.Email, status = request.Status.Trim().ToLowerInvariant() }));
         return Ok(new { user.Id, status = request.Status });
+    }
+
+    [HttpPost("users/{id}/disable")]
+    public async Task<IActionResult> DisableUser(string id)
+    {
+        return await UpdateUserStatus(id, new AdminUpdateStatusRequest("disabled"));
+    }
+
+    [HttpPost("users/{id}/enable")]
+    public async Task<IActionResult> EnableUser(string id)
+    {
+        return await UpdateUserStatus(id, new AdminUpdateStatusRequest("active"));
     }
 
     [HttpPost("users/{id}/reset-access")]
@@ -108,6 +128,35 @@ public class AdminController : ControllerBase
         user.UpdatedAtUtc = DateTime.UtcNow;
         await _db.SaveChangesAsync();
         return Ok(new { user.Id, reset = true });
+    }
+
+    [HttpPost("users/{id}/reset-password")]
+    public async Task<IActionResult> ResetPassword(string id, [FromBody] AdminResetPasswordRequest request)
+    {
+        var user = await _db.Users.FindAsync(id);
+        if (user is null) return NotFound();
+
+        var temporaryPassword = string.IsNullOrWhiteSpace(request.NewPassword)
+            ? $"Tmp!{Guid.NewGuid():N}"[..12]
+            : request.NewPassword.Trim();
+
+        user.PasswordHash = Auth.PasswordHasher.Hash(temporaryPassword);
+        user.SecurityJson = JsonSerializer.Serialize(new
+        {
+            status = "password_reset_required",
+            reason = string.IsNullOrWhiteSpace(request.Reason) ? "admin_reset" : request.Reason.Trim()
+        });
+        user.UpdatedAtUtc = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        await _db.WriteAuditLogAsync(
+            User,
+            "users.password_reset",
+            "user",
+            user.Id,
+            null,
+            JsonSerializer.Serialize(new { user.Email }));
+
+        return Ok(new { user.Id, temporaryPassword, reset = true });
     }
 
     [HttpGet("settings/{key}")]

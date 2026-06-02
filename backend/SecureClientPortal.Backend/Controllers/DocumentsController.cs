@@ -144,8 +144,13 @@ public class DocumentsController : ControllerBase
         }
         else
         {
-            document = await _db.Documents.FirstOrDefaultAsync(x => x.Id == request.DocumentId, ct)
-                ?? throw new InvalidOperationException("Requested document could not be found.");
+            var existingDocument = await _db.Documents.FirstOrDefaultAsync(x => x.Id == request.DocumentId, ct);
+            if (existingDocument is null)
+            {
+                return NotFound(new { error = "Requested document could not be found." });
+            }
+
+            document = existingDocument;
             if (!string.Equals(document.ClientId, request.ClientId, StringComparison.OrdinalIgnoreCase))
             {
                 return Forbid();
@@ -201,6 +206,18 @@ public class DocumentsController : ControllerBase
                 versionNumber = document.CurrentVersionNumber,
                 document.StorageKey
             }),
+            ct);
+
+        var accountants = await _db.ResolveNotificationRecipientsAsync(document.ClientId, "accountant", ct);
+        await _db.AddNotificationsAsync(
+            User,
+            accountants,
+            document.ClientId,
+            "monthly_pack.submitted",
+            "Monthly pack submitted",
+            $"A new document was submitted for review in monthly pack {pack.Year:D4}-{pack.Month:D2}.",
+            $"/documents/{document.Id}",
+            new { document.Id, monthlyPackId = pack.Id, versionNumber = document.CurrentVersionNumber },
             ct);
 
         return Created($"/api/documents/{document.Id}", await BuildDocumentResponseAsync(document, ct));
@@ -412,13 +429,6 @@ public class DocumentsController : ControllerBase
         });
     }
 
-    [HttpPost("{id}/review-decisions")]
-    [Authorize(Policy = "AccountantOnly")]
-    public async Task<ActionResult<object>> AddReviewDecision(string id, [FromBody] AddReviewDecisionRequest request, CancellationToken ct)
-    {
-        return await Review(id, request, ct);
-    }
-
     [HttpPost("{id}/comments")]
     public async Task<ActionResult<DocumentComment>> AddComment(string id, [FromBody] AddDocumentCommentRequest request)
     {
@@ -454,6 +464,25 @@ public class DocumentsController : ControllerBase
 
         _db.DocumentComments.Add(comment);
         await _db.SaveChangesAsync();
+        await _db.WriteAuditLogAsync(
+            User,
+            "comment.added",
+            "document",
+            item.Id,
+            item.ClientId,
+            JsonSerializer.Serialize(new { comment.Id, comment.AuthorRole, target = "document" }));
+
+        var recipientRole = authorRole == "client" ? "accountant" : "client";
+        var recipients = await _db.ResolveNotificationRecipientsAsync(item.ClientId, recipientRole);
+        await _db.AddNotificationsAsync(
+            User,
+            recipients,
+            item.ClientId,
+            "document.comment",
+            "Document comment added",
+            $"New comment added to document '{item.Name}'.",
+            $"/documents/{item.Id}",
+            new { item.Id, comment.Id });
         return Ok(comment);
     }
 
@@ -563,6 +592,7 @@ public class DocumentsController : ControllerBase
             ? null
             : await _db.MonthlyPacks.FirstOrDefaultAsync(x => x.Id == slot.MonthlyPackId, ct);
 
+        // Keep the document, slot, and monthly pack in sync so workflow and reporting read one lifecycle state.
         switch (decision)
         {
             case "under_review":
@@ -643,7 +673,74 @@ public class DocumentsController : ControllerBase
             }),
             ct);
 
+        if (decision is "rejected" or "request_reupload")
+        {
+            // A rejected document should become a trackable workflow item, not just a status change.
+            await EnsureReuploadRequestAsync(document, reviewDecision.Reason ?? "Please re-upload a corrected document.", ct);
+        }
+
+        if (decision is "rejected" or "request_reupload")
+        {
+            var recipients = await _db.ResolveNotificationRecipientsAsync(document.ClientId, "client", ct);
+            await _db.AddNotificationsAsync(
+                User,
+                recipients,
+                document.ClientId,
+                decision == "rejected" ? "document.rejected" : "document.reupload_requested",
+                decision == "rejected" ? "Document rejected" : "Re-upload requested",
+                decision == "rejected"
+                    ? $"Document '{document.Name}' was rejected."
+                    : $"A corrected version of '{document.Name}' was requested.",
+                $"/documents/{document.Id}",
+                new { document.Id, reason = reviewDecision.Reason },
+                ct);
+        }
+
         return reviewDecision;
+    }
+
+    private async Task EnsureReuploadRequestAsync(Document document, string reason, CancellationToken ct)
+    {
+        var existing = await _db.Requests.FirstOrDefaultAsync(x =>
+            x.ClientId == document.ClientId &&
+            x.RelatedDocumentId == document.Id &&
+            x.RequestType == "reupload" &&
+            x.Status != "resolved", ct);
+
+        if (existing is not null)
+        {
+            existing.Status = "awaiting_client";
+            existing.Description = reason.Trim();
+            existing.UpdatedAtUtc = DateTime.UtcNow;
+            await _db.SaveChangesAsync(ct);
+            return;
+        }
+
+        var requestItem = new RequestItem
+        {
+            Id = $"req_{Guid.NewGuid():N}",
+            ClientId = document.ClientId,
+            RequestType = "reupload",
+            RelatedDocumentId = document.Id,
+            Title = $"Re-upload required: {document.Name}",
+            Description = reason.Trim(),
+            Priority = "high",
+            Status = "awaiting_client",
+            RequestedByUserId = User.GetUserId() ?? "unknown",
+            RequestedAtUtc = DateTime.UtcNow,
+            UpdatedAtUtc = DateTime.UtcNow
+        };
+
+        _db.Requests.Add(requestItem);
+        await _db.SaveChangesAsync(ct);
+        await _db.WriteAuditLogAsync(
+            User,
+            "request.created",
+            "request",
+            requestItem.Id,
+            requestItem.ClientId,
+            JsonSerializer.Serialize(new { requestItem.RequestType, requestItem.RelatedDocumentId, requestItem.Status }),
+            ct);
     }
 
     private async Task RecalculateMonthlyPackStatusAsync(MonthlyPack pack, CancellationToken ct)

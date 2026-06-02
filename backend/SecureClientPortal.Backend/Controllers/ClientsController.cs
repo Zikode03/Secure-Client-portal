@@ -127,49 +127,6 @@ public class ClientsController : ControllerBase
         return Ok(existing);
     }
 
-    [HttpPut("{id}/assignment")]
-    [Authorize(Policy = "AdminOnly")]
-    public async Task<ActionResult<Client>> UpdateAssignment(
-        string id,
-        [FromBody] UpdateClientAssignmentRequest request)
-    {
-        var targetAccountant = await _db.Users.FirstOrDefaultAsync(x =>
-            x.Id == request.AssignedAccountantId && x.Role == "accountant");
-        if (targetAccountant is null)
-        {
-            return BadRequest(new { error = "Assigned accountant user does not exist or is not an accountant." });
-        }
-
-        var existing = await _db.Clients.FindAsync(id);
-        if (existing is null) return NotFound();
-
-        existing.AssignedAccountantId = request.AssignedAccountantId;
-        existing.UpdatedAtUtc = DateTime.UtcNow;
-
-        var assignment = await _db.ClientAssignments.FirstOrDefaultAsync(x =>
-            x.AccountantUserId == request.AssignedAccountantId && x.ClientId == id);
-        if (assignment is null)
-        {
-            _db.ClientAssignments.Add(new ClientAssignment
-            {
-                Id = $"ca_{Guid.NewGuid():N}",
-                AccountantUserId = request.AssignedAccountantId,
-                ClientId = id,
-                CreatedAtUtc = DateTime.UtcNow
-            });
-        }
-
-        await _db.SaveChangesAsync();
-        await _db.WriteAuditLogAsync(
-            User,
-            "assignments.assigned",
-            "client_assignment",
-            $"{request.AssignedAccountantId}:{id}",
-            id,
-            JsonSerializer.Serialize(new { clientId = id, accountantUserId = request.AssignedAccountantId, isPrimary = true }));
-        return Ok(existing);
-    }
-
     [HttpDelete("{id}")]
     [Authorize(Policy = "AdminOnly")]
     public async Task<IActionResult> Delete(string id)
@@ -186,9 +143,4 @@ public class ClientsController : ControllerBase
         await _db.SaveChangesAsync();
         return NoContent();
     }
-}
-
-public class UpdateClientAssignmentRequest
-{
-    public string AssignedAccountantId { get; set; } = string.Empty;
 }

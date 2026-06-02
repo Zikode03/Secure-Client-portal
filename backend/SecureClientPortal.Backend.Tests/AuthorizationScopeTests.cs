@@ -46,6 +46,14 @@ public class AuthorizationScopeTests
         Assert.Equal(2, adminRequests);
         Assert.Equal(1, accountantRequests);
         Assert.Equal(1, clientRequests);
+
+        var adminTasks = await GetTasksCount(db, adminUser);
+        var accountantTasks = await GetTasksCount(db, accountantUser);
+        var clientTasks = await GetTasksCount(db, clientUser);
+
+        Assert.Equal(2, adminTasks);
+        Assert.Equal(1, accountantTasks);
+        Assert.Equal(1, clientTasks);
     }
 
     [Fact]
@@ -78,17 +86,56 @@ public class AuthorizationScopeTests
             ControllerContext = BuildControllerContext(clientUser)
         };
 
-        var forbiddenRequest = await requestsController.Create(new RequestItem
-        {
-            Id = "req_forbidden",
-            ClientId = "c_002",
-            Title = "Bad",
-            Description = "Bad",
-            Priority = "medium",
-            Status = "open",
-            RequestedByUserId = "u_client_001"
-        });
+        var forbiddenRequest = await requestsController.Create(new CreateRequestRequest(
+            "c_002",
+            "clarification",
+            "Bad",
+            "Bad",
+            "medium",
+            null,
+            null));
         Assert.IsType<ForbidResult>(forbiddenRequest.Result);
+
+        var taskController = new TasksController(db)
+        {
+            ControllerContext = BuildControllerContext(accountantUser)
+        };
+
+        var forbiddenTask = await taskController.Create(new TaskItem
+        {
+            Id = "task_forbidden",
+            ClientId = "c_002",
+            Title = "Forbidden task",
+            Status = "todo",
+            Priority = "medium"
+        });
+        Assert.IsType<ForbidResult>(forbiddenTask.Result);
+    }
+
+    [Fact]
+    public async Task TaskEndpoints_RespectVisibilityAcrossReadUpdateAndDelete()
+    {
+        await using var db = BuildDb();
+        Seed(db);
+
+        var accountantController = new TasksController(db)
+        {
+            ControllerContext = BuildControllerContext(BuildUser("u_acc_001", "accountant"))
+        };
+
+        var forbiddenRead = await accountantController.GetById("task_002");
+        Assert.IsType<ForbidResult>(forbiddenRead.Result);
+
+        var forbiddenUpdate = await accountantController.Update("task_002", new TaskItem
+        {
+            Title = "Nope",
+            Status = "done",
+            Priority = "high"
+        });
+        Assert.IsType<ForbidResult>(forbiddenUpdate.Result);
+
+        var forbiddenDelete = await accountantController.Delete("task_002");
+        Assert.IsType<ForbidResult>(forbiddenDelete);
     }
 
     [Fact]
@@ -232,6 +279,19 @@ public class AuthorizationScopeTests
         return data.Count();
     }
 
+    private static async Task<int> GetTasksCount(PortalDbContext db, ClaimsPrincipal user)
+    {
+        var controller = new TasksController(db)
+        {
+            ControllerContext = BuildControllerContext(user)
+        };
+
+        var result = await controller.GetAll();
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var data = Assert.IsAssignableFrom<IEnumerable<TaskItem>>(ok.Value);
+        return data.Count();
+    }
+
     private static ControllerContext BuildControllerContext(ClaimsPrincipal user)
     {
         return new ControllerContext
@@ -343,6 +403,26 @@ public class AuthorizationScopeTests
                 Priority = "medium",
                 Status = "open",
                 RequestedByUserId = "u_acc_002"
+            });
+
+        db.Tasks.AddRange(
+            new TaskItem
+            {
+                Id = "task_001",
+                ClientId = "c_001",
+                Title = "Review Alpha",
+                Status = "todo",
+                Priority = "medium",
+                CreatedByUserId = "u_acc_001"
+            },
+            new TaskItem
+            {
+                Id = "task_002",
+                ClientId = "c_002",
+                Title = "Review Beta",
+                Status = "todo",
+                Priority = "high",
+                CreatedByUserId = "u_acc_002"
             });
 
         db.SaveChanges();

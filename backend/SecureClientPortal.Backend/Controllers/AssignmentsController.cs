@@ -9,6 +9,7 @@ using System.Text.Json;
 namespace SecureClientPortal.Backend.Controllers;
 
 public record CreateAssignmentRequest(string AccountantUserId, string ClientId, bool IsPrimary);
+public record ReassignAccountantRequest(string ClientId, string FromAccountantUserId, string ToAccountantUserId, bool MakePrimary);
 
 [ApiController]
 [Route("api/assignments")]
@@ -170,5 +171,108 @@ public class AssignmentsController : ControllerBase
             JsonSerializer.Serialize(new { assignment.ClientId, assignment.AccountantUserId, wasPrimary = isPrimary }));
 
         return NoContent();
+    }
+
+    [HttpPost("reassign")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> Reassign([FromBody] ReassignAccountantRequest request)
+    {
+        var client = await _db.Clients.FirstOrDefaultAsync(x => x.Id == request.ClientId);
+        if (client is null)
+        {
+            return BadRequest(new { error = "Client does not exist." });
+        }
+
+        var targetAccountant = await _db.Users.FirstOrDefaultAsync(x => x.Id == request.ToAccountantUserId && x.Role == "accountant");
+        if (targetAccountant is null)
+        {
+            return BadRequest(new { error = "Target accountant user does not exist or is not an accountant." });
+        }
+
+        var existingTarget = await _db.ClientAssignments.FirstOrDefaultAsync(x =>
+            x.ClientId == request.ClientId && x.AccountantUserId == request.ToAccountantUserId);
+        if (existingTarget is null)
+        {
+            existingTarget = new ClientAssignment
+            {
+                Id = $"ca_{Guid.NewGuid():N}",
+                ClientId = request.ClientId,
+                AccountantUserId = request.ToAccountantUserId,
+                CreatedAtUtc = DateTime.UtcNow
+            };
+            _db.ClientAssignments.Add(existingTarget);
+        }
+
+        var previous = await _db.ClientAssignments.FirstOrDefaultAsync(x =>
+            x.ClientId == request.ClientId && x.AccountantUserId == request.FromAccountantUserId);
+        if (previous is not null && !string.Equals(previous.AccountantUserId, existingTarget.AccountantUserId, StringComparison.OrdinalIgnoreCase))
+        {
+            _db.ClientAssignments.Remove(previous);
+        }
+
+        if (request.MakePrimary || string.Equals(client.AssignedAccountantId, request.FromAccountantUserId, StringComparison.OrdinalIgnoreCase))
+        {
+            client.AssignedAccountantId = request.ToAccountantUserId;
+            client.UpdatedAtUtc = DateTime.UtcNow;
+        }
+
+        await _db.SaveChangesAsync();
+        await _db.WriteAuditLogAsync(
+            User,
+            "assignments.reassigned",
+            "client_assignment",
+            existingTarget.Id,
+            client.Id,
+            JsonSerializer.Serialize(new
+            {
+                clientId = client.Id,
+                fromAccountantUserId = request.FromAccountantUserId,
+                toAccountantUserId = request.ToAccountantUserId,
+                request.MakePrimary
+            }));
+
+        return Ok(new
+        {
+            client.Id,
+            previousAccountantUserId = request.FromAccountantUserId,
+            currentAccountantUserId = request.ToAccountantUserId,
+            isPrimary = string.Equals(client.AssignedAccountantId, request.ToAccountantUserId, StringComparison.OrdinalIgnoreCase)
+        });
+    }
+
+    [HttpPost("{id}/make-primary")]
+    [Authorize(Policy = "AdminOnly")]
+    public async Task<IActionResult> MakePrimary(string id)
+    {
+        var assignment = await _db.ClientAssignments.FirstOrDefaultAsync(x => x.Id == id);
+        if (assignment is null)
+        {
+            return NotFound();
+        }
+
+        var client = await _db.Clients.FirstOrDefaultAsync(x => x.Id == assignment.ClientId);
+        if (client is null)
+        {
+            return BadRequest(new { error = "Client does not exist." });
+        }
+
+        client.AssignedAccountantId = assignment.AccountantUserId;
+        client.UpdatedAtUtc = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        await _db.WriteAuditLogAsync(
+            User,
+            "assignments.primary_updated",
+            "client_assignment",
+            assignment.Id,
+            assignment.ClientId,
+            JsonSerializer.Serialize(new { assignment.ClientId, assignment.AccountantUserId }));
+
+        return Ok(new
+        {
+            assignment.Id,
+            assignment.ClientId,
+            assignment.AccountantUserId,
+            isPrimary = true
+        });
     }
 }

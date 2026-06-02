@@ -162,6 +162,42 @@ public static class SeedData
         });
 
         await db.SaveChangesAsync();
+
+        await UpsertComplianceCategory(db, new ComplianceCategory
+        {
+            Id = "cc_tax_compliance",
+            Name = "Tax Compliance",
+            Code = "TAX",
+            Description = "Income tax, VAT, and tax authority filing obligations.",
+            IsActive = true
+        });
+
+        await UpsertComplianceCategory(db, new ComplianceCategory
+        {
+            Id = "cc_cipc_compliance",
+            Name = "CIPC Compliance",
+            Code = "CIPC",
+            Description = "Company registration, annual returns, and beneficial ownership obligations.",
+            IsActive = true
+        });
+
+        await UpsertComplianceCategory(db, new ComplianceCategory
+        {
+            Id = "cc_payroll_compliance",
+            Name = "Payroll Compliance",
+            Code = "PAYROLL",
+            Description = "Payroll submissions, UIF, PAYE, and employee record obligations.",
+            IsActive = true
+        });
+
+        await UpsertComplianceCategory(db, new ComplianceCategory
+        {
+            Id = "cc_popia_compliance",
+            Name = "POPIA Compliance",
+            Code = "POPIA",
+            Description = "Privacy controls, processing evidence, and consent obligations.",
+            IsActive = true
+        });
     }
 
     private static async Task UpsertUser(PortalDbContext db, User expected)
@@ -233,6 +269,22 @@ public static class SeedData
         existing.Label = expected.Label;
         existing.IsRequired = expected.IsRequired;
         existing.Status = expected.Status;
+        existing.UpdatedAtUtc = DateTime.UtcNow;
+    }
+
+    private static async Task UpsertComplianceCategory(PortalDbContext db, ComplianceCategory expected)
+    {
+        var existing = await db.ComplianceCategories.FirstOrDefaultAsync(x => x.Id == expected.Id || x.Code == expected.Code);
+        if (existing is null)
+        {
+            db.ComplianceCategories.Add(expected);
+            return;
+        }
+
+        existing.Name = expected.Name;
+        existing.Code = expected.Code;
+        existing.Description = expected.Description;
+        existing.IsActive = expected.IsActive;
         existing.UpdatedAtUtc = DateTime.UtcNow;
     }
 }

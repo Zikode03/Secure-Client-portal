@@ -153,19 +153,24 @@ public class PortalDbContext : DbContext
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Id).HasMaxLength(100);
             entity.Property(x => x.ClientId).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.RequestType).HasMaxLength(50).IsRequired();
+            entity.Property(x => x.RelatedDocumentId).HasMaxLength(100);
             entity.Property(x => x.Title).HasMaxLength(200).IsRequired();
             entity.Property(x => x.Description).HasColumnType("longtext").IsRequired();
             entity.Property(x => x.Priority).HasMaxLength(20).IsRequired();
             entity.Property(x => x.Status).HasMaxLength(30).IsRequired();
             entity.Property(x => x.RequestedByUserId).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.ResolvedByUserId).HasMaxLength(100);
             entity.Property(x => x.RequestedAtUtc).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             entity.Property(x => x.UpdatedAtUtc).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             entity.HasIndex(x => new { x.ClientId, x.Status });
             entity.HasIndex(x => x.DueDateUtc);
+            entity.HasIndex(x => x.RelatedDocumentId);
             entity.ToTable(table =>
             {
                 table.HasCheckConstraint("CK_AppRequests_Status", "Status IN ('open','awaiting_client','awaiting_accountant','resolved')");
                 table.HasCheckConstraint("CK_AppRequests_Priority", "Priority IN ('low','medium','high','urgent')");
+                table.HasCheckConstraint("CK_AppRequests_RequestType", "RequestType IN ('missing_document','reupload','clarification','renewal','signature')");
             });
         });
 
@@ -327,9 +332,11 @@ public class PortalDbContext : DbContext
             entity.Property(x => x.Id).HasMaxLength(100);
             entity.Property(x => x.Name).HasMaxLength(200).IsRequired();
             entity.Property(x => x.Description).HasMaxLength(1000).IsRequired();
+            entity.Property(x => x.Code).HasMaxLength(60);
             entity.Property(x => x.CreatedAtUtc).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             entity.Property(x => x.UpdatedAtUtc).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
             entity.HasIndex(x => x.Name).IsUnique();
+            entity.HasIndex(x => x.Code).IsUnique();
         });
 
         modelBuilder.Entity<ComplianceItem>(entity =>
@@ -341,6 +348,8 @@ public class PortalDbContext : DbContext
             entity.Property(x => x.CategoryId).HasMaxLength(100).IsRequired();
             entity.Property(x => x.Name).HasMaxLength(220).IsRequired();
             entity.Property(x => x.Status).HasMaxLength(30).IsRequired();
+            entity.Property(x => x.OwnerUserId).HasMaxLength(100);
+            entity.Property(x => x.RiskLevel).HasMaxLength(20).IsRequired();
             entity.Property(x => x.RequiredDocumentCategory).HasMaxLength(80);
             entity.Property(x => x.LinkedDocumentId).HasMaxLength(100);
             entity.Property(x => x.CreatedAtUtc).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
@@ -352,6 +361,9 @@ public class PortalDbContext : DbContext
                 table.HasCheckConstraint(
                     "CK_AppComplianceItems_Status",
                     "Status IN ('missing','pending','valid','expiring_soon','expired','rejected')");
+                table.HasCheckConstraint(
+                    "CK_AppComplianceItems_RiskLevel",
+                    "RiskLevel IN ('low','medium','high','critical')");
             });
         });
 

@@ -9,13 +9,32 @@ using System.Text.Json;
 
 namespace SecureClientPortal.Backend.Controllers;
 
+public record CreateRequestRequest(
+    string ClientId,
+    string RequestType,
+    string Title,
+    string Description,
+    string Priority,
+    DateTime? DueDateUtc,
+    string? RelatedDocumentId);
+
 public record AddRequestCommentRequest(string Message);
+public record ResolveRequestRequest(string? ResolutionNote);
 
 [ApiController]
 [Route("api/requests")]
 [Authorize(Policy = "ClientOrAccountant")]
 public class RequestsController : ControllerBase
 {
+    private static readonly HashSet<string> AllowedRequestTypes =
+    [
+        "missing_document",
+        "reupload",
+        "clarification",
+        "renewal",
+        "signature"
+    ];
+
     private readonly PortalDbContext _db;
 
     public RequestsController(PortalDbContext db)
@@ -34,7 +53,7 @@ public class RequestsController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<RequestItem>> Create([FromBody] RequestItem request)
+    public async Task<ActionResult<RequestItem>> Create([FromBody] CreateRequestRequest request)
     {
         var allowedClientIds = await User.GetAccessibleClientIdsAsync(_db);
         if (!allowedClientIds.Contains(request.ClientId))
@@ -42,21 +61,69 @@ public class RequestsController : ControllerBase
             return Forbid();
         }
 
-        if (string.IsNullOrWhiteSpace(request.Id)) request.Id = $"req_{Guid.NewGuid():N}";
-        request.RequestedByUserId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value ?? request.RequestedByUserId;
-        request.RequestedAtUtc = DateTime.UtcNow;
-        request.UpdatedAtUtc = request.RequestedAtUtc;
+        var requestType = NormalizeRequestType(request.RequestType);
+        if (!AllowedRequestTypes.Contains(requestType))
+        {
+            return BadRequest(new { error = "Unsupported request type." });
+        }
 
-        _db.Requests.Add(request);
+        if (!IsAllowedPriority(request.Priority))
+        {
+            return BadRequest(new { error = "Priority must be low, medium, high, or urgent." });
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.RelatedDocumentId))
+        {
+            var document = await _db.Documents.FirstOrDefaultAsync(x => x.Id == request.RelatedDocumentId);
+            if (document is null || !string.Equals(document.ClientId, request.ClientId, StringComparison.OrdinalIgnoreCase))
+            {
+                return BadRequest(new { error = "Related document was not found for the selected client." });
+            }
+        }
+
+        var authorId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value ?? "unknown";
+        var authorRole = User.IsAdmin() ? "admin" : User.IsAccountant() ? "accountant" : "client";
+        var status = authorRole == "client" ? "awaiting_accountant" : "awaiting_client";
+
+        var item = new RequestItem
+        {
+            Id = $"req_{Guid.NewGuid():N}",
+            ClientId = request.ClientId,
+            RequestType = requestType,
+            RelatedDocumentId = request.RelatedDocumentId,
+            Title = request.Title.Trim(),
+            Description = request.Description.Trim(),
+            Priority = request.Priority.Trim().ToLowerInvariant(),
+            Status = status,
+            DueDateUtc = request.DueDateUtc,
+            RequestedByUserId = authorId,
+            RequestedAtUtc = DateTime.UtcNow,
+            UpdatedAtUtc = DateTime.UtcNow
+        };
+
+        _db.Requests.Add(item);
         await _db.SaveChangesAsync();
         await _db.WriteAuditLogAsync(
             User,
             "request.created",
             "request",
-            request.Id,
-            request.ClientId,
-            JsonSerializer.Serialize(new { request.Title, request.Priority, request.Status }));
-        return CreatedAtAction(nameof(GetById), new { id = request.Id }, request);
+            item.Id,
+            item.ClientId,
+            JsonSerializer.Serialize(new { item.RequestType, item.Priority, item.Status, item.RelatedDocumentId }));
+
+        var notificationAudience = authorRole == "client" ? "accountant" : "client";
+        var recipients = await _db.ResolveNotificationRecipientsAsync(item.ClientId, notificationAudience);
+        await _db.AddNotificationsAsync(
+            User,
+            recipients,
+            item.ClientId,
+            "request.created",
+            "New workflow request",
+            $"A {item.RequestType.Replace('_', ' ')} request was created for '{item.Title}'.",
+            $"/requests/{item.Id}",
+            new { item.Id, item.RequestType });
+
+        return CreatedAtAction(nameof(GetById), new { id = item.Id }, item);
     }
 
     [HttpGet("{id}")]
@@ -69,6 +136,7 @@ public class RequestsController : ControllerBase
         {
             return Forbid();
         }
+
         return Ok(item);
     }
 
@@ -89,6 +157,8 @@ public class RequestsController : ControllerBase
         item.Priority = request.Priority;
         item.Status = request.Status;
         item.DueDateUtc = request.DueDateUtc;
+        item.RequestType = NormalizeRequestType(request.RequestType);
+        item.RelatedDocumentId = request.RelatedDocumentId;
         item.UpdatedAtUtc = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
@@ -98,7 +168,7 @@ public class RequestsController : ControllerBase
             "request",
             item.Id,
             item.ClientId,
-            JsonSerializer.Serialize(new { item.Status, item.Priority }));
+            JsonSerializer.Serialize(new { item.Status, item.Priority, item.RequestType }));
         return Ok(item);
     }
 
@@ -155,33 +225,75 @@ public class RequestsController : ControllerBase
         };
         _db.RequestComments.Add(comment);
 
-        var recipientRole = authorRole == "client" ? "accountant" : "client";
-        var recipientIds = await ResolveNotificationRecipientsAsync(item.ClientId, recipientRole);
-        foreach (var recipientUserId in recipientIds.Where(x => x != authorId))
-        {
-            _db.Notifications.Add(new Notification
-            {
-                Id = $"ntf_{Guid.NewGuid():N}",
-                UserId = recipientUserId,
-                ClientId = item.ClientId,
-                Type = "request.comment",
-                Title = "New request comment",
-                Message = $"New comment on request '{item.Title}'.",
-                LinkUrl = $"/requests/{item.Id}",
-                IsRead = false,
-                CreatedAtUtc = DateTime.UtcNow
-            });
-        }
+        item.Status = authorRole == "client" ? "awaiting_accountant" : "awaiting_client";
+        item.UpdatedAtUtc = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();
         await _db.WriteAuditLogAsync(
             User,
-            "request.comment_added",
+            "comment.added",
             "request",
             item.Id,
             item.ClientId,
-            JsonSerializer.Serialize(new { comment.Id, comment.AuthorRole }));
+            JsonSerializer.Serialize(new { comment.Id, comment.AuthorRole, target = "request" }));
+
+        var recipientRole = authorRole == "client" ? "accountant" : "client";
+        var recipientIds = await _db.ResolveNotificationRecipientsAsync(item.ClientId, recipientRole);
+        await _db.AddNotificationsAsync(
+            User,
+            recipientIds,
+            item.ClientId,
+            "request.replied",
+            "Request replied to",
+            $"New comment on request '{item.Title}'.",
+            $"/requests/{item.Id}",
+            new { item.Id, comment.Id });
+
         return Ok(comment);
+    }
+
+    [HttpPost("{id}/resolve")]
+    [Authorize(Policy = "AccountantOnly")]
+    public async Task<ActionResult<RequestItem>> Resolve(string id, [FromBody] ResolveRequestRequest request)
+    {
+        var item = await _db.Requests.FindAsync(id);
+        if (item is null)
+        {
+            return NotFound();
+        }
+
+        var allowedClientIds = await User.GetAccessibleClientIdsAsync(_db);
+        if (!allowedClientIds.Contains(item.ClientId))
+        {
+            return Forbid();
+        }
+
+        item.Status = "resolved";
+        item.ResolvedByUserId = User.GetUserId();
+        item.ResolvedAtUtc = DateTime.UtcNow;
+        item.UpdatedAtUtc = item.ResolvedAtUtc.Value;
+        await _db.SaveChangesAsync();
+
+        await _db.WriteAuditLogAsync(
+            User,
+            "request.resolved",
+            "request",
+            item.Id,
+            item.ClientId,
+            JsonSerializer.Serialize(new { item.RequestType, request.ResolutionNote, item.RelatedDocumentId }));
+
+        var recipients = await _db.ResolveNotificationRecipientsAsync(item.ClientId, "client");
+        await _db.AddNotificationsAsync(
+            User,
+            recipients,
+            item.ClientId,
+            "request.resolved",
+            "Request resolved",
+            $"Request '{item.Title}' has been resolved.",
+            $"/requests/{item.Id}",
+            new { item.Id, request.ResolutionNote });
+
+        return Ok(item);
     }
 
     [HttpDelete("{id}")]
@@ -202,25 +314,14 @@ public class RequestsController : ControllerBase
         return NoContent();
     }
 
-    private async Task<List<string>> ResolveNotificationRecipientsAsync(string clientId, string role)
+    private static string NormalizeRequestType(string value)
     {
-        if (role == "client")
-        {
-            return await _db.Users
-                .Where(x => x.Role == "client" && x.ClientIdsJson.Contains(clientId))
-                .Select(x => x.Id)
-                .ToListAsync();
-        }
+        return value.Trim().ToLowerInvariant().Replace("-", "_").Replace(" ", "_");
+    }
 
-        if (role == "accountant")
-        {
-            return await _db.ClientAssignments
-                .Where(x => x.ClientId == clientId)
-                .Select(x => x.AccountantUserId)
-                .Distinct()
-                .ToListAsync();
-        }
-
-        return [];
+    private static bool IsAllowedPriority(string value)
+    {
+        var normalized = value.Trim().ToLowerInvariant();
+        return normalized is "low" or "medium" or "high" or "urgent";
     }
 }
