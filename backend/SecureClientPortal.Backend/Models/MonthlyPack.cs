@@ -6,7 +6,7 @@ public class MonthlyPack
     public string ClientId { get; set; } = string.Empty;
     public int Year { get; set; }
     public int Month { get; set; }
-    public string Status { get; set; } = "open";
+    public string Status { get; set; } = "draft";
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAtUtc { get; set; } = DateTime.UtcNow;
 }

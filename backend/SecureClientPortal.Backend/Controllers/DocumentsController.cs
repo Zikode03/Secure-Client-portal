@@ -4,7 +4,9 @@ using Microsoft.EntityFrameworkCore;
 using SecureClientPortal.Backend.Auth;
 using SecureClientPortal.Backend.Data;
 using SecureClientPortal.Backend.Models;
+using SecureClientPortal.Backend.Storage;
 using System.IdentityModel.Tokens.Jwt;
+using System.Text.Json;
 
 namespace SecureClientPortal.Backend.Controllers;
 
@@ -12,6 +14,17 @@ public record UpdateDocumentStatusRequest(string Status);
 public record FilingRuleUpdateRequest(bool IsEnabled);
 public record AddDocumentCommentRequest(string Message);
 public record AddReviewDecisionRequest(string Decision, string? Reason);
+public record RequestReuploadRequest(string Reason);
+
+public class UploadDocumentRequest
+{
+    public string ClientId { get; set; } = string.Empty;
+    public string? MonthlyPackId { get; set; }
+    public string? DocumentSlotId { get; set; }
+    public string DocumentType { get; set; } = string.Empty;
+    public string? DocumentId { get; set; }
+    public IFormFile File { get; set; } = default!;
+}
 
 [ApiController]
 [Route("api/documents")]
@@ -19,13 +32,14 @@ public record AddReviewDecisionRequest(string Decision, string? Reason);
 public class DocumentsController : ControllerBase
 {
     private readonly PortalDbContext _db;
+    private readonly IFileStorage _fileStorage;
 
-    public DocumentsController(PortalDbContext db)
+    public DocumentsController(PortalDbContext db, IFileStorage fileStorage)
     {
         _db = db;
+        _fileStorage = fileStorage;
     }
 
-    // Returns the working document set (all statuses) for operations/review.
     [HttpGet]
     public async Task<ActionResult<IEnumerable<Document>>> GetAll()
     {
@@ -36,7 +50,6 @@ public class DocumentsController : ControllerBase
             .ToListAsync());
     }
 
-    // Returns the read-only filing register (only documents that are actually filed).
     [HttpGet("filing-register")]
     public async Task<ActionResult<IEnumerable<Document>>> GetFilingRegister([FromQuery] string? clientId = null)
     {
@@ -48,13 +61,13 @@ public class DocumentsController : ControllerBase
             {
                 return Forbid();
             }
+
             query = query.Where(x => x.ClientId == clientId);
         }
 
         return Ok(await query.OrderByDescending(x => x.FiledAtUtc).ThenByDescending(x => x.UploadedAtUtc).ToListAsync());
     }
 
-    // Returns the active filing allowlist and switches used by automatic filing.
     [HttpGet("filing-rules")]
     [Authorize(Policy = "AccountantOnly")]
     public async Task<ActionResult<IEnumerable<FilingRule>>> GetFilingRules()
@@ -62,7 +75,6 @@ public class DocumentsController : ControllerBase
         return Ok(await _db.FilingRules.OrderBy(x => x.Category).ToListAsync());
     }
 
-    // Updates one filing rule toggle. This controls future auto-filing eligibility.
     [HttpPut("filing-rules/{category}")]
     [Authorize(Policy = "AccountantOnly")]
     public async Task<ActionResult<FilingRule>> UpdateFilingRule(string category, [FromBody] FilingRuleUpdateRequest request)
@@ -77,6 +89,123 @@ public class DocumentsController : ControllerBase
         return Ok(item);
     }
 
+    [HttpPost("upload")]
+    [RequestSizeLimit(100_000_000)]
+    public async Task<ActionResult<object>> Upload([FromForm] UploadDocumentRequest request, CancellationToken ct)
+    {
+        if (request.File is null || request.File.Length == 0)
+        {
+            return BadRequest(new { error = "A file is required." });
+        }
+
+        var allowedClientIds = await User.GetAccessibleClientIdsAsync(_db, ct);
+        if (!allowedClientIds.Contains(request.ClientId))
+        {
+            return Forbid();
+        }
+
+        var normalizedCategory = NormalizeCategory(request.DocumentType);
+        var pack = await ResolveMonthlyPackAsync(request.ClientId, request.MonthlyPackId, request.DocumentSlotId, ct);
+        if (pack is null)
+        {
+            return BadRequest(new { error = "A valid monthly pack is required for document upload." });
+        }
+
+        var slot = await ResolveSlotAsync(request.ClientId, pack.Id, request.DocumentSlotId, normalizedCategory, ct);
+        if (slot is null)
+        {
+            return BadRequest(new { error = "A valid document slot is required for document upload." });
+        }
+
+        var stored = await _fileStorage.SaveAsync(request.File, request.ClientId, ct);
+        var actorUserId = User.GetUserId() ?? "unknown";
+        var now = DateTime.UtcNow;
+
+        Document document;
+        var isNewDocument = string.IsNullOrWhiteSpace(request.DocumentId);
+        if (isNewDocument)
+        {
+            document = new Document
+            {
+                Id = $"doc_{Guid.NewGuid():N}",
+                ClientId = request.ClientId,
+                Name = stored.OriginalFileName,
+                Category = normalizedCategory,
+                DocumentSlotId = slot.Id,
+                Status = "pending",
+                SizeBytes = stored.SizeBytes,
+                StorageKey = stored.StorageKey,
+                UploadedByUserId = actorUserId,
+                CurrentVersionNumber = 1,
+                UploadedAtUtc = now,
+                UpdatedAtUtc = now
+            };
+            _db.Documents.Add(document);
+        }
+        else
+        {
+            document = await _db.Documents.FirstOrDefaultAsync(x => x.Id == request.DocumentId, ct)
+                ?? throw new InvalidOperationException("Requested document could not be found.");
+            if (!string.Equals(document.ClientId, request.ClientId, StringComparison.OrdinalIgnoreCase))
+            {
+                return Forbid();
+            }
+
+            document.Name = stored.OriginalFileName;
+            document.Category = normalizedCategory;
+            document.DocumentSlotId = slot.Id;
+            document.SizeBytes = stored.SizeBytes;
+            document.StorageKey = stored.StorageKey;
+            document.UploadedByUserId = actorUserId;
+            document.Status = "pending";
+            document.CurrentVersionNumber += 1;
+            document.IsFiled = false;
+            document.FiledAtUtc = null;
+            document.FiledByUserId = null;
+            document.UpdatedAtUtc = now;
+            document.UploadedAtUtc = now;
+        }
+
+        _db.DocumentVersions.Add(new DocumentVersion
+        {
+            Id = $"dv_{Guid.NewGuid():N}",
+            DocumentId = document.Id,
+            VersionNumber = document.CurrentVersionNumber,
+            Name = stored.OriginalFileName,
+            SizeBytes = stored.SizeBytes,
+            StorageKey = stored.StorageKey,
+            UploadedByUserId = actorUserId,
+            CreatedAtUtc = now
+        });
+
+        slot.CurrentDocumentId = document.Id;
+        slot.Status = "uploaded";
+        slot.UpdatedAtUtc = now;
+
+        pack.Status = "submitted";
+        pack.UpdatedAtUtc = now;
+
+        await _db.SaveChangesAsync(ct);
+        await _db.WriteAuditLogAsync(
+            User,
+            "documents.uploaded",
+            "document",
+            document.Id,
+            document.ClientId,
+            JsonSerializer.Serialize(new
+            {
+                document.Id,
+                document.ClientId,
+                monthlyPackId = pack.Id,
+                documentSlotId = slot.Id,
+                versionNumber = document.CurrentVersionNumber,
+                document.StorageKey
+            }),
+            ct);
+
+        return Created($"/api/documents/{document.Id}", await BuildDocumentResponseAsync(document, ct));
+    }
+
     [HttpPost]
     public async Task<ActionResult<Document>> Create([FromBody] Document request)
     {
@@ -87,23 +216,8 @@ public class DocumentsController : ControllerBase
         }
 
         if (string.IsNullOrWhiteSpace(request.Id)) request.Id = $"doc_{Guid.NewGuid():N}";
-        var normalizedStatus = string.IsNullOrWhiteSpace(request.Status)
-            ? "draft"
-            : request.Status.Trim().ToLowerInvariant();
-        if (!IsAllowedStatus(normalizedStatus))
-        {
-            return BadRequest(new { error = "Invalid status value." });
-        }
-
         request.Category = NormalizeCategory(request.Category);
-        var slotValidation = await ValidateDocumentSlotBindingAsync(request.ClientId, request.Category, request.DocumentSlotId);
-        if (!slotValidation.IsValid)
-        {
-            return BadRequest(new { error = slotValidation.ErrorMessage });
-        }
-
-        request.DocumentSlotId = slotValidation.SlotId;
-        request.Status = normalizedStatus;
+        request.Status = NormalizeDocumentStatus(request.Status);
         request.UploadedAtUtc = DateTime.UtcNow;
         request.UpdatedAtUtc = request.UploadedAtUtc;
         request.CurrentVersionNumber = 1;
@@ -120,30 +234,32 @@ public class DocumentsController : ControllerBase
             UploadedByUserId = request.UploadedByUserId,
             CreatedAtUtc = request.UploadedAtUtc
         });
+
         await _db.SaveChangesAsync();
         return CreatedAtAction(nameof(GetById), new { id = request.Id }, request);
     }
 
     [HttpGet("{id}")]
-    public async Task<ActionResult<Document>> GetById(string id)
+    public async Task<ActionResult<object>> GetById(string id, CancellationToken ct)
     {
-        var item = await _db.Documents.FindAsync(id);
+        var item = await _db.Documents.FindAsync([id], ct);
         if (item is null) return NotFound();
-        var allowedClientIds = await User.GetAccessibleClientIdsAsync(_db);
+        var allowedClientIds = await User.GetAccessibleClientIdsAsync(_db, ct);
         if (!allowedClientIds.Contains(item.ClientId))
         {
             return Forbid();
         }
-        return Ok(item);
+
+        return Ok(await BuildDocumentResponseAsync(item, ct));
     }
 
     [HttpGet("{id}/versions")]
-    public async Task<ActionResult<IEnumerable<DocumentVersion>>> GetVersions(string id)
+    public async Task<ActionResult<IEnumerable<object>>> GetVersions(string id, CancellationToken ct)
     {
-        var item = await _db.Documents.FindAsync(id);
+        var item = await _db.Documents.FindAsync([id], ct);
         if (item is null) return NotFound();
 
-        var allowedClientIds = await User.GetAccessibleClientIdsAsync(_db);
+        var allowedClientIds = await User.GetAccessibleClientIdsAsync(_db, ct);
         if (!allowedClientIds.Contains(item.ClientId))
         {
             return Forbid();
@@ -153,8 +269,46 @@ public class DocumentsController : ControllerBase
             .Where(x => x.DocumentId == id)
             .OrderByDescending(x => x.VersionNumber)
             .ThenByDescending(x => x.CreatedAtUtc)
-            .ToListAsync();
-        return Ok(versions);
+            .ToListAsync(ct);
+
+        return Ok(versions.Select(version => new
+        {
+            version.Id,
+            version.DocumentId,
+            version.VersionNumber,
+            version.Name,
+            version.SizeBytes,
+            version.StorageKey,
+            version.UploadedByUserId,
+            version.CreatedAtUtc,
+            isCurrent = version.VersionNumber == item.CurrentVersionNumber
+        }));
+    }
+
+    [HttpGet("{id}/download")]
+    public async Task<IActionResult> Download(string id, CancellationToken ct)
+    {
+        var item = await _db.Documents.FindAsync([id], ct);
+        if (item is null) return NotFound();
+
+        var allowedClientIds = await User.GetAccessibleClientIdsAsync(_db, ct);
+        if (!allowedClientIds.Contains(item.ClientId))
+        {
+            return Forbid();
+        }
+
+        if (string.IsNullOrWhiteSpace(item.StorageKey))
+        {
+            return NotFound(new { error = "Document file is not available." });
+        }
+
+        var file = await _fileStorage.OpenReadAsync(item.StorageKey, ct);
+        if (file is null)
+        {
+            return NotFound(new { error = "Document file could not be found in storage." });
+        }
+
+        return File(file.Stream, file.ContentType, item.Name);
     }
 
     [HttpPut("{id}")]
@@ -169,111 +323,102 @@ public class DocumentsController : ControllerBase
             return Forbid();
         }
 
-        var nameChanged = item.Name != request.Name;
-        var sizeChanged = item.SizeBytes != request.SizeBytes;
-        var storageChanged = item.StorageKey != request.StorageKey;
-        var slotChanged = item.DocumentSlotId != request.DocumentSlotId;
-
         item.Name = request.Name;
         item.Category = NormalizeCategory(request.Category);
-        var slotValidation = await ValidateDocumentSlotBindingAsync(item.ClientId, item.Category, request.DocumentSlotId);
-        if (!slotValidation.IsValid)
-        {
-            return BadRequest(new { error = slotValidation.ErrorMessage });
-        }
-        item.DocumentSlotId = slotValidation.SlotId;
-        var normalizedStatus = request.Status.Trim().ToLowerInvariant();
-        if (!IsAllowedStatus(normalizedStatus))
-        {
-            return BadRequest(new { error = "Invalid status value." });
-        }
-        if (IsDraftLockedTransition(item.Status, normalizedStatus))
-        {
-            return BadRequest(new { error = "Draft documents are view-only for accountant actions until submitted by client." });
-        }
+        item.Status = NormalizeDocumentStatus(request.Status);
         item.SizeBytes = request.SizeBytes;
         item.StorageKey = request.StorageKey;
-        if (nameChanged || sizeChanged || storageChanged || slotChanged)
-        {
-            item.CurrentVersionNumber += 1;
-            _db.DocumentVersions.Add(new DocumentVersion
-            {
-                Id = $"dv_{Guid.NewGuid():N}",
-                DocumentId = item.Id,
-                VersionNumber = item.CurrentVersionNumber,
-                Name = item.Name,
-                SizeBytes = item.SizeBytes,
-                StorageKey = item.StorageKey,
-                UploadedByUserId = request.UploadedByUserId,
-                CreatedAtUtc = DateTime.UtcNow
-            });
-        }
-        await ApplyStatusAndFilingAsync(item, normalizedStatus);
+        item.UpdatedAtUtc = DateTime.UtcNow;
+
+        await _db.SaveChangesAsync();
         return Ok(item);
     }
 
-    // Dedicated status endpoint so workflow status changes can trigger auto-filing logic.
     [HttpPut("{id}/status")]
     [Authorize(Policy = "AccountantOnly")]
-    public async Task<ActionResult<Document>> UpdateStatus(string id, [FromBody] UpdateDocumentStatusRequest request)
+    public async Task<ActionResult<Document>> UpdateStatus(string id, [FromBody] UpdateDocumentStatusRequest request, CancellationToken ct)
     {
-        var item = await _db.Documents.FindAsync(id);
-        if (item is null) return NotFound();
-        var allowedClientIds = await User.GetAccessibleClientIdsAsync(_db);
-        if (!allowedClientIds.Contains(item.ClientId))
+        var document = await _db.Documents.FindAsync([id], ct);
+        if (document is null) return NotFound();
+
+        var allowedClientIds = await User.GetAccessibleClientIdsAsync(_db, ct);
+        if (!allowedClientIds.Contains(document.ClientId))
         {
             return Forbid();
         }
 
-        var normalizedStatus = request.Status.Trim().ToLowerInvariant();
-        if (!IsAllowedStatus(normalizedStatus))
+        await ApplyLifecycleDecisionAsync(document, NormalizeDocumentStatus(request.Status), null, ct);
+        return Ok(document);
+    }
+
+    [HttpPost("{id}/review")]
+    [Authorize(Policy = "AccountantOnly")]
+    public async Task<ActionResult<object>> Review(string id, [FromBody] AddReviewDecisionRequest request, CancellationToken ct)
+    {
+        var decision = request.Decision.Trim().ToLowerInvariant();
+        if (decision is not ("under_review" or "accepted" or "rejected"))
         {
-            return BadRequest(new { error = "Invalid status value." });
-        }
-        if (IsDraftLockedTransition(item.Status, normalizedStatus))
-        {
-            return BadRequest(new { error = "Draft documents are view-only for accountant actions until submitted by client." });
+            return BadRequest(new { error = "Decision must be under_review, accepted, or rejected." });
         }
 
-        await ApplyStatusAndFilingAsync(item, normalizedStatus);
-        return Ok(item);
+        var document = await _db.Documents.FindAsync([id], ct);
+        if (document is null) return NotFound();
+
+        var allowedClientIds = await User.GetAccessibleClientIdsAsync(_db, ct);
+        if (!allowedClientIds.Contains(document.ClientId))
+        {
+            return Forbid();
+        }
+
+        var reviewDecision = await ApplyLifecycleDecisionAsync(document, decision, request.Reason, ct);
+        return Ok(new
+        {
+            reviewDecision.Id,
+            reviewDecision.Decision,
+            reviewDecision.Reason,
+            reviewDecision.DecidedAtUtc,
+            documentId = document.Id,
+            documentStatus = document.Status
+        });
+    }
+
+    [HttpPost("{id}/request-reupload")]
+    [Authorize(Policy = "AccountantOnly")]
+    public async Task<ActionResult<object>> RequestReupload(string id, [FromBody] RequestReuploadRequest request, CancellationToken ct)
+    {
+        if (string.IsNullOrWhiteSpace(request.Reason))
+        {
+            return BadRequest(new { error = "A reason is required when requesting a re-upload." });
+        }
+
+        var document = await _db.Documents.FindAsync([id], ct);
+        if (document is null) return NotFound();
+
+        var allowedClientIds = await User.GetAccessibleClientIdsAsync(_db, ct);
+        if (!allowedClientIds.Contains(document.ClientId))
+        {
+            return Forbid();
+        }
+
+        var reviewDecision = await ApplyLifecycleDecisionAsync(document, "request_reupload", request.Reason, ct);
+        return Ok(new
+        {
+            reviewDecision.Id,
+            reviewDecision.Decision,
+            reviewDecision.Reason,
+            reviewDecision.DecidedAtUtc,
+            documentId = document.Id,
+            documentStatus = document.Status
+        });
     }
 
     [HttpPost("{id}/review-decisions")]
     [Authorize(Policy = "AccountantOnly")]
-    public async Task<ActionResult<ReviewDecision>> AddReviewDecision(string id, [FromBody] AddReviewDecisionRequest request)
+    public async Task<ActionResult<object>> AddReviewDecision(string id, [FromBody] AddReviewDecisionRequest request, CancellationToken ct)
     {
-        var decision = request.Decision.Trim().ToLowerInvariant();
-        if (decision is not ("accepted" or "rejected"))
-        {
-            return BadRequest(new { error = "Decision must be accepted or rejected." });
-        }
-
-        var item = await _db.Documents.FindAsync(id);
-        if (item is null) return NotFound();
-        var allowedClientIds = await User.GetAccessibleClientIdsAsync(_db);
-        if (!allowedClientIds.Contains(item.ClientId))
-        {
-            return Forbid();
-        }
-
-        var decisionRow = new ReviewDecision
-        {
-            Id = $"rd_{Guid.NewGuid():N}",
-            DocumentId = item.Id,
-            Decision = decision,
-            ReviewerUserId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value ?? "unknown",
-            ReviewerRole = User.IsInRole("admin") ? "admin" : "accountant",
-            Reason = string.IsNullOrWhiteSpace(request.Reason) ? null : request.Reason.Trim(),
-            DecidedAtUtc = DateTime.UtcNow
-        };
-
-        _db.ReviewDecisions.Add(decisionRow);
-        await ApplyStatusAndFilingAsync(item, decision);
-        return Ok(decisionRow);
+        return await Review(id, request, ct);
     }
 
-    // Commenting on draft files by accountant/admin is disallowed until client submission.
     [HttpPost("{id}/comments")]
     public async Task<ActionResult<DocumentComment>> AddComment(string id, [FromBody] AddDocumentCommentRequest request)
     {
@@ -288,12 +433,6 @@ public class DocumentsController : ControllerBase
         if (!allowedClientIds.Contains(item.ClientId))
         {
             return Forbid();
-        }
-
-        var isAccountantSide = User.IsInRole("accountant") || User.IsInRole("admin");
-        if (isAccountantSide && item.Status.Trim().ToLowerInvariant() == "draft")
-        {
-            return BadRequest(new { error = "Comments are disabled while the document is still in client draft state." });
         }
 
         var authorId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value ?? "unknown";
@@ -329,12 +468,218 @@ public class DocumentsController : ControllerBase
         {
             return Forbid();
         }
+
         _db.Documents.Remove(item);
         await _db.SaveChangesAsync();
         return NoContent();
     }
 
-    // Normalization keeps frontend/backoffice category variants mapped to one filing key.
+    private async Task<object> BuildDocumentResponseAsync(Document item, CancellationToken ct)
+    {
+        DocumentSlot? slot = null;
+        MonthlyPack? pack = null;
+
+        if (!string.IsNullOrWhiteSpace(item.DocumentSlotId))
+        {
+            slot = await _db.DocumentSlots.FirstOrDefaultAsync(x => x.Id == item.DocumentSlotId, ct);
+            if (slot is not null)
+            {
+                pack = await _db.MonthlyPacks.FirstOrDefaultAsync(x => x.Id == slot.MonthlyPackId, ct);
+            }
+        }
+
+        return new
+        {
+            item.Id,
+            item.ClientId,
+            monthlyPackId = pack?.Id,
+            documentSlotId = slot?.Id,
+            documentType = item.Category,
+            item.Name,
+            item.Status,
+            item.SizeBytes,
+            item.StorageKey,
+            item.UploadedByUserId,
+            item.CurrentVersionNumber,
+            item.UploadedAtUtc,
+            item.UpdatedAtUtc
+        };
+    }
+
+    private async Task<MonthlyPack?> ResolveMonthlyPackAsync(string clientId, string? monthlyPackId, string? documentSlotId, CancellationToken ct)
+    {
+        if (!string.IsNullOrWhiteSpace(documentSlotId))
+        {
+            var slot = await _db.DocumentSlots.FirstOrDefaultAsync(x => x.Id == documentSlotId, ct);
+            if (slot is not null)
+            {
+                return await _db.MonthlyPacks.FirstOrDefaultAsync(x => x.Id == slot.MonthlyPackId && x.ClientId == clientId, ct);
+            }
+        }
+
+        if (!string.IsNullOrWhiteSpace(monthlyPackId))
+        {
+            return await _db.MonthlyPacks.FirstOrDefaultAsync(x => x.Id == monthlyPackId && x.ClientId == clientId, ct);
+        }
+
+        return null;
+    }
+
+    private async Task<DocumentSlot?> ResolveSlotAsync(string clientId, string monthlyPackId, string? documentSlotId, string category, CancellationToken ct)
+    {
+        if (!string.IsNullOrWhiteSpace(documentSlotId))
+        {
+            return await _db.DocumentSlots.FirstOrDefaultAsync(x =>
+                x.Id == documentSlotId && x.ClientId == clientId && x.MonthlyPackId == monthlyPackId, ct);
+        }
+
+        return await _db.DocumentSlots.FirstOrDefaultAsync(x =>
+            x.ClientId == clientId && x.MonthlyPackId == monthlyPackId && x.Category == category, ct);
+    }
+
+    private async Task<ReviewDecision> ApplyLifecycleDecisionAsync(Document document, string decision, string? reason, CancellationToken ct)
+    {
+        var reviewerUserId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value ?? "unknown";
+        var reviewerRole = User.IsAdmin() ? "admin" : "accountant";
+        var now = DateTime.UtcNow;
+
+        var reviewDecision = new ReviewDecision
+        {
+            Id = $"rd_{Guid.NewGuid():N}",
+            DocumentId = document.Id,
+            Decision = decision,
+            ReviewerUserId = reviewerUserId,
+            ReviewerRole = reviewerRole,
+            Reason = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim(),
+            DecidedAtUtc = now
+        };
+
+        _db.ReviewDecisions.Add(reviewDecision);
+
+        var slot = string.IsNullOrWhiteSpace(document.DocumentSlotId)
+            ? null
+            : await _db.DocumentSlots.FirstOrDefaultAsync(x => x.Id == document.DocumentSlotId, ct);
+        var pack = slot is null
+            ? null
+            : await _db.MonthlyPacks.FirstOrDefaultAsync(x => x.Id == slot.MonthlyPackId, ct);
+
+        switch (decision)
+        {
+            case "under_review":
+                document.Status = "under_review";
+                if (slot is not null)
+                {
+                    slot.Status = "under_review";
+                    slot.UpdatedAtUtc = now;
+                }
+                if (pack is not null)
+                {
+                    pack.Status = "under_review";
+                    pack.UpdatedAtUtc = now;
+                }
+                break;
+
+            case "accepted":
+                document.Status = "accepted";
+                document.IsFiled = false;
+                document.FiledAtUtc = null;
+                document.FiledByUserId = null;
+                if (slot is not null)
+                {
+                    slot.Status = "accepted";
+                    slot.CurrentDocumentId = document.Id;
+                    slot.UpdatedAtUtc = now;
+                }
+                break;
+
+            case "rejected":
+            case "request_reupload":
+                document.Status = "rejected";
+                document.IsFiled = false;
+                document.FiledAtUtc = null;
+                document.FiledByUserId = null;
+                if (slot is not null)
+                {
+                    slot.Status = "rejected";
+                    slot.CurrentDocumentId = document.Id;
+                    slot.UpdatedAtUtc = now;
+                }
+                break;
+
+            default:
+                throw new InvalidOperationException("Unsupported document lifecycle decision.");
+        }
+
+        document.UpdatedAtUtc = now;
+
+        if (pack is not null)
+        {
+            await RecalculateMonthlyPackStatusAsync(pack, ct);
+        }
+
+        await _db.SaveChangesAsync(ct);
+
+        var action = decision switch
+        {
+            "under_review" => "documents.reviewed",
+            "accepted" => "documents.accepted",
+            "rejected" => "documents.rejected",
+            "request_reupload" => "documents.reupload_requested",
+            _ => "documents.reviewed"
+        };
+
+        await _db.WriteAuditLogAsync(
+            User,
+            action,
+            "document",
+            document.Id,
+            document.ClientId,
+            JsonSerializer.Serialize(new
+            {
+                document.Id,
+                decision,
+                reason = reviewDecision.Reason,
+                document.Status
+            }),
+            ct);
+
+        return reviewDecision;
+    }
+
+    private async Task RecalculateMonthlyPackStatusAsync(MonthlyPack pack, CancellationToken ct)
+    {
+        var slots = await _db.DocumentSlots.Where(x => x.MonthlyPackId == pack.Id).ToListAsync(ct);
+        if (slots.Count == 0)
+        {
+            pack.Status = "draft";
+            pack.UpdatedAtUtc = DateTime.UtcNow;
+            return;
+        }
+
+        if (slots.Where(x => x.IsRequired).All(x => x.Status == "accepted"))
+        {
+            pack.Status = "completed";
+        }
+        else if (slots.Any(x => x.Status == "under_review"))
+        {
+            pack.Status = "under_review";
+        }
+        else if (slots.Any(x => x.Status == "uploaded"))
+        {
+            pack.Status = "submitted";
+        }
+        else if (slots.Any(x => x.Status is "accepted" or "rejected" or "filed"))
+        {
+            pack.Status = "in_progress";
+        }
+        else
+        {
+            pack.Status = "draft";
+        }
+
+        pack.UpdatedAtUtc = DateTime.UtcNow;
+    }
+
     private static string NormalizeCategory(string value)
     {
         var raw = value.Trim().ToLowerInvariant().Replace("-", "_").Replace(" ", "_");
@@ -362,115 +707,19 @@ public class DocumentsController : ControllerBase
         };
     }
 
-    private static bool IsAllowedStatus(string value)
+    private static string NormalizeDocumentStatus(string rawStatus)
     {
-        return value is "draft" or "pending" or "under_review" or "accepted" or "rejected" or "filed";
-    }
-
-    private static bool IsDraftLockedTransition(string currentStatus, string nextStatus)
-    {
-        var current = currentStatus.Trim().ToLowerInvariant();
-        var next = nextStatus.Trim().ToLowerInvariant();
-        if (current != "draft")
+        var normalized = string.IsNullOrWhiteSpace(rawStatus) ? "pending" : rawStatus.Trim().ToLowerInvariant();
+        return normalized switch
         {
-            return false;
-        }
-
-        // Client submission may move draft -> pending. Accountant outcomes must stay blocked.
-        return next is "under_review" or "accepted" or "rejected" or "filed";
-    }
-
-    // Keeps status updates consistent across endpoints and enforces auto-filing policy.
-    private async Task ApplyStatusAndFilingAsync(Document item, string rawStatus)
-    {
-        var normalizedStatus = rawStatus.Trim().ToLowerInvariant();
-        item.Status = normalizedStatus;
-        item.UpdatedAtUtc = DateTime.UtcNow;
-
-        if (normalizedStatus == "accepted")
-        {
-            var normalizedCategory = NormalizeCategory(item.Category);
-            var canAutoFile = await _db.FilingRules.AnyAsync(x => x.Category == normalizedCategory && x.IsEnabled);
-            if (canAutoFile)
-            {
-                item.Status = "filed";
-                item.IsFiled = true;
-                item.FiledAtUtc = DateTime.UtcNow;
-                item.FiledByUserId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
-            }
-            else
-            {
-                item.IsFiled = false;
-                item.FiledAtUtc = null;
-                item.FiledByUserId = null;
-            }
-
-            await AutoLinkAcceptedDocumentToSlotAsync(item);
-        }
-        else if (normalizedStatus != "filed")
-        {
-            item.IsFiled = false;
-            item.FiledAtUtc = null;
-            item.FiledByUserId = null;
-        }
-
-        await _db.SaveChangesAsync();
-    }
-
-    private async Task<(bool IsValid, string? ErrorMessage, string? SlotId)> ValidateDocumentSlotBindingAsync(string clientId, string category, string? requestedSlotId)
-    {
-        if (string.IsNullOrWhiteSpace(requestedSlotId))
-        {
-            return (true, null, null);
-        }
-
-        var slot = await _db.DocumentSlots.FirstOrDefaultAsync(x => x.Id == requestedSlotId);
-        if (slot is null)
-        {
-            return (false, "Document slot was not found.", null);
-        }
-
-        if (slot.ClientId != clientId)
-        {
-            return (false, "Document slot belongs to a different client.", null);
-        }
-
-        if (NormalizeCategory(slot.Category) != NormalizeCategory(category))
-        {
-            return (false, "Document category must match the selected document slot category.", null);
-        }
-
-        return (true, null, slot.Id);
-    }
-
-    private async Task AutoLinkAcceptedDocumentToSlotAsync(Document item)
-    {
-        DocumentSlot? slot = null;
-        if (!string.IsNullOrWhiteSpace(item.DocumentSlotId))
-        {
-            slot = await _db.DocumentSlots.FirstOrDefaultAsync(x => x.Id == item.DocumentSlotId);
-        }
-
-        if (slot is null)
-        {
-            var normalizedCategory = NormalizeCategory(item.Category);
-            slot = await _db.DocumentSlots
-                .Where(x => x.ClientId == item.ClientId && x.Category == normalizedCategory)
-                .OrderByDescending(x => x.UpdatedAtUtc)
-                .FirstOrDefaultAsync();
-            if (slot is not null)
-            {
-                item.DocumentSlotId = slot.Id;
-            }
-        }
-
-        if (slot is null)
-        {
-            return;
-        }
-
-        slot.CurrentDocumentId = item.Id;
-        slot.Status = item.IsFiled ? "filed" : "accepted";
-        slot.UpdatedAtUtc = DateTime.UtcNow;
+            "draft" => "draft",
+            "pending" => "pending",
+            "submitted" => "pending",
+            "under_review" => "under_review",
+            "accepted" => "accepted",
+            "rejected" => "rejected",
+            "filed" => "filed",
+            _ => "pending"
+        };
     }
 }

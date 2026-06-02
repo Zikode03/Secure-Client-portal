@@ -4,8 +4,10 @@ using Microsoft.EntityFrameworkCore;
 using SecureClientPortal.Backend.Controllers;
 using SecureClientPortal.Backend.Data;
 using SecureClientPortal.Backend.Models;
+using SecureClientPortal.Backend.Storage;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Text.Json;
 
 namespace SecureClientPortal.Backend.Tests;
 
@@ -53,7 +55,7 @@ public class AuthorizationScopeTests
         Seed(db);
 
         var accountantUser = BuildUser("u_acc_001", "accountant");
-        var accountantController = new DocumentsController(db)
+        var accountantController = new DocumentsController(db, new TestFileStorage())
         {
             ControllerContext = BuildControllerContext(accountantUser)
         };
@@ -89,6 +91,108 @@ public class AuthorizationScopeTests
         Assert.IsType<ForbidResult>(forbiddenRequest.Result);
     }
 
+    [Fact]
+    public async Task MeEndpoint_ReturnsScopedProfileAndPermissions()
+    {
+        await using var db = BuildDb();
+        Seed(db);
+
+        db.Users.AddRange(
+            new User
+            {
+                Id = "u_admin_001",
+                FullName = "Admin",
+                Email = "admin@test.com",
+                PasswordHash = "hash",
+                Role = "admin",
+                ClientIdsJson = "[]"
+            },
+            new User
+            {
+                Id = "u_client_001",
+                FullName = "Client User",
+                Email = "client@test.com",
+                PasswordHash = "hash",
+                Role = "client",
+                ClientIdsJson = "[\"c_001\"]"
+            });
+        await db.SaveChangesAsync();
+
+        var controller = new AuthController(db, Microsoft.Extensions.Options.Options.Create(new SecureClientPortal.Backend.Auth.JwtOptions
+        {
+            SigningKey = "test-signing-key-test-signing-key",
+            Audience = "test",
+            Issuer = "test"
+        }))
+        {
+            ControllerContext = BuildControllerContext(BuildUser("u_client_001", "client", ["c_001"]))
+        };
+
+        var result = await controller.Me();
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var json = JsonSerializer.Serialize(ok.Value);
+
+        Assert.Contains("\"role\":\"client\"", json);
+        Assert.Contains("\"clientIds\":[\"c_001\"]", json);
+        Assert.Contains("\"permissions\":[\"auth.login\",\"clients.read\",\"assignments.read\"]", json);
+    }
+
+    [Fact]
+    public async Task AssignmentsEndpoint_RespectsVisibilityAndPrimaryFlag()
+    {
+        await using var db = BuildDb();
+        Seed(db);
+
+        db.Users.AddRange(
+            new User
+            {
+                Id = "u_acc_002",
+                FullName = "Backup Accountant",
+                Email = "acc2@test.com",
+                PasswordHash = "hash",
+                Role = "accountant",
+                ClientIdsJson = "[]"
+            },
+            new User
+            {
+                Id = "u_client_001",
+                FullName = "Client User",
+                Email = "client@test.com",
+                PasswordHash = "hash",
+                Role = "client",
+                ClientIdsJson = "[\"c_001\"]"
+            });
+        db.ClientAssignments.Add(new ClientAssignment
+        {
+            Id = "ca_002",
+            AccountantUserId = "u_acc_002",
+            ClientId = "c_002",
+            CreatedAtUtc = DateTime.UtcNow
+        });
+        await db.SaveChangesAsync();
+
+        var accountantController = new AssignmentsController(db)
+        {
+            ControllerContext = BuildControllerContext(BuildUser("u_acc_001", "accountant"))
+        };
+        var accountantResult = await accountantController.GetAll();
+        var accountantOk = Assert.IsType<OkObjectResult>(accountantResult.Result);
+        var accountantJson = JsonSerializer.Serialize(accountantOk.Value);
+        Assert.Contains("\"clientId\":\"c_001\"", accountantJson);
+        Assert.DoesNotContain("\"clientId\":\"c_002\"", accountantJson);
+        Assert.Contains("\"isPrimary\":true", accountantJson);
+
+        var clientController = new AssignmentsController(db)
+        {
+            ControllerContext = BuildControllerContext(BuildUser("u_client_001", "client", ["c_001"]))
+        };
+        var clientResult = await clientController.GetAll();
+        var clientOk = Assert.IsType<OkObjectResult>(clientResult.Result);
+        var clientJson = JsonSerializer.Serialize(clientOk.Value);
+        Assert.Contains("\"clientId\":\"c_001\"", clientJson);
+        Assert.DoesNotContain("\"clientId\":\"c_002\"", clientJson);
+    }
+
     private static async Task<int> GetClientsCount(PortalDbContext db, ClaimsPrincipal user)
     {
         var controller = new ClientsController(db)
@@ -104,7 +208,7 @@ public class AuthorizationScopeTests
 
     private static async Task<int> GetDocumentsCount(PortalDbContext db, ClaimsPrincipal user)
     {
-        var controller = new DocumentsController(db)
+        var controller = new DocumentsController(db, new TestFileStorage())
         {
             ControllerContext = BuildControllerContext(user)
         };
@@ -242,5 +346,18 @@ public class AuthorizationScopeTests
             });
 
         db.SaveChanges();
+    }
+
+    private sealed class TestFileStorage : IFileStorage
+    {
+        public Task<StoredFileReadResult?> OpenReadAsync(string storageKey, CancellationToken ct = default)
+        {
+            return Task.FromResult<StoredFileReadResult?>(null);
+        }
+
+        public Task<StoredFileResult> SaveAsync(IFormFile file, string clientId, CancellationToken ct = default)
+        {
+            return Task.FromResult(new StoredFileResult($"{clientId}/test.bin", file.FileName, "application/octet-stream", file.Length));
+        }
     }
 }

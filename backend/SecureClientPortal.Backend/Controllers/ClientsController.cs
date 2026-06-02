@@ -5,6 +5,7 @@ using SecureClientPortal.Backend.Auth;
 using SecureClientPortal.Backend.Data;
 using SecureClientPortal.Backend.Models;
 using System.IdentityModel.Tokens.Jwt;
+using System.Text.Json;
 
 namespace SecureClientPortal.Backend.Controllers;
 
@@ -49,25 +50,53 @@ public class ClientsController : ControllerBase
     public async Task<ActionResult<Client>> Create([FromBody] Client request)
     {
         var actorId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value ?? string.Empty;
+        var normalizedAssignedAccountantId = request.AssignedAccountantId.Trim();
         if (User.IsAccountant() && !User.IsAdmin())
         {
             // Accountants can only create clients assigned to themselves.
-            if (string.IsNullOrWhiteSpace(request.AssignedAccountantId))
+            if (string.IsNullOrWhiteSpace(normalizedAssignedAccountantId))
             {
-                request.AssignedAccountantId = actorId;
+                normalizedAssignedAccountantId = actorId;
             }
-            else if (!string.Equals(request.AssignedAccountantId, actorId, StringComparison.OrdinalIgnoreCase))
+            else if (!string.Equals(normalizedAssignedAccountantId, actorId, StringComparison.OrdinalIgnoreCase))
             {
                 return Forbid();
             }
         }
 
+        if (string.IsNullOrWhiteSpace(normalizedAssignedAccountantId))
+        {
+            return BadRequest(new { error = "Assigned accountant is required." });
+        }
+
+        var assignedAccountantExists = await _db.Users.AnyAsync(x =>
+            x.Id == normalizedAssignedAccountantId && x.Role == "accountant");
+        if (!assignedAccountantExists)
+        {
+            return BadRequest(new { error = "Assigned accountant user does not exist or is not an accountant." });
+        }
+
         if (string.IsNullOrWhiteSpace(request.Id)) request.Id = $"c_{Guid.NewGuid():N}";
+        request.AssignedAccountantId = normalizedAssignedAccountantId;
         request.CreatedAtUtc = DateTime.UtcNow;
         request.UpdatedAtUtc = request.CreatedAtUtc;
 
         _db.Clients.Add(request);
+        _db.ClientAssignments.Add(new ClientAssignment
+        {
+            Id = $"ca_{Guid.NewGuid():N}",
+            AccountantUserId = request.AssignedAccountantId,
+            ClientId = request.Id,
+            CreatedAtUtc = request.CreatedAtUtc
+        });
         await _db.SaveChangesAsync();
+        await _db.WriteAuditLogAsync(
+            User,
+            "clients.created",
+            "client",
+            request.Id,
+            request.Id,
+            JsonSerializer.Serialize(new { request.Name, request.AssignedAccountantId }));
 
         return CreatedAtAction(nameof(GetById), new { id = request.Id }, request);
     }
@@ -131,6 +160,13 @@ public class ClientsController : ControllerBase
         }
 
         await _db.SaveChangesAsync();
+        await _db.WriteAuditLogAsync(
+            User,
+            "assignments.assigned",
+            "client_assignment",
+            $"{request.AssignedAccountantId}:{id}",
+            id,
+            JsonSerializer.Serialize(new { clientId = id, accountantUserId = request.AssignedAccountantId, isPrimary = true }));
         return Ok(existing);
     }
 

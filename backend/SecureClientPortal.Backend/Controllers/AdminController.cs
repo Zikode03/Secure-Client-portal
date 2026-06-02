@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using SecureClientPortal.Backend.Data;
 using SecureClientPortal.Backend.Models;
+using System.Text.Json;
 
 namespace SecureClientPortal.Backend.Controllers;
 
@@ -59,6 +60,13 @@ public class AdminController : ControllerBase
 
         _db.Users.Add(user);
         await _db.SaveChangesAsync();
+        await _db.WriteAuditLogAsync(
+            User,
+            "users.created",
+            "user",
+            user.Id,
+            null,
+            JsonSerializer.Serialize(new { user.Email, user.Role }));
         return Ok(new { user.Id, user.FullName, user.Email, user.Role });
     }
 
@@ -70,6 +78,13 @@ public class AdminController : ControllerBase
         user.Role = request.Role.Trim().ToLowerInvariant();
         user.UpdatedAtUtc = DateTime.UtcNow;
         await _db.SaveChangesAsync();
+        await _db.WriteAuditLogAsync(
+            User,
+            "users.role_changed",
+            "user",
+            user.Id,
+            null,
+            JsonSerializer.Serialize(new { user.Email, user.Role }));
         return Ok(new { user.Id, user.Role });
     }
 

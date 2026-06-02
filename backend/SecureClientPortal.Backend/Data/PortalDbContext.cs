@@ -203,7 +203,7 @@ public class PortalDbContext : DbContext
             entity.HasIndex(x => new { x.ClientId, x.Year, x.Month }).IsUnique();
             entity.ToTable(table =>
             {
-                table.HasCheckConstraint("CK_AppMonthlyPacks_Status", "Status IN ('open','in_progress','ready_for_review','completed')");
+                table.HasCheckConstraint("CK_AppMonthlyPacks_Status", "Status IN ('draft','in_progress','submitted','under_review','completed')");
                 table.HasCheckConstraint("CK_AppMonthlyPacks_Month", "Month >= 1 AND Month <= 12");
             });
         });
@@ -217,6 +217,7 @@ public class PortalDbContext : DbContext
             entity.Property(x => x.ClientId).HasMaxLength(100).IsRequired();
             entity.Property(x => x.Category).HasMaxLength(80).IsRequired();
             entity.Property(x => x.Label).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.IsRequired).HasDefaultValue(true);
             entity.Property(x => x.Status).HasMaxLength(30).IsRequired();
             entity.Property(x => x.CurrentDocumentId).HasMaxLength(100);
             entity.Property(x => x.CreatedAtUtc).HasDefaultValueSql("CURRENT_TIMESTAMP(6)");
@@ -258,7 +259,7 @@ public class PortalDbContext : DbContext
             entity.HasIndex(x => x.DecidedAtUtc);
             entity.ToTable(table =>
             {
-                table.HasCheckConstraint("CK_AppReviewDecisions_Decision", "Decision IN ('accepted','rejected')");
+                table.HasCheckConstraint("CK_AppReviewDecisions_Decision", "Decision IN ('under_review','accepted','rejected','request_reupload')");
                 table.HasCheckConstraint("CK_AppReviewDecisions_ReviewerRole", "ReviewerRole IN ('admin','accountant')");
             });
         });

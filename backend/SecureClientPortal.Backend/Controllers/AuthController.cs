@@ -41,8 +41,9 @@ public class AuthController : ControllerBase
         user.UpdatedAtUtc = DateTime.UtcNow;
         await _db.SaveChangesAsync();
         await _db.WriteAuditLogAsync(
-            User,
-            "auth.login_success",
+            user.Id,
+            user.Role,
+            "auth.login",
             "user",
             user.Id,
             null,
@@ -111,6 +112,38 @@ public class AuthController : ControllerBase
             token = new JwtSecurityTokenHandler().WriteToken(token),
             expiresAtUtc = expires,
             user = new { user.Id, user.FullName, user.Email, user.Role }
+        });
+    }
+
+    [HttpGet("me")]
+    [Authorize]
+    public async Task<IActionResult> Me()
+    {
+        var userId = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
+            ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (string.IsNullOrWhiteSpace(userId))
+        {
+            return Unauthorized();
+        }
+
+        var user = await _db.Users.FirstOrDefaultAsync(x => x.Id == userId);
+        if (user is null)
+        {
+            return NotFound();
+        }
+
+        var accessibleClientIds = await User.GetAccessibleClientIdsAsync(_db);
+        return Ok(new
+        {
+            user = new
+            {
+                user.Id,
+                user.FullName,
+                user.Email,
+                user.Role,
+                permissions = RolePermissions.ForRole(user.Role),
+                clientIds = accessibleClientIds.OrderBy(x => x).ToArray()
+            }
         });
     }
 }

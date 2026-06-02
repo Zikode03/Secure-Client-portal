@@ -136,7 +136,7 @@ public static class SeedData
             ClientId = "c_001",
             Year = 2026,
             Month = 6,
-            Status = "open"
+            Status = "draft"
         });
 
         await UpsertDocumentSlot(db, new DocumentSlot
@@ -146,6 +146,7 @@ public static class SeedData
             ClientId = "c_001",
             Category = "bank_statement",
             Label = "Bank Statement",
+            IsRequired = true,
             Status = "missing"
         });
 
@@ -156,6 +157,7 @@ public static class SeedData
             ClientId = "c_001",
             Category = "invoices",
             Label = "Invoices",
+            IsRequired = true,
             Status = "missing"
         });
 
@@ -229,6 +231,7 @@ public static class SeedData
         }
 
         existing.Label = expected.Label;
+        existing.IsRequired = expected.IsRequired;
         existing.Status = expected.Status;
         existing.UpdatedAtUtc = DateTime.UtcNow;
     }
