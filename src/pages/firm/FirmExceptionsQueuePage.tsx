@@ -72,7 +72,7 @@ export function FirmExceptionsQueuePage() {
           <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-3" key={item.id}>
             <div>
               <p className="text-sm font-semibold text-slate-900">{item.label}</p>
-              <p className="text-xs text-slate-500">{item.clientName} · {item.source}</p>
+              <p className="text-xs text-slate-500">{item.clientName} - {item.source}</p>
             </div>
             <div className="text-right">
               <span className={`rounded-full px-2 py-1 text-xs font-semibold ${item.severity === "high" ? "bg-rose-50 text-rose-700" : "bg-amber-50 text-amber-700"}`}>

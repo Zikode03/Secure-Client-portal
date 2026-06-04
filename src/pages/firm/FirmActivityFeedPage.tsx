@@ -38,7 +38,7 @@ export function FirmActivityFeedPage() {
       .getReviewQueue()
       .map((item) => ({
         id: `review-${item.id}`,
-        title: `${item.clientName} · ${item.documentType}`,
+        title: `${item.clientName} - ${item.documentType}`,
         detail: item.status.replace(/_/g, " "),
         actor: item.assignedAccountant,
         timestamp: item.submittedAt,
@@ -77,7 +77,7 @@ export function FirmActivityFeedPage() {
               <p className="text-sm font-semibold text-slate-900">{item.title}</p>
             </div>
             <p className="mt-1 text-sm text-slate-700">{item.detail}</p>
-            <p className="mt-1 text-xs text-slate-500">{item.actor} · {formatDateLabel(item.timestamp)}</p>
+            <p className="mt-1 text-xs text-slate-500">{item.actor} - {formatDateLabel(item.timestamp)}</p>
           </div>
         ))}
       </div>

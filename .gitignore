@@ -1,15 +1,8 @@
 node_modules/
 dist/
 .npm-cache/
+.vite/
 tsconfig.tsbuildinfo
-
-# .NET / Visual Studio
-backend/**/.vs/
-backend/**/bin/
-backend/**/obj/
-backend/**/*.user
-backend/**/*.suo
-backend/**/*.cache
 
 # Database local/runtime artifacts
 database/**/*.sqlite

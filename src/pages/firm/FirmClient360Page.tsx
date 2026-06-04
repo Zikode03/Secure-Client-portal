@@ -79,7 +79,7 @@ export function FirmClient360Page() {
           {openRequests.map((request) => (
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3" key={request.id}>
               <p className="text-sm font-semibold text-slate-900">{request.title}</p>
-              <p className="text-xs text-slate-500">{request.status.replace(/_/g, " ")} · Due {formatDateLabel(request.dueDate)}</p>
+              <p className="text-xs text-slate-500">{request.status.replace(/_/g, " ")} - Due {formatDateLabel(request.dueDate)}</p>
             </div>
           ))}
           {openRequests.length === 0 ? <p className="text-sm text-slate-500">No open requests.</p> : null}

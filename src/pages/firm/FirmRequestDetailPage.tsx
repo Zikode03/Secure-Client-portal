@@ -86,7 +86,7 @@ export function FirmRequestDetailPage() {
             <p className="text-xs uppercase tracking-wide text-slate-500">Inbox item detail</p>
             <h1 className="mt-1 text-2xl font-semibold text-slate-950">{request.title}</h1>
             <p className="mt-1 text-sm text-slate-500">
-              {request.clientName} · {request.monthLabel} · {request.id}
+              {request.clientName} - {request.monthLabel} - {request.id}
             </p>
           </div>
           <Link
@@ -129,7 +129,7 @@ export function FirmRequestDetailPage() {
               <p className="text-sm font-medium text-slate-900">{entry.status}</p>
               {entry.note ? <p className="mt-1 text-sm text-slate-600">{entry.note}</p> : null}
               <p className="mt-1 text-xs text-slate-500">
-                {entry.actor} · {formatDateLabel(entry.timestamp)}
+                {entry.actor} - {formatDateLabel(entry.timestamp)}
               </p>
             </div>
           ))}
