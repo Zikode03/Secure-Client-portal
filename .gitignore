@@ -3,6 +3,8 @@ dist/
 .npm-cache/
 .vite/
 tsconfig.tsbuildinfo
+.vscode/
+.env
 
 # Database local/runtime artifacts
 database/**/*.sqlite
