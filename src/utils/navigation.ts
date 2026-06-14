@@ -9,8 +9,7 @@ export type NavigationSection =
   | "Compliance"
   | "Operations"
   | "Management"
-  | "Configuration"
-  | "System";
+  | "Configuration";
 
 export type NavigationIcon =
   | "dashboard"
@@ -79,20 +78,6 @@ export const navigationByRole: Record<Role, NavigationItem[]> = {
       description: "Track expiries, reminders, and retained records",
       section: "Compliance",
       icon: "compliance",
-    },
-    {
-      label: "Settings",
-      to: "/client/settings",
-      description: "Update business and contact details",
-      section: "System",
-      icon: "settings",
-    },
-    {
-      label: "Notification Preferences",
-      to: "/client/notifications/preferences",
-      description: "Control reminders, alerts, and quiet hours",
-      section: "System",
-      icon: "settings",
     },
   ],
   accountant: [
@@ -165,20 +150,6 @@ export const navigationByRole: Record<Role, NavigationItem[]> = {
       description: "Unified timeline across requests, reviews, and compliance",
       section: "Operations",
       icon: "notifications",
-    },
-    {
-      label: "Notification Preferences",
-      to: "/firm/notifications/preferences",
-      description: "Set reminders, escalation channels, and quiet hours",
-      section: "System",
-      icon: "settings",
-    },
-    {
-      label: "Settings",
-      to: "/firm/settings",
-      description: "Adjust workflow preferences",
-      section: "System",
-      icon: "settings",
     },
   ],
   admin: [
@@ -258,20 +229,6 @@ export const navigationByRole: Record<Role, NavigationItem[]> = {
       description: "Manage request state transitions, reminders, and escalations",
       section: "Configuration",
       icon: "policies",
-    },
-    {
-      label: "Notification Preferences",
-      to: "/firm/notifications/preferences",
-      description: "Set reminders, escalation channels, and quiet hours",
-      section: "System",
-      icon: "settings",
-    },
-    {
-      label: "System Settings",
-      to: "/firm/admin/system-settings",
-      description: "Control system-level behaviour",
-      section: "System",
-      icon: "settings",
     },
   ],
 };

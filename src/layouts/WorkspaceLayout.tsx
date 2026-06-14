@@ -38,17 +38,60 @@ function PortalMark() {
   );
 }
 
-function SupportIcon() {
+function SearchIcon() {
   return (
-    <svg className="h-[1.05rem] w-[1.05rem]" fill="none" viewBox="0 0 24 24">
+    <svg className="h-[1.02rem] w-[1.02rem]" fill="none" viewBox="0 0 24 24">
       <path
-        d="M5.5 12a6.5 6.5 0 1 1 13 0v4.25a1.75 1.75 0 0 1-1.75 1.75H15.5v-4.75h3M5.5 13.25h3V18H7.25A1.75 1.75 0 0 1 5.5 16.25V12Zm6.5 6h2.5"
+        d="m16.5 16.5 4 4M10.8 18a7.2 7.2 0 1 0 0-14.4 7.2 7.2 0 0 0 0 14.4Z"
         stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeWidth="1.8"
       />
     </svg>
+  );
+}
+
+function CollapseIcon({ collapsed }: { collapsed: boolean }) {
+  return (
+    <svg className="h-[1.05rem] w-[1.05rem]" fill="none" viewBox="0 0 24 24">
+      <path
+        d="M5 5.5h14A1.5 1.5 0 0 1 20.5 7v10A1.5 1.5 0 0 1 19 18.5H5A1.5 1.5 0 0 1 3.5 17V7A1.5 1.5 0 0 1 5 5.5Zm5 0v13"
+        stroke="currentColor"
+        strokeLinejoin="round"
+        strokeWidth="1.65"
+      />
+      <path
+        d={collapsed ? "m15 9 3 3-3 3" : "m17 9-3 3 3 3"}
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.65"
+      />
+    </svg>
+  );
+}
+
+function SignOutIcon() {
+  return (
+    <svg className="h-[1rem] w-[1rem]" fill="none" viewBox="0 0 24 24">
+      <path
+        d="M9.5 5.5h-3A1.5 1.5 0 0 0 5 7v10a1.5 1.5 0 0 0 1.5 1.5h3M14 8l4 4-4 4m4-4H9.5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
+}
+
+function UserAvatar({ initials }: { initials?: string }) {
+  return (
+    <span className="relative inline-flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[linear-gradient(135deg,#18ac5f,#0a2f66)] text-[0.72rem] font-semibold text-white shadow-sm ring-1 ring-white/40">
+      {initials || "U"}
+      <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-400" />
+    </span>
   );
 }
 
@@ -220,17 +263,49 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
   const { theme, toggleTheme } = useTheme();
   const location = useLocation();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const navigation = navigationByRole[role];
   const groupedNavigation = useMemo(() => groupNavigation(navigation), [navigation]);
+  const effectiveCollapsed = sidebarCollapsed && !mobileNavOpen;
+  const denseSidebar = navigation.length > 10 && !effectiveCollapsed;
+  const adminDenseSidebar = role === "admin" && denseSidebar;
+  const showSectionLabels = !effectiveCollapsed;
+  const showSidebarSearch = !effectiveCollapsed;
+  const settingsPath =
+    role === "admin" ? "/firm/admin/system-settings" : role === "client" ? "/client/settings" : "/firm/settings";
+  const isDark = theme === "dark";
 
   const activeItem = useMemo(
     () =>
       navigation.find((item) => location.pathname.startsWith(item.to)) ?? navigation[0],
     [location.pathname, navigation],
   );
+  const activePageLabel = location.pathname.startsWith(settingsPath)
+    ? "Settings"
+    : location.pathname.includes("/notifications/preferences")
+      ? "Notification Preferences"
+      : activeItem.label;
+
+  const navSurfaceClass = isDark
+    ? "border-brand-700 bg-brand-800 text-slate-100 shadow-[14px_0_34px_rgba(10,47,102,0.28)]"
+    : "border-slate-200 bg-white text-slate-800 shadow-[14px_0_34px_rgba(15,23,42,0.08)]";
+  const navMutedClass = isDark ? "text-slate-400" : "text-slate-500";
+  const navHoverClass = isDark ? "hover:bg-white/8 hover:text-white" : "hover:bg-slate-100 hover:text-slate-950";
+  const navActiveClass = isDark
+    ? "bg-white/12 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]"
+    : "bg-slate-100 text-slate-950 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.04)]";
+  const iconMutedClass = isDark ? "text-slate-300" : "text-slate-600";
 
   return (
-    <div className="min-h-screen bg-slate-100">
+    <div
+      className={cn(
+        "min-h-screen",
+        isDark
+          ? "bg-brand-900"
+          : "bg-[#eef1f4]",
+      )}
+    >
       {mobileNavOpen ? (
         <button
           aria-label="Close navigation"
@@ -242,45 +317,145 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
       <div className="flex min-h-screen flex-col lg:flex-row">
         <aside
           className={cn(
-            "fixed inset-y-0 left-0 z-40 w-[86vw] max-w-[320px] -translate-x-full border-b px-4 py-5 text-white shadow-[8px_0_30px_rgba(15,23,42,0.18)] transition-transform lg:sticky lg:top-0 lg:h-screen lg:max-w-none lg:translate-x-0 lg:border-b-0 lg:border-r lg:px-3 lg:py-3",
-            "lg:w-[280px]",
-            theme === "dark"
-              ? "border-slate-900 bg-[linear-gradient(180deg,#0a0f1e_0%,#060b16_100%)] lg:border-slate-900"
-              : "border-brand-900/70 bg-[linear-gradient(180deg,#0a2f66_0%,#07244f_100%)] lg:border-brand-900/70",
+            "fixed inset-y-0 left-0 z-40 w-[88vw] max-w-[340px] -translate-x-full overflow-hidden border-r px-4 transition-[width,transform] duration-200 lg:sticky lg:top-0 lg:h-screen lg:max-w-none lg:translate-x-0",
+            adminDenseSidebar ? "py-3" : denseSidebar ? "py-3" : "py-4",
+            effectiveCollapsed ? "lg:w-[84px]" : "lg:w-[280px]",
+            navSurfaceClass,
             mobileNavOpen && "translate-x-0",
           )}
         >
-          <div className="flex h-full min-h-0 flex-col rounded-[1.25rem] border border-white/8 bg-white/[0.02] px-3 py-3">
-            <div className="rounded-xl border border-white/10 bg-black/10 px-3 py-3">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/5">
+          <div className="relative flex h-full min-h-0 flex-col">
+            <div className={cn("flex", effectiveCollapsed ? "flex-col items-center gap-3" : "items-center justify-between gap-3")}>
+              {effectiveCollapsed ? (
+                <button
+                  aria-label="Expand sidebar"
+                  className={cn(
+                    "hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg transition lg:inline-flex",
+                    iconMutedClass,
+                    navHoverClass,
+                  )}
+                  onClick={() => setSidebarCollapsed(false)}
+                  type="button"
+                >
+                  <CollapseIcon collapsed />
+                </button>
+              ) : null}
+
+              <div className={cn("flex min-w-0 items-center gap-2.5", effectiveCollapsed && "justify-center")}>
+                <div
+                  className={cn(
+                    "flex shrink-0 items-center justify-center rounded-lg",
+                    denseSidebar ? "h-[2.125rem] w-[2.125rem]" : "h-9 w-9",
+                    isDark ? "bg-white/5" : "bg-brand-50",
+                  )}
+                >
                   <PortalMark />
                 </div>
-                <div className="min-w-0">
-                  <p className="text-[0.92rem] font-semibold leading-5 text-white">Compliance Portal</p>
-                  <p className="text-[0.64rem] font-semibold uppercase tracking-[0.16em] text-slate-300/80">
-                    {role} workspace
-                  </p>
-                </div>
+                {!effectiveCollapsed ? (
+                  <div className="min-w-0">
+                    <p className={cn("truncate font-semibold leading-5", denseSidebar ? "text-[0.88rem]" : "text-[0.92rem]", isDark ? "text-white" : "text-slate-950")}>
+                      Compliance Portal
+                    </p>
+                    <p className={cn("truncate font-semibold uppercase tracking-[0.14em]", denseSidebar ? "text-[0.58rem]" : "text-[0.62rem]", navMutedClass)}>
+                      {role === "client" ? "Client Workspace" : role === "admin" ? "Admin Workspace" : "Firm Workspace"}
+                    </p>
+                  </div>
+                ) : null}
               </div>
+              {!effectiveCollapsed ? (
+                <button
+                  aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                  className={cn(
+                    "hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg transition lg:inline-flex",
+                    iconMutedClass,
+                    navHoverClass,
+                  )}
+                  onClick={() => setSidebarCollapsed((current) => !current)}
+                  type="button"
+                >
+                  <CollapseIcon collapsed={sidebarCollapsed} />
+                </button>
+              ) : null}
             </div>
 
-            <nav className="mt-4 flex-1 space-y-4 overflow-y-auto pr-1 [scrollbar-width:thin] [scrollbar-color:rgba(148,163,184,0.45)_transparent]">
+            {showSidebarSearch ? (
+              <div className={cn(effectiveCollapsed ? "mt-4 flex justify-center" : "mt-4")}>
+                <button
+                  aria-label="Quick search"
+                  className={cn(
+                    "flex items-center gap-2 rounded-lg border text-left transition",
+                    "h-8",
+                    effectiveCollapsed ? "w-10 justify-center px-0" : "w-full px-2.5",
+                    isDark
+                      ? "border-brand-400/20 bg-brand-700/45 text-slate-300 hover:bg-brand-700/70 hover:text-white"
+                      : "border-slate-200 bg-slate-50 text-slate-500 hover:bg-white hover:text-slate-800",
+                  )}
+                  type="button"
+                >
+                  <SearchIcon />
+                  {!effectiveCollapsed ? (
+                    <>
+                      <span className="min-w-0 flex-1 truncate text-[0.75rem]">Quick Search</span>
+                      <span className={cn("text-[0.65rem]", navMutedClass)}>⌘K</span>
+                    </>
+                  ) : null}
+                </button>
+              </div>
+            ) : null}
+
+            <nav
+  className={cn(
+    "min-h-0 flex-1 overflow-y-auto",
+    effectiveCollapsed
+      ? "mb-3 mt-4 flex flex-col items-center gap-2"
+      : "mb-3 mt-4 space-y-2.5 pr-1",
+  )}
+>
               {Object.entries(groupedNavigation).map(([section, items]) => (
-                <div key={section}>
-                  <p className="px-2 text-[0.62rem] font-semibold uppercase tracking-[0.16em] text-slate-300/65">
-                    {section}
-                  </p>
-                  <div className="mt-2 space-y-1">
+  <div
+    key={section}
+    className={
+      effectiveCollapsed
+        ? "space-y-2"
+        : cn(
+            "rounded-lg px-2.5 py-2 backdrop-blur-md transition",
+            isDark
+              ? "bg-slate-400/8 border border-slate-300/20 shadow-[0_2px_8px_rgba(148,163,184,0.1)]"
+              : "bg-gradient-to-br from-slate-50/80 to-gray-50/70 border border-slate-200/60 shadow-[0_2px_8px_rgba(203,213,225,0.3),inset_0_1px_0_rgba(255,255,255,1)]"
+          )
+    }
+  >
+                  {showSectionLabels ? (
+                    <p
+                      className={cn(
+                        "px-1.5 font-semibold uppercase mb-1",
+                        "text-[0.56rem] leading-[0.875rem] tracking-[0.08em]",
+                        navMutedClass,
+                      )}
+                    >
+                      {section}
+                    </p>
+                  ) : null}
+                  <div
+  className={cn(
+    effectiveCollapsed
+      ? "flex flex-col items-center space-y-2"
+      : "space-y-1",
+  )}
+>
                     {items.map((item) => (
                       <NavLink
                         key={item.to}
+                        aria-label={effectiveCollapsed ? item.label : undefined}
+                        title={effectiveCollapsed ? item.label : undefined}
                         className={({ isActive }) =>
                           cn(
-                            "group relative flex items-center gap-3 overflow-hidden rounded-lg px-2.5 py-2 transition-all duration-150",
-                            isActive
-                              ? "bg-white/12 text-white ring-1 ring-white/20"
-                              : "text-slate-200/90 hover:bg-white/7 hover:text-white",
+                            "group relative flex items-center overflow-hidden rounded-md font-medium transition-all duration-150",
+                            "text-[0.79rem]",
+                            effectiveCollapsed
+                              ? "h-9 w-9 justify-center"
+                              : "h-9 gap-2.5 px-1.5",
+                            isActive ? navActiveClass : cn(navMutedClass, navHoverClass),
                           )
                         }
                         to={item.to}
@@ -292,24 +467,28 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
                           <>
                             <span
                               className={cn(
-                                "absolute bottom-1.5 top-1.5 left-0 w-0.5 rounded-r-full transition",
-                                isActive ? "bg-brand-300" : "bg-transparent",
+                                "absolute rounded-r-full transition",
+                                effectiveCollapsed ? "bottom-2 left-0 top-2 w-0.5" : "bottom-1.5 left-0 top-1.5 w-0.5",
+                                isActive ? "bg-brand-500" : "bg-transparent",
                               )}
                             />
                             <span
                               className={cn(
-                                "relative flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition",
+                                "relative flex shrink-0 items-center justify-center rounded-md transition",
+                                effectiveCollapsed ? "h-9 w-9" : adminDenseSidebar ? "h-5 w-5" : denseSidebar ? "h-6 w-6" : "h-6 w-6",
                                 isActive
-                                  ? "bg-white/15 text-white"
-                                  : "text-slate-300/80 group-hover:bg-white/8 group-hover:text-white",
+                                  ? isDark ? "text-white" : "text-slate-950"
+                                  : cn(iconMutedClass, isDark ? "group-hover:text-white" : "group-hover:text-slate-950"),
                               )}
                             >
                               <NavIcon icon={item.icon} />
                             </span>
-                            <span className="min-w-0 flex-1 text-[0.83rem] font-medium">
-                              {item.label}
-                            </span>
-                            {item.badge ? (
+                            {!effectiveCollapsed ? (
+                              <span className="min-w-0 flex-1 truncate">
+                                {item.label}
+                              </span>
+                            ) : null}
+                            {!effectiveCollapsed && item.badge ? (
                               <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-500 px-1.5 text-[0.64rem] font-semibold text-white">
                                 {item.badge}
                               </span>
@@ -323,40 +502,96 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
               ))}
             </nav>
 
-            <div className="mt-4 border-t border-white/10 pt-3">
-              <div className="rounded-xl border border-white/10 bg-black/10 px-3 py-3">
-                <div className="flex items-center gap-3">
-                  <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/15 text-sm font-semibold text-white">
-                    {user?.initials}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[0.86rem] font-semibold text-white">{user?.name}</p>
-                    <p className="truncate text-[0.72rem] text-slate-300/90">{user?.title}</p>
+            <div className={cn("mt-auto border-t pt-3", isDark ? "border-white/10" : "border-slate-200")}>
+              <div className="relative">
+                <button
+                  aria-expanded={accountMenuOpen}
+                  aria-label="Open account menu"
+                  className={cn(
+                    "flex w-full items-center rounded-md text-left transition",
+                    effectiveCollapsed
+                      ? "h-10 justify-center px-0"
+                      : "h-10 gap-2.5 px-3",
+                    accountMenuOpen ? navActiveClass : navHoverClass,
+                  )}
+                  onClick={() => setAccountMenuOpen((current) => !current)}
+                  type="button"
+                >
+                  <UserAvatar initials={user?.initials} />
+                  {!effectiveCollapsed ? (
+                    <>
+                      <span className="min-w-0 flex-1">
+                        <span className={cn("block truncate font-semibold text-[0.82rem]", isDark ? "text-white" : "text-slate-950")}>
+                          {user?.fullName ?? user?.name}
+                        </span>
+                        <span className={cn("block truncate text-[0.68rem]", navMutedClass)}>
+                          {user?.title}
+                        </span>
+                      </span>
+                      <span className={cn("text-[0.9rem]", navMutedClass)}>v</span>
+                    </>
+                  ) : null}
+                </button>
+
+                {accountMenuOpen ? (
+                  <div
+                    className={cn(
+                      "absolute bottom-[calc(100%+0.6rem)] z-50 w-[240px] rounded-lg border p-3 shadow-[0_18px_42px_rgba(15,23,42,0.18)]",
+                      effectiveCollapsed ? "bottom-0 left-[calc(100%+0.75rem)]" : "left-0",
+                      isDark ? "border-brand-400/20 bg-brand-800 text-slate-100" : "border-slate-200 bg-white text-slate-800",
+                    )}
+                  >
+                    <div className="mb-3 flex flex-col gap-3 px-0 py-0 border-b pb-3" style={isDark ? {borderColor: 'rgba(255,255,255,0.1)'} : {borderColor: '#e2e8f0'}}>
+                      <div className="flex items-center gap-2">
+                        <UserAvatar initials={user?.initials} />
+                        <div className="min-w-0">
+                          <p className={cn("truncate text-[0.78rem] font-semibold", isDark ? "text-white" : "text-slate-950")}>
+                            {user?.fullName ?? user?.name}
+                          </p>
+                          <p className={cn("truncate text-[0.66rem]", navMutedClass)}>{user?.email || (user?.company ?? user?.title)}</p>
+                        </div>
+                      </div>
+                      <span className="inline-flex w-fit items-center rounded-full border px-2 py-0.5 text-[0.64rem] font-semibold uppercase tracking-[0.08em]" style={isDark ? {borderColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.7)'} : {borderColor: '#e2e8f0', color: '#64748b'}}>
+                        {role === "client" ? "Client" : role === "admin" ? "Admin" : "Firm"}
+                      </span>
+                    </div>
+                    <NavLink
+                      className={({ isActive }) =>
+                        cn("flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[0.79rem] transition", isActive ? navActiveClass : navHoverClass)
+                      }
+                      to={settingsPath}
+                      onClick={() => {
+                        setAccountMenuOpen(false);
+                        setMobileNavOpen(false);
+                      }}
+                    >
+                      <NavIcon icon="settings" />
+                      <span>Settings</span>
+                    </NavLink>
+                    <button className={cn("flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[0.79rem] transition", navHoverClass)} type="button">
+                      <svg className="h-[1rem] w-[1rem]" fill="none" viewBox="0 0 24 24">
+                        <path
+                          d="M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17ZM12 9v3m0 3h.01"
+                          stroke="currentColor"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="1.8"
+                        />
+                      </svg>
+                      <span>Help & support</span>
+                    </button>
+                    <button
+                      className={cn("flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[0.79rem] transition text-red-600 hover:bg-red-50", isDark && "text-red-400 hover:bg-red-950/20")}
+                      onClick={logout}
+                      type="button"
+                    >
+                      <SignOutIcon />
+                      <span>Sign out</span>
+                    </button>
                   </div>
-                </div>
+                ) : null}
               </div>
 
-              <button
-                className="mt-2.5 flex w-full items-center gap-3 rounded-lg px-2.5 py-2.5 text-left text-slate-200/90 transition hover:bg-white/7 hover:text-white"
-                type="button"
-              >
-                <span className="flex h-8 w-8 items-center justify-center rounded-md bg-white/8 text-slate-100">
-                  <SupportIcon />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[0.81rem] font-medium">Need help?</span>
-                  <span className="block text-[0.7rem] text-slate-300/80">Contact support</span>
-                </span>
-                <span className="text-slate-300/70">{">"}</span>
-              </button>
-
-              <button
-                className="mt-2 flex w-full items-center justify-center rounded-lg border border-white/15 bg-white/8 px-3 py-2.5 text-[0.8rem] font-medium text-white transition hover:bg-white/15"
-                onClick={logout}
-                type="button"
-              >
-                Sign out
-              </button>
             </div>
           </div>
         </aside>
@@ -392,7 +627,7 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
                       </span>
                     ) : null}
                   </div>
-                  <h2 className="mt-1 text-[1.12rem] font-semibold text-slate-950">{activeItem.label}</h2>
+                  <h2 className="mt-1 text-[1.12rem] font-semibold text-slate-950">{activePageLabel}</h2>
                 </div>
               </div>
               <div className="flex items-center gap-3">

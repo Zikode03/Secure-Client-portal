@@ -1,7 +1,20 @@
 // Friendly guide: this module (ClientDashboardPage) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
+import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
+import {
+  AlertTriangle,
+  CloudUpload,
+  Download,
+  Eye,
+  FileCheck2,
+  FileText,
+  FolderOpen,
+  MoreHorizontal,
+  Send,
+  ShieldCheck,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
@@ -13,17 +26,15 @@ import { SurfaceCard } from "../../components/ui/SurfaceCard";
 import { useDisclosure } from "../../hooks/useDisclosure";
 import { useClientWorkflow } from "../../hooks/useClientWorkflow";
 import type {
-  ActivityItem,
   ExpiringDocumentItem,
   LatestRecordItem,
   MonthlyDocumentSlot,
   MonthlyPack,
   SmartAlertItem,
   Tone,
-  WorkflowRequest,
 } from "../../types/portal";
 import { cn } from "../../utils/cn";
-import { formatDateLabel, formatDateTimeLabel, formatStatusLabel } from "../../utils/formatters";
+import { formatDateLabel, formatStatusLabel } from "../../utils/formatters";
 
 const readyStatuses = new Set<MonthlyDocumentSlot["status"]>([
   "draft",
@@ -41,59 +52,17 @@ const blockingStatuses = new Set<MonthlyDocumentSlot["status"]>([
   "rejected",
 ]);
 
-// Component flow: gather data first, then render a focused UI state.
-function UploadIcon() {
-// Render output: this is the visual state users interact with.
-  return (
-    <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24">
-      <path
-        d="M12 16V5m0 0-4 4m4-4 4 4M5.5 16.5v1.25A2.75 2.75 0 0 0 8.25 20.5h7.5a2.75 2.75 0 0 0 2.75-2.75V16.5"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
-}
+const panelClass =
+  "h-full rounded-2xl border border-[#dce6ef] bg-white shadow-[0_16px_38px_rgba(4,24,52,0.08)]";
 
-function SubmitIcon() {
-  return (
-    <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24">
-      <path
-        d="m5 12 13-7-3.5 14L11 13l-6-1Z"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
-}
+const iconTileClass =
+  "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#eef4fa] text-brand-700 ring-1 ring-[#d7e3ee]";
 
-function MoreIcon() {
-  return (
-    <svg aria-hidden="true" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-      <circle cx="5" cy="12" r="1.7" />
-      <circle cx="12" cy="12" r="1.7" />
-      <circle cx="19" cy="12" r="1.7" />
-    </svg>
-  );
-}
+const dashboardLinkClass =
+  "client-dashboard-link font-semibold transition";
 
-function ChevronDownIcon() {
-  return (
-    <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24">
-      <path
-        d="m6 9 6 6 6-6"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
-}
+const dashboardActionButtonClass =
+  "client-dashboard-action-button inline-flex items-center justify-center rounded-lg font-bold transition hover:-translate-y-0.5 active:translate-y-px focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2";
 
 function ChevronRightIcon() {
   return (
@@ -109,99 +78,9 @@ function ChevronRightIcon() {
   );
 }
 
-function BannerIcon({ tone }: { tone: "warning" | "success" | "info" }) {
-  const classes =
-    tone === "success"
-      ? "bg-emerald-100 text-emerald-600"
-      : tone === "info"
-        ? "bg-brand-100 text-brand-600"
-        : "bg-orange-100 text-orange-500";
-
-  return (
-    <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${classes}`}>
-      <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
-        {tone === "success" ? (
-          <>
-            <path
-              d="m7.5 12.5 2.75 2.75L16.5 9"
-              stroke="currentColor"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-            />
-            <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
-          </>
-        ) : tone === "info" ? (
-          <>
-            <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
-            <path
-              d="M12 10.25v5m0-8v.25"
-              stroke="currentColor"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth="2"
-            />
-          </>
-        ) : (
-          <path
-            d="M12 8.5v4m0 3h.01M10.26 4.76 2.9 17.5a1.5 1.5 0 0 0 1.3 2.25H18.8a1.5 1.5 0 0 0 1.3-2.25L12.74 4.76a1.5 1.5 0 0 0-2.48 0Z"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="1.8"
-          />
-        )}
-      </svg>
-    </div>
-  );
-}
-
 function ExpiryIcon() {
   return (
     <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-amber-50 text-amber-500 ring-1 ring-amber-100">
-      <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
-        <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="1.8" />
-        <path
-          d="M12 8v4l2.5 2.5"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="1.8"
-        />
-      </svg>
-    </div>
-  );
-}
-
-function RequestIcon() {
-  return (
-    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-rose-50 text-rose-500 ring-1 ring-rose-100">
-      <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
-        <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="1.8" />
-        <path
-          d="M12 8.5v4m0 3h.01"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="1.8"
-        />
-      </svg>
-    </div>
-  );
-}
-
-function ActivityIcon({ tone }: { tone: Tone }) {
-  const classes =
-    tone === "success"
-      ? "bg-emerald-50 text-emerald-600 ring-emerald-100"
-      : tone === "warning"
-        ? "bg-amber-50 text-amber-500 ring-amber-100"
-        : tone === "danger"
-          ? "bg-rose-50 text-rose-500 ring-rose-100"
-          : "bg-brand-50 text-brand-500 ring-brand-100";
-
-  return (
-    <div className={`flex h-10 w-10 items-center justify-center rounded-2xl ring-1 ${classes}`}>
       <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
         <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="1.8" />
         <path
@@ -239,34 +118,6 @@ function AlertListIcon({ tone }: { tone: Tone }) {
   );
 }
 
-function bannerClasses(tone: "warning" | "success" | "info") {
-  if (tone === "success") {
-    return "border-emerald-100 bg-[radial-gradient(circle_at_top_left,rgba(16,185,129,0.14),transparent_40%),linear-gradient(135deg,#f7fefb_0%,#ffffff_100%)]";
-  }
-
-  if (tone === "info") {
-    return "border-brand-100 bg-[radial-gradient(circle_at_top_left,rgba(84,66,255,0.14),transparent_40%),linear-gradient(135deg,#f7f8ff_0%,#ffffff_100%)]";
-  }
-
-  return "border-orange-100 bg-[radial-gradient(circle_at_top_left,rgba(249,115,22,0.12),transparent_40%),linear-gradient(135deg,#fff9f2_0%,#ffffff_100%)]";
-}
-
-function blockerSummaryText(missingCount: number, rejectedCount: number) {
-  if (missingCount > 0 && rejectedCount > 0) {
-    return `${missingCount} required document${missingCount === 1 ? " is" : "s are"} missing and ${rejectedCount} document${rejectedCount === 1 ? " was" : "s were"} rejected.`;
-  }
-
-  if (missingCount > 0) {
-    return `${missingCount} required document${missingCount === 1 ? " is" : "s are"} still missing.`;
-  }
-
-  if (rejectedCount > 0) {
-    return `${rejectedCount} document${rejectedCount === 1 ? " was" : "s were"} rejected and must be corrected.`;
-  }
-
-  return "All required documents are ready for accountant review.";
-}
-
 function getHighlightedSlot(pack: MonthlyPack) {
   const blockingSlots = pack.slots.filter(
     (slot) => slot.isRequired && blockingStatuses.has(slot.status),
@@ -293,17 +144,72 @@ function SectionHeader({
   title: string;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3">
-      <h2 className="text-[1rem] font-semibold text-slate-950">{title}</h2>
+    <div className="flex items-center justify-between gap-4">
+      <h2 className="text-[1rem] font-semibold text-[#091333]">{title}</h2>
       {actionLabel && onAction ? (
         <button
-          className="text-sm font-medium text-brand-600 transition hover:text-brand-700"
+          className={cn(dashboardActionButtonClass, "h-8 gap-1.5 px-3 text-[0.78rem]")}
           onClick={onAction}
           type="button"
         >
           {actionLabel}
         </button>
       ) : null}
+    </div>
+  );
+}
+
+function MetricTile({
+  accent = false,
+  helper,
+  icon,
+  label,
+  progress,
+  value,
+}: {
+  accent?: boolean;
+  helper: string;
+  icon: ReactNode;
+  label: string;
+  progress?: number;
+  value: ReactNode;
+}) {
+  return (
+    <div className={cn(panelClass, "flex min-h-[152px] flex-col justify-between p-5")}>
+      <div className="flex items-start gap-4">
+        <div className={iconTileClass}>{icon}</div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[0.82rem] font-semibold text-[#091333]">{label}</p>
+          <p className={cn("mt-2 text-[1.7rem] font-semibold tracking-tight", accent ? "text-brand-700" : "text-[#091333]")}>
+            {value}
+          </p>
+          <p className="mt-1 text-[0.78rem] leading-5 text-[#53617f]">{helper}</p>
+        </div>
+      </div>
+      {typeof progress === "number" ? (
+        <div className="client-dashboard-progress-track mt-4 h-1.5 rounded-full">
+          <div
+            className="client-dashboard-progress-fill h-1.5 rounded-full"
+            style={{ width: `${Math.max(0, Math.min(progress, 100))}%` }}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function PriorityIcon({ tone }: { tone: Tone }) {
+  const Icon = tone === "danger" ? AlertTriangle : tone === "success" ? ShieldCheck : CloudUpload;
+  const classes =
+    tone === "danger"
+      ? "border-rose-100 bg-rose-50 text-rose-700"
+      : tone === "warning"
+        ? "border-amber-100 bg-amber-50 text-amber-700"
+        : "border-[#d7e3ee] bg-[#eef4fa] text-brand-700";
+
+  return (
+    <div className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border", classes)}>
+      <Icon aria-hidden="true" className="h-5 w-5" strokeWidth={1.8} />
     </div>
   );
 }
@@ -347,7 +253,7 @@ function CompactListCard({
             ) : null}
           </div>
           <button
-            className="text-sm font-medium text-brand-600 transition hover:text-brand-700"
+            className={cn(dashboardLinkClass, "text-sm")}
             onClick={onViewAll}
             type="button"
           >
@@ -384,32 +290,27 @@ function NextActionsCard({
   items: NextActionItem[];
 }) {
   return (
-    <SurfaceCard className="rounded-[1.5rem] border border-slate-200/80 bg-[radial-gradient(circle_at_top_left,rgba(84,66,255,0.06),transparent_34%),linear-gradient(180deg,#ffffff_0%,#fbfbff_100%)] p-0 shadow-[0_20px_45px_rgba(15,23,42,0.05)]">
-      <div className="px-5 pb-4 pt-5">
-        <SectionHeader title="Next actions" />
-        <p className="mt-1 text-[0.82rem] text-slate-500">
-          The fastest path to getting this month ready and keeping the workspace tidy.
-        </p>
+    <SurfaceCard className={cn(panelClass, "p-0")}>
+      <div className="px-5 pb-3 pt-5">
+        <SectionHeader title="Today's Priorities" />
       </div>
 
       {items.length > 0 ? (
-        <div className="space-y-0 px-5 pb-5">
-          {items.map((item, index) => (
+        <div className="space-y-3 px-5 pb-5">
+          {items.map((item) => (
             <div
-              className={`flex items-start justify-between gap-4 py-3 ${
-                index !== items.length - 1 ? "border-b border-slate-100" : ""
-              }`}
+              className="flex flex-col gap-3 rounded-xl border border-[#e8ecf5] bg-white px-3 py-3 transition hover:border-brand-700/25 hover:shadow-[0_14px_28px_rgba(4,24,52,0.08)] sm:flex-row sm:items-center sm:justify-between"
               key={item.id}
             >
-              <div className="flex min-w-0 items-start gap-3">
-                <AlertListIcon tone={item.tone} />
-                <div className="min-w-0 space-y-0.5">
-                  <p className="text-[0.95rem] font-medium leading-6 text-slate-950">{item.title}</p>
-                  <p className="text-[0.84rem] text-slate-500">{item.detail}</p>
+              <div className="flex min-w-0 items-center gap-3">
+                <PriorityIcon tone={item.tone} />
+                <div className="min-w-0">
+                  <p className="truncate text-[0.9rem] font-semibold text-[#091333]">{item.title}</p>
+                  <p className="mt-0.5 line-clamp-2 text-[0.78rem] leading-5 text-[#53617f]">{item.detail}</p>
                 </div>
               </div>
               <button
-                className="shrink-0 text-sm font-medium text-brand-600 transition hover:text-brand-700"
+                className={cn(dashboardActionButtonClass, "h-9 shrink-0 px-3 text-[0.8rem]")}
                 onClick={item.onAction}
                 type="button"
               >
@@ -421,7 +322,7 @@ function NextActionsCard({
       ) : (
         <div className="px-5 pb-5">
           <EmptyState
-            description="There are no urgent client actions right now. You can use this time to review documents or compliance records."
+            description="There are no urgent client actions right now. You can review documents or compliance records."
             title="Everything is on track"
           />
         </div>
@@ -453,73 +354,90 @@ function MonthlyPackPreviewCard({
   pack: MonthlyPack;
   onOpenPack: () => void;
 }) {
-  const previewSlots = pack.slots.filter(
-    (slot) => slot.documentType === "Bank Statement" || slot.documentType === "Invoices",
-  );
+  const progress = Math.max(0, Math.min(pack.progressPercent, 100));
+  const previewSlots = pack.slots
+    .filter((slot) => slot.documentType === "Bank Statement" || slot.documentType === "Invoices")
+    .slice(0, 3);
 
   return (
-    <SurfaceCard className="rounded-[1.5rem] border border-slate-200/80 bg-white p-0 shadow-[0_20px_45px_rgba(15,23,42,0.05)]">
-      <div className="border-b border-slate-100 px-5 pb-4 pt-5">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h2 className="text-[1rem] font-semibold text-slate-950">Monthly pack snapshot</h2>
-            <p className="mt-1 text-[0.82rem] text-slate-500">
-              Quick view only. Open the pack workspace to upload, correct, and submit.
-            </p>
-          </div>
-          <button
-            className="text-sm font-medium text-brand-600 transition hover:text-brand-700"
-            onClick={onOpenPack}
-            type="button"
-          >
-            Open workspace
-          </button>
-        </div>
+    <SurfaceCard className={cn(panelClass, "p-5")}>
+      <div className="flex items-center justify-between gap-4">
+        <h2 className="text-[1rem] font-semibold text-[#091333]">Monthly Pack Status</h2>
+        <button
+          className={cn(dashboardLinkClass, "text-sm")}
+          onClick={onOpenPack}
+          type="button"
+        >
+          View Monthly Pack
+        </button>
       </div>
 
-      <div className="grid gap-4 px-5 py-5 lg:grid-cols-[minmax(0,0.82fr)_minmax(220px,0.18fr)]">
-        <div className="space-y-3">
-          {previewSlots.map((slot) => (
-            <div
-              className="flex items-center justify-between gap-4 rounded-[1.2rem] border border-slate-200 bg-slate-50/80 px-4 py-3"
-              key={slot.id}
-            >
-              <div className="min-w-0">
-                <p className="text-[0.95rem] font-semibold text-slate-950">{slot.documentType}</p>
-                <p className="mt-1 text-[0.82rem] text-slate-500">
-                  {slot.month} {slot.year}
-                  {slot.lastSubmission ? ` • Updated ${formatDateLabel(slot.lastSubmission)}` : " • No upload yet"}
-                </p>
-              </div>
-              <span
-                className={cn(
-                  "inline-flex shrink-0 rounded-full border px-2.5 py-1 text-[0.72rem] font-semibold",
-                  slotTone(slot.status),
-                )}
-              >
-                {formatStatusLabel(slot.status)}
-              </span>
-            </div>
-          ))}
+      <div className="mt-5 grid gap-6 md:grid-cols-[220px_minmax(0,1fr)] md:items-center">
+        <div
+          aria-label={`${progress}% complete`}
+          className="client-dashboard-progress-track relative mx-auto flex h-48 w-48 items-center justify-center rounded-full"
+          style={{
+            background: `conic-gradient(var(--client-dashboard-progress-fill) ${progress * 3.6}deg, var(--client-dashboard-progress-track) 0deg)`,
+          }}
+        >
+          <div className="flex h-[152px] w-[152px] flex-col items-center justify-center rounded-full bg-white shadow-inner">
+            <span className="text-[2.25rem] font-semibold tracking-tight text-[#091333]">{progress}%</span>
+            <span className="text-[0.78rem] font-semibold text-[#53617f]">Complete</span>
+          </div>
         </div>
 
-        <div className="rounded-[1.2rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#fbfbff_100%)] px-4 py-4">
-          <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-slate-400">
-            Pack status
-          </p>
-          <p className="mt-2 text-[1.28rem] font-semibold tracking-tight text-slate-950">
-            {pack.completedCount} / {pack.totalCount}
-          </p>
-          <p className="mt-1 text-[0.84rem] text-slate-500">{pack.progressPercent}% complete</p>
-          <div className="mt-3 h-2 rounded-full bg-slate-100">
-            <div
-              className="h-2 rounded-full bg-brand-500"
-              style={{ width: `${pack.progressPercent}%` }}
-            />
+        <div className="min-w-0 space-y-4">
+          <div>
+            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-[#53617f]">Current Month</p>
+            <p className="mt-1 text-[1.35rem] font-semibold text-brand-700">
+              {pack.monthLabel}
+            </p>
+            <p className="mt-2 text-[0.86rem] font-semibold text-[#091333]">
+              {pack.completedCount} of {pack.totalCount} documents complete
+            </p>
+            <div className="client-dashboard-progress-track mt-3 h-2 rounded-full">
+              <div className="client-dashboard-progress-fill h-2 rounded-full" style={{ width: `${progress}%` }} />
+            </div>
           </div>
-          <p className="mt-4 text-[0.8rem] leading-6 text-slate-500">
-            Due {formatDateLabel(pack.dueDate)}
-          </p>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border border-[#e8ecf5] bg-[#fbfcff] px-4 py-3">
+              <p className="text-[0.72rem] font-semibold text-[#53617f]">Due Date</p>
+              <p className="mt-1 text-[0.88rem] font-semibold text-[#091333]">{formatDateLabel(pack.dueDate)}</p>
+            </div>
+            <div className="rounded-xl border border-[#e8ecf5] bg-[#fbfcff] px-4 py-3">
+              <p className="text-[0.72rem] font-semibold text-[#53617f]">Status</p>
+              <p className="mt-1 text-[0.88rem] font-semibold text-brand-700">
+                {pack.submissionStatus === "under_accountant_review" ? "Under Review" : pack.canComplete ? "Ready" : "Awaiting Uploads"}
+              </p>
+            </div>
+          </div>
+
+          {previewSlots.length > 0 ? (
+            <div className="space-y-2">
+              {previewSlots.map((slot) => (
+                <div
+                  className="flex items-center justify-between gap-3 rounded-xl border border-[#e8ecf5] bg-white px-3 py-2.5"
+                  key={slot.id}
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-[0.82rem] font-semibold text-[#091333]">{slot.documentType}</p>
+                    <p className="mt-0.5 text-[0.74rem] text-[#53617f]">
+                      {slot.lastSubmission ? `Updated ${formatDateLabel(slot.lastSubmission)}` : "No upload yet"}
+                    </p>
+                  </div>
+                  <span
+                    className={cn(
+                      "inline-flex shrink-0 rounded-full border px-2.5 py-1 text-[0.7rem] font-semibold",
+                      slotTone(slot.status),
+                    )}
+                  >
+                    {formatStatusLabel(slot.status)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
       </div>
     </SurfaceCard>
@@ -535,7 +453,6 @@ export function ClientDashboardPage() {
 // Local UI state: keeps track of what the user is seeing or editing right now.
   const [optionsOpen, setOptionsOpen] = useState(false);
   const {
-    activity,
     documents,
     dismissFeedbackNotice,
     expiringDocuments,
@@ -599,9 +516,7 @@ export function ClientDashboardPage() {
     return [...documentFileNames, ...invoiceFileNames];
   }, [documents, invoices, selectedSlot]);
   const expiringPreview = useMemo(() => expiringDocuments.slice(0, 2), [expiringDocuments]);
-  const requestsPreview = useMemo(() => requests.slice(0, 2), [requests]);
   const alertsPreview = useMemo(() => smartAlerts.slice(0, 2), [smartAlerts]);
-  const activityPreview = useMemo(() => activity.slice(0, 5), [activity]);
   const latestRecordsPreview = useMemo(
     () => latestOverallDocuments.slice(0, 5),
     [latestOverallDocuments],
@@ -611,7 +526,9 @@ export function ClientDashboardPage() {
     const rejectedSlot = blockingSlots.find((slot) => slot.status === "rejected");
     const missingSlot = blockingSlots.find((slot) => slot.status === "missing");
     const signatureSlot = blockingSlots.find((slot) => slot.status === "pending_signature");
-    const openRequest = requests.find((request) => request.status !== "resolved" && request.status !== "closed");
+    const openFollowUps = requests
+      .filter((request) => request.status !== "resolved" && request.status !== "closed")
+      .slice(0, 2);
     const expiringDocument = expiringDocuments[0];
 
     if (rejectedSlot) {
@@ -649,14 +566,14 @@ export function ClientDashboardPage() {
       });
     }
 
-    if (openRequest) {
+    for (const request of openFollowUps) {
       items.push({
-        id: `request-${openRequest.id}`,
-        title: "Monthly pack follow-up",
-        detail: openRequest.description,
-        ctaLabel: "Open monthly pack",
+        id: `request-${request.id}`,
+        title: request.title,
+        detail: request.description,
+        ctaLabel: request.status === "awaiting_client" ? "Respond" : "Open",
         tone: "info",
-        onAction: () => navigate("/client/packs"),
+        onAction: () => navigate("/client/inbox"),
       });
     }
 
@@ -682,7 +599,7 @@ export function ClientDashboardPage() {
       });
     }
 
-    return items.slice(0, 3);
+    return items.slice(0, 5);
   }, [blockingSlots, expiringDocuments, monthPack.canComplete, monthPack.submissionStatus, navigate, requests, submitMonth]);
 
   const openRequestsCount = useMemo(
@@ -698,36 +615,6 @@ export function ClientDashboardPage() {
   const complianceHealth = portal.clientComplianceCentre.overallScore;
   const expiredComplianceCount = portal.clientComplianceCentre.expiredDocuments.length;
   const expiringComplianceCount = portal.clientComplianceCentre.expiringDocuments.length;
-
-  const submissionState = useMemo(() => {
-    if (monthPack.submissionStatus === "under_accountant_review") {
-      return {
-        label: "Under Review",
-        tone: "info" as const,
-        bannerTitle: "This month has been submitted.",
-        bannerMessage: "The monthly pack is awaiting accountant review.",
-        statusHelper: "Awaiting accountant review",
-      };
-    }
-
-    if (monthPack.canComplete) {
-      return {
-        label: "Ready",
-        tone: "success" as const,
-        bannerTitle: "This month is ready to submit.",
-        bannerMessage: "All required documents are ready for accountant review.",
-        statusHelper: "Ready for submission",
-      };
-    }
-
-    return {
-      label: "Not Ready",
-      tone: "warning" as const,
-      bannerTitle: "This month is not ready to submit.",
-      bannerMessage: blockerSummaryText(missingRequiredCount, rejectedRequiredCount),
-      statusHelper: "Fix blockers to enable submission",
-    };
-  }, [missingRequiredCount, monthPack.canComplete, monthPack.submissionStatus, rejectedRequiredCount]);
 
   function handleOpenUpload(slot: MonthlyDocumentSlot | null) {
     if (!slot) {
@@ -745,49 +632,52 @@ export function ClientDashboardPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[1180px] space-y-4">
-      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
-        <div className="space-y-1.5">
-          <div className="text-sm font-medium text-brand-600">Client Workspace</div>
-          <h1 className="text-[1.8rem] font-semibold tracking-tight text-slate-950">
-            Monthly Document Control
-          </h1>
-          <p className="max-w-2xl text-[0.9rem] leading-6 text-slate-500">
-            Complete the required document slots, resolve blockers, and submit the month for accountant review.
-          </p>
-        </div>
+    <div className="mx-auto max-w-[1240px] space-y-5">
+      <section className="relative overflow-visible rounded-2xl border border-[#dce6ef] bg-[linear-gradient(135deg,#062044_0%,#0a2f66_54%,#1d8b66_100%)] p-5 text-white shadow-[0_24px_60px_rgba(4,24,52,0.18)] md:p-6">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(150,224,113,0.22),transparent_32%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.16),transparent_34%)]" />
+        <div className="relative grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+          <div className="space-y-2">
+            <div className="inline-flex rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-white/80">
+              Client Workspace
+            </div>
+            <h1 className="text-[2rem] font-semibold tracking-tight md:text-[2.35rem]">
+              Welcome back, {user?.name?.split(" ")[0] ?? "John"}
+            </h1>
+            <p className="max-w-2xl text-[0.95rem] leading-6 text-white/78">
+              Your monthly document pack is {monthPack.progressPercent}% complete. Resolve blockers, upload missing files, and submit the month for accountant review.
+            </p>
+          </div>
 
-        <div className="relative flex flex-wrap items-center gap-2.5 sm:flex-nowrap lg:justify-end">
+          <div className="relative flex flex-wrap items-center gap-2.5 sm:flex-nowrap lg:justify-end">
           <Button
-            className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-800 ring-0 hover:bg-slate-50"
+            className="client-dashboard-action-button h-10 rounded-lg border-0 px-4 text-sm font-bold ring-0 hover:-translate-y-0.5 active:translate-y-px"
             disabled={monthPack.submissionStatus === "under_accountant_review"}
             onClick={() => handleOpenUpload(highlightedSlot)}
-            variant="secondary"
           >
-            <UploadIcon />
+            <CloudUpload aria-hidden="true" className="h-4 w-4" />
             <span>Upload missing</span>
           </Button>
           <Button
-            className="h-10 rounded-xl bg-[linear-gradient(135deg,#5442ff,#6f59ff)] px-4 text-sm shadow-[0_14px_28px_rgba(84,66,255,0.18)] hover:bg-[linear-gradient(135deg,#4a38ef,#6650ff)]"
+            className="h-10 rounded-xl bg-[#8ccf45] px-4 text-sm text-[#062044] shadow-[0_14px_28px_rgba(9,34,66,0.22)] hover:bg-[#9ad955]"
             disabled={!monthPack.canComplete || monthPack.submissionStatus === "under_accountant_review"}
             onClick={submitMonth}
           >
-            <SubmitIcon />
+            <Send aria-hidden="true" className="h-4 w-4" />
             <span>Submit month</span>
           </Button>
           <button
             aria-label="Open dashboard options"
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:bg-slate-50 hover:text-slate-700"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/20 bg-white/10 text-white shadow-sm transition hover:bg-white/15"
             onClick={() => setOptionsOpen((current) => !current)}
             type="button"
           >
-            <MoreIcon />
+            <MoreHorizontal aria-hidden="true" className="h-5 w-5" />
           </button>
 
           {optionsOpen ? (
-            <div className="absolute right-0 top-[calc(100%+0.6rem)] z-20 min-w-[210px] rounded-xl border border-slate-200 bg-white p-2 shadow-[0_18px_38px_rgba(15,23,42,0.12)]">
+            <div className="absolute right-0 top-[calc(100%+0.6rem)] z-20 min-w-[210px] rounded-xl border border-[#dce6ef] bg-white p-2 text-[#091333] shadow-[0_18px_38px_rgba(15,23,42,0.12)]">
               <button
-                className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+                className={cn("flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm", dashboardLinkClass)}
                 onClick={handleOpenWorkspace}
                 type="button"
               >
@@ -795,7 +685,7 @@ export function ClientDashboardPage() {
                 <ChevronRightIcon />
               </button>
               <button
-                className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+                className={cn("flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm", dashboardLinkClass)}
                 onClick={() => {
                   navigate("/client/documents");
                   setOptionsOpen(false);
@@ -806,7 +696,7 @@ export function ClientDashboardPage() {
                 <ChevronRightIcon />
               </button>
               <button
-                className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+                className={cn("flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm", dashboardLinkClass)}
                 onClick={() => {
                   navigate("/client/compliance");
                   setOptionsOpen(false);
@@ -819,7 +709,8 @@ export function ClientDashboardPage() {
             </div>
           ) : null}
         </div>
-      </div>
+        </div>
+      </section>
 
       {feedbackNotice ? (
         <FeedbackBanner
@@ -830,103 +721,45 @@ export function ClientDashboardPage() {
         />
       ) : null}
 
-      <SurfaceCard
-        className={`rounded-[1.5rem] border px-4 py-4 shadow-[0_18px_40px_rgba(15,23,42,0.05)] ${bannerClasses(
-          submissionState.tone,
-        )}`}
-      >
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-start gap-4">
-            <BannerIcon tone={submissionState.tone} />
-            <div className="space-y-1">
-              <h2 className="text-[1rem] font-semibold text-slate-900">
-                {submissionState.bannerTitle}
-              </h2>
-              <p className="text-[0.88rem] text-slate-700">{submissionState.bannerMessage}</p>
-            </div>
-          </div>
-          <Button
-            className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-700 ring-0 hover:bg-slate-50"
-            onClick={handleOpenWorkspace}
-            variant="secondary"
-          >
-            <span>View details</span>
-            <ChevronDownIcon />
-          </Button>
-        </div>
-      </SurfaceCard>
+      <div className="grid items-stretch gap-5 md:grid-cols-2 xl:grid-cols-4">
+        <MetricTile
+          accent
+          helper={`${expiredComplianceCount} expired / ${expiringComplianceCount} expiring soon`}
+          icon={<ShieldCheck aria-hidden="true" className="h-6 w-6" strokeWidth={1.8} />}
+          label="Compliance Health"
+          progress={complianceHealth}
+          value={`${complianceHealth}%`}
+        />
+        <MetricTile
+          helper={waitingOnClientCount > 0 ? `${waitingOnClientCount} waiting on you` : "No requests waiting on you"}
+          icon={<FileText aria-hidden="true" className="h-6 w-6" strokeWidth={1.8} />}
+          label="Open Requests"
+          progress={openRequestsCount > 0 ? Math.min(openRequestsCount * 18, 100) : 0}
+          value={openRequestsCount}
+        />
+        <MetricTile
+          helper={rejectedRequiredCount > 0 ? `${rejectedRequiredCount} rejected` : "Required checklist blockers"}
+          icon={<FileCheck2 aria-hidden="true" className="h-6 w-6" strokeWidth={1.8} />}
+          label="Missing Documents"
+          progress={missingRequiredCount > 0 ? Math.min(missingRequiredCount * 22, 100) : 0}
+          value={missingRequiredCount}
+        />
+        <MetricTile
+          accent
+          helper={`${monthPack.progressPercent}% complete`}
+          icon={<FolderOpen aria-hidden="true" className="h-6 w-6" strokeWidth={1.8} />}
+          label="Pack Progress"
+          progress={monthPack.progressPercent}
+          value={`${monthPack.completedCount} / ${monthPack.totalCount}`}
+        />
+      </div>
 
-      <SurfaceCard className="overflow-hidden rounded-[1.5rem] border border-slate-200/80 bg-white p-0 shadow-[0_20px_45px_rgba(15,23,42,0.05)]">
-        <div className="grid md:grid-cols-2 lg:grid-cols-4">
-          <div className="space-y-2 px-5 py-4 lg:border-r lg:border-slate-100">
-            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-slate-500">
-              Compliance Health
-            </p>
-            <p className="text-[1.38rem] font-semibold tracking-tight text-slate-950">
-              {complianceHealth}%
-            </p>
-            <p className="text-[0.86rem] text-slate-500">
-              {expiredComplianceCount} expired / {expiringComplianceCount} expiring soon
-            </p>
-            <div className="h-2 rounded-full bg-slate-100">
-              <div
-                className="h-2 rounded-full bg-emerald-500"
-                style={{ width: `${complianceHealth}%` }}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2 px-5 py-4 lg:border-r lg:border-slate-100">
-            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-slate-500">
-              Requests
-            </p>
-            <p className="text-[1.38rem] font-semibold tracking-tight text-slate-950">
-              {openRequestsCount}
-            </p>
-            <p className="text-[0.86rem] text-slate-500">
-              {waitingOnClientCount > 0
-                ? `${waitingOnClientCount} waiting on you`
-                : "No requests waiting on you"}
-            </p>
-          </div>
-
-          <div className="space-y-2 px-5 py-4 lg:border-r lg:border-slate-100">
-            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-slate-500">
-              Documents Missing
-            </p>
-            <p className="text-[1.38rem] font-semibold tracking-tight text-slate-950">
-              {missingRequiredCount}
-            </p>
-            <p className="text-[0.86rem] text-slate-500">
-              {rejectedRequiredCount > 0
-                ? `${rejectedRequiredCount} rejected still need correction`
-                : "Required checklist blockers"}
-            </p>
-          </div>
-
-          <div className="space-y-2 px-5 py-4">
-            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-slate-500">
-              Pack Progress
-            </p>
-            <p className="text-[1.38rem] font-semibold tracking-tight text-slate-950">
-              {monthPack.completedCount} of {monthPack.totalCount}
-            </p>
-            <p className="text-[0.86rem] text-slate-500">{monthPack.progressPercent}% complete</p>
-            <div className="h-2 rounded-full bg-slate-100">
-              <div
-                className="h-2 rounded-full bg-brand-500"
-                style={{ width: `${monthPack.progressPercent}%` }}
-              />
-            </div>
-          </div>
-        </div>
-      </SurfaceCard>
-
-      <section>
+      <section className="grid items-stretch gap-5 xl:grid-cols-[minmax(0,0.98fr)_minmax(360px,1fr)]">
         <MonthlyPackPreviewCard onOpenPack={handleOpenWorkspace} pack={monthPack} />
+        <NextActionsCard items={nextActions} />
       </section>
 
-      <section className="grid gap-5 lg:grid-cols-3">
+      <section className="grid gap-5 lg:grid-cols-2">
         <CompactListCard
           className="bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.08),transparent_36%),linear-gradient(180deg,#ffffff_0%,#fffdfa_100%)]"
           emptyDescription="No compliance records are expiring soon."
@@ -958,46 +791,6 @@ export function ClientDashboardPage() {
         />
 
         <CompactListCard
-          className="bg-[radial-gradient(circle_at_top_left,rgba(244,63,94,0.08),transparent_36%),linear-gradient(180deg,#ffffff_0%,#fffafb_100%)]"
-          emptyDescription="Any accountant follow-ups for this month will appear here."
-          emptyTitle="No follow-up requests"
-          items={requestsPreview}
-          onViewAll={() => navigate("/client/inbox")}
-          renderItem={(item, index) => {
-            const typedItem = item as WorkflowRequest;
-            return (
-              <div
-                className={`flex items-start justify-between gap-4 py-2.5 ${
-                  index !== requestsPreview.length - 1 ? "border-b border-slate-100" : ""
-                }`}
-                key={typedItem.id}
-              >
-                <div className="flex min-w-0 items-start gap-3">
-                  <RequestIcon />
-                  <div className="min-w-0 space-y-0.5">
-                    <p className="text-[0.95rem] font-medium leading-6 text-slate-950">{typedItem.title}</p>
-                    <p className="text-[0.84rem] text-slate-500">
-                      {typedItem.requestedByRole === "client"
-                        ? `Assigned to ${typedItem.assignedTo}`
-                        : `Requested by ${typedItem.requestedBy}`} - {formatDateLabel(typedItem.createdAt)}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  className="text-sm font-medium text-amber-600 transition hover:text-amber-700"
-                  onClick={() => navigate("/client/inbox")}
-                  type="button"
-                >
-                  Open
-                </button>
-              </div>
-            );
-          }}
-          title="Follow-up requests"
-          viewAllLabel="View all"
-        />
-
-        <CompactListCard
           className="bg-[radial-gradient(circle_at_top_left,rgba(84,66,255,0.07),transparent_36%),linear-gradient(180deg,#ffffff_0%,#fbfbff_100%)]"
           emptyDescription="No unusual activity has been flagged in the current month."
           emptyTitle="No smart alerts"
@@ -1024,74 +817,54 @@ export function ClientDashboardPage() {
         />
       </section>
 
-      <section className="grid gap-5 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
-        <CompactListCard
-          emptyDescription="Recent client and accountant actions will appear here."
-          emptyTitle="No recent activity"
-          items={activityPreview}
-          onViewAll={() => navigate("/client/notifications")}
-          renderItem={(item, index) => {
-            const typedItem = item as ActivityItem;
-            return (
-              <div
-                className={`flex items-start gap-3 py-3 ${
-                  index !== activityPreview.length - 1 ? "border-b border-slate-100" : ""
-                }`}
-                key={typedItem.id}
-              >
-                <ActivityIcon tone={typedItem.tone} />
-                <div className="space-y-0.5">
-                  <p className="text-[0.95rem] font-medium leading-6 text-slate-950">{typedItem.title}</p>
-                  <p className="text-[0.82rem] text-slate-500">
-                    {formatDateTimeLabel(typedItem.timestamp)}
-                    {typedItem.actor ? ` by ${typedItem.actor}` : ""}
-                  </p>
-                </div>
-              </div>
-            );
-          }}
-          title="Recent activity"
-        />
-
-        <NextActionsCard items={nextActions} />
-      </section>
-
       <section>
-        <SurfaceCard className="rounded-[1.5rem] border border-slate-200/80 bg-white p-0 shadow-[0_20px_45px_rgba(15,23,42,0.05)]">
+        <SurfaceCard className={cn(panelClass, "p-0")}>
           <div className="px-5 pb-4 pt-5">
             <SectionHeader
-              actionLabel="View all"
+              actionLabel="View All Documents"
               onAction={() => navigate("/client/documents")}
-              title="Latest documents"
+              title="Latest Documents"
             />
           </div>
           {latestRecordsPreview.length > 0 ? (
             <div className="overflow-x-auto px-5 pb-5">
-              <table className="min-w-full text-left">
+              <table className="min-w-full border-separate border-spacing-0 text-left">
                 <thead>
-                  <tr className="border-b border-slate-100 text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
-                    <th className="pb-3 pr-4">Document</th>
-                    <th className="pb-3 pr-4">Type</th>
-                    <th className="pb-3 pr-4">Updated</th>
-                    <th className="pb-3">Action</th>
+                  <tr className="text-[0.72rem] font-semibold text-[#53617f]">
+                    <th className="whitespace-nowrap border-b border-t border-[#edf0f6] bg-[#fbfcff] px-3 py-2 first:rounded-l-lg first:border-l">Document</th>
+                    <th className="whitespace-nowrap border-b border-t border-[#edf0f6] bg-[#fbfcff] px-3 py-2">Type</th>
+                    <th className="whitespace-nowrap border-b border-t border-[#edf0f6] bg-[#fbfcff] px-3 py-2">Updated</th>
+                    <th className="whitespace-nowrap border-b border-t border-[#edf0f6] bg-[#fbfcff] px-3 py-2 text-right last:rounded-r-lg last:border-r">Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {latestRecordsPreview.map((item: LatestRecordItem) => (
-                    <tr className="border-b border-slate-100 last:border-b-0" key={item.id}>
-                      <td className="py-3 pr-4 text-[0.92rem] text-slate-800">{item.name}</td>
-                      <td className="py-3 pr-4 text-[0.84rem] text-slate-500">{item.type}</td>
-                      <td className="py-3 pr-4 text-[0.84rem] text-slate-500">
+                    <tr key={item.id}>
+                      <td className="border-b border-[#edf0f6] px-3 py-3">
+                        <div className="flex min-w-[220px] items-center gap-2.5">
+                          <FileText aria-hidden="true" className="h-4 w-4 text-brand-700" />
+                          <span className="truncate text-[0.84rem] font-medium text-[#2f3a5f]">{item.name}</span>
+                        </div>
+                      </td>
+                      <td className="border-b border-[#edf0f6] px-3 py-3 text-[0.8rem] text-[#53617f]">{item.type}</td>
+                      <td className="border-b border-[#edf0f6] px-3 py-3 text-[0.8rem] text-[#53617f]">
                         {formatDateLabel(item.date)}
                       </td>
-                      <td className="py-3">
-                        <button
-                          className="text-sm font-medium text-brand-600 transition hover:text-brand-700"
-                          onClick={() => triggerDownload(item.name)}
-                          type="button"
-                        >
-                          {readyStatuses.has(item.status as MonthlyDocumentSlot["status"]) ? "Download" : "Open"}
-                        </button>
+                      <td className="border-b border-[#edf0f6] px-3 py-3">
+                        <div className="flex justify-end gap-2">
+                          <button
+                            aria-label={`${readyStatuses.has(item.status as MonthlyDocumentSlot["status"]) ? "Download" : "Open"} ${item.name}`}
+                            className={cn(dashboardActionButtonClass, "h-8 px-3 text-[0.78rem]")}
+                            onClick={() => triggerDownload(item.name)}
+                            type="button"
+                          >
+                            {readyStatuses.has(item.status as MonthlyDocumentSlot["status"]) ? (
+                              <Download aria-hidden="true" className="h-4 w-4" />
+                            ) : (
+                              <Eye aria-hidden="true" className="h-4 w-4" />
+                            )}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
