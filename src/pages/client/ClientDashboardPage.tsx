@@ -95,16 +95,9 @@ function ExpiryIcon() {
   );
 }
 
-function AlertListIcon({ tone }: { tone: Tone }) {
-  const classes =
-    tone === "danger"
-      ? "bg-rose-50 text-rose-500 ring-rose-100"
-      : tone === "warning"
-        ? "bg-amber-50 text-amber-500 ring-amber-100"
-        : "bg-brand-50 text-brand-500 ring-brand-100";
-
+function AlertListIcon() {
   return (
-    <div className={`mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ring-1 ${classes}`}>
+    <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#eef4fa] text-brand-700 ring-1 ring-[#d7e3ee]">
       <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
         <path
           d="M12 8.5v4m0 3h.01M10.26 4.76 2.9 17.5a1.5 1.5 0 0 0 1.3 2.25H18.8a1.5 1.5 0 0 0 1.3-2.25L12.74 4.76a1.5 1.5 0 0 0-2.48 0Z"
@@ -200,15 +193,9 @@ function MetricTile({
 
 function PriorityIcon({ tone }: { tone: Tone }) {
   const Icon = tone === "danger" ? AlertTriangle : tone === "success" ? ShieldCheck : CloudUpload;
-  const classes =
-    tone === "danger"
-      ? "border-rose-100 bg-rose-50 text-rose-700"
-      : tone === "warning"
-        ? "border-amber-100 bg-amber-50 text-amber-700"
-        : "border-[#d7e3ee] bg-[#eef4fa] text-brand-700";
 
   return (
-    <div className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border", classes)}>
+    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#d7e3ee] bg-[#eef4fa] text-brand-700">
       <Icon aria-hidden="true" className="h-5 w-5" strokeWidth={1.8} />
     </div>
   );
@@ -347,6 +334,22 @@ function slotTone(status: MonthlyDocumentSlot["status"]) {
   return "border-slate-200 bg-slate-50 text-slate-600";
 }
 
+function slotAccent(status: MonthlyDocumentSlot["status"]) {
+  if (status === "accepted" || status === "filed" || status === "under_review" || status === "uploaded") {
+    return "bg-emerald-400";
+  }
+
+  if (status === "rejected") {
+    return "bg-rose-400";
+  }
+
+  if (status === "pending_signature" || status === "partial" || status === "pending") {
+    return "bg-amber-400";
+  }
+
+  return "bg-slate-300";
+}
+
 function MonthlyPackPreviewCard({
   pack,
   onOpenPack,
@@ -355,9 +358,13 @@ function MonthlyPackPreviewCard({
   onOpenPack: () => void;
 }) {
   const progress = Math.max(0, Math.min(pack.progressPercent, 100));
-  const previewSlots = pack.slots
-    .filter((slot) => slot.documentType === "Bank Statement" || slot.documentType === "Invoices")
-    .slice(0, 3);
+  const packSlots = [...pack.slots].sort((first, second) => {
+    if (first.isRequired !== second.isRequired) {
+      return first.isRequired ? -1 : 1;
+    }
+
+    return first.documentType.localeCompare(second.documentType);
+  });
 
   return (
     <SurfaceCard className={cn(panelClass, "p-5")}>
@@ -372,16 +379,16 @@ function MonthlyPackPreviewCard({
         </button>
       </div>
 
-      <div className="mt-5 grid gap-6 md:grid-cols-[220px_minmax(0,1fr)] md:items-center">
+      <div className="mt-5 grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)] lg:items-center xl:grid-cols-[300px_minmax(0,1fr)]">
         <div
           aria-label={`${progress}% complete`}
-          className="client-dashboard-progress-track relative mx-auto flex h-48 w-48 items-center justify-center rounded-full"
+          className="client-dashboard-progress-track relative mx-auto flex h-48 w-48 items-center justify-center rounded-full lg:h-56 lg:w-56"
           style={{
             background: `conic-gradient(var(--client-dashboard-progress-fill) ${progress * 3.6}deg, var(--client-dashboard-progress-track) 0deg)`,
           }}
         >
-          <div className="flex h-[152px] w-[152px] flex-col items-center justify-center rounded-full bg-white shadow-inner">
-            <span className="text-[2.25rem] font-semibold tracking-tight text-[#091333]">{progress}%</span>
+          <div className="flex h-[152px] w-[152px] flex-col items-center justify-center rounded-full bg-white shadow-inner lg:h-[178px] lg:w-[178px]">
+            <span className="text-[2.25rem] font-semibold tracking-tight text-[#091333] lg:text-[2.65rem]">{progress}%</span>
             <span className="text-[0.78rem] font-semibold text-[#53617f]">Complete</span>
           </div>
         </div>
@@ -400,7 +407,7 @@ function MonthlyPackPreviewCard({
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             <div className="rounded-xl border border-[#e8ecf5] bg-[#fbfcff] px-4 py-3">
               <p className="text-[0.72rem] font-semibold text-[#53617f]">Due Date</p>
               <p className="mt-1 text-[0.88rem] font-semibold text-[#091333]">{formatDateLabel(pack.dueDate)}</p>
@@ -411,29 +418,40 @@ function MonthlyPackPreviewCard({
                 {pack.submissionStatus === "under_accountant_review" ? "Under Review" : pack.canComplete ? "Ready" : "Awaiting Uploads"}
               </p>
             </div>
+            <div className="rounded-xl border border-[#e8ecf5] bg-[#fbfcff] px-4 py-3 sm:col-span-2 xl:col-span-1">
+              <p className="text-[0.72rem] font-semibold text-[#53617f]">Checklist</p>
+              <p className="mt-1 text-[0.88rem] font-semibold text-[#091333]">
+                {pack.totalCount - pack.completedCount} remaining
+              </p>
+            </div>
           </div>
 
-          {previewSlots.length > 0 ? (
-            <div className="space-y-2">
-              {previewSlots.map((slot) => (
+          {packSlots.length > 0 ? (
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              {packSlots.map((slot) => (
                 <div
-                  className="flex items-center justify-between gap-3 rounded-xl border border-[#e8ecf5] bg-white px-3 py-2.5"
+                  className="group relative min-h-[94px] overflow-hidden rounded-xl border border-[#e4ebf3] bg-[#fbfcff] px-4 py-3 transition hover:-translate-y-0.5 hover:border-brand-700/20 hover:bg-white hover:shadow-[0_14px_28px_rgba(4,24,52,0.08)]"
                   key={slot.id}
                 >
-                  <div className="min-w-0">
-                    <p className="truncate text-[0.82rem] font-semibold text-[#091333]">{slot.documentType}</p>
-                    <p className="mt-0.5 text-[0.74rem] text-[#53617f]">
-                      {slot.lastSubmission ? `Updated ${formatDateLabel(slot.lastSubmission)}` : "No upload yet"}
-                    </p>
+                  <span className={cn("absolute inset-y-3 left-0 w-1 rounded-r-full", slotAccent(slot.status))} />
+                  <div className="flex h-full min-w-0 flex-col items-start justify-between gap-3 pl-1">
+                    <div className="min-w-0">
+                      <p className="text-[0.84rem] font-semibold leading-5 text-[#091333]">{slot.documentType}</p>
+                      {slot.lastSubmission ? (
+                        <p className="mt-1 text-[0.74rem] text-[#53617f]">
+                          Updated {formatDateLabel(slot.lastSubmission)}
+                        </p>
+                      ) : null}
+                    </div>
+                    <span
+                      className={cn(
+                        "inline-flex shrink-0 rounded-full border px-2.5 py-1 text-[0.7rem] font-semibold",
+                        slotTone(slot.status),
+                      )}
+                    >
+                      {formatStatusLabel(slot.status)}
+                    </span>
                   </div>
-                  <span
-                    className={cn(
-                      "inline-flex shrink-0 rounded-full border px-2.5 py-1 text-[0.7rem] font-semibold",
-                      slotTone(slot.status),
-                    )}
-                  >
-                    {formatStatusLabel(slot.status)}
-                  </span>
                 </div>
               ))}
             </div>
@@ -754,14 +772,14 @@ export function ClientDashboardPage() {
         />
       </div>
 
-      <section className="grid items-stretch gap-5 xl:grid-cols-[minmax(0,0.98fr)_minmax(360px,1fr)]">
+      <section className="grid items-stretch gap-5">
         <MonthlyPackPreviewCard onOpenPack={handleOpenWorkspace} pack={monthPack} />
         <NextActionsCard items={nextActions} />
       </section>
 
       <section className="grid gap-5 lg:grid-cols-2">
         <CompactListCard
-          className="bg-[radial-gradient(circle_at_top_left,rgba(245,158,11,0.08),transparent_36%),linear-gradient(180deg,#ffffff_0%,#fffdfa_100%)]"
+          className="bg-white"
           emptyDescription="No compliance records are expiring soon."
           emptyTitle="No expiring documents"
           items={expiringPreview}
@@ -791,7 +809,7 @@ export function ClientDashboardPage() {
         />
 
         <CompactListCard
-          className="bg-[radial-gradient(circle_at_top_left,rgba(84,66,255,0.07),transparent_36%),linear-gradient(180deg,#ffffff_0%,#fbfbff_100%)]"
+          className="bg-white"
           emptyDescription="No unusual activity has been flagged in the current month."
           emptyTitle="No smart alerts"
           items={alertsPreview}
@@ -805,7 +823,7 @@ export function ClientDashboardPage() {
                 }`}
                 key={typedItem.id}
               >
-                <AlertListIcon tone={typedItem.tone} />
+                <AlertListIcon />
                 <div className="space-y-0.5">
                   <p className="text-[0.95rem] font-medium leading-6 text-slate-950">{typedItem.title}</p>
                   <p className="text-[0.84rem] text-slate-500">{typedItem.message}</p>
