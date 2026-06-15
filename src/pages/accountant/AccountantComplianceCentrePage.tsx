@@ -69,6 +69,15 @@ function dueStatusClasses(label: string) {
   return "bg-emerald-50 text-emerald-700 ring-emerald-200";
 }
 
+function initialsForName(value: string | undefined) {
+  return (value ?? "Assigned Owner")
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
+}
+
 function mapRiskLevel(score: number) {
   if (score >= 70) {
     return "low" as const;
@@ -244,6 +253,13 @@ export function AccountantComplianceCentrePage() {
     ]);
   }
 
+  const compliantCount = supplierRows.filter((row) => dueStatusLabel(row.contractExpiry) === "Compliant").length;
+  const expiringSoonCount = supplierRows.filter((row) => dueStatusLabel(row.contractExpiry) === "Expiring Soon").length;
+  const expiredCount = supplierRows.filter((row) => dueStatusLabel(row.contractExpiry) === "Overdue").length;
+  const totalStatusCount = Math.max(1, compliantCount + expiringSoonCount + expiredCount);
+  const compliantPercent = Math.round((compliantCount / totalStatusCount) * 100);
+  const expiringPercent = Math.round((expiringSoonCount / totalStatusCount) * 100);
+  const expiredPercent = Math.max(0, 100 - compliantPercent - expiringPercent);
   const upcomingExpirations = useMemo(() => {
     return [...supplierRows]
       .sort(
@@ -252,14 +268,6 @@ export function AccountantComplianceCentrePage() {
       )
       .slice(0, 3);
   }, [supplierRows]);
-
-  const compliantCount = supplierRows.filter((row) => dueStatusLabel(row.contractExpiry) === "Compliant").length;
-  const expiringSoonCount = supplierRows.filter((row) => dueStatusLabel(row.contractExpiry) === "Expiring Soon").length;
-  const expiredCount = supplierRows.filter((row) => dueStatusLabel(row.contractExpiry) === "Overdue").length;
-  const totalStatusCount = Math.max(1, compliantCount + expiringSoonCount + expiredCount);
-  const compliantPercent = Math.round((compliantCount / totalStatusCount) * 100);
-  const expiringPercent = Math.round((expiringSoonCount / totalStatusCount) * 100);
-  const expiredPercent = Math.max(0, 100 - compliantPercent - expiringPercent);
 
   function showNotice(tone: Tone, title: string, message: string) {
     setFeedbackNotice({ tone, title, message });
@@ -371,91 +379,185 @@ export function AccountantComplianceCentrePage() {
         />
       ) : null}
 
-      <div className="space-y-3 rounded-2xl border border-slate-200 bg-white px-5 py-4">
-        <h1 className="text-3xl font-semibold text-slate-950">
-          {isAdmin ? "Firm Compliance Centre" : "My Compliance Workspace"}
-        </h1>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-base text-slate-600">Client compliance tracking and action workspace</p>
-          {isAdmin ? (
-            <Button onClick={() => navigate("/firm/admin/system-settings")}>Open system settings</Button>
-          ) : (
-            <Button onClick={() => navigate("/firm/clients")}>Add Supplier</Button>
-          )}
-        </div>
-      </div>
-
-      <SurfaceCard className="space-y-5">
-        <div className="grid gap-3 lg:grid-cols-4">
-          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
-            <p className="text-xs font-medium text-slate-500">Total Items</p>
-            <p className="mt-1 text-3xl font-semibold text-slate-900">{totalStatusCount}</p>
-            <p className="mt-1 text-xs text-emerald-600">12% from last month</p>
+      <div className="space-y-7">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="text-[2.15rem] font-bold tracking-tight text-[#061848]">
+              Compliance Workspace
+            </h1>
+            <p className="mt-2 text-[1rem] font-medium text-[#53617f]">
+              Monitor client compliance, expiries and regulatory obligations.
+            </p>
           </div>
-          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
-            <p className="text-xs font-medium text-slate-500">Expiring Soon</p>
-            <p className="mt-1 text-3xl font-semibold text-slate-900">{expiringSoonCount}</p>
-            <p className="mt-1 text-xs text-rose-600">in next 30 days</p>
-          </div>
-          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
-            <p className="text-xs font-medium text-slate-500">Expired</p>
-            <p className="mt-1 text-3xl font-semibold text-slate-900">{expiredCount}</p>
-            <p className="mt-1 text-xs text-rose-600">requires attention</p>
-          </div>
-          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
-            <p className="text-xs font-medium text-slate-500">Compliant</p>
-            <p className="mt-1 text-3xl font-semibold text-slate-900">{compliantCount}</p>
-            <p className="mt-1 text-xs text-emerald-600">8% from last month</p>
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              className="inline-flex h-12 items-center gap-3 rounded-xl border border-[#d8e2ee] bg-white px-4 text-sm font-bold text-[#061848] shadow-[0_10px_28px_rgba(4,24,52,0.04)] transition hover:bg-[#f7fbff]"
+              onClick={() => navigate("/firm/compliance/calendar")}
+              type="button"
+            >
+              <svg aria-hidden="true" className="h-5 w-5 text-brand-700" fill="none" viewBox="0 0 24 24">
+                <rect height="14" rx="2.5" stroke="currentColor" strokeWidth="1.8" width="16" x="4" y="6.5" />
+                <path d="M8 4.5v4m8-4v4M4 10.5h16" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
+              </svg>
+              <span>07 May 2026</span>
+            </button>
+            <Button
+              className="h-12 rounded-xl bg-[#061848] px-5 text-white hover:bg-[#0b255f]"
+              onClick={() => createComplianceFollowUp(selectedClient)}
+            >
+              <span className="text-lg leading-none">+</span>
+              <span>Add Compliance Item</span>
+            </Button>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <TextField
-            className="w-[280px]"
-            label=""
-            onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="Search client"
-            value={searchQuery}
-          />
-          <SelectField
-            className="w-[150px]"
-            label=""
-            onChange={(event) => {
-              setRiskFilter(event.target.value as RiskFilter);
-              setCurrentPage(1);
-            }}
-            options={[
-              { label: "Risk filter", value: "all" },
-              { label: "Low", value: "low" },
-              { label: "Medium", value: "medium" },
-              { label: "High", value: "high" },
-            ]}
-            value={riskFilter}
-          />
-          <SelectField
-            className="w-[170px]"
-            label=""
-            onChange={(event) => {
-              setCategoryFilter(event.target.value);
-              setCurrentPage(1);
-            }}
-            options={[
-              { label: "Category filter", value: "all" },
-              ...[...new Set(supplierRows.map((item) => item.category))].map((category) => ({
-                label: category,
-                value: category,
-              })),
-            ]}
-            value={categoryFilter}
-          />
+        <div className="grid gap-5 lg:grid-cols-4">
+          {[
+            {
+              label: "Total Items",
+              value: totalStatusCount,
+              helper: "12% from last month",
+              tone: "brand",
+              ring: "border-t-brand-600",
+              icon: "text-brand-600 bg-brand-50",
+            },
+            {
+              label: "Expiring Soon",
+              value: expiringSoonCount,
+              helper: "0% from last month",
+              tone: "amber",
+              ring: "border-t-amber-500",
+              icon: "text-amber-600 bg-amber-50",
+            },
+            {
+              label: "Expired",
+              value: expiredCount,
+              helper: "20% from last month",
+              tone: "rose",
+              ring: "border-t-rose-500",
+              icon: "text-rose-600 bg-rose-50",
+            },
+            {
+              label: "Compliant",
+              value: compliantCount,
+              helper: "8% from last month",
+              tone: "emerald",
+              ring: "border-t-emerald-500",
+              icon: "text-emerald-600 bg-emerald-50",
+            },
+          ].map((metric) => (
+            <div
+              className={`rounded-2xl border border-[#dce6ef] ${metric.ring} border-t-[4px] bg-white px-6 py-5 shadow-[0_18px_38px_rgba(4,24,52,0.06)]`}
+              key={metric.label}
+            >
+              <div className="flex items-center gap-5">
+                <div className={`flex h-16 w-16 items-center justify-center rounded-full ${metric.icon}`}>
+                  {metric.tone === "brand" ? (
+                    <svg aria-hidden="true" className="h-8 w-8" fill="none" viewBox="0 0 24 24">
+                      <path d="M7.5 4.5h6l3 3v12h-9a2 2 0 0 1-2-2v-11a2 2 0 0 1 2-2Z" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.8" />
+                      <path d="M13.5 4.5v3h3M9 12h6M9 15.5h4" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
+                    </svg>
+                  ) : metric.tone === "amber" ? (
+                    <svg aria-hidden="true" className="h-8 w-8" fill="none" viewBox="0 0 24 24">
+                      <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.8" />
+                      <path d="M12 7.5v5l3 2" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
+                    </svg>
+                  ) : metric.tone === "rose" ? (
+                    <svg aria-hidden="true" className="h-8 w-8" fill="none" viewBox="0 0 24 24">
+                      <path d="M12 8v5m0 3h.01M5 20h14L12 4 5 20Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
+                    </svg>
+                  ) : (
+                    <svg aria-hidden="true" className="h-8 w-8" fill="none" viewBox="0 0 24 24">
+                      <path d="M12 3.75 18.25 6v5.25c0 4.1-2.55 7.25-6.25 9-3.7-1.75-6.25-4.9-6.25-9V6L12 3.75Z" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.8" />
+                      <path d="m9 12 2 2 4-4" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
+                    </svg>
+                  )}
+                </div>
+                <div>
+                  <p className="text-[0.86rem] font-bold text-[#061848]">{metric.label}</p>
+                  <p className="mt-1 text-[2rem] font-bold leading-none text-[#061848]">{metric.value}</p>
+                  <p className={`mt-2 text-[0.78rem] font-semibold ${metric.tone === "rose" ? "text-rose-600" : metric.tone === "amber" ? "text-amber-600" : "text-emerald-600"}`}>
+                    {metric.tone === "amber" ? "- " : "↑ "}{metric.helper}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-2">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <h2 className="text-base font-semibold text-slate-900">Compliance Status Overview</h2>
+        <SurfaceCard className="rounded-2xl border border-[#dce6ef] bg-white p-4 shadow-[0_18px_38px_rgba(4,24,52,0.06)]">
+          <div className="flex flex-wrap items-center gap-3">
+            <TextField
+              className="min-w-[260px] flex-1"
+              label=""
+              onChange={(event) => {
+                setSearchQuery(event.target.value);
+                setCurrentPage(1);
+              }}
+              placeholder="Search client"
+              value={searchQuery}
+            />
+            <SelectField
+              className="w-[170px]"
+              label=""
+              onChange={(event) => {
+                setRiskFilter(event.target.value as RiskFilter);
+                setCurrentPage(1);
+              }}
+              options={[
+                { label: "Risk filter", value: "all" },
+                { label: "Low", value: "low" },
+                { label: "Medium", value: "medium" },
+                { label: "High", value: "high" },
+              ]}
+              value={riskFilter}
+            />
+            <SelectField
+              className="w-[190px]"
+              label=""
+              onChange={(event) => {
+                setCategoryFilter(event.target.value);
+                setCurrentPage(1);
+              }}
+              options={[
+                { label: "Category filter", value: "all" },
+                ...[...new Set(supplierRows.map((item) => item.category))].map((category) => ({
+                  label: category,
+                  value: category,
+                })),
+              ]}
+              value={categoryFilter}
+            />
+            <Button
+              className="ml-auto h-11 rounded-xl border-[#d8e2ee] px-4 text-[#061848]"
+              onClick={() => {
+                setSearchQuery("");
+                setRiskFilter("all");
+                setStatusFilter("all");
+                setCategoryFilter("all");
+                setDueAttentionOnly(false);
+                setCurrentPage(1);
+              }}
+              variant="secondary"
+            >
+              Clear filters
+            </Button>
+            <Button
+              className="h-11 rounded-xl bg-[#061848] px-5 text-white hover:bg-[#0b255f]"
+              disabled={!canExportReports}
+              onClick={downloadComplianceCsv}
+            >
+              Export CSV
+            </Button>
+          </div>
+        </SurfaceCard>
+
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)]">
+          <SurfaceCard className="rounded-2xl border border-[#dce6ef] bg-white p-5 shadow-[0_18px_38px_rgba(4,24,52,0.06)]">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h2 className="text-lg font-bold text-[#061848]">Compliance Status Overview</h2>
               <SelectField
-                className="w-[120px]"
+                className="w-[150px]"
                 label=""
                 onChange={(event) => {
                   setSelectedClientId(event.target.value);
@@ -468,80 +570,81 @@ export function AccountantComplianceCentrePage() {
                 value={selectedClientId}
               />
             </div>
-            <div className="grid gap-3 sm:grid-cols-[150px_minmax(0,1fr)] sm:items-center">
+            <div className="grid gap-6 md:grid-cols-[220px_minmax(0,1fr)] md:items-center">
               <div
-                className="relative mx-auto h-32 w-32 rounded-full"
+                className="relative mx-auto h-44 w-44 rounded-full"
                 style={{
-                  background: `conic-gradient(#59b36b 0% ${compliantPercent}%, #d8a13a ${compliantPercent}% ${compliantPercent + expiringPercent}%, #d15a5a ${compliantPercent + expiringPercent}% 100%)`,
+                  background: `conic-gradient(#dc3545 0% ${expiredPercent}%, #f59e0b ${expiredPercent}% ${expiredPercent + expiringPercent}%, #10b981 ${expiredPercent + expiringPercent}% 100%)`,
                 }}
               >
-                <div className="absolute inset-4 grid place-items-center rounded-full bg-white">
-                  <p className="text-2xl font-semibold text-slate-900">{compliantCount + expiringSoonCount + expiredCount}</p>
-                  <p className="text-xs text-slate-500">Total</p>
+                <div className="absolute inset-7 grid place-items-center rounded-full bg-white text-center">
+                  <p className="text-3xl font-bold text-[#061848]">{totalStatusCount}</p>
+                  <p className="text-xs font-semibold text-[#53617f]">Total Items</p>
                 </div>
               </div>
-              <div className="space-y-2 text-sm">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="inline-flex items-center gap-2 text-slate-700"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />Compliant</span>
-                  <span className="text-slate-500">{compliantCount} ({compliantPercent}%)</span>
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="inline-flex items-center gap-2 text-slate-700"><span className="h-2.5 w-2.5 rounded-full bg-amber-500" />Expiring Soon</span>
-                  <span className="text-slate-500">{expiringSoonCount} ({expiringPercent}%)</span>
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="inline-flex items-center gap-2 text-slate-700"><span className="h-2.5 w-2.5 rounded-full bg-rose-500" />Expired</span>
-                  <span className="text-slate-500">{expiredCount} ({expiredPercent}%)</span>
-                </div>
+              <div className="overflow-hidden rounded-xl border border-[#dce6ef]">
+                {[
+                  { label: "Expired", value: expiredCount, percent: expiredPercent, color: "bg-rose-500" },
+                  { label: "Expiring Soon", value: expiringSoonCount, percent: expiringPercent, color: "bg-amber-500" },
+                  { label: "Compliant", value: compliantCount, percent: compliantPercent, color: "bg-emerald-500" },
+                ].map((row) => (
+                  <div className="flex items-center justify-between border-b border-[#edf2f7] px-5 py-4 last:border-b-0" key={row.label}>
+                    <span className="inline-flex items-center gap-3 text-sm font-semibold text-[#061848]">
+                      <span className={`h-3 w-3 rounded-full ${row.color}`} />
+                      {row.label}
+                    </span>
+                    <span className="text-sm font-semibold text-[#53617f]">{row.value} ({row.percent}%)</span>
+                  </div>
+                ))}
               </div>
             </div>
-            <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
-              <p>Keep your compliance up to date to avoid penalties and disruptions.</p>
-              <button className="font-semibold text-brand-700" onClick={focusComplianceItems} type="button">
-                View full report
+            <div className="mt-5 flex items-center justify-between border-t border-[#edf2f7] pt-4 text-sm">
+              <p className="font-medium text-[#53617f]">Keep your compliance up to date to avoid penalties and disruptions.</p>
+              <button className="inline-flex items-center gap-2 font-bold text-brand-700" onClick={focusComplianceItems} type="button">
+                <span>View full report</span>
+                <span>→</span>
               </button>
             </div>
-          </div>
+          </SurfaceCard>
 
-          <div className="rounded-2xl border border-slate-200 bg-white p-4">
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <h2 className="text-base font-semibold text-slate-900">Upcoming Expiry</h2>
-              <button
-                className="text-xs font-semibold text-brand-700"
-                onClick={focusExpiringAndOverdueItems}
-                type="button"
-              >
+          <SurfaceCard className="rounded-2xl border border-[#dce6ef] bg-white p-5 shadow-[0_18px_38px_rgba(4,24,52,0.06)]">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h2 className="text-lg font-bold text-[#061848]">Upcoming Expiry</h2>
+              <button className="text-sm font-bold text-brand-700" onClick={focusExpiringAndOverdueItems} type="button">
                 View all
               </button>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {upcomingExpirations.map((item) => {
                 const days = Math.ceil((new Date(item.contractExpiry).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+                const dueStatus = dueStatusLabel(item.contractExpiry);
                 return (
-                  <div className="flex items-center gap-3 rounded-xl border border-slate-200 px-3 py-2" key={item.id}>
-                    <div className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-rose-100 text-xs font-bold text-rose-600">
+                  <div className="flex items-center gap-4 rounded-xl border border-[#dce6ef] px-4 py-3" key={item.id}>
+                    <div className={dueStatus === "Overdue" ? "inline-flex h-10 w-10 items-center justify-center rounded-full bg-rose-50 text-lg font-bold text-rose-600" : "inline-flex h-10 w-10 items-center justify-center rounded-full bg-amber-50 text-lg font-bold text-amber-600"}>
                       !
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-slate-900">{item.category}</p>
-                      <p className="truncate text-xs text-slate-500">{item.name}</p>
+                      <p className="truncate text-sm font-bold text-[#061848]">{item.category}</p>
+                      <p className="truncate text-xs font-medium text-[#53617f]">{item.name}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-semibold text-amber-600">{Math.abs(days)} days</p>
-                      <p className="text-[11px] text-slate-400">Expires on {formatDateLabel(item.contractExpiry)}</p>
+                      <p className={dueStatus === "Overdue" ? "text-lg font-bold text-rose-600" : "text-lg font-bold text-orange-500"}>
+                        {Math.abs(days)} days
+                      </p>
+                      <p className="text-[0.68rem] font-medium text-[#53617f]">Expires on {formatDateLabel(item.contractExpiry)}</p>
                     </div>
                   </div>
                 );
               })}
             </div>
-          </div>
+          </SurfaceCard>
         </div>
+      </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-white p-4" ref={complianceItemsRef}>
-          <h2 className="mb-1 text-base font-semibold text-slate-900">Compliance Items</h2>
-          <p className="mb-3 text-sm font-medium text-slate-500">Active clients</p>
+      <div className="space-y-5" ref={complianceItemsRef}>
+        <SurfaceCard className="overflow-hidden rounded-2xl border border-[#dce6ef] bg-white p-0 shadow-[0_18px_42px_rgba(4,24,52,0.06)]">
           {dueAttentionOnly ? (
-            <div className="mb-3 flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+            <div className="mx-6 mt-6 flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
               <span>Showing expiring and overdue items only.</span>
               <button
                 className="font-semibold text-amber-800 underline"
@@ -552,13 +655,13 @@ export function AccountantComplianceCentrePage() {
               </button>
             </div>
           ) : null}
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
+          <div className="flex flex-wrap items-center gap-3 px-6 py-6">
+            <div className="inline-flex overflow-hidden rounded-xl border border-[#d8e2ee] bg-[#f7fbff] p-1">
               <button
                 className={
                   activeView === "list"
-                    ? "rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-slate-900 shadow-sm"
-                    : "rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-500"
+                    ? "rounded-lg bg-[#061848] px-4 py-3 text-sm font-semibold text-white shadow-sm"
+                    : "rounded-lg px-4 py-3 text-sm font-semibold text-[#53617f]"
                 }
                 onClick={() => setActiveView("list")}
                 type="button"
@@ -568,8 +671,8 @@ export function AccountantComplianceCentrePage() {
               <button
                 className={
                   activeView === "board"
-                    ? "rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-slate-900 shadow-sm"
-                    : "rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-500"
+                    ? "rounded-lg bg-[#061848] px-4 py-3 text-sm font-semibold text-white shadow-sm"
+                    : "rounded-lg px-4 py-3 text-sm font-semibold text-[#53617f]"
                 }
                 onClick={() => setActiveView("board")}
                 type="button"
@@ -577,9 +680,8 @@ export function AccountantComplianceCentrePage() {
                 Board
               </button>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
             <TextField
-              className="w-[220px]"
+              className="min-w-[260px] flex-1"
               label=""
               onChange={(event) => {
                 setSearchQuery(event.target.value);
@@ -589,7 +691,7 @@ export function AccountantComplianceCentrePage() {
               value={searchQuery}
             />
             <SelectField
-              className="w-[130px]"
+              className="w-[180px]"
               label=""
               onChange={(event) => {
                 setSelectedClientId(event.target.value);
@@ -602,7 +704,7 @@ export function AccountantComplianceCentrePage() {
               value={selectedClientId}
             />
             <SelectField
-              className="w-[140px]"
+              className="w-[190px]"
               label=""
               onChange={(event) => {
                 setCategoryFilter(event.target.value);
@@ -618,7 +720,7 @@ export function AccountantComplianceCentrePage() {
               value={categoryFilter}
             />
             <SelectField
-              className="w-[120px]"
+              className="w-[170px]"
               label=""
               onChange={(event) => {
                 setStatusFilter(event.target.value as StatusFilter);
@@ -633,65 +735,73 @@ export function AccountantComplianceCentrePage() {
               value={statusFilter}
             />
             <Button
+              className="h-12 rounded-xl border-[#d8e2ee] px-5 text-[#061848]"
               disabled={!canExportReports}
               onClick={downloadComplianceCsv}
-              size="sm"
               variant="secondary"
             >
               Export
             </Button>
-            </div>
           </div>
 
           {activeView === "list" ? (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto px-6">
             <table className="min-w-full text-left">
               <thead>
-                <tr className="border-b border-slate-200 text-xs text-slate-500">
-                  <th className="px-2 py-2 font-medium">Item Name</th>
-                  <th className="px-2 py-2 font-medium">Client</th>
-                  <th className="px-2 py-2 font-medium">Category</th>
-                  <th className="px-2 py-2 font-medium">Expiry Date</th>
-                  <th className="px-2 py-2 font-medium">Status</th>
-                  <th className="px-2 py-2 font-medium">Owner</th>
-                  <th className="px-2 py-2 font-medium">Actions</th>
+                <tr className="border-b border-[#dce6ef] text-[0.76rem] font-semibold text-[#53617f]">
+                  <th className="px-2 py-4 font-semibold">Item Name</th>
+                  <th className="px-2 py-4 font-semibold">Client</th>
+                  <th className="px-2 py-4 font-semibold">Category</th>
+                  <th className="px-2 py-4 font-semibold">Expiry Date</th>
+                  <th className="px-2 py-4 font-semibold">Status</th>
+                  <th className="px-2 py-4 font-semibold">Owner</th>
+                  <th className="px-2 py-4 font-semibold">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {pagedSuppliers.map((row) => {
                   const dueStatus = dueStatusLabel(row.contractExpiry);
                   return (
-                    <tr className="border-b border-slate-100" key={row.id}>
-                      <td className="px-2 py-2 text-sm font-medium text-slate-900">{row.category}</td>
-                      <td className="px-2 py-2 text-sm text-slate-700">
+                    <tr className="border-b border-[#edf2f7]" key={row.id}>
+                      <td className="px-2 py-5 text-sm font-bold text-[#061848]">
+                        <span className="mr-3 inline-block h-3 w-3 rounded-full bg-rose-500 align-middle" />
+                        {row.category}
+                      </td>
+                      <td className="px-2 py-5 text-sm text-[#061848]">
                         <button
-                          className="text-left text-sm font-medium text-slate-900 hover:text-brand-700"
+                          className="text-left text-sm font-semibold text-[#061848] hover:text-brand-700"
                           onClick={() => setSelectedClientId(row.id)}
                           type="button"
                         >
                           {row.name}
                         </button>
                       </td>
-                      <td className="px-2 py-2 text-sm text-slate-700">{row.category}</td>
-                      <td className="px-2 py-2 text-sm text-slate-700">{formatDateLabel(row.contractExpiry)}</td>
-                      <td className="px-2 py-2">
-                        <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${dueStatusClasses(dueStatus)}`}>
+                      <td className="px-2 py-5 text-sm font-medium text-[#53617f]">{row.category}</td>
+                      <td className="px-2 py-5 text-sm font-semibold text-[#061848]">{formatDateLabel(row.contractExpiry)}</td>
+                      <td className="px-2 py-5">
+                        <span className={`inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-bold ring-1 ring-inset ${dueStatusClasses(dueStatus)}`}>
+                          <span className={dueStatus === "Overdue" ? "h-1.5 w-1.5 rounded-full bg-rose-500" : dueStatus === "Expiring Soon" ? "h-1.5 w-1.5 rounded-full bg-amber-500" : "h-1.5 w-1.5 rounded-full bg-emerald-500"} />
                           {dueStatus}
                         </span>
                       </td>
-                      <td className="px-2 py-2 text-sm text-slate-700">{user?.fullName ?? "Nayan Dhali"}</td>
-                      <td className="relative px-2 py-2">
+                      <td className="px-2 py-5 text-sm text-[#061848]">
+                        <span className="mr-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700">
+                          {initialsForName(user?.fullName)}
+                        </span>
+                        <span className="font-medium">{user?.fullName ?? "Assigned accountant"}</span>
+                      </td>
+                      <td className="relative px-2 py-5">
                         <div className="flex items-center gap-2">
                           <Button
+                            className="h-10 rounded-xl border-[#d8e2ee] px-6 font-bold text-[#061848]"
                             onClick={() => openSelectedClientWorkspace(row.id)}
-                            size="sm"
                             variant="secondary"
                           >
                             View
                           </Button>
                           <button
                             aria-label="Open client actions"
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-white text-sm font-semibold text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
+                            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[#d8e2ee] bg-white text-sm font-bold text-[#061848] transition hover:bg-[#f7fbff]"
                             onClick={() =>
                               setOpenClientActionsId((current) => (current === row.id ? "" : row.id))
                             }
@@ -701,7 +811,7 @@ export function AccountantComplianceCentrePage() {
                           </button>
                         </div>
                         {openClientActionsId === row.id ? (
-                          <div className="absolute right-2 top-[calc(100%+0.45rem)] z-10 min-w-[220px] rounded-xl border border-slate-200 bg-white p-2 shadow-[0_20px_42px_rgba(15,23,42,0.14)]">
+                          <div className="absolute right-2 top-[calc(100%+0.45rem)] z-10 min-w-[220px] rounded-xl border border-[#d8e2ee] bg-white p-2 shadow-[0_20px_42px_rgba(15,23,42,0.14)]">
                             <button
                               className="block w-full rounded-lg px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
                               onClick={() => {
@@ -742,7 +852,7 @@ export function AccountantComplianceCentrePage() {
                 })}
                 {pagedSuppliers.length === 0 ? (
                   <tr>
-                    <td className="px-2 py-6 text-center text-sm text-slate-500" colSpan={7}>
+                    <td className="px-2 py-8 text-center text-sm text-[#53617f]" colSpan={7}>
                       No compliance items match your current filters.
                     </td>
                   </tr>
@@ -751,11 +861,11 @@ export function AccountantComplianceCentrePage() {
             </table>
           </div>
           ) : (
-            <div className="grid gap-3 lg:grid-cols-3">
+            <div className="grid gap-3 px-6 lg:grid-cols-3">
               {(["Compliant", "Expiring Soon", "Overdue"] as ComplianceBoardStatus[]).map(
                 (statusColumn) => (
                   <div
-                    className="rounded-xl border border-slate-200 bg-slate-50 p-3"
+                    className="rounded-xl border border-[#d8e2ee] bg-[#f7fbff] p-3"
                     key={statusColumn}
                     onDragOver={(event) => event.preventDefault()}
                     onDrop={(event) => {
@@ -767,20 +877,20 @@ export function AccountantComplianceCentrePage() {
                       }
                     }}
                   >
-                    <h3 className="mb-3 text-sm font-semibold text-slate-900">{statusColumn}</h3>
+                    <h3 className="mb-3 text-sm font-bold text-[#061848]">{statusColumn}</h3>
                     <div className="space-y-2">
                       {filteredSuppliers
                         .filter((row) => statusForRow(row) === statusColumn)
                         .map((row) => (
                           <div
-                            className="rounded-lg border border-slate-200 bg-white px-3 py-2"
+                            className="rounded-lg border border-[#d8e2ee] bg-white px-3 py-2"
                             draggable={isAdmin || canReviewDocuments}
                             key={row.id}
                             onDragStart={(event) => event.dataTransfer.setData("text/plain", row.id)}
                           >
-                            <p className="text-sm font-semibold text-slate-900">{row.category}</p>
-                            <p className="text-xs text-slate-500">{row.name}</p>
-                            <p className="mt-1 text-xs text-slate-400">
+                            <p className="text-sm font-bold text-[#061848]">{row.category}</p>
+                            <p className="text-xs text-[#53617f]">{row.name}</p>
+                            <p className="mt-1 text-xs text-[#73809a]">
                               Due {formatDateLabel(row.contractExpiry)}
                             </p>
                           </div>
@@ -791,11 +901,11 @@ export function AccountantComplianceCentrePage() {
               )}
             </div>
           )}
-          <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
-            <p>
+          <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-6 text-sm text-[#53617f]">
+            <p className="font-medium">
               Showing {startIndex} to {endIndex} of {filteredSuppliers.length} items
             </p>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-3">
               {isAdmin ? (
                 <Button onClick={() => navigate("/firm/admin/assignments")} size="sm">
                   Assign accountant
@@ -803,18 +913,18 @@ export function AccountantComplianceCentrePage() {
               ) : null}
               {!isAdmin ? (
                 <Button
+                  className="h-12 rounded-xl bg-[linear-gradient(135deg,#0aa66a_0%,#061848_100%)] px-6 text-white"
                   disabled={!canRequestDocuments}
                   onClick={() => createComplianceFollowUp(selectedClient)}
-                  size="sm"
                 >
                   Request documents
                 </Button>
               ) : null}
               {!isAdmin ? (
                 <Button
+                  className="h-12 rounded-xl border-[#d8e2ee] px-6 text-[#061848]"
                   disabled={!canExportReports}
                   onClick={downloadComplianceCsv}
-                  size="sm"
                   variant="secondary"
                 >
                   Download client compliance report
@@ -822,7 +932,7 @@ export function AccountantComplianceCentrePage() {
               ) : null}
               <div className="ml-2 flex items-center gap-1">
                 <button
-                  className="rounded-md border border-slate-200 px-2 py-1 text-slate-600 disabled:opacity-50"
+                  className="rounded-md border border-[#d8e2ee] px-2 py-1 text-[#53617f] disabled:opacity-50"
                   disabled={currentPage === 1}
                   onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
                   type="button"
@@ -833,7 +943,7 @@ export function AccountantComplianceCentrePage() {
                   {currentPage} / {totalPages}
                 </span>
                 <button
-                  className="rounded-md border border-slate-200 px-2 py-1 text-slate-600 disabled:opacity-50"
+                  className="rounded-md border border-[#d8e2ee] px-2 py-1 text-[#53617f] disabled:opacity-50"
                   disabled={currentPage === totalPages}
                   onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
                   type="button"
@@ -845,7 +955,7 @@ export function AccountantComplianceCentrePage() {
           </div>
 
           {activeView === "board" ? (
-            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <div className="mx-6 mb-6 rounded-xl border border-[#d8e2ee] bg-[#f7fbff] p-3">
               <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
                 Board Activity
               </p>
@@ -861,56 +971,80 @@ export function AccountantComplianceCentrePage() {
             </div>
           ) : null}
 
-          {selectedClient ? (
-            <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
+        </SurfaceCard>
+
+        {selectedClient ? (
+          <SurfaceCard className="overflow-hidden rounded-2xl border border-[#dce6ef] bg-white p-0 shadow-[0_18px_42px_rgba(4,24,52,0.06)]">
+            <div className="relative overflow-hidden bg-[linear-gradient(135deg,#061848_0%,#082a62_100%)] px-7 py-7 text-white">
+              <div className="pointer-events-none absolute inset-y-0 right-0 w-1/2 opacity-20 [background:repeating-radial-gradient(circle_at_center,transparent_0,transparent_10px,#5bb4ff_11px,#5bb4ff_12px)]" />
+              <p className="relative text-xs font-semibold uppercase tracking-[0.22em] text-white/70">
                 Selected Client
               </p>
-              <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
+              <div className="relative mt-3 flex flex-wrap items-start justify-between gap-3">
                 <div className="space-y-1">
-                  <p className="text-lg font-semibold text-slate-900">{selectedClient.name}</p>
-                  <p className="text-sm text-slate-600">
+                  <p className="text-2xl font-bold text-white">{selectedClient.name}</p>
+                  <p className="text-sm font-medium text-white/80">
                     Assigned to {user?.fullName ?? "Nayan Dhali"}
                   </p>
                 </div>
                 {!isAdmin ? (
                   <Button
+                    className="h-12 rounded-xl border border-white/25 bg-white/10 px-5 text-white hover:bg-white/15"
                     disabled={!canRequestDocuments}
                     onClick={() => createComplianceFollowUp(selectedClient)}
-                    size="sm"
                   >
                     Request client documents
                   </Button>
                 ) : (
-                  <Button onClick={() => navigate("/firm/admin/assignments")} size="sm">
+                  <Button className="h-12 rounded-xl border border-white/25 bg-white/10 px-5 text-white hover:bg-white/15" onClick={() => navigate("/firm/admin/assignments")}>
                     Assign accountant
                   </Button>
                 )}
               </div>
-              <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                <div className="rounded-lg border border-slate-200 bg-white p-3">
-                  <p className="text-xs font-medium text-slate-500">Top risks</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900">
+            </div>
+            <div className="grid gap-5 p-6 lg:grid-cols-[repeat(3,minmax(0,1fr))_220px]">
+                <div className="rounded-xl border border-[#d8e2ee] bg-white p-5">
+                  <p className="text-xs font-semibold text-[#53617f]">Top risks</p>
+                  <p className="mt-2 text-base font-bold text-[#061848]">
                     {selectedClient.riskLevel.toUpperCase()} risk exposure
                   </p>
+                  <p className="mt-6 text-xs font-semibold text-[#53617f]">Risk score <span className="ml-4 rounded-full bg-emerald-50 px-5 py-2 text-emerald-700">{selectedClient.riskLevel}</span></p>
                 </div>
-                <div className="rounded-lg border border-slate-200 bg-white p-3">
-                  <p className="text-xs font-medium text-slate-500">Next action</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900">
+                <div className="rounded-xl border border-[#d8e2ee] bg-white p-5">
+                  <p className="text-xs font-semibold text-[#53617f]">Next action</p>
+                  <p className="mt-2 text-base font-bold text-[#061848]">
                     Review {selectedClient.category} pack
                   </p>
+                  <p className="mt-6 text-xs font-semibold text-[#53617f]">Action required <span className="ml-4 rounded-full bg-violet-50 px-5 py-2 text-violet-700">Review</span></p>
                 </div>
-                <div className="rounded-lg border border-slate-200 bg-white p-3">
-                  <p className="text-xs font-medium text-slate-500">Due date</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900">
+                <div className="rounded-xl border border-[#d8e2ee] bg-white p-5">
+                  <p className="text-xs font-semibold text-[#53617f]">Due date</p>
+                  <p className="mt-2 text-base font-bold text-[#061848]">
                     {formatDateLabel(selectedClient.contractExpiry)}
                   </p>
+                  <p className="mt-6 text-xs font-semibold text-rose-600">
+                    <span className="mr-2 inline-block h-2 w-2 rounded-full bg-rose-500" />
+                    {dueStatusLabel(selectedClient.contractExpiry)}
+                  </p>
                 </div>
-              </div>
+                <div className="rounded-xl bg-white p-5">
+                  <p className="text-xs font-semibold text-[#53617f]">Compliance progress</p>
+                  <div className="mt-4 grid place-items-center">
+                    <div
+                      className="grid h-28 w-28 place-items-center rounded-full"
+                      style={{ background: `conic-gradient(#10b981 0% ${Math.max(0, 100 - selectedClient.riskScore)}%, #e7edf4 ${Math.max(0, 100 - selectedClient.riskScore)}% 100%)` }}
+                    >
+                      <div className="grid h-20 w-20 place-items-center rounded-full bg-white">
+                        <span className="text-xl font-bold text-[#061848]">{Math.max(0, 100 - selectedClient.riskScore)}%</span>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="mt-3 text-center text-xs font-semibold text-[#53617f]">{Math.round((Math.max(0, 100 - selectedClient.riskScore) / 100) * 10)} of 10 items completed</p>
+                </div>
             </div>
-          ) : null}
-        </div>
-      </SurfaceCard>
+          </SurfaceCard>
+        ) : null}
+      </div>
     </div>
   );
 }

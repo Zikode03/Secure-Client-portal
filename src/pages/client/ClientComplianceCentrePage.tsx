@@ -27,6 +27,34 @@ type FeedbackNotice = {
 };
 
 type PriorityKind = "expired" | "expiring" | "missing";
+type ComplianceCalendarEventCategory =
+  | "all"
+  | "obligation"
+  | "expiry"
+  | "request"
+  | "monthly-pack";
+type ComplianceCalendarEventStatus =
+  | "upcoming"
+  | "due-soon"
+  | "overdue"
+  | "completed";
+type ComplianceCalendarStatusFilter = "all" | "overdue" | "due-soon" | "upcoming";
+
+type ComplianceCalendarEvent = {
+  id: string;
+  title: string;
+  category: Exclude<ComplianceCalendarEventCategory, "all">;
+  status: ComplianceCalendarEventStatus;
+  date: string;
+  description?: string;
+  actionUrl?: string;
+  priority?: "low" | "medium" | "high";
+  requiredDocuments?: string[];
+  requestedBy?: string;
+  actionLabel: string;
+  item?: ComplianceDocumentRecord;
+  kind?: PriorityKind;
+};
 type HealthMapCategoryId =
   | "tax"
   | "company"
@@ -327,6 +355,102 @@ function getPriorityActionLabel(kind: PriorityKind, item: ComplianceDocumentReco
   return daysFromSnapshot(getSafeExpiryDate(item)) <= 14 ? "View" : "Open record";
 }
 
+function isObligationDocument(item: ComplianceDocumentRecord) {
+  const name = item.name.toLowerCase();
+  return (
+    name.includes("vat") ||
+    name.includes("paye") ||
+    name.includes("uif") ||
+    name.includes("annual return") ||
+    name.includes("financial statements")
+  );
+}
+
+function getEventStatusFromDocument(item: ComplianceDocumentRecord): ComplianceCalendarEventStatus {
+  if (item.status === "expired") {
+    return "overdue";
+  }
+
+  if (item.status === "valid" || item.status === "compliant") {
+    return "completed";
+  }
+
+  const daysRemaining = daysFromSnapshot(getSafeExpiryDate(item));
+  return daysRemaining <= 14 ? "due-soon" : "upcoming";
+}
+
+function getEventStatusClasses(status: ComplianceCalendarEventStatus) {
+  if (status === "overdue") {
+    return {
+      dot: "bg-[#EF4444]",
+      badge: "bg-red-50 text-red-600",
+      border: "border-red-100",
+    };
+  }
+
+  if (status === "due-soon") {
+    return {
+      dot: "bg-[#F59E0B]",
+      badge: "bg-amber-50 text-amber-700",
+      border: "border-amber-100",
+    };
+  }
+
+  if (status === "completed") {
+    return {
+      dot: "bg-[#10B981]",
+      badge: "bg-emerald-50 text-emerald-700",
+      border: "border-emerald-100",
+    };
+  }
+
+  return {
+    dot: "bg-[#1E3A8A]",
+    badge: "bg-blue-50 text-blue-700",
+    border: "border-blue-100",
+  };
+}
+
+function formatEventStatus(status: ComplianceCalendarEventStatus) {
+  if (status === "due-soon") {
+    return "Due Soon";
+  }
+
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
+function formatEventCategory(category: ComplianceCalendarEventCategory) {
+  if (category === "monthly-pack") {
+    return "Monthly Packs";
+  }
+
+  if (category === "obligation") {
+    return "Obligations";
+  }
+
+  if (category === "expiry") {
+    return "Document Expiry";
+  }
+
+  if (category === "request") {
+    return "Requests";
+  }
+
+  return "All Events";
+}
+
+function formatCalendarStatusFilter(filter: ComplianceCalendarStatusFilter) {
+  if (filter === "due-soon") {
+    return "Due Soon";
+  }
+
+  if (filter === "all") {
+    return "All Events";
+  }
+
+  return filter.charAt(0).toUpperCase() + filter.slice(1);
+}
+
 function buildInsightCards(data: ComplianceCentreData) {
   const allDocuments = data.categoryGroups.flatMap((group) => group.documents);
   const lockedDocuments = allDocuments.filter((document) =>
@@ -421,52 +545,59 @@ function healthMapLabel() {
   ];
 }
 
-function InsightCard({ helper, icon, label, sparkline, tone, value }: InsightCardProps) {
+function InsightCard({ helper, icon, label, tone, value }: InsightCardProps) {
   const toneClasses =
     tone === "emerald"
       ? {
-          icon: "bg-emerald-50 text-emerald-600 ring-emerald-100",
-          line: "stroke-emerald-400",
-          helper: "text-emerald-600",
+          icon: "bg-brand-50 text-brand-700 ring-brand-100",
+          value: "text-brand-800",
+          bar: "bg-brand-800",
+          helper: "text-brand-700",
         }
       : tone === "amber"
         ? {
-            icon: "bg-amber-50 text-amber-600 ring-amber-100",
-            line: "stroke-amber-400",
+            icon: "bg-brand-50 text-brand-700 ring-brand-100",
+            value: "text-brand-800",
+            bar: "bg-indigo-500",
             helper: "text-slate-500",
           }
         : tone === "rose"
           ? {
-              icon: "bg-rose-50 text-rose-600 ring-rose-100",
-              line: "stroke-rose-400",
-              helper: "text-emerald-600",
+              icon: "bg-slate-50 text-brand-700 ring-slate-200",
+              value: "text-rose-600",
+              bar: "bg-rose-600",
+              helper: "text-brand-700",
             }
           : {
               icon: "bg-brand-50 text-brand-700 ring-brand-100",
-              line: "stroke-brand-400",
-              helper: "text-emerald-600",
+              value: "text-brand-800",
+              bar: "bg-brand-800",
+              helper: "text-brand-700",
             };
+  const numericValue = Number.parseInt(value, 10);
+  const progressWidth = value.endsWith("%")
+    ? Math.min(Math.max(numericValue, 8), 100)
+    : Math.min(Math.max(numericValue * 10, 24), 82);
 
   return (
-    <SurfaceCard className="rounded-[1.35rem] border-slate-200/90 p-3.5 shadow-[0_6px_18px_rgba(15,23,42,0.04)]">
-      <div className="flex items-start justify-between gap-3">
-        <div className={cn("flex h-9 w-9 items-center justify-center rounded-xl ring-1", toneClasses.icon)}>
+    <SurfaceCard className="rounded-lg border-slate-200/90 bg-white px-5 py-4 shadow-[0_10px_26px_rgba(15,23,42,0.045)]">
+      <div className="grid grid-cols-[2.75rem_1fr] gap-3">
+        <div className={cn("flex h-10 w-10 items-center justify-center rounded-full ring-1", toneClasses.icon)}>
           {icon}
         </div>
-        <svg aria-hidden="true" className="h-[34px] w-[92px]" fill="none" viewBox="0 0 110 52">
-          <path
-            className={toneClasses.line}
-            d={sparkline}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2.6"
+        <div className="min-w-0">
+          <p className="truncate text-[0.76rem] font-semibold text-brand-800">{label}</p>
+          <p className={cn("mt-1 text-[2rem] font-semibold leading-none tracking-tight", toneClasses.value)}>
+            {value}
+          </p>
+          <p className={cn("mt-2 truncate text-[0.76rem] font-medium", toneClasses.helper)}>{helper}</p>
+        </div>
+        <div className="col-span-2 mt-1 h-1 overflow-hidden rounded-full bg-slate-100">
+          <div
+            className={cn("h-full rounded-full", toneClasses.bar)}
+            style={{ width: `${progressWidth}%` }}
           />
-        </svg>
-      </div>
-      <div className="mt-3.5 space-y-0.5">
-        <p className="text-[1.72rem] font-semibold tracking-tight text-slate-950">{value}</p>
-        <p className="text-[0.84rem] text-slate-500">{label}</p>
-        <p className={cn("pt-1 text-[0.76rem] font-medium", toneClasses.helper)}>{helper}</p>
+        </div>
       </div>
     </SurfaceCard>
   );
@@ -540,17 +671,16 @@ function PrioritySection({
 
                   <div className="flex items-center gap-2 pl-4 md:pl-0">
                     <Button
-                      className="h-10 rounded-xl border border-slate-200 bg-transparent px-4 text-slate-800 shadow-none hover:bg-slate-50"
+                      className="client-dashboard-action-button h-10 rounded-xl border-0 px-4 text-sm font-semibold ring-0 hover:-translate-y-0.5 active:translate-y-px"
                       onClick={() => onAction(kind, item)}
                       size="sm"
-                      variant="secondary"
                     >
                       {getPriorityActionLabel(kind, item)}
                       <ArrowRightIcon />
                     </Button>
                     <button
                       aria-label={`Open ${titleText} actions`}
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
+                      className="client-dashboard-action-button inline-flex h-10 w-10 items-center justify-center rounded-xl transition hover:-translate-y-0.5 active:translate-y-px"
                       type="button"
                     >
                       <MoreIcon />
@@ -584,9 +714,11 @@ function PrioritySection({
 }
 
 export function ClientComplianceCentrePage() {
-  const { clientComplianceCentre: data } = usePortal();
+  const { clientComplianceCentre: data, clientWorkflow } = usePortal();
   const [feedbackNotice, setFeedbackNotice] = useState<FeedbackNotice | null>(null);
   const [priorityFilter, setPriorityFilter] = useState<"all" | PriorityKind>("all");
+  const [selectedCalendarDay, setSelectedCalendarDay] = useState<number>(7);
+  const [calendarFilter, setCalendarFilter] = useState<ComplianceCalendarStatusFilter>("all");
 
   const insightCards = useMemo(() => buildInsightCards(data), [data]);
   const healthMap = useMemo(() => buildHealthMap(data), [data]);
@@ -641,7 +773,113 @@ export function ClientComplianceCentrePage() {
         : prioritySections.filter((section) => section.id === priorityFilter),
     [priorityFilter, prioritySections],
   );
+  const allComplianceDocuments = useMemo(
+    () => data.categoryGroups.flatMap((group) => group.documents),
+    [data.categoryGroups],
+  );
+  const calendarEvents = useMemo(() => {
+    const events: ComplianceCalendarEvent[] = [];
 
+    allComplianceDocuments.filter(isObligationDocument).forEach((item) => {
+      events.push({
+        id: `obligation-${item.id}`,
+        title: `${getClientFacingComplianceLabel(item.name)} Due`,
+        category: "obligation",
+        status: getEventStatusFromDocument(item),
+        date: getSafeExpiryDate(item),
+        description: item.notes,
+        priority: item.status === "expired" ? "high" : "medium",
+        requiredDocuments: [item.simpleLabel || getClientFacingComplianceLabel(item.name), "Supporting documents"],
+        actionLabel: "View Obligation",
+        item,
+        kind: item.status === "expired" ? "expired" : "expiring",
+      });
+    });
+
+    [...data.expiredDocuments, ...data.expiringDocuments].forEach((item) => {
+      events.push({
+        id: `expiry-${item.id}`,
+        title: `${getClientFacingComplianceLabel(item.name)} Expiry`,
+        category: "expiry",
+        status: getEventStatusFromDocument(item),
+        date: getSafeExpiryDate(item),
+        description: item.notes,
+        priority: item.status === "expired" ? "high" : "medium",
+        requiredDocuments: [item.simpleLabel || getClientFacingComplianceLabel(item.name)],
+        actionLabel: item.status === "expired" ? "Upload Document" : "View Compliance Category",
+        item,
+        kind: item.status === "expired" ? "expired" : "expiring",
+      });
+    });
+
+    data.missingRequiredDocuments.forEach((item) => {
+      events.push({
+        id: `request-${item.id}`,
+        title: `Upload ${getClientFacingComplianceLabel(item.name)}`,
+        category: "request",
+        status: "due-soon",
+        date: data.snapshotDate,
+        description: item.notes,
+        requestedBy: "Accountant",
+        priority: "high",
+        requiredDocuments: [item.simpleLabel || getClientFacingComplianceLabel(item.name)],
+        actionLabel: "Upload Document",
+        item,
+        kind: "missing",
+      });
+    });
+
+    events.push(
+      {
+        id: "monthly-pack-opened",
+        title: "Monthly Pack Opened",
+        category: "monthly-pack",
+        status: "completed",
+        date: "2026-05-01T08:00:00.000Z",
+        description: `${clientWorkflow.monthPack.monthLabel} pack is available for document collection.`,
+        actionLabel: "Open Monthly Pack",
+      },
+      {
+        id: "monthly-pack-due",
+        title: "Monthly Pack Review",
+        category: "monthly-pack",
+        status: clientWorkflow.monthPack.submissionStatus === "complete" ? "completed" : "upcoming",
+        date: clientWorkflow.monthPack.dueDate,
+        description: clientWorkflow.monthPack.completionMessage,
+        priority: clientWorkflow.monthPack.canComplete ? "medium" : "high",
+        actionLabel: "Open Monthly Pack",
+      },
+    );
+
+    if (clientWorkflow.monthPack.submittedAt) {
+      events.push({
+        id: "monthly-pack-submitted",
+        title: "Pack Submitted",
+        category: "monthly-pack",
+        status: "completed",
+        date: clientWorkflow.monthPack.submittedAt,
+        description: `${clientWorkflow.monthPack.monthLabel} pack was submitted for accountant review.`,
+        actionLabel: "Open Monthly Pack",
+      });
+    }
+
+    return events.filter((event) => {
+      const date = new Date(event.date);
+      return date.getUTCFullYear() === 2026 && date.getUTCMonth() === 4;
+    });
+  }, [allComplianceDocuments, clientWorkflow.monthPack, data]);
+  const visibleCalendarEvents = useMemo(
+    () =>
+      calendarFilter === "all"
+        ? calendarEvents.filter((event) => event.status !== "completed")
+        : calendarEvents.filter((event) => event.status === calendarFilter),
+    [calendarEvents, calendarFilter],
+  );
+  const selectedCalendarEvents = useMemo(
+    () =>
+      visibleCalendarEvents.filter((event) => new Date(event.date).getUTCDate() === selectedCalendarDay),
+    [selectedCalendarDay, visibleCalendarEvents],
+  );
   function showNotice(tone: Tone, title: string, message: string) {
     setFeedbackNotice({ tone, title, message });
   }
@@ -674,8 +912,30 @@ export function ClientComplianceCentrePage() {
     );
   }
 
+  function handleCalendarAction(event: ComplianceCalendarEvent) {
+    if (event.item && event.kind) {
+      handlePriorityAction(event.kind, event.item);
+      return;
+    }
+
+    if (event.category === "monthly-pack") {
+      showNotice(
+        "info",
+        event.title,
+        event.description ?? "Open the monthly pack workspace to review the current milestone.",
+      );
+      return;
+    }
+
+    showNotice(
+      event.status === "overdue" ? "danger" : event.status === "due-soon" ? "warning" : "info",
+      event.title,
+      event.description ?? "Review this compliance calendar event with your accountant.",
+    );
+  }
+
   return (
-    <div className="mx-auto max-w-[1280px] space-y-6">
+    <div className="client-compliance-centre mx-auto max-w-[1280px] space-y-6">
       <section className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-1.5">
           <h1 className="text-[2.05rem] font-semibold tracking-tight text-slate-950">
@@ -689,7 +949,7 @@ export function ClientComplianceCentrePage() {
         <div className="flex flex-wrap items-center gap-3 lg:justify-end">
           <Button
             aria-label="Download compliance report"
-            className="h-12 rounded-2xl border border-slate-200 bg-white px-5 text-[0.95rem] text-slate-900 shadow-none hover:bg-slate-50"
+            className="client-dashboard-action-button h-12 rounded-2xl border-0 px-5 text-[0.95rem] font-semibold ring-0 hover:-translate-y-0.5 active:translate-y-px"
             onClick={() =>
               showNotice(
                 "success",
@@ -697,7 +957,6 @@ export function ClientComplianceCentrePage() {
                 "The latest report includes expiry queues, missing records, audit activity, and the current readiness summary.",
               )
             }
-            variant="secondary"
           >
             <DownloadIcon />
             <span>Download Report</span>
@@ -759,6 +1018,342 @@ export function ClientComplianceCentrePage() {
       </section>
 
       <section>
+        <SurfaceCard className="rounded-[1.5rem] border-[#E2E8F0] bg-[#FFFFFF] p-5 shadow-[0_4px_20px_rgba(15,23,42,0.04)]">
+          <div>
+            <div>
+              <h2 className="text-[1.08rem] font-semibold text-[#0F172A]">Compliance Calendar</h2>
+              <p className="mt-1 max-w-2xl text-[0.86rem] leading-6 text-[#64748B]">
+                Track obligations, document expiries, accountant requests, and monthly pack milestones in one compliance view.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 flex flex-wrap gap-2">
+            {[
+              { id: "all" as const, label: "All Events" },
+              { id: "overdue" as const, label: "Overdue" },
+              { id: "due-soon" as const, label: "Due Soon" },
+              { id: "upcoming" as const, label: "Upcoming" },
+            ].map((filter) => (
+              <button
+                aria-pressed={calendarFilter === filter.id}
+                className={cn(
+                  "inline-flex h-9 items-center justify-center rounded-full px-4 text-[0.82rem] font-semibold transition hover:-translate-y-0.5 active:translate-y-px",
+                  calendarFilter === filter.id
+                    ? "client-dashboard-action-button"
+                    : "client-dashboard-action-button",
+                )}
+                key={filter.id}
+                onClick={() => setCalendarFilter(filter.id)}
+                type="button"
+              >
+                {filter.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-4">
+              <div className="flex items-center justify-between gap-3">
+                <button
+                  aria-label="Previous month"
+                  className="client-dashboard-action-button inline-flex h-9 w-9 items-center justify-center rounded-lg transition hover:-translate-y-0.5 active:translate-y-px"
+                  type="button"
+                >
+                  <span aria-hidden="true">&lt;</span>
+                </button>
+                <p className="text-[1rem] font-semibold text-[#0F2B5B]">May 2026</p>
+                <button
+                  aria-label="Next month"
+                  className="client-dashboard-action-button inline-flex h-9 w-9 items-center justify-center rounded-lg transition hover:-translate-y-0.5 active:translate-y-px"
+                  type="button"
+                >
+                  <span aria-hidden="true">&gt;</span>
+                </button>
+              </div>
+          <div className="hidden">
+            <div className="flex items-center gap-2 text-brand-700">
+              <button
+                aria-label="Previous month"
+                className="client-dashboard-action-button inline-flex h-8 w-8 items-center justify-center rounded-lg transition hover:-translate-y-0.5 active:translate-y-px"
+                type="button"
+              >
+                <span aria-hidden="true">‹</span>
+              </button>
+              <p className="min-w-[7rem] text-center text-[0.92rem] font-semibold">May 2026</p>
+              <button
+                aria-label="Next month"
+                className="client-dashboard-action-button inline-flex h-8 w-8 items-center justify-center rounded-lg transition hover:-translate-y-0.5 active:translate-y-px"
+                type="button"
+              >
+                <span aria-hidden="true">›</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-5 grid grid-cols-7 text-center text-[0.66rem] font-semibold uppercase tracking-[0.04em] text-brand-800">
+            {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+              <span key={day}>{day}</span>
+            ))}
+          </div>
+          <div className="mt-3 grid grid-cols-7 gap-y-2 text-center text-[0.78rem] font-semibold">
+            {[26, 27, 28, 29, 30].map((day) => (
+              <span className="flex h-8 items-center justify-center text-slate-300" key={`apr-${day}`}>
+                {day}
+              </span>
+            ))}
+            {Array.from({ length: 31 }, (_, index) => index + 1).map((day) => {
+              const dayEvents = visibleCalendarEvents.filter((event) => new Date(event.date).getUTCDate() === day);
+              const hasOverdue = dayEvents.some((event) => event.status === "overdue");
+              const hasDueSoon = dayEvents.some((event) => event.status === "due-soon");
+              const hasUpcoming = dayEvents.length > 0;
+
+              return (
+                <button
+                  aria-label={hasUpcoming ? `Show compliance documents for May ${day}` : `May ${day}`}
+                  className={cn(
+                    "relative mx-auto flex h-8 w-8 items-center justify-center rounded-full text-brand-800 transition",
+                    selectedCalendarDay === day && "bg-brand-800 text-white shadow-sm",
+                    hasUpcoming && selectedCalendarDay !== day && "hover:bg-brand-50",
+                    !hasUpcoming && "cursor-default",
+                  )}
+                  disabled={!hasUpcoming}
+                  key={day}
+                  onClick={() => setSelectedCalendarDay(day)}
+                  type="button"
+                >
+                  {day}
+                  {hasUpcoming ? (
+                    <span
+                      className={cn(
+                        "absolute bottom-0 h-1.5 w-1.5 rounded-full",
+                        hasOverdue ? "bg-[#EF4444]" : hasDueSoon ? "bg-[#F59E0B]" : "bg-[#1E3A8A]",
+                        selectedCalendarDay === day && "ring-1 ring-white",
+                      )}
+                    />
+                  ) : null}
+                </button>
+              );
+            })}
+            {[1, 2, 3, 4, 5, 6].map((day) => (
+              <span className="flex h-8 items-center justify-center text-slate-300" key={`jun-${day}`}>
+                {day}
+              </span>
+            ))}
+          </div>
+
+          <div className="mt-5 flex flex-wrap gap-4 text-[0.76rem] font-medium text-slate-500">
+            <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-rose-600" />Overdue</span>
+            <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-amber-500" />Due soon</span>
+            <span className="flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-brand-500" />Upcoming</span>
+          </div>
+
+          <div className="mt-5 border-t border-slate-100 pt-4">
+            <p className="text-[0.82rem] font-semibold text-slate-950">
+              {selectedCalendarEvents.length > 0
+                ? `Documents on May ${selectedCalendarDay}`
+                : "Select a dotted day"}
+            </p>
+            <div className="mt-3 space-y-2">
+              {selectedCalendarEvents.length > 0 ? (
+                selectedCalendarEvents.map((event) => (
+                  <button
+                    className="client-dashboard-link flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left font-semibold transition"
+                    key={event.id}
+                    onClick={() => handleCalendarAction(event)}
+                    type="button"
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate text-[0.82rem] font-semibold">
+                        {event.title}
+                      </span>
+                      <span className="block truncate text-[0.72rem] opacity-75">
+                        {formatEventCategory(event.category)} | {formatEventStatus(event.status)}
+                      </span>
+                    </span>
+                    <ArrowRightIcon />
+                  </button>
+                ))
+              ) : (
+                <p className="text-[0.78rem] leading-5 text-slate-500">
+                  Dots mark compliance documents with expiry dates in the current month.
+                </p>
+              )}
+            </div>
+          </div>
+            </div>
+
+            <aside className="rounded-2xl border border-[#E2E8F0] bg-white p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[0.78rem] font-semibold uppercase tracking-[0.08em] text-[#64748B]">Event Details</p>
+                  <h3 className="mt-1 text-[1.05rem] font-semibold text-[#0F2B5B]">May {selectedCalendarDay}, 2026</h3>
+                </div>
+                <span className="rounded-full bg-[#F8FAFC] px-3 py-1 text-[0.76rem] font-semibold text-[#64748B]">
+                  {formatCalendarStatusFilter(calendarFilter)}
+                </span>
+              </div>
+
+              <div className="mt-4 space-y-3">
+                {selectedCalendarEvents.length > 0 ? (
+                  selectedCalendarEvents.map((event) => {
+                    const classes = getEventStatusClasses(event.status);
+
+                    return (
+                      <div className={cn("rounded-xl border bg-white p-4", classes.border)} key={event.id}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-[0.94rem] font-semibold text-[#0F172A]">{event.title}</p>
+                            <p className="mt-1 text-[0.78rem] text-[#64748B]">{formatEventCategory(event.category)}</p>
+                          </div>
+                          <span className={cn("rounded-full px-2.5 py-1 text-[0.72rem] font-semibold", classes.badge)}>
+                            {formatEventStatus(event.status)}
+                          </span>
+                        </div>
+
+                        {event.description ? (
+                          <p className="mt-3 text-[0.8rem] leading-5 text-[#64748B]">{event.description}</p>
+                        ) : null}
+
+                        {event.requiredDocuments?.length ? (
+                          <div className="mt-3">
+                            <p className="text-[0.76rem] font-semibold text-[#0F172A]">Required Documents</p>
+                            <ul className="mt-1 space-y-1 text-[0.78rem] text-[#64748B]">
+                              {event.requiredDocuments.map((document) => (
+                                <li className="flex gap-2" key={document}>
+                                  <span className="mt-1.5 h-1 w-1 rounded-full bg-[#64748B]" />
+                                  <span>{document}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        ) : null}
+
+                        {event.requestedBy || event.priority ? (
+                          <div className="mt-3 grid gap-2 text-[0.78rem] text-[#64748B] sm:grid-cols-2">
+                            {event.requestedBy ? <p>Requested By: {event.requestedBy}</p> : null}
+                            {event.priority ? <p>Priority: {event.priority.charAt(0).toUpperCase() + event.priority.slice(1)}</p> : null}
+                          </div>
+                        ) : null}
+
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          <button
+                            className="inline-flex h-9 items-center justify-center rounded-lg bg-[#0F2B5B] px-3 text-[0.8rem] font-semibold text-white transition hover:bg-[#1E3A8A]"
+                            onClick={() => handleCalendarAction(event)}
+                            type="button"
+                          >
+                            {event.actionLabel}
+                          </button>
+                          <button
+                            className="client-dashboard-action-button inline-flex h-9 items-center justify-center rounded-lg px-3 text-[0.8rem] font-semibold transition hover:-translate-y-0.5 active:translate-y-px"
+                            onClick={() =>
+                              showNotice(
+                                "info",
+                                "Accountant contact ready",
+                                `Your accountant can help with ${event.title}.`,
+                              )
+                            }
+                            type="button"
+                          >
+                            Contact Accountant
+                          </button>
+                          {event.status !== "completed" ? (
+                            <button
+                              className="client-dashboard-action-button inline-flex h-9 items-center justify-center rounded-lg px-3 text-[0.8rem] font-semibold transition hover:-translate-y-0.5 active:translate-y-px"
+                              onClick={() =>
+                                showNotice(
+                                  "success",
+                                  "Completion noted",
+                                  `${event.title} can be marked complete once the required review or upload is accepted.`,
+                                )
+                              }
+                              type="button"
+                            >
+                              Mark Complete
+                            </button>
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4">
+                    <p className="text-[0.9rem] font-semibold text-[#0F172A]">No events for this day</p>
+                    <p className="mt-1 text-[0.8rem] leading-5 text-[#64748B]">
+                      Select a date with an event indicator to review compliance obligations, expiring documents, requests, and monthly pack milestones.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </aside>
+          </div>
+        </SurfaceCard>
+
+        <SurfaceCard className="hidden rounded-[1.35rem] border-slate-200/90 p-5 shadow-[0_12px_30px_rgba(15,23,42,0.045)]">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-[1rem] font-semibold text-slate-950">Priority Items</h2>
+            <button
+              className="client-dashboard-link text-[0.78rem] font-semibold transition"
+              onClick={() => setPriorityFilter("all")}
+              type="button"
+            >
+              View All
+            </button>
+          </div>
+
+          <div className="mt-5 space-y-3">
+            {prioritySections.map((section) => {
+              const accent =
+                section.kind === "expired"
+                  ? {
+                      icon: "bg-rose-50 text-rose-600 ring-rose-100",
+                      count: "bg-rose-50 text-rose-600",
+                      helper: `${section.count} document${section.count === 1 ? "" : "s"} have expired`,
+                    }
+                  : section.kind === "expiring"
+                    ? {
+                        icon: "bg-amber-50 text-amber-600 ring-amber-100",
+                        count: "bg-amber-50 text-amber-600",
+                        helper: `${section.count} document${section.count === 1 ? "" : "s"} expire in the next 60 days`,
+                      }
+                    : {
+                        icon: "bg-brand-50 text-brand-700 ring-brand-100",
+                        count: "bg-indigo-50 text-indigo-600",
+                        helper: `${section.count} document${section.count === 1 ? "" : "s"} are missing`,
+                      };
+
+              return (
+                <button
+                  aria-pressed={priorityFilter === section.kind}
+                className={cn(
+                    "flex w-full items-center gap-4 rounded-xl px-4 py-4 text-left transition",
+                    priorityFilter === section.kind
+                      ? "client-dashboard-action-button"
+                      : "client-dashboard-action-button",
+                  )}
+                  key={section.id}
+                  onClick={() => setPriorityFilter(section.kind)}
+                  type="button"
+                >
+                  <span className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ring-1", accent.icon)}>
+                    {section.icon}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[0.92rem] font-semibold">{section.title}</span>
+                    <span className="mt-1 block truncate text-[0.78rem] opacity-75">{accent.helper}</span>
+                  </span>
+                  <span className="inline-flex min-w-8 justify-center rounded-lg bg-white/15 px-2.5 py-1 text-[0.78rem] font-semibold">
+                    {section.count}
+                  </span>
+                  <ArrowRightIcon />
+                </button>
+              );
+            })}
+          </div>
+        </SurfaceCard>
+      </section>
+
+      <section>
         <SurfaceCard className="overflow-hidden rounded-[1.9rem] border-slate-200/90 p-0 shadow-[0_18px_40px_rgba(15,23,42,0.05)]">
           <div className="border-b border-slate-200 px-6 py-6 lg:px-8">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -767,7 +1362,7 @@ export function ClientComplianceCentrePage() {
                 <p className="mt-1 text-[0.86rem] text-slate-500">Documents requiring immediate attention</p>
               </div>
               <Button
-                className="h-10 rounded-2xl border border-slate-200 bg-white px-4 text-[0.9rem] text-slate-900 shadow-none hover:bg-slate-50"
+                className="client-dashboard-action-button h-10 rounded-2xl border-0 px-4 text-[0.9rem] font-semibold ring-0 hover:-translate-y-0.5 active:translate-y-px"
                 onClick={() =>
                   showNotice(
                     "info",
@@ -775,7 +1370,6 @@ export function ClientComplianceCentrePage() {
                     "Open the document workspace to inspect every expiring, expired, and missing compliance record in one place.",
                   )
                 }
-                variant="secondary"
               >
                 View All
               </Button>
@@ -791,10 +1385,10 @@ export function ClientComplianceCentrePage() {
                 <button
                   aria-pressed={priorityFilter === filterOption.id}
                   className={cn(
-                    "inline-flex h-9 items-center rounded-full border px-4 text-[0.82rem] font-medium transition",
+                    "inline-flex h-9 items-center justify-center rounded-full px-4 text-[0.82rem] font-semibold transition hover:-translate-y-0.5 active:translate-y-px",
                     priorityFilter === filterOption.id
-                      ? "border-brand-200 bg-brand-50 text-brand-700"
-                      : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700",
+                      ? "client-dashboard-action-button"
+                      : "client-dashboard-action-button",
                   )}
                   key={filterOption.id}
                   onClick={() => setPriorityFilter(filterOption.id)}
@@ -825,122 +1419,175 @@ export function ClientComplianceCentrePage() {
 
       <SurfaceCard className="overflow-hidden rounded-[1.9rem] border-slate-200/90 p-0 shadow-[0_18px_40px_rgba(15,23,42,0.05)]">
         <div className="border-b border-slate-200 px-6 py-6 lg:px-8">
-          <h2 className="text-[1.12rem] font-semibold text-slate-950">Compliance Health Map</h2>
-          <p className="mt-1 text-[0.86rem] text-slate-500">Visual breakdown by category</p>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <h2 className="text-[1.12rem] font-semibold text-slate-950">Compliance Health Map</h2>
+              <p className="mt-1 text-[0.86rem] text-slate-500">Stacked category graph by compliance state</p>
+            </div>
+            <div className="flex flex-wrap gap-4 text-[0.82rem] font-medium text-slate-600">
+              {healthMapLabel().map((item) => (
+                <div className="flex items-center gap-2" key={item.label}>
+                  <span className={cn("h-2.5 w-2.5 rounded-full", item.className)} />
+                  <span>{item.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
-        <div className="space-y-8 px-6 py-6 lg:px-8">
-          <div className="flex flex-wrap items-center gap-6 text-[0.92rem] text-slate-600">
-            {healthMapLabel().map((item) => (
-              <div className="flex items-center gap-2" key={item.label}>
-                <span className={cn("h-4 w-4 rounded-full", item.className)} />
-                <span>{item.label}</span>
-              </div>
-            ))}
-          </div>
+        <div className="px-6 py-6 lg:px-8">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5">
+            <div className="mb-5 grid grid-cols-[minmax(150px,0.8fr)_minmax(0,2fr)_86px] gap-3 text-[0.72rem] font-semibold uppercase tracking-[0.08em] text-slate-400">
+              <span>Category</span>
+              <span>Compliance Distribution</span>
+              <span className="text-right">Score</span>
+            </div>
 
-          {healthMap.map((category) => {
-            const compliantWidth = (category.compliantCount / category.total) * 100;
-            const expiringWidth = (category.expiringCount / category.total) * 100;
-            const missingWidth = (category.missingCount / category.total) * 100;
-            const overdueWidth = (category.expiredCount / category.total) * 100;
+            <div className="space-y-5">
+              {healthMap.map((category) => {
+                const compliantWidth = (category.compliantCount / category.total) * 100;
+                const expiringWidth = (category.expiringCount / category.total) * 100;
+                const missingWidth = (category.missingCount / category.total) * 100;
+                const overdueWidth = (category.expiredCount / category.total) * 100;
 
-            return (
-              <div className="space-y-3" key={category.id}>
-                <div className="flex items-center justify-between gap-3">
-                  <h3 className="text-[1rem] font-medium text-slate-950">{category.title}</h3>
-                  <p className="text-[0.95rem] text-slate-500">
-                    {category.compliantPercent}% compliant
-                  </p>
-                </div>
+                return (
+                  <div
+                    className="grid gap-3 rounded-xl border border-slate-200 bg-white p-4 lg:grid-cols-[minmax(150px,0.8fr)_minmax(0,2fr)_86px] lg:items-center"
+                    key={category.id}
+                  >
+                    <div className="min-w-0">
+                      <h3 className="truncate text-[0.95rem] font-semibold text-slate-950">{category.title}</h3>
+                      <p className="mt-1 text-[0.76rem] text-slate-500">{category.total} tracked items</p>
+                    </div>
 
-                <div className="h-3 overflow-hidden rounded-full bg-slate-100">
-                  <div className="flex h-full">
-                    <div className="bg-emerald-500" style={{ width: `${compliantWidth}%` }} />
-                    <div className="bg-amber-500" style={{ width: `${expiringWidth}%` }} />
-                    <div className="bg-slate-400" style={{ width: `${missingWidth}%` }} />
-                    <div className="bg-rose-600" style={{ width: `${overdueWidth}%` }} />
+                    <div>
+                      <div className="relative h-8 overflow-hidden rounded-lg bg-slate-100">
+                        <div className="flex h-full">
+                          <div
+                            aria-label={`${category.compliantCount} compliant`}
+                            className="bg-emerald-500"
+                            style={{ width: `${compliantWidth}%` }}
+                            title={`${category.compliantCount} compliant`}
+                          />
+                          <div
+                            aria-label={`${category.expiringCount} expiring`}
+                            className="bg-amber-500"
+                            style={{ width: `${expiringWidth}%` }}
+                            title={`${category.expiringCount} expiring`}
+                          />
+                          <div
+                            aria-label={`${category.missingCount} missing`}
+                            className="bg-slate-400"
+                            style={{ width: `${missingWidth}%` }}
+                            title={`${category.missingCount} missing`}
+                          />
+                          <div
+                            aria-label={`${category.expiredCount} overdue`}
+                            className="bg-rose-600"
+                            style={{ width: `${overdueWidth}%` }}
+                            title={`${category.expiredCount} overdue`}
+                          />
+                        </div>
+                        <div className="pointer-events-none absolute inset-0 grid grid-cols-4">
+                          <span className="border-r border-white/55" />
+                          <span className="border-r border-white/55" />
+                          <span className="border-r border-white/55" />
+                          <span />
+                        </div>
+                      </div>
+                      <div className="mt-2 grid grid-cols-4 gap-2 text-center text-[0.74rem] text-slate-500">
+                        <span>{category.compliantCount} ready</span>
+                        <span>{category.expiringCount} expiring</span>
+                        <span>{category.missingCount} missing</span>
+                        <span>{category.expiredCount} overdue</span>
+                      </div>
+                    </div>
+
+                    <div className="text-left lg:text-right">
+                      <p className="text-[1.35rem] font-semibold text-brand-800">{category.compliantPercent}%</p>
+                      <p className="text-[0.72rem] font-medium text-slate-500">compliant</p>
+                    </div>
                   </div>
-                </div>
+                );
+              })}
+            </div>
 
-                <div className="grid grid-cols-4 gap-3 text-center text-[0.82rem] text-slate-500">
-                  <span>{category.compliantCount} ready</span>
-                  <span>{category.expiringCount} expiring</span>
-                  <span>{category.missingCount} missing</span>
-                  <span>{category.expiredCount} overdue</span>
-                </div>
-              </div>
-            );
-          })}
+            <div className="mt-5 grid grid-cols-5 gap-2 text-center text-[0.72rem] font-medium text-slate-400">
+              <span>0%</span>
+              <span>25%</span>
+              <span>50%</span>
+              <span>75%</span>
+              <span>100%</span>
+            </div>
+          </div>
         </div>
       </SurfaceCard>
 
-      <SurfaceCard className="overflow-hidden rounded-[1.9rem] border-slate-200/90 p-0 shadow-[0_18px_40px_rgba(15,23,42,0.05)]">
-        <div className="border-b border-slate-200 px-6 py-6 lg:px-8">
-          <h2 className="text-[1.12rem] font-semibold text-slate-950">Compliance Report</h2>
-          <p className="mt-1 text-[0.86rem] text-slate-500">
+      <SurfaceCard className="overflow-hidden rounded-[1.5rem] border-slate-200/90 bg-white p-0 shadow-[0_18px_42px_rgba(15,23,42,0.055)]">
+        <div className="px-6 py-6 lg:px-8">
+          <h2 className="text-[2rem] font-semibold tracking-tight text-brand-800">Compliance Report</h2>
+          <p className="mt-2 text-[1rem] text-slate-600">
             One export that summarises readiness, expiries, missing records, and controlled history.
           </p>
-        </div>
+          <div className="mt-5 h-px bg-slate-200" />
 
-        <div className="grid gap-5 px-6 py-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)] lg:px-8">
-          <div className="rounded-[1.45rem] border border-slate-200 bg-[linear-gradient(180deg,#f8faff_0%,#ffffff_100%)] p-5">
-            <div className="flex items-start gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-100 text-brand-700">
-                <DocumentIcon />
+          <div className="mt-6 rounded-[1.15rem] bg-[linear-gradient(135deg,#06235a_0%,#0a2f66_52%,#06245a_100%)] px-6 py-6 text-white shadow-[0_16px_32px_rgba(10,47,102,0.22)]">
+            <div className="grid gap-6 lg:grid-cols-[1fr_auto_0.82fr] lg:items-center">
+              <div className="flex items-center gap-5">
+                <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/10">
+                  <ShieldIcon />
+                </div>
+                <div>
+                  <p className="text-[1.12rem] font-semibold">Compliance Health Snapshot</p>
+                  <div className="mt-3 flex flex-wrap items-center gap-4">
+                    <p className="text-[3.2rem] font-semibold leading-none tracking-tight">{data.overallScore}%</p>
+                    <span className="inline-flex items-center gap-2 rounded-full bg-emerald-400/16 px-4 py-2 text-[0.9rem] font-semibold text-emerald-100 ring-1 ring-emerald-300/15">
+                      <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
+                      Excellent Standing
+                    </span>
+                  </div>
+                  <p className="mt-3 text-[0.9rem] text-white/86">Your compliance posture is strong. Keep your documents up to date.</p>
+                </div>
               </div>
-              <div className="space-y-1">
-                <p className="text-[1rem] font-semibold text-slate-950">Monthly Compliance Summary</p>
-                <p className="text-[0.86rem] text-slate-500">
-                  Generated {formatDateLabel(data.reportGeneratedAt)}
-                </p>
-              </div>
-            </div>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-3">
-              <div className="rounded-[1.15rem] border border-slate-200 bg-white px-4 py-3">
-                <p className="text-[0.78rem] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                  Compliance Score
-                </p>
-                <p className="mt-2 text-[1.45rem] font-semibold text-slate-950">{data.overallScore}%</p>
-              </div>
-              <div className="rounded-[1.15rem] border border-slate-200 bg-white px-4 py-3">
-                <p className="text-[0.78rem] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                  Last Audit
-                </p>
-                <p className="mt-2 text-[1rem] font-semibold text-slate-950">{latestAuditDate}</p>
-              </div>
-              <div className="rounded-[1.15rem] border border-slate-200 bg-white px-4 py-3">
-                <p className="text-[0.78rem] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                  Records Included
-                </p>
-                <p className="mt-2 text-[1.45rem] font-semibold text-slate-950">
-                  {data.categoryGroups.reduce((sum, group) => sum + group.documents.length, 0)}
-                </p>
-              </div>
-            </div>
+              <div className="hidden h-28 w-px bg-white/35 lg:block" />
 
-            <div className="mt-5 rounded-[1.2rem] border border-slate-200 bg-white px-4 py-4">
-              <p className="text-[0.84rem] font-medium text-slate-500">
-                Includes expiry queues, missing required records, audit activity, and readiness summary.
-              </p>
+              <div className="flex items-center gap-5">
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/10">
+                  <svg aria-hidden="true" className="h-7 w-7" fill="none" viewBox="0 0 24 24">
+                    <path d="M7 3.75v3M17 3.75v3M4.75 9.25h14.5M6.5 5.25h11A2.25 2.25 0 0 1 19.75 7.5v10A2.25 2.25 0 0 1 17.5 19.75h-11A2.25 2.25 0 0 1 4.25 17.5v-10A2.25 2.25 0 0 1 6.5 5.25Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-[0.95rem] text-white/72">Last Checked</p>
+                  <p className="mt-2 text-[1.5rem] font-semibold">{latestAuditDate}</p>
+                  <p className="mt-2 text-[0.86rem] text-white/86">By John Abraham, Accountant</p>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="space-y-4">
-            <div className="rounded-[1.35rem] border border-emerald-200 bg-emerald-50/70 px-5 py-4">
-              <p className="text-[0.86rem] text-slate-500">Audit Readiness</p>
-              <div className="mt-2 flex items-end justify-between gap-4">
-                <p className="text-[2rem] font-semibold text-emerald-600">{data.overallScore}%</p>
-                <p className="text-right text-[0.84rem] text-slate-500">
-                  Last checked
-                  <span className="mt-1 block font-medium text-slate-900">{latestAuditDate}</span>
-                </p>
-              </div>
+          <div className="mt-6">
+            <div className="rounded-[1.15rem] border border-slate-200 bg-white p-5">
+                <p className="text-[1rem] font-semibold text-brand-800">Report Coverage</p>
+                <div className="mt-3 divide-y divide-slate-100">
+                  {[
+                    { label: "Compliance Areas", value: String(healthMap.length) },
+                    { label: "Document Types", value: String(data.categoryGroups.reduce((sum, group) => sum + group.documents.length, 0)) },
+                    { label: "Time Period Covered", value: "May 2025 - May 2026" },
+                  ].map((item) => (
+                    <div className="flex items-center justify-between gap-4 py-3 text-[0.9rem]" key={item.label}>
+                      <span className="text-slate-600">{item.label}</span>
+                      <span className="font-semibold text-brand-800">{item.value}</span>
+                    </div>
+                  ))}
+                </div>
             </div>
+          </div>
 
+          <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_1fr]">
             <button
-              className="flex w-full items-center justify-between rounded-[1.15rem] border border-slate-200 bg-white px-4 py-4 text-left text-[0.95rem] font-medium text-slate-900 transition hover:bg-slate-50"
+              className="flex min-h-24 items-center justify-between rounded-xl bg-brand-800 px-6 py-4 text-left text-white shadow-[0_14px_28px_rgba(10,47,102,0.18)] transition hover:bg-brand-700"
               onClick={() =>
                 showNotice(
                   "success",
@@ -950,15 +1597,18 @@ export function ClientComplianceCentrePage() {
               }
               type="button"
             >
-              <span className="flex items-center gap-3">
+              <span className="flex items-center gap-4">
                 <DownloadIcon />
-                Export PDF Report
+                <span>
+                  <span className="block text-[1.05rem] font-semibold">Download PDF Report</span>
+                  <span className="mt-1 block text-[0.86rem] text-white/78">Export the latest compliance report</span>
+                </span>
               </span>
               <ArrowRightIcon />
             </button>
 
             <button
-              className="flex w-full items-center justify-between rounded-[1.15rem] border border-slate-200 bg-white px-4 py-4 text-left text-[0.95rem] font-medium text-slate-900 transition hover:bg-slate-50"
+              className="client-dashboard-action-button flex min-h-24 items-center justify-between rounded-xl px-6 py-4 text-left transition hover:-translate-y-0.5 active:translate-y-px"
               onClick={() =>
                 showNotice(
                   "info",
@@ -968,9 +1618,12 @@ export function ClientComplianceCentrePage() {
               }
               type="button"
             >
-              <span className="flex items-center gap-3">
+              <span className="flex items-center gap-4">
                 <BellIcon />
-                Schedule Report
+                <span>
+                  <span className="block text-[1.05rem] font-semibold">Schedule Automatic Reports</span>
+                  <span className="mt-1 block text-[0.86rem] opacity-75">Receive reports on a regular schedule</span>
+                </span>
               </span>
               <ArrowRightIcon />
             </button>

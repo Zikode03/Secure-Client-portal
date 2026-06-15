@@ -1,12 +1,25 @@
 // Friendly guide: this module (ClientMonthlyPacksPage) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
+import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
+import {
+  CalendarDays,
+  ChevronRight,
+  ClipboardList,
+  CloudUpload,
+  FileText,
+  Inbox,
+  Send,
+} from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../app/auth";
 import { DocumentUploadModal } from "../../components/workflow/DocumentUploadModal";
 import { MonthlyPackChecklist } from "../../components/workflow/MonthlyPackChecklist";
-import { PreviousMonthComparisonCard } from "../../components/workflow/PreviousMonthComparisonCard";
+import {
+  PreviousMonthComparisonCard,
+  type MonthComparisonOption,
+} from "../../components/workflow/PreviousMonthComparisonCard";
 import { Button } from "../../components/ui/Button";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
@@ -51,156 +64,50 @@ const blockingStatuses = new Set<MonthlyDocumentSlot["status"]>([
   "rejected",
 ]);
 
-function UploadIcon() {
-// Render output: this is the visual state users interact with.
-  return (
-    <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24">
-      <path
-        d="M12 16V5m0 0-4 4m4-4 4 4M5.5 16.5v1.25A2.75 2.75 0 0 0 8.25 20.5h7.5a2.75 2.75 0 0 0 2.75-2.75V16.5"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
+const panelClass =
+  "rounded-2xl border border-[#dce6ef] bg-white shadow-[0_16px_38px_rgba(4,24,52,0.08)]";
+
+function normaliseDocumentType(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
-function SubmitIcon() {
-  return (
-    <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24">
-      <path
-        d="m5 12 13-7-3.5 14L11 13l-6-1Z"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
+function comparisonOptionId(value: string) {
+  return normaliseDocumentType(value).replace(/\s+/g, "-") || "documents";
 }
 
-function AlertIcon({ tone }: { tone: "warning" | "success" | "info" }) {
-  if (tone === "success") {
-    return (
-      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
-        <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
-          <path
-            d="m7.5 12.5 2.75 2.75L16.5 9"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-          />
-          <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
-        </svg>
-      </div>
-    );
-  }
-
-  if (tone === "info") {
-    return (
-      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-100 text-brand-600">
-        <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
-          <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
-          <path
-            d="M12 10.25v5m0-8v.25"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-          />
-        </svg>
-      </div>
-    );
-  }
-
+function PriorityAction({
+  action,
+  helper,
+  icon,
+  label,
+  onClick,
+}: {
+  action: string;
+  helper: string;
+  icon: ReactNode;
+  label: string;
+  onClick: () => void;
+}) {
   return (
-    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-100 text-orange-500">
-      <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
-        <path
-          d="M12 8.5v4m0 3h.01M10.26 4.76 2.9 17.5a1.5 1.5 0 0 0 1.3 2.25H18.8a1.5 1.5 0 0 0 1.3-2.25L12.74 4.76a1.5 1.5 0 0 0-2.48 0Z"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="1.8"
-        />
-      </svg>
+    <div className="grid min-h-[76px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-[#e8ecf5] bg-white px-4 py-3 shadow-[0_8px_20px_rgba(4,24,52,0.04)]">
+      <div className="flex min-w-0 items-center gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#eef4fa] text-brand-700 ring-1 ring-[#d7e3ee]">
+          {icon}
+        </span>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-[#091333]">{label}</p>
+          <p className="mt-0.5 truncate text-[0.78rem] text-[#53617f]">{helper}</p>
+        </div>
+      </div>
+      <button
+        className="client-dashboard-action-button h-9 min-w-16 shrink-0 rounded-lg px-3 text-[0.78rem] font-semibold"
+        onClick={onClick}
+        type="button"
+      >
+        {action}
+      </button>
     </div>
   );
-}
-
-function CalendarIcon() {
-  return (
-    <svg aria-hidden="true" className="h-4.5 w-4.5 text-slate-600" fill="none" viewBox="0 0 24 24">
-      <rect
-        height="14"
-        rx="2.5"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        width="16"
-        x="4"
-        y="6.5"
-      />
-      <path
-        d="M8 4.5v4m8-4v4M4 10.5h16"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
-}
-
-function ChevronRightIcon() {
-  return (
-    <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24">
-      <path
-        d="m9 6 6 6-6 6"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
-}
-
-function statusPillClasses(tone: "warning" | "success" | "info") {
-  if (tone === "success") {
-    return "bg-emerald-50 text-emerald-700";
-  }
-
-  if (tone === "info") {
-    return "bg-brand-50 text-brand-700";
-  }
-
-  return "bg-rose-50 text-rose-600";
-}
-
-function bannerClasses(tone: "warning" | "success" | "info") {
-  if (tone === "success") {
-    return "border-emerald-100 bg-gradient-to-r from-emerald-50 to-white";
-  }
-
-  if (tone === "info") {
-    return "border-brand-100 bg-gradient-to-r from-brand-50 to-white";
-  }
-
-  return "border-orange-100 bg-gradient-to-r from-orange-50 to-white";
-}
-
-function progressBarClasses(tone: "warning" | "success" | "info") {
-  if (tone === "success") {
-    return "bg-emerald-500";
-  }
-
-  if (tone === "info") {
-    return "bg-brand-500";
-  }
-
-  return "bg-emerald-500";
 }
 
 function blockerSummaryText(missingCount: number, rejectedCount: number) {
@@ -231,7 +138,7 @@ export function ClientMonthlyPacksPage() {
     documents,
     dismissFeedbackNotice,
     feedbackNotice,
-    invoices,
+    invoices = [],
     monthPack,
     previousMonthComparison,
     showFeedbackNotice,
@@ -275,6 +182,11 @@ export function ClientMonthlyPacksPage() {
 
     return Math.round((readyRequiredCount / monthPack.totalCount) * 100);
   }, [monthPack.totalCount, readyRequiredCount]);
+
+  const dueDaysRemaining = useMemo(() => {
+    const difference = new Date(monthPack.dueDate).getTime() - Date.now();
+    return Math.max(0, Math.ceil(difference / 86_400_000));
+  }, [monthPack.dueDate]);
 
   const highlightedSlot = useMemo(
     () =>
@@ -341,6 +253,65 @@ export function ClientMonthlyPacksPage() {
     };
   }, [missingRequiredCount, monthPack.canComplete, monthPack.submissionStatus, rejectedRequiredCount]);
 
+  const monthComparisonOptions = useMemo<MonthComparisonOption[]>(() => {
+    const currentMonthLabel = previousMonthComparison.currentMonthLabel;
+    const previousMonthLabel = previousMonthComparison.previousMonthLabel;
+    const uniqueDocumentTypes = Array.from(
+      new Set(monthPack.slots.map((slot) => slot.documentType)),
+    );
+    const nonInvoiceDocuments = documents.filter(
+      (document) => !normaliseDocumentType(document.documentType).includes("invoice"),
+    );
+
+    function countDocuments(documentType: string, monthLabel: string) {
+      const normalisedType = normaliseDocumentType(documentType);
+
+      if (normalisedType.includes("invoice")) {
+        return monthLabel === currentMonthLabel
+          ? previousMonthComparison.currentInvoiceCount
+          : previousMonthComparison.previousInvoiceCount;
+      }
+
+      return nonInvoiceDocuments.filter(
+        (document) =>
+          document.monthLabel === monthLabel &&
+          normaliseDocumentType(document.documentType) === normalisedType,
+      ).length;
+    }
+
+    const allDocumentsOption: MonthComparisonOption = {
+      id: "all-documents",
+      label: "All documents",
+      currentMonthLabel,
+      previousMonthLabel,
+      currentCount:
+        previousMonthComparison.currentInvoiceCount +
+        nonInvoiceDocuments.filter((document) => document.monthLabel === currentMonthLabel).length,
+      previousCount:
+        previousMonthComparison.previousInvoiceCount +
+        nonInvoiceDocuments.filter((document) => document.monthLabel === previousMonthLabel).length,
+    };
+
+    const documentTypeOptions = uniqueDocumentTypes.map<MonthComparisonOption>((documentType) => {
+      const currentCount = countDocuments(documentType, currentMonthLabel);
+      const previousCount = countDocuments(documentType, previousMonthLabel);
+      const isInvoiceType = normaliseDocumentType(documentType).includes("invoice");
+
+      return {
+        id: comparisonOptionId(documentType),
+        label: documentType,
+        currentMonthLabel,
+        previousMonthLabel,
+        currentCount,
+        previousCount,
+        message: isInvoiceType ? previousMonthComparison.message : undefined,
+        tone: isInvoiceType ? previousMonthComparison.tone : undefined,
+      };
+    });
+
+    return [allDocumentsOption, ...documentTypeOptions];
+  }, [documents, monthPack.slots, previousMonthComparison]);
+
 // Reactive sync: this block responds when dependencies change.
   useEffect(() => {
     if (location.hash !== "#pack-checklist") {
@@ -378,44 +349,32 @@ export function ClientMonthlyPacksPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[1180px] space-y-6">
+    <div className="mx-auto max-w-[1280px] space-y-5 pb-8">
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
-        <div className="space-y-1.5">
-          <p className="text-[0.78rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
+        <div className="space-y-2 pt-1">
+          <p className="text-[0.78rem] font-semibold uppercase tracking-[0.14em] text-brand-700">
             Monthly Packs
           </p>
-          <h1 className="text-[2.05rem] font-semibold tracking-tight text-slate-950">
+          <h1 className="text-[2.05rem] font-semibold tracking-tight text-[#091333]">
             {monthPack.monthLabel}
           </h1>
-          <p className="max-w-2xl text-[0.96rem] leading-7 text-slate-500">
-            Complete required slots and submit once the pack is ready for accountant review.
+          <p className="max-w-2xl text-[0.96rem] leading-7 text-[#53617f]">
+            Track, manage, and submit your monthly documents. Stay on top of requirements and keep your compliance up to date.
           </p>
         </div>
 
         <div className="flex w-full flex-wrap items-center gap-2.5 sm:w-auto lg:justify-end">
+          <div className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#dce6ef] bg-white px-4 text-sm font-semibold text-[#091333] shadow-sm">
+            <CalendarDays aria-hidden="true" className="h-4 w-4 text-brand-700" />
+            {monthPack.monthLabel}
+          </div>
           <Button
-            className="h-10 rounded-xl px-4"
+            className="h-10 rounded-xl bg-brand-700 px-4 text-sm font-semibold text-white shadow-[0_10px_20px_rgba(4,24,52,0.16)] hover:bg-brand-800"
             disabled={monthPack.submissionStatus === "under_accountant_review"}
             onClick={() => handleOpenUpload(highlightedSlot)}
-            variant="secondary"
           >
-            <UploadIcon />
-            <span>Upload</span>
-          </Button>
-          <Button
-            className="h-10 rounded-xl px-4"
-            disabled={!monthPack.canComplete || monthPack.submissionStatus === "under_accountant_review"}
-            onClick={submitMonth}
-          >
-            <SubmitIcon />
-            <span>Submit Month</span>
-          </Button>
-          <Button
-            className="h-10 rounded-xl px-4 text-brand-700"
-            onClick={handleOpenChecklist}
-            variant="secondary"
-          >
-            <span>Open Checklist</span>
+            <CloudUpload aria-hidden="true" className="h-4 w-4" />
+            <span>Upload into slot</span>
           </Button>
         </div>
       </div>
@@ -429,139 +388,144 @@ export function ClientMonthlyPacksPage() {
         />
       ) : null}
 
-      <SurfaceCard
-        className={`rounded-[1.35rem] border px-4 py-4 ${bannerClasses(submissionState.tone)}`}
-        id="submission-readiness"
-      >
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-start gap-4">
-            <AlertIcon tone={submissionState.tone} />
-            <div className="space-y-1">
-              <h2 className="text-[0.98rem] font-semibold text-slate-900">
-                {submissionState.bannerTitle}
-              </h2>
-              <p className="text-[0.88rem] text-slate-700">{submissionState.bannerMessage}</p>
-            </div>
+      <section className="space-y-5">
+        <SurfaceCard
+          className={`${panelClass} h-full overflow-hidden p-0`}
+          id="submission-readiness"
+        >
+          <div className="flex items-center justify-between gap-3 bg-brand-700 px-5 py-4 text-white">
+            <h2 className="text-[1.05rem] font-semibold">{monthPack.monthLabel} Monthly Pack</h2>
+            <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-[0.72rem] font-semibold text-emerald-100 ring-1 ring-emerald-300/30">
+              {submissionState.label}
+            </span>
           </div>
-          {highlightedSlot ? (
-            <Button
-              className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-700 ring-0 hover:bg-slate-50"
-              disabled={monthPack.submissionStatus === "under_accountant_review"}
-              onClick={() => handleOpenUpload(highlightedSlot)}
-              variant="secondary"
+          <div className="grid gap-6 p-5 md:grid-cols-[220px_minmax(0,1fr)] md:items-center">
+            <div
+              aria-label={`${progressPercent}% complete`}
+              className="mx-auto flex h-48 w-48 items-center justify-center rounded-full"
+              style={{
+                background: `conic-gradient(#062b61 ${progressPercent * 3.6}deg, #e5ebf3 0deg)`,
+              }}
             >
-              <span>
-                {submissionState.tone === "warning"
-                  ? `Fix: ${highlightedSlot.documentType}`
-                  : `Update: ${highlightedSlot.documentType}`}
-              </span>
-            </Button>
-          ) : null}
-        </div>
-      </SurfaceCard>
-
-      <SurfaceCard className="overflow-hidden rounded-[1.35rem] p-0">
-        <div className="grid lg:grid-cols-3">
-          <div className="space-y-2 px-5 py-4 lg:border-r lg:border-slate-100">
-            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-slate-500">
-              Progress
-            </p>
-            <p className="text-[1.42rem] font-semibold tracking-tight text-slate-950">
-              {readyRequiredCount} of {monthPack.totalCount}
-            </p>
-            <p className="text-[0.88rem] text-slate-500">{progressPercent}% complete</p>
-            <div className="h-2 rounded-full bg-slate-100">
-              <div
-                className={`h-2 rounded-full ${progressBarClasses(submissionState.tone)}`}
-                style={{ width: `${progressPercent}%` }}
-              />
+              <div className="flex h-[152px] w-[152px] flex-col items-center justify-center rounded-full bg-white shadow-inner">
+                <span className="text-[2.2rem] font-semibold tracking-tight text-[#091333]">{progressPercent}%</span>
+                <span className="text-[0.78rem] font-semibold text-[#53617f]">Complete</span>
+              </div>
+            </div>
+            <div className="space-y-5">
+              <div className="rounded-2xl border border-[#e8ecf5] bg-[#fbfcff] p-4">
+                <p className="text-[0.74rem] font-semibold uppercase tracking-[0.12em] text-[#53617f]">
+                  Monthly pack status
+                </p>
+                <h3 className="mt-2 text-[1.08rem] font-semibold text-[#091333]">
+                  {submissionState.bannerTitle}
+                </h3>
+                <p className="mt-1 text-[0.88rem] leading-6 text-[#53617f]">
+                  {submissionState.bannerMessage}
+                </p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-xl border border-[#e8ecf5] bg-white px-4 py-3">
+                    <p className="text-[0.72rem] font-semibold text-[#53617f]">Required documents</p>
+                    <p className="mt-1 text-[1.15rem] font-semibold text-[#091333]">
+                      {readyRequiredCount} of {monthPack.totalCount}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-[#e8ecf5] bg-white px-4 py-3">
+                    <p className="text-[0.72rem] font-semibold text-[#53617f]">Submission deadline</p>
+                    <p className="mt-1 text-[1rem] font-semibold text-[#091333]">
+                      {formatDateLabel(monthPack.dueDate)}
+                    </p>
+                    <p className="mt-0.5 text-[0.76rem] text-[#53617f]">{dueDaysRemaining} days remaining</p>
+                  </div>
+                </div>
+              </div>
+              <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-[auto_auto] xl:grid-cols-[auto_auto]">
+                <Button
+                  className="h-10 rounded-xl bg-brand-700 px-4 text-sm font-semibold text-white hover:bg-brand-800"
+                  onClick={handleOpenChecklist}
+                >
+                  <span>Continue Pack</span>
+                  <ChevronRight aria-hidden="true" className="h-4 w-4" />
+                </Button>
+                <Button
+                  className="client-dashboard-action-button h-10 rounded-xl border-0 px-4 text-sm font-semibold ring-0"
+                  disabled={!monthPack.canComplete || monthPack.submissionStatus === "under_accountant_review"}
+                  onClick={submitMonth}
+                >
+                  <Send aria-hidden="true" className="h-4 w-4" />
+                  <span>Submit Month</span>
+                </Button>
+                {highlightedSlot ? (
+                  <Button
+                    className="client-dashboard-action-button h-10 rounded-xl border-0 px-4 text-sm font-semibold ring-0 sm:col-span-2 lg:col-span-2 xl:col-span-2"
+                    disabled={monthPack.submissionStatus === "under_accountant_review"}
+                    onClick={() => handleOpenUpload(highlightedSlot)}
+                  >
+                    <span>
+                      {submissionState.tone === "warning"
+                        ? `Fix: ${highlightedSlot.documentType}`
+                        : `Update: ${highlightedSlot.documentType}`}
+                    </span>
+                  </Button>
+                ) : null}
+              </div>
             </div>
           </div>
+        </SurfaceCard>
 
-          <div className="space-y-2 px-5 py-4 lg:border-r lg:border-slate-100">
-            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-slate-500">
-              Due Date
-            </p>
-            <div className="flex items-center gap-2.5 text-[1.42rem] font-semibold tracking-tight text-slate-950">
-              <CalendarIcon />
-              <span className="text-[1.42rem]">{formatDateLabel(monthPack.dueDate)}</span>
-            </div>
-            <p className="text-[0.88rem] text-slate-500">Submission deadline</p>
+        <SurfaceCard className={`${panelClass} p-5`}>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="text-base font-semibold text-[#091333]">Priority Actions</h2>
+            <button className="client-dashboard-link text-[0.78rem] font-semibold" onClick={handleOpenChecklist} type="button">
+              View All
+            </button>
           </div>
-
-          <div className="space-y-2 px-5 py-4">
-            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-slate-500">
-              Status
-            </p>
-            <div className="flex items-center gap-3">
-              <span
-                className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[0.82rem] font-semibold ${statusPillClasses(
-                  submissionState.tone,
-                )}`}
-              >
-                <span
-                  className={`h-2.5 w-2.5 rounded-full ${
-                    submissionState.tone === "success"
-                      ? "bg-emerald-500"
-                      : submissionState.tone === "info"
-                        ? "bg-brand-500"
-                        : "bg-rose-500"
-                  }`}
-                />
-                {submissionState.label}
-              </span>
-            </div>
-            <p className="text-[0.88rem] text-slate-500">{submissionState.statusHelper}</p>
+          <div className="grid gap-3 lg:grid-cols-3">
+            <PriorityAction
+              action="Open"
+              helper={`Confirm required files for ${monthPack.monthLabel}`}
+              icon={<ClipboardList aria-hidden="true" className="h-5 w-5" strokeWidth={1.8} />}
+              label="Review checklist requirements"
+              onClick={handleOpenChecklist}
+            />
+            <PriorityAction
+              action="View"
+              helper="View uploaded files and supporting records"
+              icon={<FileText aria-hidden="true" className="h-5 w-5" strokeWidth={1.8} />}
+              label="Open document library"
+              onClick={() => navigate("/client/documents")}
+            />
+            <PriorityAction
+              action="Open"
+              helper="Review follow-ups or clarification requests"
+              icon={<Inbox aria-hidden="true" className="h-5 w-5" strokeWidth={1.8} />}
+              label="Check accountant messages"
+              onClick={() => navigate("/client/inbox")}
+            />
           </div>
-        </div>
-      </SurfaceCard>
-
-      <SurfaceCard className="rounded-[1.35rem] border-slate-200/90">
-        <div className="grid gap-3 sm:grid-cols-3">
-          <button
-            className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-left text-sm text-slate-700 transition hover:bg-slate-50"
-            onClick={handleOpenChecklist}
-            type="button"
-          >
-            <span>Go to checklist</span>
-            <ChevronRightIcon />
-          </button>
-          <button
-            className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-left text-sm text-slate-700 transition hover:bg-slate-50"
-            onClick={() => navigate("/client/documents")}
-            type="button"
-          >
-            <span>Open documents</span>
-            <ChevronRightIcon />
-          </button>
-          <button
-            className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-left text-sm text-slate-700 transition hover:bg-slate-50"
-            onClick={() => navigate("/client/inbox")}
-            type="button"
-          >
-            <span>Open inbox</span>
-            <ChevronRightIcon />
-          </button>
-        </div>
-      </SurfaceCard>
-
-      <section id="pack-checklist">
-        <MonthlyPackChecklist
-          onDownload={handleDownloadSlot}
-          isReadOnly={monthPack.submissionStatus === "under_accountant_review"}
-          onUpload={handleOpenUpload}
-          onView={() => navigate("/client/documents")}
-          pack={monthPack}
-        />
+        </SurfaceCard>
       </section>
 
-      <PreviousMonthComparisonCard
-        actionLabel="Open documents"
-        comparison={previousMonthComparison}
-        onCreateFollowUps={() => navigate("/client/inbox")}
-        onOpenAffectedRecords={() => navigate("/client/documents")}
-        onAction={() => navigate("/client/documents")}
-      />
+      <section className="grid items-stretch gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.38fr)]">
+        <div className="h-full" id="pack-checklist">
+          <MonthlyPackChecklist
+            onDownload={handleDownloadSlot}
+            isReadOnly={monthPack.submissionStatus === "under_accountant_review"}
+            onUpload={handleOpenUpload}
+            onView={() => navigate("/client/documents")}
+            pack={monthPack}
+          />
+        </div>
+
+        <PreviousMonthComparisonCard
+          actionLabel="Open documents"
+          comparisonOptions={monthComparisonOptions}
+          comparison={previousMonthComparison}
+          onCreateFollowUps={() => navigate("/client/inbox")}
+          onOpenAffectedRecords={() => navigate("/client/documents")}
+          onAction={() => navigate("/client/documents")}
+        />
+      </section>
 
       <DocumentUploadModal
         clientName={clientName ?? user?.company ?? "Apex Trading Ltd"}

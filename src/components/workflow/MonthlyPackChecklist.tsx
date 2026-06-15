@@ -26,8 +26,8 @@ function RequirementBadge({ isRequired }: { isRequired: boolean }) {
     <span
       className={`inline-flex rounded-full px-2.5 py-1 text-[0.68rem] font-semibold ring-1 ring-inset ${
         isRequired
-          ? "bg-rose-50 text-rose-600 ring-rose-100"
-          : "bg-slate-100 text-slate-500 ring-slate-200"
+          ? "bg-[#eef4fa] text-brand-700 ring-[#d7e3ee]"
+          : "bg-slate-50 text-slate-500 ring-slate-200"
       }`}
     >
       {isRequired ? "Required" : "Optional"}
@@ -53,43 +53,43 @@ function statusMeta(slot: MonthlyDocumentSlot) {
             : slot.status === "filed"
               ? "Filed"
               : "Uploaded",
-        classes: "text-emerald-600",
+        classes: "text-emerald-700 bg-emerald-50 ring-emerald-100",
         dot: "bg-emerald-500",
       };
     case "under_review":
       return {
         label: "Under review",
-        classes: "text-sky-600",
+        classes: "text-amber-700 bg-amber-50 ring-amber-100",
         dot: "bg-sky-500",
       };
     case "rejected":
       return {
         label: "Rejected",
-        classes: "text-rose-600",
+        classes: "text-rose-700 bg-rose-50 ring-rose-100",
         dot: "bg-rose-500",
       };
     case "pending_signature":
       return {
         label: "Pending signature",
-        classes: "text-amber-600",
+        classes: "text-amber-700 bg-amber-50 ring-amber-100",
         dot: "bg-amber-500",
       };
     case "partial":
       return {
         label: "Partial",
-        classes: "text-amber-600",
+        classes: "text-amber-700 bg-amber-50 ring-amber-100",
         dot: "bg-amber-500",
       };
     case "pending":
       return {
         label: "Pending",
-        classes: "text-slate-500",
+        classes: "text-brand-700 bg-[#eef4fa] ring-[#d7e3ee]",
         dot: "bg-slate-400",
       };
     default:
       return {
         label: slot.isRequired ? "Missing" : "Not uploaded",
-        classes: slot.isRequired ? "text-rose-600" : "text-slate-500",
+        classes: slot.isRequired ? "text-rose-700 bg-rose-50 ring-rose-100" : "text-slate-500 bg-slate-50 ring-slate-200",
         dot: slot.isRequired ? "bg-rose-500" : "bg-slate-400",
       };
   }
@@ -359,7 +359,7 @@ export function MonthlyPackChecklist({
           >
             {!isReadOnly ? (
               <button
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+                className="client-dashboard-link flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-semibold"
                 onClick={() => {
                   closeMenu();
                   if (actionIntent === "view" && onView) {
@@ -377,7 +377,7 @@ export function MonthlyPackChecklist({
 
             {onView && actionIntent !== "view" ? (
               <button
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+                className="client-dashboard-link flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-semibold"
                 onClick={() => {
                   closeMenu();
                   onView(slot);
@@ -391,7 +391,7 @@ export function MonthlyPackChecklist({
 
             {showDownload ? (
               <button
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+                className="client-dashboard-link flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-semibold"
                 onClick={() => {
                   closeMenu();
                   onDownload?.(slot);
@@ -405,7 +405,7 @@ export function MonthlyPackChecklist({
 
             {slot.rejectionReason ? (
               <button
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+                className="client-dashboard-link flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-semibold"
                 onClick={() => {
                   closeMenu();
                   toggleReason(slot.id);
@@ -424,32 +424,32 @@ export function MonthlyPackChecklist({
 
   return (
     <SurfaceCard
-      className="overflow-hidden rounded-[1.4rem] p-0"
+      className="h-full overflow-hidden rounded-2xl border border-[#dce6ef] bg-white p-0 shadow-[0_16px_38px_rgba(4,24,52,0.08)]"
       onClick={() => closeMenu()}
     >
       <div className="flex flex-col gap-2 px-5 pb-4 pt-5 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap items-center gap-3">
-          <h2 className="text-base font-semibold text-slate-950">Monthly Pack Checklist</h2>
+          <h2 className="text-base font-semibold text-[#091333]">Monthly Pack Checklist</h2>
           {showSlotCount ? (
-            <span className="rounded-full bg-brand-50 px-2.5 py-1 text-[0.68rem] font-semibold text-brand-600">
+            <span className="rounded-full bg-[#eef4fa] px-2.5 py-1 text-[0.68rem] font-semibold text-brand-700 ring-1 ring-[#d7e3ee]">
               {pack.slots.length} slots
             </span>
           ) : null}
         </div>
         {headerActionLabel && onHeaderAction ? (
           <button
-            className="text-sm font-medium text-brand-600 transition hover:text-brand-700"
+            className="client-dashboard-link text-sm font-semibold"
             onClick={onHeaderAction}
             type="button"
           >
             {headerActionLabel}
           </button>
         ) : (
-          <div className="text-sm text-slate-500">Due {formatDateLabel(pack.dueDate)}</div>
+          <div className="text-sm font-medium text-[#53617f]">Due {formatDateLabel(pack.dueDate)}</div>
         )}
       </div>
 
-      <div className="lg:hidden divide-y divide-slate-100">
+      <div className="divide-y divide-[#edf0f6] lg:hidden">
         {pack.slots.map((slot) => {
           const status = statusMeta(slot);
           const updatedBy =
@@ -464,10 +464,10 @@ export function MonthlyPackChecklist({
               <div className="flex items-start gap-3">
                 <SlotIcon documentType={slot.documentType} />
                 <div className="space-y-1">
-                  <h3 className="text-[0.98rem] font-semibold leading-6 text-slate-950">
+                  <h3 className="text-[0.98rem] font-semibold leading-6 text-[#091333]">
                     {slot.documentType}
                   </h3>
-                  <p className="text-[0.9rem] text-slate-500">
+                  <p className="text-[0.9rem] text-[#53617f]">
                     {slot.month} {slot.year}
                   </p>
                 </div>
@@ -485,7 +485,7 @@ export function MonthlyPackChecklist({
                   <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
                     Status
                   </p>
-                  <div className={`flex items-center gap-2 text-[0.92rem] font-medium ${status.classes}`}>
+                  <div className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-[0.82rem] font-semibold ring-1 ring-inset ${status.classes}`}>
                     <span className={`h-2.5 w-2.5 rounded-full ${status.dot}`} />
                     <span>{status.label}</span>
                   </div>
@@ -526,8 +526,8 @@ export function MonthlyPackChecklist({
         })}
       </div>
 
-      <div className="hidden lg:block">
-        <table className="w-full table-fixed border-collapse">
+      <div className="hidden px-5 pb-5 lg:block">
+        <table className="w-full table-fixed border-separate border-spacing-0">
           <colgroup>
             <col className="w-[36%]" />
             <col className="w-[14%]" />
@@ -536,12 +536,12 @@ export function MonthlyPackChecklist({
             <col className="w-[16%]" />
           </colgroup>
           <thead>
-            <tr className="border-y border-slate-100 text-left text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
-              <th className="px-5 py-3">Document</th>
-              <th className="px-2 py-3">Requirement</th>
-              <th className="px-2 py-3">Status</th>
-              <th className="px-2 py-3">Updated</th>
-              <th className="px-2 py-3">Action</th>
+            <tr className="text-left text-[0.72rem] font-semibold text-[#53617f]">
+              <th className="border-b border-t border-[#edf0f6] bg-[#fbfcff] px-3 py-2 first:rounded-l-lg first:border-l">Document</th>
+              <th className="border-b border-t border-[#edf0f6] bg-[#fbfcff] px-2 py-2">Requirement</th>
+              <th className="border-b border-t border-[#edf0f6] bg-[#fbfcff] px-2 py-2">Status</th>
+              <th className="border-b border-t border-[#edf0f6] bg-[#fbfcff] px-2 py-2">Updated</th>
+              <th className="border-b border-t border-[#edf0f6] bg-[#fbfcff] px-2 py-2 last:rounded-r-lg last:border-r">Action</th>
             </tr>
           </thead>
           <tbody>
@@ -556,30 +556,30 @@ export function MonthlyPackChecklist({
 
               return (
                 <Fragment key={slot.id}>
-                  <tr className="border-b border-slate-100 align-top">
-                    <td className="px-5 py-4">
+                  <tr className="align-top">
+                    <td className="border-b border-[#edf0f6] px-3 py-4">
                       <div className="flex items-start gap-3">
                         <SlotIcon documentType={slot.documentType} />
                         <div className="space-y-1">
-                          <h3 className="text-[0.98rem] font-semibold leading-6 text-slate-950">
+                          <h3 className="text-[0.92rem] font-semibold leading-6 text-[#091333]">
                             {slot.documentType}
                           </h3>
-                          <p className="text-[0.9rem] text-slate-500">
+                          <p className="text-[0.82rem] text-[#53617f]">
                             {slot.month} {slot.year}
                           </p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-2 py-4">
+                    <td className="border-b border-[#edf0f6] px-2 py-4">
                       <RequirementBadge isRequired={slot.isRequired} />
                     </td>
-                    <td className="px-2 py-4">
-                      <div className={`flex items-center gap-2 text-[0.92rem] font-medium ${status.classes}`}>
+                    <td className="border-b border-[#edf0f6] px-2 py-4">
+                      <div className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-[0.82rem] font-semibold ring-1 ring-inset ${status.classes}`}>
                         <span className={`h-2.5 w-2.5 rounded-full ${status.dot}`} />
                         <span>{status.label}</span>
                       </div>
                     </td>
-                    <td className="px-2 py-4 text-[0.9rem] text-slate-500">
+                    <td className="border-b border-[#edf0f6] px-2 py-4 text-[0.86rem] text-[#53617f]">
                       {slot.lastSubmission ? (
                         <>
                         <p>{formatDateLabel(slot.lastSubmission)}</p>
@@ -589,7 +589,7 @@ export function MonthlyPackChecklist({
                         <p className="text-slate-400">{updatedBy}</p>
                       )}
                     </td>
-                    <td className="px-2 py-4">{renderActionMenu(slot)}</td>
+                    <td className="border-b border-[#edf0f6] px-2 py-4">{renderActionMenu(slot)}</td>
                   </tr>
                   {slot.rejectionReason && expandedReasonId === slot.id ? (
                     <tr className="border-b border-slate-100">
@@ -610,7 +610,7 @@ export function MonthlyPackChecklist({
 
       {showFooterMeta ? (
         <>
-          <div className="border-t border-slate-100 px-5 py-4">
+          <div className="border-t border-[#edf0f6] px-5 py-4">
             <div className="flex flex-wrap gap-x-6 gap-y-3">
               <LegendItem dotClass="bg-emerald-500" label="Ready" />
               <LegendItem dotClass="bg-slate-500" label="Draft" />
@@ -623,7 +623,7 @@ export function MonthlyPackChecklist({
 
           <div className="border-t border-slate-100 px-5 py-4 text-sm text-slate-500">
             Need help?{" "}
-            <a className="font-medium text-brand-600 hover:text-brand-700" href="#submission-readiness">
+            <a className="client-dashboard-link font-medium" href="#submission-readiness">
               Read the monthly pack guide
             </a>
           </div>

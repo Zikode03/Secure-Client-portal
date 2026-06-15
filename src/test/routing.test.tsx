@@ -1,7 +1,7 @@
 // Friendly guide: this module (routing.test) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { AuthProvider } from "../app/auth";
 import App from "../app/App";
@@ -107,11 +107,22 @@ describe("role-based route access", () => {
     expect(screen.getByRole("link", { name: "Compliance Calendar" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Exceptions Queue" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Activity Feed" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Notification Preferences" })).toBeInTheDocument();
+    expect(screen.queryByText("System")).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Notification Preferences" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Settings" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Notifications" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "User Management" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Roles" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "System Settings" })).not.toBeInTheDocument();
+  });
+
+  it("keeps settings available from the account menu", async () => {
+    renderAppAt("/firm/dashboard", createUser("accountant"));
+
+    expect(await screen.findByText("Compliance Portal")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Open account menu" }));
+
+    expect(screen.getByRole("link", { name: "Settings" })).toBeInTheDocument();
   });
 
   it("client navigation no longer shows standalone messages or invoices items", async () => {

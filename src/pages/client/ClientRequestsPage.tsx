@@ -1,4 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
+import {
+  CheckCircle2,
+  Mail,
+  MessageSquare,
+  Paperclip,
+  Search,
+  Send,
+  SlidersHorizontal,
+  UploadCloud,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../app/auth";
 import { Button } from "../../components/ui/Button";
@@ -15,6 +25,9 @@ type ThreadFilter = "all" | "unread" | "resolved" | "unresolved";
 const THREADS_PER_PAGE = 8;
 const ATTACHMENT_PREFIX = "[[attachment:";
 const ATTACHMENT_SUFFIX = "]]";
+
+const inboxPanelClass =
+  "rounded-2xl border border-[#dce6ef] bg-white shadow-[0_16px_38px_rgba(4,24,52,0.08)]";
 
 interface ParsedAttachment {
   name: string;
@@ -141,52 +154,53 @@ function ThreadListPane({
   const unreadTotal = requests.reduce((sum, request) => sum + unreadFromAccountantCount(request), 0);
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="border-b border-slate-100 p-4">
-        <div className="flex items-center gap-2">
+    <section className={`${inboxPanelClass} overflow-hidden`}>
+      <div className="border-b border-[#edf0f6] p-4">
+        <div className="flex items-center gap-2 rounded-xl border border-[#dce6ef] bg-[#fbfcff] px-3 shadow-sm">
+          <Search aria-hidden="true" className="h-4 w-4 text-[#53617f]" />
           <input
-            className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none ring-brand-300 transition focus:ring-2"
+            className="h-11 w-full bg-transparent text-sm text-[#091333] outline-none placeholder:text-[#7b879e]"
             onChange={(event) => onChangeSearch(event.target.value)}
             placeholder="Search messages..."
             value={searchValue}
           />
           <button
-            className="h-11 w-11 rounded-xl border border-slate-200 text-slate-500 transition hover:bg-slate-50"
+            className="client-dashboard-link inline-flex h-9 w-9 items-center justify-center rounded-lg transition hover:bg-white"
             aria-controls="advanced-thread-filters"
             aria-expanded={showAdvancedFilters}
             aria-haspopup="true"
             onClick={() => setShowAdvancedFilters((current) => !current)}
             type="button"
           >
-            ≡
+            <SlidersHorizontal aria-hidden="true" className="h-4 w-4" />
           </button>
         </div>
       </div>
 
-      <div className="flex items-center gap-5 border-b border-slate-100 px-4 py-3 text-sm font-medium">
+      <div className="flex flex-wrap items-center gap-2 border-b border-[#edf0f6] px-4 py-3 text-sm font-semibold">
         <button
-          className={filter === "all" ? "text-emerald-700" : "text-slate-500"}
+          className={`rounded-full px-3 py-1.5 transition ${filter === "all" ? "client-dashboard-action-button" : "client-dashboard-link"}`}
           onClick={() => onChangeFilter("all")}
           type="button"
         >
           All
         </button>
         <button
-          className={filter === "unread" ? "text-emerald-700" : "text-slate-500"}
+          className={`rounded-full px-3 py-1.5 transition ${filter === "unread" ? "client-dashboard-action-button" : "client-dashboard-link"}`}
           onClick={() => onChangeFilter("unread")}
           type="button"
         >
-          Unread <span className="ml-1 rounded-full bg-emerald-600 px-1.5 text-xs text-white">{unreadTotal}</span>
+          Unread <span className="ml-1 rounded-full bg-white/20 px-1.5 text-xs">{unreadTotal}</span>
         </button>
         <button
-          className={filter === "resolved" ? "text-emerald-700" : "text-slate-500"}
+          className={`rounded-full px-3 py-1.5 transition ${filter === "resolved" ? "client-dashboard-action-button" : "client-dashboard-link"}`}
           onClick={() => onChangeFilter("resolved")}
           type="button"
         >
           Resolved
         </button>
         <button
-          className={filter === "unresolved" ? "text-emerald-700" : "text-slate-500"}
+          className={`rounded-full px-3 py-1.5 transition ${filter === "unresolved" ? "client-dashboard-action-button" : "client-dashboard-link"}`}
           onClick={() => onChangeFilter("unresolved")}
           type="button"
         >
@@ -194,7 +208,7 @@ function ThreadListPane({
         </button>
         {(filter === "resolved" || filter === "unresolved") ? (
           <button
-            className="ml-auto rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+            className="client-dashboard-link ml-auto rounded-lg px-2 py-1 text-xs font-semibold transition"
             onClick={() => onChangeFilter("all")}
             type="button"
           >
@@ -204,17 +218,20 @@ function ThreadListPane({
       </div>
 
       {showAdvancedFilters ? (
-        <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-2 text-xs" id="advanced-thread-filters" role="group">
-          <span className="text-slate-500">Quick:</span>
+        <div className="flex items-center gap-2 border-b border-[#edf0f6] bg-[#fbfcff] px-4 py-3 text-xs" id="advanced-thread-filters" role="group">
+          <span className="inline-flex items-center gap-1 font-semibold text-[#53617f]">
+            <SlidersHorizontal aria-hidden="true" className="h-3.5 w-3.5" />
+            Quick:
+          </span>
           <button
-            className="rounded-full border border-slate-200 px-2 py-1 text-slate-600 hover:bg-slate-50"
+            className="client-dashboard-link rounded-full px-2 py-1 font-semibold transition"
             onClick={() => onChangeFilter("unread")}
             type="button"
           >
             Only unread
           </button>
           <button
-            className="rounded-full border border-slate-200 px-2 py-1 text-slate-600 hover:bg-slate-50"
+            className="client-dashboard-link rounded-full px-2 py-1 font-semibold transition"
             onClick={() => onChangeFilter("unresolved")}
             type="button"
           >
@@ -223,7 +240,7 @@ function ThreadListPane({
         </div>
       ) : null}
 
-      <div className="max-h-[66vh] divide-y divide-slate-100 overflow-y-auto">
+      <div className="max-h-[66vh] divide-y divide-[#edf0f6] overflow-y-auto">
         {requests.map((request) => {
           const selected = request.id === selectedRequestId;
           const lastComment = request.comments[request.comments.length - 1];
@@ -231,18 +248,18 @@ function ThreadListPane({
           return (
             <button
               className={`w-full px-4 py-4 text-left transition ${
-                selected ? "bg-emerald-50/40" : "hover:bg-slate-50"
+                selected ? "bg-[#eef4fa]" : "hover:bg-[#fbfcff]"
               }`}
               key={request.id}
               onClick={() => onSelectRequest(request.id)}
               type="button"
             >
               <div className="flex items-start justify-between gap-2">
-                <p className="line-clamp-1 text-base font-semibold text-slate-900">{request.title}</p>
-                <p className="text-xs text-slate-500">{formatThreadTime(lastActivity(request))}</p>
+                <p className="line-clamp-1 text-base font-semibold text-[#091333]">{request.title}</p>
+                <p className="text-xs font-medium text-[#53617f]">{formatThreadTime(lastActivity(request))}</p>
               </div>
-              <p className="mt-1 text-sm text-slate-700">{request.requestedBy}</p>
-              <p className="mt-1 line-clamp-1 text-sm text-slate-500">
+              <p className="mt-1 text-sm font-medium text-[#53617f]">{request.requestedBy}</p>
+              <p className="mt-1 line-clamp-1 text-sm text-[#7b879e]">
                 {plainMessageText(lastComment?.message ?? request.description)}
               </p>
               <div className="mt-2 flex items-center justify-between">
@@ -255,13 +272,13 @@ function ThreadListPane({
           );
         })}
       </div>
-      <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3 text-xs text-slate-500">
+      <div className="flex items-center justify-between border-t border-[#edf0f6] px-4 py-3 text-xs font-medium text-[#53617f]">
         <span>
           Page {currentPage} of {Math.max(totalPages, 1)}
         </span>
         <div className="flex gap-2">
           <button
-            className="rounded-lg border border-slate-200 px-2 py-1 disabled:opacity-50"
+            className="client-dashboard-link rounded-lg px-2 py-1 font-semibold disabled:opacity-50"
             disabled={currentPage <= 1}
             onClick={onPrevPage}
             type="button"
@@ -269,7 +286,7 @@ function ThreadListPane({
             Prev
           </button>
           <button
-            className="rounded-lg border border-slate-200 px-2 py-1 disabled:opacity-50"
+            className="client-dashboard-link rounded-lg px-2 py-1 font-semibold disabled:opacity-50"
             disabled={currentPage >= totalPages}
             onClick={onNextPage}
             type="button"
@@ -343,22 +360,22 @@ function ConversationPane({
   }
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-6">
+    <section className={`${inboxPanelClass} overflow-hidden`}>
+      <div className="flex items-start justify-between gap-4 border-b border-[#edf0f6] bg-[#fbfcff] p-6">
         <div>
           <p className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${priorityBadgeClass(request.priority)}`}>
             {request.priority.toUpperCase()} PRIORITY
           </p>
-          <h2 className="mt-3 text-[2rem] font-semibold tracking-tight text-slate-950">{request.title}</h2>
-          <p className="mt-2 text-sm text-slate-500">
+          <h2 className="mt-3 text-[1.7rem] font-semibold tracking-tight text-[#091333]">{request.title}</h2>
+          <p className="mt-2 text-sm text-[#53617f]">
             {request.monthLabel} | Pack ID: {request.id}
           </p>
-          <p className="mt-2 text-sm text-slate-600">{requestGuidance(request)}</p>
+          <p className="mt-2 text-sm leading-6 text-[#53617f]">{requestGuidance(request)}</p>
         </div>
-        <div className="min-w-[200px] rounded-xl border border-slate-200 p-3">
-          <p className="text-xs text-slate-500">Assigned accountant</p>
-          <p className="mt-1 text-sm font-semibold text-slate-900">{assignedAccountantName}</p>
-          <p className="text-xs text-slate-500">{request.requestedBy}</p>
+        <div className="min-w-[200px] rounded-xl border border-[#dce6ef] bg-white p-3 shadow-sm">
+          <p className="text-xs font-semibold text-[#53617f]">Assigned accountant</p>
+          <p className="mt-1 text-sm font-semibold text-[#091333]">{assignedAccountantName}</p>
+          <p className="text-xs text-[#7b879e]">{request.requestedBy}</p>
         </div>
       </div>
 
@@ -372,33 +389,34 @@ function ConversationPane({
               className={`max-w-[78%] rounded-2xl border px-4 py-3 ${
                 comment.role === "client"
                   ? "ml-auto border-emerald-100 bg-emerald-50"
-                  : "border-slate-200 bg-slate-50"
+                  : "border-[#dce6ef] bg-[#fbfcff]"
               }`}
               key={comment.id}
             >
               <div className="mb-1 flex items-center gap-2">
-                <p className="text-sm font-semibold text-slate-900">{comment.author}</p>
-                <p className="text-xs text-slate-500">{formatDateLabel(comment.createdAt)}</p>
+                <p className="text-sm font-semibold text-[#091333]">{comment.author}</p>
+                <p className="text-xs text-[#53617f]">{formatDateLabel(comment.createdAt)}</p>
               </div>
-              {text ? <p className="text-sm text-slate-700">{text}</p> : null}
+              {text ? <p className="text-sm leading-6 text-[#53617f]">{text}</p> : null}
               {attachment ? (
                 <a
-                  className="mt-2 inline-flex rounded-lg border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                  className="client-dashboard-link mt-2 inline-flex items-center gap-2 rounded-lg px-3 py-1 text-xs font-semibold"
                   download={attachment.name}
                   href={attachment.dataUrl}
                 >
+                  <Paperclip aria-hidden="true" className="h-3.5 w-3.5" />
                   Download: {attachment.name}
                 </a>
               ) : null}
-              {status ? <p className="mt-2 text-xs text-slate-500">{status}</p> : null}
+              {status ? <p className="mt-2 text-xs text-[#7b879e]">{status}</p> : null}
             </article>
           );
         })}
       </div>
 
-      <div className="space-y-3 border-t border-slate-100 p-6">
+      <div className="space-y-3 border-t border-[#edf0f6] bg-[#fbfcff] p-6">
         {attachedFile ? (
-          <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+          <div className="rounded-xl border border-[#dce6ef] bg-white px-3 py-2 text-sm text-[#53617f]">
             Attached: {attachedFile.name}
           </div>
         ) : null}
@@ -417,7 +435,8 @@ function ConversationPane({
           </div>
         ) : null}
         <div className="flex gap-3">
-          <label className="inline-flex h-12 cursor-pointer items-center rounded-xl border border-slate-200 px-3 text-sm font-medium text-slate-600 hover:bg-slate-50">
+          <label className="client-dashboard-link inline-flex h-12 cursor-pointer items-center gap-2 rounded-xl px-3 text-sm font-semibold">
+            <Paperclip aria-hidden="true" className="h-4 w-4" />
             Attach
             <input
               className="hidden"
@@ -426,15 +445,24 @@ function ConversationPane({
             />
           </label>
           <input
-            className="h-12 flex-1 rounded-xl border border-slate-200 px-4 text-sm text-slate-900 outline-none ring-brand-300 transition focus:ring-2"
+            className="h-12 flex-1 rounded-xl border border-[#dce6ef] bg-white px-4 text-sm text-[#091333] outline-none ring-brand-300 transition placeholder:text-[#7b879e] focus:ring-2"
             onChange={(event) => setReplyMessage(event.target.value)}
             placeholder="Type your message..."
             value={replyMessage}
           />
-          <Button disabled={!replyMessage.trim() && !attachedFile} onClick={handleSend}>
+          <Button
+            className="client-dashboard-action-button h-12 rounded-xl border-0 px-4 font-semibold ring-0"
+            disabled={!replyMessage.trim() && !attachedFile}
+            onClick={handleSend}
+          >
+            <Send aria-hidden="true" className="h-4 w-4" />
             Send
           </Button>
-          <Button onClick={() => onResolve(request.id)} variant="secondary">
+          <Button
+            className="client-dashboard-action-button h-12 rounded-xl border-0 px-4 font-semibold ring-0"
+            onClick={() => onResolve(request.id)}
+          >
+            <CheckCircle2 aria-hidden="true" className="h-4 w-4" />
             Resolve
           </Button>
         </div>
@@ -501,6 +529,18 @@ export function ClientRequestsPage() {
   }, [filter, orderedRequests, searchValue]);
 
   const totalPages = Math.max(1, Math.ceil(visibleRequests.length / THREADS_PER_PAGE));
+  const openRequestCount = useMemo(
+    () => requests.filter((request) => request.status !== "resolved" && request.status !== "closed").length,
+    [requests],
+  );
+  const resolvedRequestCount = useMemo(
+    () => requests.filter((request) => request.status === "resolved" || request.status === "closed").length,
+    [requests],
+  );
+  const unreadRequestCount = useMemo(
+    () => requests.reduce((sum, request) => sum + unreadFromAccountantCount(request), 0),
+    [requests],
+  );
   const pagedRequests = useMemo(() => {
     const page = Math.min(currentPage, totalPages);
     const start = (page - 1) * THREADS_PER_PAGE;
@@ -567,39 +607,51 @@ export function ClientRequestsPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="client-inbox-page mx-auto max-w-[1280px] space-y-5 pb-8">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-4xl font-semibold tracking-tight text-slate-950">Messages</h1>
-          <p className="mt-2 text-lg text-slate-600">All your conversations with your accountant.</p>
+          <p className="text-[0.78rem] font-semibold uppercase tracking-[0.14em] text-brand-700">
+            Client Inbox
+          </p>
+          <h1 className="mt-1 text-[2.05rem] font-semibold tracking-tight text-[#091333]">Messages</h1>
+          <p className="mt-2 max-w-2xl text-[0.96rem] leading-7 text-[#53617f]">
+            Review accountant follow-ups, reply with context, and keep document requests moving.
+          </p>
         </div>
         <div className="relative flex gap-2">
-          <Button onClick={() => setIsRequestModalOpen(true)} variant="secondary">Request document</Button>
           <Button
+            className="client-dashboard-action-button h-10 rounded-xl border-0 px-4 text-sm font-semibold ring-0 hover:-translate-y-0.5 active:translate-y-px"
+            onClick={() => setIsRequestModalOpen(true)}
+          >
+            <MessageSquare aria-hidden="true" className="h-4 w-4" />
+            Request document
+          </Button>
+          <Button
+            className="client-dashboard-action-button h-10 rounded-xl border-0 px-4 text-sm font-semibold ring-0 hover:-translate-y-0.5 active:translate-y-px"
             onClick={() =>
               navigate(
                 activeRequest
                   ? `/client/documents?requestId=${encodeURIComponent(activeRequest.id)}&from=inbox`
                   : "/client/documents?from=inbox",
               )}
-            variant="secondary"
           >
+            <UploadCloud aria-hidden="true" className="h-4 w-4" />
             Upload document
           </Button>
           <button
-            className="h-10 w-10 rounded-xl border border-slate-200 text-slate-600"
+            className="client-dashboard-action-button inline-flex h-10 w-10 items-center justify-center rounded-xl transition hover:-translate-y-0.5 active:translate-y-px"
             aria-controls="messages-header-menu"
             aria-expanded={showHeaderMenu}
             aria-haspopup="menu"
             onClick={() => setShowHeaderMenu((current) => !current)}
             type="button"
           >
-            ⋮
+            <SlidersHorizontal aria-hidden="true" className="h-4 w-4" />
           </button>
           {showHeaderMenu ? (
-            <div className="absolute right-0 top-20 z-20 w-48 rounded-xl border border-slate-200 bg-white p-2 shadow-lg" id="messages-header-menu" role="menu">
+            <div className="absolute right-0 top-12 z-20 w-48 rounded-xl border border-[#dce6ef] bg-white p-2 shadow-lg" id="messages-header-menu" role="menu">
               <button
-                className="block w-full rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                className="client-dashboard-link block w-full rounded-lg px-3 py-2 text-left text-sm font-semibold"
                 onClick={() => {
                   setFilter("unresolved");
                   setShowHeaderMenu(false);
@@ -610,7 +662,7 @@ export function ClientRequestsPage() {
                 Show unresolved
               </button>
               <button
-                className="block w-full rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                className="client-dashboard-link block w-full rounded-lg px-3 py-2 text-left text-sm font-semibold"
                 onClick={() => {
                   setFilter("resolved");
                   setShowHeaderMenu(false);
@@ -621,7 +673,7 @@ export function ClientRequestsPage() {
                 Show resolved
               </button>
               <button
-                className="block w-full rounded-lg px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                className="client-dashboard-link block w-full rounded-lg px-3 py-2 text-left text-sm font-semibold"
                 onClick={() => {
                   setFilter("all");
                   setShowHeaderMenu(false);
@@ -635,6 +687,25 @@ export function ClientRequestsPage() {
           ) : null}
         </div>
       </header>
+
+      <section className="grid gap-3 md:grid-cols-3">
+        {[
+          { label: "Open threads", value: openRequestCount, helper: "Waiting for action", icon: <Mail aria-hidden="true" className="h-5 w-5" /> },
+          { label: "Unread replies", value: unreadRequestCount, helper: "From accountant", icon: <MessageSquare aria-hidden="true" className="h-5 w-5" /> },
+          { label: "Resolved", value: resolvedRequestCount, helper: "Completed threads", icon: <CheckCircle2 aria-hidden="true" className="h-5 w-5" /> },
+        ].map((metric) => (
+          <section className={`${inboxPanelClass} grid grid-cols-[auto_1fr] items-center gap-3 p-4`} key={metric.label}>
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#eef4fa] text-brand-700 ring-1 ring-[#d7e3ee]">
+              {metric.icon}
+            </div>
+            <div>
+              <p className="text-[0.78rem] font-semibold text-[#53617f]">{metric.label}</p>
+              <p className="mt-1 text-[1.45rem] font-semibold leading-none text-[#091333]">{metric.value}</p>
+              <p className="mt-1 text-[0.78rem] text-[#7b879e]">{metric.helper}</p>
+            </div>
+          </section>
+        ))}
+      </section>
 
       {feedbackNotice ? (
         <FeedbackBanner
@@ -669,11 +740,11 @@ export function ClientRequestsPage() {
           />
         </div>
       ) : (
-        <section className="rounded-2xl border border-slate-200 bg-white px-6 py-10 text-center shadow-sm">
-          <h2 className="text-xl font-semibold text-slate-900">
+        <section className={`${inboxPanelClass} px-6 py-10 text-center`}>
+          <h2 className="text-xl font-semibold text-[#091333]">
             {requests.length > 0 ? "No messages match your filters" : "No messages yet"}
           </h2>
-          <p className="mt-2 text-sm text-slate-600">
+          <p className="mt-2 text-sm text-[#53617f]">
             {requests.length > 0
               ? "Try clearing search or switching back to All."
               : "Your accountant will start threads here when action is needed."}
@@ -684,7 +755,9 @@ export function ClientRequestsPage() {
                 setSearchValue("");
                 setFilter("all");
                 setCurrentPage(1);
-              }} variant="secondary">
+              }}
+              className="client-dashboard-action-button h-10 rounded-xl border-0 px-4 text-sm font-semibold ring-0"
+            >
                 Back to all
               </Button>
             </div>

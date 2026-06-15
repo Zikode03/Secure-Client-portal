@@ -58,7 +58,7 @@ export function DocumentPreviewPane({ document }: DocumentPreviewPaneProps) {
             )}
           </div>
         ) : (
-          <div className="rounded-[1.75rem] border border-slate-200 bg-gradient-to-br from-slate-900 to-slate-700 p-6 text-white shadow-inner">
+          <div className="rounded-[1.75rem] border border-brand-200 bg-brand-700 p-6 text-white shadow-inner">
             <div className="mx-auto max-w-md rounded-[1.75rem] bg-white p-6 text-slate-900 shadow-lg">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
