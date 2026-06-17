@@ -18,6 +18,11 @@ import { getClientFacingComplianceLabel } from "../../utils/compliance";
 import { formatDateLabel } from "../../utils/formatters";
 
 const complianceSnapshotDate = new Date("2026-05-07T00:00:00.000Z");
+const navyCardClass =
+  "border-[#c8d4e6] bg-[#f7faff] shadow-[0_16px_34px_rgba(6,32,68,0.08)]";
+const navyInnerCardClass =
+  "border-[#d7e1ef] bg-white shadow-[0_10px_22px_rgba(6,32,68,0.06)]";
+const navySoftPanelClass = "border-[#d7e1ef] bg-[#eef4fb]";
 
 // Shared shape notes: these types keep UI and data contracts aligned.
 type FeedbackNotice = {
@@ -549,30 +554,26 @@ function InsightCard({ helper, icon, label, tone, value }: InsightCardProps) {
   const toneClasses =
     tone === "emerald"
       ? {
-          icon: "bg-brand-50 text-brand-700 ring-brand-100",
-          value: "text-brand-800",
-          bar: "bg-brand-800",
-          helper: "text-brand-700",
+          icon: "bg-[#e6eef8] text-[#062044] ring-[#c8d4e6]",
+          value: "text-[#062044]",
+          helper: "text-[#53617f]",
         }
       : tone === "amber"
         ? {
-            icon: "bg-brand-50 text-brand-700 ring-brand-100",
-            value: "text-brand-800",
-            bar: "bg-indigo-500",
-            helper: "text-slate-500",
+            icon: "bg-[#e6eef8] text-[#062044] ring-[#c8d4e6]",
+            value: "text-[#062044]",
+            helper: "text-[#53617f]",
           }
         : tone === "rose"
           ? {
-              icon: "bg-slate-50 text-brand-700 ring-slate-200",
-              value: "text-rose-600",
-              bar: "bg-rose-600",
-              helper: "text-brand-700",
+              icon: "bg-[#e6eef8] text-[#062044] ring-[#c8d4e6]",
+              value: "text-[#062044]",
+              helper: "text-[#53617f]",
             }
           : {
-              icon: "bg-brand-50 text-brand-700 ring-brand-100",
-              value: "text-brand-800",
-              bar: "bg-brand-800",
-              helper: "text-brand-700",
+              icon: "bg-[#e6eef8] text-[#062044] ring-[#c8d4e6]",
+              value: "text-[#062044]",
+              helper: "text-[#53617f]",
             };
   const numericValue = Number.parseInt(value, 10);
   const progressWidth = value.endsWith("%")
@@ -580,22 +581,22 @@ function InsightCard({ helper, icon, label, tone, value }: InsightCardProps) {
     : Math.min(Math.max(numericValue * 10, 24), 82);
 
   return (
-    <SurfaceCard className="rounded-lg border-slate-200/90 bg-white px-5 py-4 shadow-[0_10px_26px_rgba(15,23,42,0.045)]">
+    <SurfaceCard className="rounded-lg border-[#c8d4e6] bg-[#f7faff] px-5 py-4 shadow-[0_16px_34px_rgba(6,32,68,0.08)]">
       <div className="grid grid-cols-[2.75rem_1fr] gap-3">
         <div className={cn("flex h-10 w-10 items-center justify-center rounded-full ring-1", toneClasses.icon)}>
           {icon}
         </div>
         <div className="min-w-0">
-          <p className="truncate text-[0.76rem] font-semibold text-brand-800">{label}</p>
+          <p className="truncate text-[0.76rem] font-semibold text-[#062044]">{label}</p>
           <p className={cn("mt-1 text-[2rem] font-semibold leading-none tracking-tight", toneClasses.value)}>
             {value}
           </p>
           <p className={cn("mt-2 truncate text-[0.76rem] font-medium", toneClasses.helper)}>{helper}</p>
         </div>
-        <div className="col-span-2 mt-1 h-1 overflow-hidden rounded-full bg-slate-100">
+        <div className="client-dashboard-progress-track col-span-2 mt-1 h-1.5 overflow-hidden rounded-full">
           <div
-            className={cn("h-full rounded-full", toneClasses.bar)}
-            style={{ width: `${progressWidth}%` }}
+            className="client-dashboard-progress-fill h-1.5 rounded-full"
+            style={{ width: `${Math.max(0, Math.min(progressWidth, 100))}%` }}
           />
         </div>
       </div>
@@ -642,14 +643,14 @@ function PrioritySection({
 
             return (
               <div
-                className="relative overflow-hidden rounded-[1.4rem] border border-slate-200 bg-white px-5 py-5 shadow-[0_8px_18px_rgba(15,23,42,0.04)]"
+                className={cn("relative overflow-hidden rounded-[1.4rem] px-5 py-5", navyInnerCardClass)}
                 key={item.id}
               >
                 <span className={cn("absolute left-0 top-6 h-[4.6rem] w-1.5 rounded-r-full", accentClass)} />
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                   <div className="space-y-2 pl-4">
                     <div className="flex flex-wrap items-center gap-3">
-                      <h3 className="text-[1.05rem] font-semibold text-slate-950">{titleText}</h3>
+                      <h3 className="text-[1.05rem] font-semibold text-[#062044]">{titleText}</h3>
                       <span className={cn("rounded-full px-3 py-1 text-[0.76rem] font-semibold ring-1", badge.className)}>
                         {badge.label}
                       </span>
@@ -1018,11 +1019,11 @@ export function ClientComplianceCentrePage() {
       </section>
 
       <section>
-        <SurfaceCard className="rounded-[1.5rem] border-[#E2E8F0] bg-[#FFFFFF] p-5 shadow-[0_4px_20px_rgba(15,23,42,0.04)]">
+        <SurfaceCard className={cn("rounded-[1.5rem] p-5", navyCardClass)}>
           <div>
             <div>
-              <h2 className="text-[1.08rem] font-semibold text-[#0F172A]">Compliance Calendar</h2>
-              <p className="mt-1 max-w-2xl text-[0.86rem] leading-6 text-[#64748B]">
+              <h2 className="text-[1.08rem] font-semibold text-[#062044]">Compliance Calendar</h2>
+              <p className="mt-1 max-w-2xl text-[0.86rem] leading-6 text-[#53617f]">
                 Track obligations, document expiries, accountant requests, and monthly pack milestones in one compliance view.
               </p>
             </div>
@@ -1053,7 +1054,7 @@ export function ClientComplianceCentrePage() {
           </div>
 
           <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-            <div className="rounded-2xl border border-[#E2E8F0] bg-[#F8FAFC] p-4">
+            <div className={cn("rounded-2xl p-4", navySoftPanelClass)}>
               <div className="flex items-center justify-between gap-3">
                 <button
                   aria-label="Previous month"
@@ -1183,13 +1184,13 @@ export function ClientComplianceCentrePage() {
           </div>
             </div>
 
-            <aside className="rounded-2xl border border-[#E2E8F0] bg-white p-4">
+            <aside className={cn("rounded-2xl p-4", navyInnerCardClass)}>
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[0.78rem] font-semibold uppercase tracking-[0.08em] text-[#64748B]">Event Details</p>
                   <h3 className="mt-1 text-[1.05rem] font-semibold text-[#0F2B5B]">May {selectedCalendarDay}, 2026</h3>
                 </div>
-                <span className="rounded-full bg-[#F8FAFC] px-3 py-1 text-[0.76rem] font-semibold text-[#64748B]">
+                <span className="rounded-full bg-[#e6eef8] px-3 py-1 text-[0.76rem] font-semibold text-[#062044]">
                   {formatCalendarStatusFilter(calendarFilter)}
                 </span>
               </div>
@@ -1200,10 +1201,10 @@ export function ClientComplianceCentrePage() {
                     const classes = getEventStatusClasses(event.status);
 
                     return (
-                      <div className={cn("rounded-xl border bg-white p-4", classes.border)} key={event.id}>
+                      <div className={cn("rounded-xl p-4", navyInnerCardClass, classes.border)} key={event.id}>
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <p className="text-[0.94rem] font-semibold text-[#0F172A]">{event.title}</p>
+                            <p className="text-[0.94rem] font-semibold text-[#062044]">{event.title}</p>
                             <p className="mt-1 text-[0.78rem] text-[#64748B]">{formatEventCategory(event.category)}</p>
                           </div>
                           <span className={cn("rounded-full px-2.5 py-1 text-[0.72rem] font-semibold", classes.badge)}>
@@ -1277,9 +1278,9 @@ export function ClientComplianceCentrePage() {
                     );
                   })
                 ) : (
-                  <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4">
-                    <p className="text-[0.9rem] font-semibold text-[#0F172A]">No events for this day</p>
-                    <p className="mt-1 text-[0.8rem] leading-5 text-[#64748B]">
+                  <div className={cn("rounded-xl p-4", navySoftPanelClass)}>
+                    <p className="text-[0.9rem] font-semibold text-[#062044]">No events for this day</p>
+                    <p className="mt-1 text-[0.8rem] leading-5 text-[#53617f]">
                       Select a date with an event indicator to review compliance obligations, expiring documents, requests, and monthly pack milestones.
                     </p>
                   </div>
@@ -1354,12 +1355,12 @@ export function ClientComplianceCentrePage() {
       </section>
 
       <section>
-        <SurfaceCard className="overflow-hidden rounded-[1.9rem] border-slate-200/90 p-0 shadow-[0_18px_40px_rgba(15,23,42,0.05)]">
-          <div className="border-b border-slate-200 px-6 py-6 lg:px-8">
+        <SurfaceCard className={cn("overflow-hidden rounded-[1.9rem] p-0", navyCardClass)}>
+          <div className="border-b border-[#d7e1ef] px-6 py-6 lg:px-8">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
-                <h2 className="text-[1.12rem] font-semibold text-slate-950">Compliance Priorities</h2>
-                <p className="mt-1 text-[0.86rem] text-slate-500">Documents requiring immediate attention</p>
+                <h2 className="text-[1.12rem] font-semibold text-[#062044]">Compliance Priorities</h2>
+                <p className="mt-1 text-[0.86rem] text-[#53617f]">Documents requiring immediate attention</p>
               </div>
               <Button
                 className="client-dashboard-action-button h-10 rounded-2xl border-0 px-4 text-[0.9rem] font-semibold ring-0 hover:-translate-y-0.5 active:translate-y-px"
@@ -1417,14 +1418,14 @@ export function ClientComplianceCentrePage() {
         </SurfaceCard>
       </section>
 
-      <SurfaceCard className="overflow-hidden rounded-[1.9rem] border-slate-200/90 p-0 shadow-[0_18px_40px_rgba(15,23,42,0.05)]">
-        <div className="border-b border-slate-200 px-6 py-6 lg:px-8">
+      <SurfaceCard className={cn("overflow-hidden rounded-[1.9rem] p-0", navyCardClass)}>
+        <div className="border-b border-[#d7e1ef] px-6 py-6 lg:px-8">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <h2 className="text-[1.12rem] font-semibold text-slate-950">Compliance Health Map</h2>
-              <p className="mt-1 text-[0.86rem] text-slate-500">Stacked category graph by compliance state</p>
+              <h2 className="text-[1.12rem] font-semibold text-[#062044]">Compliance Health Map</h2>
+              <p className="mt-1 text-[0.86rem] text-[#53617f]">Stacked category graph by compliance state</p>
             </div>
-            <div className="flex flex-wrap gap-4 text-[0.82rem] font-medium text-slate-600">
+            <div className="flex flex-wrap gap-4 text-[0.82rem] font-medium text-[#53617f]">
               {healthMapLabel().map((item) => (
                 <div className="flex items-center gap-2" key={item.label}>
                   <span className={cn("h-2.5 w-2.5 rounded-full", item.className)} />
@@ -1436,8 +1437,8 @@ export function ClientComplianceCentrePage() {
         </div>
 
         <div className="px-6 py-6 lg:px-8">
-          <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5">
-            <div className="mb-5 grid grid-cols-[minmax(150px,0.8fr)_minmax(0,2fr)_86px] gap-3 text-[0.72rem] font-semibold uppercase tracking-[0.08em] text-slate-400">
+          <div className={cn("rounded-2xl p-5", navySoftPanelClass)}>
+            <div className="mb-5 grid grid-cols-[minmax(150px,0.8fr)_minmax(0,2fr)_86px] gap-3 text-[0.72rem] font-semibold uppercase tracking-[0.08em] text-[#53617f]">
               <span>Category</span>
               <span>Compliance Distribution</span>
               <span className="text-right">Score</span>
@@ -1452,12 +1453,12 @@ export function ClientComplianceCentrePage() {
 
                 return (
                   <div
-                    className="grid gap-3 rounded-xl border border-slate-200 bg-white p-4 lg:grid-cols-[minmax(150px,0.8fr)_minmax(0,2fr)_86px] lg:items-center"
+                    className={cn("grid gap-3 rounded-xl p-4 lg:grid-cols-[minmax(150px,0.8fr)_minmax(0,2fr)_86px] lg:items-center", navyInnerCardClass)}
                     key={category.id}
                   >
                     <div className="min-w-0">
-                      <h3 className="truncate text-[0.95rem] font-semibold text-slate-950">{category.title}</h3>
-                      <p className="mt-1 text-[0.76rem] text-slate-500">{category.total} tracked items</p>
+                      <h3 className="truncate text-[0.95rem] font-semibold text-[#062044]">{category.title}</h3>
+                      <p className="mt-1 text-[0.76rem] text-[#53617f]">{category.total} tracked items</p>
                     </div>
 
                     <div>
@@ -1523,13 +1524,13 @@ export function ClientComplianceCentrePage() {
         </div>
       </SurfaceCard>
 
-      <SurfaceCard className="overflow-hidden rounded-[1.5rem] border-slate-200/90 bg-white p-0 shadow-[0_18px_42px_rgba(15,23,42,0.055)]">
+      <SurfaceCard className={cn("overflow-hidden rounded-[1.5rem] p-0", navyCardClass)}>
         <div className="px-6 py-6 lg:px-8">
           <h2 className="text-[2rem] font-semibold tracking-tight text-brand-800">Compliance Report</h2>
-          <p className="mt-2 text-[1rem] text-slate-600">
+          <p className="mt-2 text-[1rem] text-[#53617f]">
             One export that summarises readiness, expiries, missing records, and controlled history.
           </p>
-          <div className="mt-5 h-px bg-slate-200" />
+          <div className="mt-5 h-px bg-[#d7e1ef]" />
 
           <div className="mt-6 rounded-[1.15rem] bg-[linear-gradient(135deg,#06235a_0%,#0a2f66_52%,#06245a_100%)] px-6 py-6 text-white shadow-[0_16px_32px_rgba(10,47,102,0.22)]">
             <div className="grid gap-6 lg:grid-cols-[1fr_auto_0.82fr] lg:items-center">
@@ -1568,16 +1569,16 @@ export function ClientComplianceCentrePage() {
           </div>
 
           <div className="mt-6">
-            <div className="rounded-[1.15rem] border border-slate-200 bg-white p-5">
+            <div className={cn("rounded-[1.15rem] p-5", navyInnerCardClass)}>
                 <p className="text-[1rem] font-semibold text-brand-800">Report Coverage</p>
-                <div className="mt-3 divide-y divide-slate-100">
+                <div className="mt-3 divide-y divide-[#d7e1ef]">
                   {[
                     { label: "Compliance Areas", value: String(healthMap.length) },
                     { label: "Document Types", value: String(data.categoryGroups.reduce((sum, group) => sum + group.documents.length, 0)) },
                     { label: "Time Period Covered", value: "May 2025 - May 2026" },
                   ].map((item) => (
                     <div className="flex items-center justify-between gap-4 py-3 text-[0.9rem]" key={item.label}>
-                      <span className="text-slate-600">{item.label}</span>
+                      <span className="text-[#53617f]">{item.label}</span>
                       <span className="font-semibold text-brand-800">{item.value}</span>
                     </div>
                   ))}

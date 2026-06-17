@@ -13,7 +13,6 @@ import { DocumentPreviewPane } from "../../components/workflow/DocumentPreviewPa
 import { RequestBoard } from "../../components/workflow/RequestBoard";
 import { Button } from "../../components/ui/Button";
 import { Modal } from "../../components/ui/Modal";
-import { PageHeader } from "../../components/ui/PageHeader";
 import { ProgressBar } from "../../components/ui/ProgressBar";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
@@ -28,6 +27,14 @@ const workspaceTabs = [
   { id: "signed_documents", label: "Signed Documents" },
   { id: "compliance_record", label: "Compliance Record" },
 ] as const;
+
+const navyPanelClass =
+  "rounded-2xl border border-[#dce6ef] bg-white shadow-[0_16px_38px_rgba(4,24,52,0.08)]";
+const navySoftPanelClass = "rounded-2xl border border-[#dce6ef] bg-[#f7faff]";
+const navyButtonClass =
+  "client-dashboard-action-button inline-flex items-center justify-center rounded-lg border-0 font-bold ring-0";
+const navySecondaryButtonClass =
+  "border border-[#cdd8ea] bg-white text-[#091333] shadow-[0_8px_18px_rgba(4,24,52,0.05)] hover:bg-[#f8fbff]";
 
 // Shared shape notes: these types keep UI and data contracts aligned.
 type WorkspaceTab = (typeof workspaceTabs)[number]["id"];
@@ -407,56 +414,107 @@ export function AccountantClientWorkspacePage() {
 
 // Render output: this is the visual state users interact with.
   return (
-    <div className="space-y-6">
-      <PageHeader
-        actions={
-          <>
-            <Button onClick={() => navigate(`/firm/documents?client=${workspace.client.id}`)} variant="secondary">
+    <div className="space-y-6 text-[#091333]">
+      <section className="relative overflow-hidden rounded-2xl border border-[#dce6ef] bg-[linear-gradient(135deg,#062044_0%,#0a2f66_58%,#0b4f5f_100%)] p-5 text-white shadow-[0_24px_60px_rgba(4,24,52,0.18)] md:p-6">
+        <div className="relative z-10 flex flex-wrap items-start justify-between gap-5">
+          <div className="max-w-3xl">
+            <p className="text-[0.72rem] font-bold uppercase tracking-[0.18em] text-white/72">
+              Accountant Client Workspace
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <h1 className="text-2xl font-semibold tracking-tight text-white md:text-3xl">
+                {workspace.client.clientName}
+              </h1>
+              <StatusBadge status={workspace.client.status} />
+            </div>
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-white/78">
+              Keep this client's month pack, document review, compliance, requests, messages, and audit trail in one accountable workspace.
+            </p>
+            <div className="mt-5 flex flex-wrap gap-2 text-[0.78rem] font-semibold text-white/82">
+              <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1">
+                {workspace.client.industry}
+              </span>
+              <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1">
+                Assigned to {workspace.client.assignedAccountant}
+              </span>
+              <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1">
+                {workspace.client.deadlinePolicy}
+              </span>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              className={cn(navySecondaryButtonClass, "h-10 rounded-lg px-4 text-sm")}
+              onClick={() => navigate(`/firm/documents?client=${workspace.client.id}`)}
+              variant="secondary"
+            >
               Open document centre
             </Button>
-            <Button onClick={() => navigate("/firm/inbox")}>Open inbox</Button>
-          </>
-        }
-        description="This client workspace keeps the month pack, document review, compliance, requests, messages, and audit trail in one accountable place."
-        eyebrow="Accountant client workspace"
-        title={workspace.client.clientName}
-      />
+            <Button
+              className={cn(navyButtonClass, "h-10 px-4 text-sm")}
+              onClick={() => navigate("/firm/inbox")}
+            >
+              Open inbox
+            </Button>
+          </div>
+        </div>
+      </section>
 
       {feedbackMessage ? (
-        <div className="rounded-[1.75rem] border border-brand-100 bg-brand-50 px-5 py-4 text-sm text-brand-700">
+        <div className="rounded-2xl border border-[#cdd8ea] bg-[#f7faff] px-5 py-4 text-sm font-semibold text-[#0a2f66]">
           {feedbackMessage}
         </div>
       ) : null}
 
-      <SurfaceCard className="space-y-5">
+      <SurfaceCard className={cn(navyPanelClass, "space-y-5 p-0")}>
+        <div className="border-b border-[#e6edf4] bg-[#fbfdff] px-5 pb-5 pt-5">
         <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-3">
-              <h2 className="text-xl font-semibold text-brand-700">{workspace.client.clientName}</h2>
+              <h2 className="text-xl font-semibold text-[#091333]">{workspace.client.clientName}</h2>
               <StatusBadge status={workspace.client.status} />
             </div>
-            <p className="text-sm text-brand-700/75">
+            <p className="text-sm font-medium text-[#53617f]">
               {workspace.client.industry} / {workspace.client.assignedAccountant} / {workspace.client.deadlinePolicy}
             </p>
           </div>
-          <div className="space-y-2 rounded-[1.5rem] border border-brand-100 bg-brand-50 p-4">
-            <div className="flex items-center justify-between text-sm text-brand-700/80">
+          <div className={cn(navySoftPanelClass, "space-y-2 p-4")}>
+            <div className="flex items-center justify-between text-sm font-semibold text-[#091333]">
               <span>Month pack progress</span>
               <span>{workspace.monthPack.progressPercent}%</span>
             </div>
             <ProgressBar value={workspace.monthPack.progressPercent} />
           </div>
         </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2 px-5">
+          {workspaceTabs.map((tab) => (
+            <button
+              className={cn(
+                "rounded-lg px-3 py-2 text-sm font-bold transition",
+                activeTab === tab.id
+                  ? "bg-[#062044] text-white shadow-[0_10px_22px_rgba(6,32,68,0.22)]"
+                  : "bg-[#eef4fa] text-[#53617f] hover:bg-[#dfeaf5] hover:text-[#091333]",
+              )}
+              key={tab.id}
+              onClick={() => switchTab(tab.id)}
+              type="button"
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
         {activeTab !== "packs" ? (
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-brand-100 bg-brand-50 px-3 py-2.5">
-            <p className="text-sm text-brand-700/80">
+          <div className="mx-5 mb-5 flex items-center justify-between gap-3 rounded-xl border border-[#dce6ef] bg-[#f7faff] px-3 py-2.5">
+            <p className="text-sm font-medium text-[#53617f]">
               Viewing:{" "}
-              <span className="font-semibold text-brand-700">
+              <span className="font-bold text-[#091333]">
                 {workspaceTabs.find((tab) => tab.id === activeTab)?.label ?? "Section"}
               </span>
             </p>
-            <Button className="h-8 rounded-lg px-3 text-xs" onClick={() => switchTab("packs")} size="sm" variant="secondary">
+            <Button className={cn(navySecondaryButtonClass, "h-8 rounded-lg px-3 text-xs")} onClick={() => switchTab("packs")} size="sm" variant="secondary">
               Back to Monthly Packs
             </Button>
           </div>
@@ -464,21 +522,21 @@ export function AccountantClientWorkspacePage() {
       </SurfaceCard>
 
       {["packs", "bank_statement", "invoices", "signed_documents", "compliance_record"].includes(activeTab) ? (
-        <SurfaceCard className="space-y-4">
+        <SurfaceCard className={cn(navyPanelClass, "space-y-4")}>
           <div>
-            <h2 className="text-xl font-semibold text-brand-700">Client monthly pack</h2>
-            <p className="mt-1 text-sm text-brand-700/75">
+            <h2 className="text-xl font-semibold text-[#091333]">Client monthly pack</h2>
+            <p className="mt-1 text-sm font-medium text-[#53617f]">
               Review the structured slots and focus on anything still missing, rejected, or pending.
             </p>
           </div>
-          <div className="overflow-hidden rounded-2xl border border-brand-100 bg-white">
-            <div className="hidden border-b border-brand-100 bg-brand-50 px-5 py-3 text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-brand-700/60 lg:grid lg:grid-cols-[minmax(0,1fr)_120px_140px_220px] lg:gap-4">
+          <div className="overflow-hidden rounded-2xl border border-[#dce6ef] bg-white">
+            <div className="hidden border-b border-[#e6edf4] bg-[#f7faff] px-5 py-3 text-[0.68rem] font-bold uppercase tracking-[0.12em] text-[#73809a] lg:grid lg:grid-cols-[minmax(0,1fr)_120px_140px_220px] lg:gap-4">
               <div>Document slot</div>
               <div>Required</div>
               <div>Due date</div>
               <div className="text-right">Pack progress</div>
             </div>
-            <div className="divide-y divide-brand-100/70">
+            <div className="divide-y divide-[#edf2f7]">
             {visiblePackSlots.map((slot) => (
               (() => {
                 const slotDueDate = slot.dueDate ?? workspace.monthPack.dueDate;
@@ -512,26 +570,26 @@ export function AccountantClientWorkspacePage() {
 
                 return (
                   <div
-                    className="grid gap-3 px-4 py-4 lg:grid-cols-[minmax(0,1fr)_120px_140px_220px] lg:items-center lg:gap-4 lg:px-5"
+                    className="grid gap-3 px-4 py-4 transition hover:bg-[#f9fbfe] lg:grid-cols-[minmax(0,1fr)_120px_140px_220px] lg:items-center lg:gap-4 lg:px-5"
                     key={slot.id}
                   >
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-brand-700">{slot.documentType}</p>
-                      <p className="mt-1 line-clamp-2 text-sm text-brand-700/75">{slot.description}</p>
+                      <p className="text-sm font-bold text-[#091333]">{slot.documentType}</p>
+                      <p className="mt-1 line-clamp-2 text-sm font-medium text-[#53617f]">{slot.description}</p>
                     </div>
                     <div>
-                      <p className="text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-brand-700/60 lg:hidden">
+                      <p className="text-[0.7rem] font-bold uppercase tracking-[0.08em] text-[#73809a] lg:hidden">
                         Required
                       </p>
-                      <p className="mt-1 text-sm font-medium text-brand-700 lg:mt-0">
+                      <p className="mt-1 text-sm font-semibold text-[#091333] lg:mt-0">
                         {slot.isRequired ? "Yes" : "Optional"}
                       </p>
                     </div>
                     <div>
-                      <p className="text-[0.7rem] font-semibold uppercase tracking-[0.08em] text-brand-700/60 lg:hidden">
+                      <p className="text-[0.7rem] font-bold uppercase tracking-[0.08em] text-[#73809a] lg:hidden">
                         Due date
                       </p>
-                      <p className="mt-1 text-sm font-medium text-brand-700 lg:mt-0">
+                      <p className="mt-1 text-sm font-semibold text-[#091333] lg:mt-0">
                         {formatDateLabel(slotDueDate)}
                       </p>
                       {dueDeltaDays < 0 ? (
@@ -551,7 +609,7 @@ export function AccountantClientWorkspacePage() {
                       </span>
                       {activeTab === "packs" ? (
                         <Button
-                          className="h-8 rounded-lg px-3 text-xs"
+                          className={cn(navySecondaryButtonClass, "h-8 rounded-lg px-3 text-xs")}
                           onClick={() => handlePackSlotOpen(slot.documentType)}
                           size="sm"
                           variant="secondary"
@@ -569,28 +627,28 @@ export function AccountantClientWorkspacePage() {
           {activePackDocumentType ? (
             <div className="space-y-3">
               <div>
-                <h3 className="text-base font-semibold text-brand-700">
+                <h3 className="text-base font-semibold text-[#091333]">
                   Submitted {activePackDocumentType.toLowerCase()} files ({workspace.monthPack.monthLabel})
                 </h3>
-                <p className="mt-1 text-sm text-brand-700/75">
+                <p className="mt-1 text-sm font-medium text-[#53617f]">
                   These are the client files currently attached to this pack for the selected month.
                 </p>
               </div>
               {submittedPackDocuments.length > 0 ? (
-                <div className="overflow-hidden rounded-2xl border border-brand-100 bg-white">
-                  <div className="divide-y divide-brand-100/70">
+                <div className="overflow-hidden rounded-2xl border border-[#dce6ef] bg-white">
+                  <div className="divide-y divide-[#edf2f7]">
                     {submittedPackDocuments.map((document) => (
                       <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3" key={document.id}>
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-brand-700">{document.fileName}</p>
-                          <p className="mt-1 text-xs text-brand-700/70">
+                          <p className="truncate text-sm font-bold text-[#091333]">{document.fileName}</p>
+                          <p className="mt-1 text-xs font-medium text-[#53617f]">
                             {document.documentType} / {document.monthLabel}
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
                           <StatusBadge status={document.status} />
                           <Button
-                            className="h-8 rounded-lg px-3 text-xs"
+                            className={cn(navySecondaryButtonClass, "h-8 rounded-lg px-3 text-xs")}
                             onClick={() => openDocument(document.id)}
                             size="sm"
                             variant="secondary"
@@ -603,7 +661,7 @@ export function AccountantClientWorkspacePage() {
                   </div>
                 </div>
               ) : (
-                <div className="rounded-xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-700/80">
+                <div className="rounded-xl border border-[#dce6ef] bg-[#f7faff] px-4 py-3 text-sm font-medium text-[#53617f]">
                   No client files have been submitted for this pack in {workspace.monthPack.monthLabel} yet.
                 </div>
               )}
@@ -614,10 +672,10 @@ export function AccountantClientWorkspacePage() {
 
       {(activeTab as string) === "documents" ? (
         <section className="mx-auto w-full max-w-[1040px] space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-brand-100 bg-white px-4 py-3">
+          <div className={cn(navyPanelClass, "flex flex-wrap items-center justify-between gap-3 px-4 py-3")}>
             <div>
-              <h2 className="text-xl font-semibold text-brand-700">Documents</h2>
-              <p className="mt-1 text-sm text-brand-700/75">
+              <h2 className="text-xl font-semibold text-[#091333]">Documents</h2>
+              <p className="mt-1 text-sm font-medium text-[#53617f]">
                 Open a document to inspect the file, review context, and leave controlled feedback.
               </p>
             </div>
@@ -633,20 +691,20 @@ export function AccountantClientWorkspacePage() {
           ) : null}
 
           {acceptedDocuments.length > 0 ? (
-            <SurfaceCard className="overflow-hidden p-0">
-              <div className="grid grid-cols-[minmax(0,1.25fr)_180px_120px_auto] gap-4 border-b border-brand-100 bg-brand-50 px-5 py-3 text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-brand-700/60">
+            <SurfaceCard className={cn(navyPanelClass, "overflow-hidden p-0")}>
+              <div className="grid grid-cols-[minmax(0,1.25fr)_180px_120px_auto] gap-4 border-b border-[#e6edf4] bg-[#f7faff] px-5 py-3 text-[0.7rem] font-bold uppercase tracking-[0.12em] text-[#73809a]">
                 <div>File</div>
                 <div>Type/Month</div>
                 <div>Status</div>
                 <div>Action</div>
               </div>
-              <div className="divide-y divide-brand-100/60">
+              <div className="divide-y divide-[#edf2f7]">
                 {acceptedDocuments.map((document) => (
                   <div className="grid grid-cols-[minmax(0,1.25fr)_180px_120px_auto] items-center gap-4 px-5 py-3" key={document.id}>
-                    <p className="truncate text-sm font-medium text-brand-700">{document.fileName}</p>
-                    <p className="text-sm text-brand-700/75">{document.documentType} / {document.monthLabel}</p>
+                    <p className="truncate text-sm font-bold text-[#091333]">{document.fileName}</p>
+                    <p className="text-sm font-medium text-[#53617f]">{document.documentType} / {document.monthLabel}</p>
                     <StatusBadge status={document.status} />
-                    <Button className="h-8 rounded-lg px-3 text-xs" onClick={() => openDocument(document.id)} size="sm" variant="secondary">
+                    <Button className={cn(navySecondaryButtonClass, "h-8 rounded-lg px-3 text-xs")} onClick={() => openDocument(document.id)} size="sm" variant="secondary">
                       Open
                     </Button>
                   </div>
@@ -671,17 +729,17 @@ export function AccountantClientWorkspacePage() {
             </div>
           ) : null}
           {selectedDocument ? (
-            <section className="space-y-3 rounded-xl border border-brand-100 bg-brand-50/55 p-4">
+            <section className="space-y-3 rounded-xl border border-[#dce6ef] bg-[#f7faff] p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-sm font-semibold text-brand-700">Review actions (workspace only)</p>
+                <p className="text-sm font-semibold text-[#091333]">Review actions (workspace only)</p>
                 <StatusBadge status={selectedDocument.status} />
               </div>
               <label className="block space-y-1">
-                <span className="text-xs font-medium uppercase tracking-[0.08em] text-brand-700/70">
+                <span className="text-xs font-bold uppercase tracking-[0.08em] text-[#73809a]">
                   Reason (required for return/reject)
                 </span>
                 <textarea
-                  className="min-h-[88px] w-full rounded-lg border border-brand-100 bg-white px-3 py-2 text-sm text-brand-700 outline-none focus:border-brand-300 focus:ring-2 focus:ring-brand-100"
+                  className="min-h-[88px] w-full rounded-lg border border-[#dce6ef] bg-white px-3 py-2 text-sm text-[#091333] outline-none focus:border-[#0a2f66] focus:ring-2 focus:ring-[#dbe7f1]"
                   disabled={selectedDocument.status === "draft"}
                   onChange={(event) => setDecisionReason(event.target.value)}
                   placeholder="Add review notes for the client or team..."
@@ -699,7 +757,7 @@ export function AccountantClientWorkspacePage() {
                   Mark under review
                 </Button>
                 <Button
-                  className="h-9 rounded-lg border border-brand-200 bg-white text-brand-700 hover:bg-brand-50"
+                  className={cn(navySecondaryButtonClass, "h-9 rounded-lg")}
                   disabled={selectedDocument.status === "draft"}
                   onClick={() => handleWorkspaceDocumentDecision("request_reupload")}
                   size="sm"
@@ -717,7 +775,7 @@ export function AccountantClientWorkspacePage() {
                   Reject
                 </Button>
                 <Button
-                  className="h-9 rounded-lg bg-emerald-600 text-white hover:bg-emerald-500"
+                  className={cn(navyButtonClass, "h-9 rounded-lg")}
                   disabled={selectedDocument.status === "draft"}
                   onClick={() => handleWorkspaceDocumentDecision("accepted")}
                   size="sm"
@@ -726,7 +784,7 @@ export function AccountantClientWorkspacePage() {
                 </Button>
               </div>
               {decisionMessage ? (
-                <p className="text-sm text-brand-700">{decisionMessage}</p>
+                <p className="text-sm font-medium text-[#0a2f66]">{decisionMessage}</p>
               ) : null}
             </section>
           ) : null}

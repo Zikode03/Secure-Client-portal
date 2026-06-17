@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   CheckCircle2,
-  Mail,
   MessageSquare,
   Paperclip,
   Search,
@@ -21,13 +20,13 @@ import { useClientWorkflow } from "../../hooks/useClientWorkflow";
 import type { WorkflowRequest } from "../../types/portal";
 import { formatDateLabel } from "../../utils/formatters";
 
-type ThreadFilter = "all" | "unread" | "resolved" | "unresolved";
+type ThreadFilter = "all" | "unread" | "high_priority" | "resolved" | "unresolved";
 const THREADS_PER_PAGE = 8;
 const ATTACHMENT_PREFIX = "[[attachment:";
 const ATTACHMENT_SUFFIX = "]]";
 
 const inboxPanelClass =
-  "rounded-2xl border border-[#dce6ef] bg-white shadow-[0_16px_38px_rgba(4,24,52,0.08)]";
+  "rounded-2xl border border-[#dce6ef] bg-white shadow-[0_18px_44px_rgba(4,24,52,0.07)]";
 
 interface ParsedAttachment {
   name: string;
@@ -72,12 +71,31 @@ function plainMessageText(message: string) {
 
 function priorityBadgeClass(priority: WorkflowRequest["priority"]) {
   if (priority === "high") {
-    return "bg-amber-100 text-amber-800";
+    return "bg-red-50 text-red-700";
   }
   if (priority === "medium") {
-    return "bg-brand-100 text-brand-700";
+    return "bg-amber-50 text-amber-700";
   }
   return "bg-slate-100 text-slate-700";
+}
+
+function requestIconClass(priority: WorkflowRequest["priority"], isResolved: boolean) {
+  if (isResolved) {
+    return "bg-emerald-50 text-emerald-600";
+  }
+  if (priority === "medium") {
+    return "bg-amber-50 text-amber-600";
+  }
+  return "bg-blue-50 text-blue-700";
+}
+
+function initials(value: string) {
+  return value
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "DM";
 }
 
 function unreadFromAccountantCount(request: WorkflowRequest) {
@@ -100,17 +118,24 @@ function formatThreadTime(value: string) {
   return `${date.getHours().toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")}`;
 }
 
-function requestGuidance(request: WorkflowRequest) {
-  if (request.requestType === "renewal_request") {
-    return "Renewal request: upload the latest compliance renewal files with date evidence.";
+function formatShortThreadTime(value: string) {
+  const date = new Date(value);
+  const now = new Date();
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+
+  if (date.toDateString() === now.toDateString()) {
+    return new Intl.DateTimeFormat("en-ZA", {
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(date);
   }
-  if (request.requestType === "re_upload_request") {
-    return "Re-upload request: replace the rejected version in Documents or Monthly Packs.";
+
+  if (date.toDateString() === yesterday.toDateString()) {
+    return "Yesterday";
   }
-  if (request.requestType === "clarification_request") {
-    return "Clarification request: reply in this thread with details the accountant asked for.";
-  }
-  return "Monthly-pack follow-up: upload or correct the required supporting document.";
+
+  return formatDateLabel(value);
 }
 
 function messageStatus(request: WorkflowRequest, commentIndex: number) {
@@ -150,63 +175,52 @@ function ThreadListPane({
   onNextPage: () => void;
   onPrevPage: () => void;
 }) {
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const unreadTotal = requests.reduce((sum, request) => sum + unreadFromAccountantCount(request), 0);
 
   return (
-    <section className={`${inboxPanelClass} overflow-hidden`}>
+    <section className={`${inboxPanelClass} flex h-full min-h-[720px] flex-col overflow-hidden`}>
       <div className="border-b border-[#edf0f6] p-4">
-        <div className="flex items-center gap-2 rounded-xl border border-[#dce6ef] bg-[#fbfcff] px-3 shadow-sm">
-          <Search aria-hidden="true" className="h-4 w-4 text-[#53617f]" />
+        <div className="flex items-center gap-3 rounded-xl border border-[#dce6ef] bg-white px-4 shadow-sm">
+          <Search aria-hidden="true" className="h-5 w-5 text-[#53617f]" />
           <input
-            className="h-11 w-full bg-transparent text-sm text-[#091333] outline-none placeholder:text-[#7b879e]"
+            className="h-12 w-full bg-transparent text-sm text-[#091333] outline-none placeholder:text-[#7b879e]"
             onChange={(event) => onChangeSearch(event.target.value)}
             placeholder="Search messages..."
             value={searchValue}
           />
-          <button
-            className="client-dashboard-link inline-flex h-9 w-9 items-center justify-center rounded-lg transition hover:bg-white"
-            aria-controls="advanced-thread-filters"
-            aria-expanded={showAdvancedFilters}
-            aria-haspopup="true"
-            onClick={() => setShowAdvancedFilters((current) => !current)}
-            type="button"
-          >
-            <SlidersHorizontal aria-hidden="true" className="h-4 w-4" />
-          </button>
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 border-b border-[#edf0f6] px-4 py-3 text-sm font-semibold">
+      <div className="flex flex-nowrap items-center gap-2 border-b border-[#edf0f6] px-4 py-3 text-sm font-semibold">
         <button
-          className={`rounded-full px-3 py-1.5 transition ${filter === "all" ? "client-dashboard-action-button" : "client-dashboard-link"}`}
+          className={`shrink-0 rounded-lg px-3.5 py-2 transition ${filter === "all" ? "bg-[#061b41] text-white shadow-[0_10px_20px_rgba(6,27,65,0.2)]" : "text-[#0a2f66] hover:bg-[#f4f8fb]"}`}
           onClick={() => onChangeFilter("all")}
           type="button"
         >
           All
         </button>
         <button
-          className={`rounded-full px-3 py-1.5 transition ${filter === "unread" ? "client-dashboard-action-button" : "client-dashboard-link"}`}
+          className={`shrink-0 rounded-lg px-3.5 py-2 transition ${filter === "unread" ? "bg-[#061b41] text-white shadow-[0_10px_20px_rgba(6,27,65,0.2)]" : "text-[#0a2f66] hover:bg-[#f4f8fb]"}`}
           onClick={() => onChangeFilter("unread")}
           type="button"
         >
           Unread <span className="ml-1 rounded-full bg-white/20 px-1.5 text-xs">{unreadTotal}</span>
         </button>
         <button
-          className={`rounded-full px-3 py-1.5 transition ${filter === "resolved" ? "client-dashboard-action-button" : "client-dashboard-link"}`}
+          className={`shrink-0 rounded-lg px-3.5 py-2 transition ${filter === "high_priority" ? "bg-[#061b41] text-white shadow-[0_10px_20px_rgba(6,27,65,0.2)]" : "text-[#0a2f66] hover:bg-[#f4f8fb]"}`}
+          onClick={() => onChangeFilter("high_priority")}
+          type="button"
+        >
+          High Priority
+        </button>
+        <button
+          className={`shrink-0 rounded-lg px-3.5 py-2 transition ${filter === "resolved" ? "bg-[#061b41] text-white shadow-[0_10px_20px_rgba(6,27,65,0.2)]" : "text-[#0a2f66] hover:bg-[#f4f8fb]"}`}
           onClick={() => onChangeFilter("resolved")}
           type="button"
         >
           Resolved
         </button>
-        <button
-          className={`rounded-full px-3 py-1.5 transition ${filter === "unresolved" ? "client-dashboard-action-button" : "client-dashboard-link"}`}
-          onClick={() => onChangeFilter("unresolved")}
-          type="button"
-        >
-          Unresolved
-        </button>
-        {(filter === "resolved" || filter === "unresolved") ? (
+        {(filter === "resolved" || filter === "unresolved" || filter === "high_priority") ? (
           <button
             className="client-dashboard-link ml-auto rounded-lg px-2 py-1 text-xs font-semibold transition"
             onClick={() => onChangeFilter("all")}
@@ -217,81 +231,68 @@ function ThreadListPane({
         ) : null}
       </div>
 
-      {showAdvancedFilters ? (
-        <div className="flex items-center gap-2 border-b border-[#edf0f6] bg-[#fbfcff] px-4 py-3 text-xs" id="advanced-thread-filters" role="group">
-          <span className="inline-flex items-center gap-1 font-semibold text-[#53617f]">
-            <SlidersHorizontal aria-hidden="true" className="h-3.5 w-3.5" />
-            Quick:
-          </span>
-          <button
-            className="client-dashboard-link rounded-full px-2 py-1 font-semibold transition"
-            onClick={() => onChangeFilter("unread")}
-            type="button"
-          >
-            Only unread
-          </button>
-          <button
-            className="client-dashboard-link rounded-full px-2 py-1 font-semibold transition"
-            onClick={() => onChangeFilter("unresolved")}
-            type="button"
-          >
-            Needs action
-          </button>
-        </div>
-      ) : null}
-
-      <div className="max-h-[66vh] divide-y divide-[#edf0f6] overflow-y-auto">
+      <div className="min-h-0 flex-1 divide-y divide-[#edf0f6] overflow-y-auto">
         {requests.map((request) => {
           const selected = request.id === selectedRequestId;
           const lastComment = request.comments[request.comments.length - 1];
           const unread = unreadFromAccountantCount(request);
+          const isResolved = request.status === "resolved" || request.status === "closed";
           return (
             <button
-              className={`w-full px-4 py-4 text-left transition ${
-                selected ? "bg-[#eef4fa]" : "hover:bg-[#fbfcff]"
+              className={`relative grid w-full grid-cols-[auto_1fr] gap-3 px-4 py-4 text-left transition ${
+                selected ? "bg-[#f5f8ff]" : "hover:bg-[#fbfcff]"
               }`}
               key={request.id}
               onClick={() => onSelectRequest(request.id)}
               type="button"
             >
-              <div className="flex items-start justify-between gap-2">
-                <p className="line-clamp-1 text-base font-semibold text-[#091333]">{request.title}</p>
-                <p className="text-xs font-medium text-[#53617f]">{formatThreadTime(lastActivity(request))}</p>
-              </div>
-              <p className="mt-1 text-sm font-medium text-[#53617f]">{request.requestedBy}</p>
-              <p className="mt-1 line-clamp-1 text-sm text-[#7b879e]">
-                {plainMessageText(lastComment?.message ?? request.description)}
-              </p>
-              <div className="mt-2 flex items-center justify-between">
-                <span className={`rounded-full px-2 py-0.5 text-[0.68rem] font-semibold ${priorityBadgeClass(request.priority)}`}>
-                  {request.priority.toUpperCase()}
-                </span>
-                {unread > 0 ? <span className="text-xs font-semibold text-emerald-700">{unread} new</span> : null}
+              {selected ? <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-blue-600" /> : null}
+              <span className={`mt-1 flex h-11 w-11 items-center justify-center rounded-full ${requestIconClass(request.priority, isResolved)}`}>
+                {isResolved ? <CheckCircle2 aria-hidden="true" className="h-5 w-5" /> : <MessageSquare aria-hidden="true" className="h-5 w-5" />}
+              </span>
+              <div className="min-w-0">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="line-clamp-1 text-[0.94rem] font-semibold text-[#091333]">{request.title}</p>
+                  <p className="shrink-0 text-xs font-medium text-[#53617f]">{formatShortThreadTime(lastActivity(request))}</p>
+                </div>
+                <p className="mt-1 text-sm font-medium text-[#394a78]">{request.requestedBy}</p>
+                <p className="mt-1 line-clamp-1 text-sm text-[#53617f]">
+                  {plainMessageText(lastComment?.message ?? request.description)}
+                </p>
+                <div className="mt-3 flex items-center justify-between gap-2">
+                  <span className={`rounded-full px-3 py-1 text-[0.68rem] font-semibold ${priorityBadgeClass(request.priority)}`}>
+                    {request.priority.toUpperCase()} PRIORITY
+                  </span>
+                  {unread > 0 ? <span className="shrink-0 text-xs font-semibold text-emerald-700">{unread} new</span> : null}
+                </div>
               </div>
             </button>
           );
         })}
       </div>
-      <div className="flex items-center justify-between border-t border-[#edf0f6] px-4 py-3 text-xs font-medium text-[#53617f]">
+      <div className="flex min-h-[96px] items-center justify-between border-t border-[#edf0f6] px-4 py-5 text-xs font-medium text-[#53617f]">
         <span>
-          Page {currentPage} of {Math.max(totalPages, 1)}
+          Showing {requests.length ? `1 to ${requests.length}` : "0"} of {requests.length}
         </span>
         <div className="flex gap-2">
           <button
-            className="client-dashboard-link rounded-lg px-2 py-1 font-semibold disabled:opacity-50"
+            className="client-dashboard-link inline-flex h-8 w-8 items-center justify-center rounded-lg font-semibold disabled:opacity-50"
             disabled={currentPage <= 1}
             onClick={onPrevPage}
             type="button"
           >
-            Prev
+            &lsaquo;
           </button>
+          <span className="inline-flex h-8 min-w-8 items-center justify-center rounded-lg border border-[#dce6ef] bg-white px-2 font-semibold text-[#091333]">
+            {currentPage}
+          </span>
           <button
-            className="client-dashboard-link rounded-lg px-2 py-1 font-semibold disabled:opacity-50"
+            className="client-dashboard-link inline-flex h-8 w-8 items-center justify-center rounded-lg font-semibold disabled:opacity-50"
             disabled={currentPage >= totalPages}
             onClick={onNextPage}
             type="button"
           >
-            Next
+            &rsaquo;
           </button>
         </div>
       </div>
@@ -360,61 +361,79 @@ function ConversationPane({
   }
 
   return (
-    <section className={`${inboxPanelClass} overflow-hidden`}>
-      <div className="flex items-start justify-between gap-4 border-b border-[#edf0f6] bg-[#fbfcff] p-6">
-        <div>
-          <p className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${priorityBadgeClass(request.priority)}`}>
-            {request.priority.toUpperCase()} PRIORITY
-          </p>
-          <h2 className="mt-3 text-[1.7rem] font-semibold tracking-tight text-[#091333]">{request.title}</h2>
-          <p className="mt-2 text-sm text-[#53617f]">
-            {request.monthLabel} | Pack ID: {request.id}
-          </p>
-          <p className="mt-2 text-sm leading-6 text-[#53617f]">{requestGuidance(request)}</p>
-        </div>
-        <div className="min-w-[200px] rounded-xl border border-[#dce6ef] bg-white p-3 shadow-sm">
-          <p className="text-xs font-semibold text-[#53617f]">Assigned accountant</p>
-          <p className="mt-1 text-sm font-semibold text-[#091333]">{assignedAccountantName}</p>
-          <p className="text-xs text-[#7b879e]">{request.requestedBy}</p>
+    <section className={`${inboxPanelClass} flex h-full min-h-[720px] flex-col overflow-hidden`}>
+      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-[#edf0f6] bg-white p-6">
+        <div className="grid min-w-0 flex-1 grid-cols-[auto_1fr] gap-4">
+          <span className="flex h-14 w-14 items-center justify-center rounded-full bg-blue-50 text-blue-700">
+            <MessageSquare aria-hidden="true" className="h-6 w-6" />
+          </span>
+          <div className="min-w-0">
+            <h2 className="truncate text-[1.45rem] font-semibold tracking-tight text-[#091333]">{request.title}</h2>
+            <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-[#53617f]">
+              <span className={`rounded-full px-3 py-1 text-xs font-semibold ${priorityBadgeClass(request.priority)}`}>
+                {request.priority.toUpperCase()} PRIORITY
+              </span>
+              <span className="h-5 w-px bg-[#edf0f6]" />
+              <span>Pack ID: {request.id}</span>
+              <span className="h-5 w-px bg-[#edf0f6]" />
+              <span>Due {formatDateLabel(request.dueDate)}</span>
+              <span className="h-5 w-px bg-[#edf0f6]" />
+              <span>
+                Assigned accountant: <span className="font-semibold text-[#091333]">{assignedAccountantName}</span>
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="max-h-[46vh] space-y-4 overflow-y-auto p-6">
+      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-6">
+        <div className="flex items-center gap-4 text-xs font-semibold text-[#53617f]">
+          <span className="h-px flex-1 bg-[#edf0f6]" />
+          Today
+          <span className="h-px flex-1 bg-[#edf0f6]" />
+        </div>
         {request.comments.map((comment, index) => {
           const attachment = decodeAttachment(comment.message);
           const text = plainMessageText(comment.message);
           const status = messageStatus(request, index);
+          const isClient = comment.role === "client";
           return (
-            <article
-              className={`max-w-[78%] rounded-2xl border px-4 py-3 ${
-                comment.role === "client"
-                  ? "ml-auto border-emerald-100 bg-emerald-50"
-                  : "border-[#dce6ef] bg-[#fbfcff]"
-              }`}
-              key={comment.id}
-            >
-              <div className="mb-1 flex items-center gap-2">
-                <p className="text-sm font-semibold text-[#091333]">{comment.author}</p>
-                <p className="text-xs text-[#53617f]">{formatDateLabel(comment.createdAt)}</p>
-              </div>
-              {text ? <p className="text-sm leading-6 text-[#53617f]">{text}</p> : null}
-              {attachment ? (
-                <a
-                  className="client-dashboard-link mt-2 inline-flex items-center gap-2 rounded-lg px-3 py-1 text-xs font-semibold"
-                  download={attachment.name}
-                  href={attachment.dataUrl}
-                >
-                  <Paperclip aria-hidden="true" className="h-3.5 w-3.5" />
-                  Download: {attachment.name}
-                </a>
+            <div className={`flex items-start gap-3 ${isClient ? "justify-end" : ""}`} key={comment.id}>
+              {!isClient ? (
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-bold text-blue-700">
+                  {initials(comment.author)}
+                </span>
               ) : null}
-              {status ? <p className="mt-2 text-xs text-[#7b879e]">{status}</p> : null}
-            </article>
+              <article
+                className={`max-w-[78%] rounded-2xl border px-4 py-3 shadow-[0_10px_24px_rgba(4,24,52,0.05)] ${
+                  isClient
+                    ? "border-emerald-100 bg-emerald-50"
+                    : "border-[#dce6ef] bg-[#f7f9ff]"
+                }`}
+              >
+                <div className="mb-2 flex items-center gap-2">
+                  <p className="text-sm font-semibold text-[#091333]">{comment.author}</p>
+                  <p className="text-xs text-[#53617f]">{formatThreadTime(comment.createdAt)}</p>
+                </div>
+                {text ? <p className="text-sm leading-6 text-[#1e2f5b]">{text}</p> : null}
+                {attachment ? (
+                  <a
+                    className="client-dashboard-link mt-2 inline-flex items-center gap-2 rounded-lg px-3 py-1 text-xs font-semibold"
+                    download={attachment.name}
+                    href={attachment.dataUrl}
+                  >
+                    <Paperclip aria-hidden="true" className="h-3.5 w-3.5" />
+                    Download: {attachment.name}
+                  </a>
+                ) : null}
+                {status ? <p className="mt-2 text-right text-xs text-[#53617f]">{status}</p> : null}
+              </article>
+            </div>
           );
         })}
       </div>
 
-      <div className="space-y-3 border-t border-[#edf0f6] bg-[#fbfcff] p-6">
+      <div className="space-y-3 border-t border-[#edf0f6] bg-white p-5">
         {attachedFile ? (
           <div className="rounded-xl border border-[#dce6ef] bg-white px-3 py-2 text-sm text-[#53617f]">
             Attached: {attachedFile.name}
@@ -434,10 +453,10 @@ function ConversationPane({
             ) : null}
           </div>
         ) : null}
-        <div className="flex gap-3">
-          <label className="client-dashboard-link inline-flex h-12 cursor-pointer items-center gap-2 rounded-xl px-3 text-sm font-semibold">
-            <Paperclip aria-hidden="true" className="h-4 w-4" />
-            Attach
+        <div className="flex flex-nowrap items-center gap-3">
+          <label className="client-dashboard-link inline-flex h-14 w-14 shrink-0 cursor-pointer items-center justify-center rounded-xl border border-[#dce6ef] bg-white text-sm font-semibold">
+            <Paperclip aria-hidden="true" className="h-5 w-5" />
+            <span className="sr-only">Attach</span>
             <input
               className="hidden"
               onChange={(event) => void handleAttachmentSelected(event.target.files?.[0] ?? null)}
@@ -445,13 +464,13 @@ function ConversationPane({
             />
           </label>
           <input
-            className="h-12 flex-1 rounded-xl border border-[#dce6ef] bg-white px-4 text-sm text-[#091333] outline-none ring-brand-300 transition placeholder:text-[#7b879e] focus:ring-2"
+            className="h-14 min-w-[220px] flex-1 rounded-xl border border-[#dce6ef] bg-white px-4 text-sm text-[#091333] outline-none ring-brand-300 transition placeholder:text-[#7b879e] focus:ring-2"
             onChange={(event) => setReplyMessage(event.target.value)}
             placeholder="Type your message..."
             value={replyMessage}
           />
           <Button
-            className="client-dashboard-action-button h-12 rounded-xl border-0 px-4 font-semibold ring-0"
+            className="client-inbox-primary-button h-14 rounded-xl border-0 px-5 font-semibold ring-0"
             disabled={!replyMessage.trim() && !attachedFile}
             onClick={handleSend}
           >
@@ -459,11 +478,11 @@ function ConversationPane({
             Send
           </Button>
           <Button
-            className="client-dashboard-action-button h-12 rounded-xl border-0 px-4 font-semibold ring-0"
+            className="client-inbox-primary-button h-14 rounded-xl border-0 px-5 font-semibold ring-0"
             onClick={() => onResolve(request.id)}
           >
             <CheckCircle2 aria-hidden="true" className="h-4 w-4" />
-            Resolve
+            Resolve thread
           </Button>
         </div>
       </div>
@@ -514,6 +533,9 @@ export function ClientRequestsPage() {
       if (filter === "unread" && unreadFromAccountantCount(request) === 0) {
         return false;
       }
+      if (filter === "high_priority" && request.priority !== "high") {
+        return false;
+      }
       if (filter === "resolved" && request.status !== "resolved" && request.status !== "closed") {
         return false;
       }
@@ -529,18 +551,6 @@ export function ClientRequestsPage() {
   }, [filter, orderedRequests, searchValue]);
 
   const totalPages = Math.max(1, Math.ceil(visibleRequests.length / THREADS_PER_PAGE));
-  const openRequestCount = useMemo(
-    () => requests.filter((request) => request.status !== "resolved" && request.status !== "closed").length,
-    [requests],
-  );
-  const resolvedRequestCount = useMemo(
-    () => requests.filter((request) => request.status === "resolved" || request.status === "closed").length,
-    [requests],
-  );
-  const unreadRequestCount = useMemo(
-    () => requests.reduce((sum, request) => sum + unreadFromAccountantCount(request), 0),
-    [requests],
-  );
   const pagedRequests = useMemo(() => {
     const page = Math.min(currentPage, totalPages);
     const start = (page - 1) * THREADS_PER_PAGE;
@@ -607,27 +617,33 @@ export function ClientRequestsPage() {
   }
 
   return (
-    <div className="client-inbox-page mx-auto max-w-[1280px] space-y-5 pb-8">
-      <header className="flex flex-wrap items-start justify-between gap-3">
+    <div className="client-inbox-page mx-auto max-w-[1500px] space-y-6 pb-8">
+      <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-[0.78rem] font-semibold uppercase tracking-[0.14em] text-brand-700">
-            Client Inbox
+            Client Workspace
           </p>
-          <h1 className="mt-1 text-[2.05rem] font-semibold tracking-tight text-[#091333]">Messages</h1>
+          <h1 className="mt-1 text-[2.05rem] font-semibold tracking-tight text-[#091333]">Inbox</h1>
           <p className="mt-2 max-w-2xl text-[0.96rem] leading-7 text-[#53617f]">
             Review accountant follow-ups, reply with context, and keep document requests moving.
           </p>
         </div>
-        <div className="relative flex gap-2">
+        <div className="relative flex flex-wrap justify-end gap-3">
+          <button
+            className="inline-flex h-12 items-center rounded-xl border border-[#cdd8ea] bg-white px-5 text-sm font-semibold text-[#091333] shadow-sm transition hover:bg-[#f8fbff]"
+            type="button"
+          >
+            {user?.company ?? "Apex Trading Ltd"}
+          </button>
           <Button
-            className="client-dashboard-action-button h-10 rounded-xl border-0 px-4 text-sm font-semibold ring-0 hover:-translate-y-0.5 active:translate-y-px"
+            className="client-inbox-primary-button h-12 rounded-xl border-0 px-5 text-sm font-semibold ring-0 hover:-translate-y-0.5 active:translate-y-px"
             onClick={() => setIsRequestModalOpen(true)}
           >
             <MessageSquare aria-hidden="true" className="h-4 w-4" />
             Request document
           </Button>
           <Button
-            className="client-dashboard-action-button h-10 rounded-xl border-0 px-4 text-sm font-semibold ring-0 hover:-translate-y-0.5 active:translate-y-px"
+            className="client-inbox-primary-button h-12 rounded-xl border-0 px-5 text-sm font-semibold ring-0 hover:-translate-y-0.5 active:translate-y-px"
             onClick={() =>
               navigate(
                 activeRequest
@@ -635,11 +651,11 @@ export function ClientRequestsPage() {
                   : "/client/documents?from=inbox",
               )}
           >
-            <UploadCloud aria-hidden="true" className="h-4 w-4" />
+            <UploadCloud aria-hidden="true" className="h-4 w-4 text-emerald-600" />
             Upload document
           </Button>
           <button
-            className="client-dashboard-action-button inline-flex h-10 w-10 items-center justify-center rounded-xl transition hover:-translate-y-0.5 active:translate-y-px"
+            className="client-inbox-primary-button inline-flex h-12 w-12 items-center justify-center rounded-xl border-0 transition hover:-translate-y-0.5 active:translate-y-px"
             aria-controls="messages-header-menu"
             aria-expanded={showHeaderMenu}
             aria-haspopup="menu"
@@ -688,25 +704,6 @@ export function ClientRequestsPage() {
         </div>
       </header>
 
-      <section className="grid gap-3 md:grid-cols-3">
-        {[
-          { label: "Open threads", value: openRequestCount, helper: "Waiting for action", icon: <Mail aria-hidden="true" className="h-5 w-5" /> },
-          { label: "Unread replies", value: unreadRequestCount, helper: "From accountant", icon: <MessageSquare aria-hidden="true" className="h-5 w-5" /> },
-          { label: "Resolved", value: resolvedRequestCount, helper: "Completed threads", icon: <CheckCircle2 aria-hidden="true" className="h-5 w-5" /> },
-        ].map((metric) => (
-          <section className={`${inboxPanelClass} grid grid-cols-[auto_1fr] items-center gap-3 p-4`} key={metric.label}>
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#eef4fa] text-brand-700 ring-1 ring-[#d7e3ee]">
-              {metric.icon}
-            </div>
-            <div>
-              <p className="text-[0.78rem] font-semibold text-[#53617f]">{metric.label}</p>
-              <p className="mt-1 text-[1.45rem] font-semibold leading-none text-[#091333]">{metric.value}</p>
-              <p className="mt-1 text-[0.78rem] text-[#7b879e]">{metric.helper}</p>
-            </div>
-          </section>
-        ))}
-      </section>
-
       {feedbackNotice ? (
         <FeedbackBanner
           message={feedbackNotice.message}
@@ -717,7 +714,7 @@ export function ClientRequestsPage() {
       ) : null}
 
       {visibleRequests.length > 0 && activeRequest ? (
-        <div className="grid gap-4 xl:grid-cols-[390px_minmax(0,1fr)]">
+        <div className="grid items-stretch gap-4 xl:grid-cols-[390px_minmax(0,1fr)]">
           <ThreadListPane
             currentPage={currentPage}
             filter={filter}
