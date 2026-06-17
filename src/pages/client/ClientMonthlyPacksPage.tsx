@@ -67,6 +67,9 @@ const blockingStatuses = new Set<MonthlyDocumentSlot["status"]>([
 const panelClass =
   "rounded-2xl border border-[#dce6ef] bg-white shadow-[0_16px_38px_rgba(4,24,52,0.08)]";
 
+const monthlyPackActionButtonClass =
+  "monthly-pack-action-button h-10 rounded-xl border-0 px-4 text-sm font-semibold ring-0";
+
 function normaliseDocumentType(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
@@ -441,14 +444,14 @@ export function ClientMonthlyPacksPage() {
               </div>
               <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-[auto_auto] xl:grid-cols-[auto_auto]">
                 <Button
-                  className="h-10 rounded-xl bg-brand-700 px-4 text-sm font-semibold text-white hover:bg-brand-800"
+                  className={monthlyPackActionButtonClass}
                   onClick={handleOpenChecklist}
                 >
                   <span>Continue Pack</span>
                   <ChevronRight aria-hidden="true" className="h-4 w-4" />
                 </Button>
                 <Button
-                  className="client-dashboard-action-button h-10 rounded-xl border-0 px-4 text-sm font-semibold ring-0"
+                  className={monthlyPackActionButtonClass}
                   disabled={!monthPack.canComplete || monthPack.submissionStatus === "under_accountant_review"}
                   onClick={submitMonth}
                 >
@@ -457,7 +460,7 @@ export function ClientMonthlyPacksPage() {
                 </Button>
                 {highlightedSlot ? (
                   <Button
-                    className="client-dashboard-action-button h-10 rounded-xl border-0 px-4 text-sm font-semibold ring-0 sm:col-span-2 lg:col-span-2 xl:col-span-2"
+                    className={`${monthlyPackActionButtonClass} sm:col-span-2 lg:col-span-2 xl:col-span-2`}
                     disabled={monthPack.submissionStatus === "under_accountant_review"}
                     onClick={() => handleOpenUpload(highlightedSlot)}
                   >
@@ -506,7 +509,7 @@ export function ClientMonthlyPacksPage() {
         </SurfaceCard>
       </section>
 
-      <section className="grid items-stretch gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.38fr)]">
+      <section className="grid items-stretch gap-5">
         <div className="h-full" id="pack-checklist">
           <MonthlyPackChecklist
             onDownload={handleDownloadSlot}
