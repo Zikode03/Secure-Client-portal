@@ -38,14 +38,6 @@ interface WorkQueueItem {
   onOpen: () => void;
 }
 
-interface RecentActivityItem {
-  id: string;
-  title: string;
-  meta: string;
-  timestamp: string;
-  tone: "emerald" | "brand" | "violet" | "sky" | "rose";
-}
-
 // Component flow: gather data first, then render a focused UI state.
 function downloadCsv(fileName: string, rows: string[][]) {
   const csv = rows
@@ -197,6 +189,11 @@ function compactMonthDays(dateValue: string) {
   return cells;
 }
 
+function isSameCalendarMonth(dateValue: string, monthDate: Date) {
+  const date = new Date(dateValue);
+  return date.getFullYear() === monthDate.getFullYear() && date.getMonth() === monthDate.getMonth();
+}
+
 function deadlineStatusLabel(dueDate: string) {
   const days = dayDifference(dueDate);
 
@@ -230,21 +227,6 @@ function deadlineToneClasses(tone: DeadlineItem["tone"]) {
     dot: "bg-brand-500",
     badge: "bg-brand-50 text-brand-600",
   };
-}
-
-function recentActivityToneClasses(tone: RecentActivityItem["tone"]) {
-  switch (tone) {
-    case "emerald":
-      return "bg-emerald-50 text-emerald-600 ring-emerald-100";
-    case "violet":
-      return "bg-violet-50 text-violet-600 ring-violet-100";
-    case "sky":
-      return "bg-sky-50 text-sky-600 ring-sky-100";
-    case "rose":
-      return "bg-rose-50 text-rose-600 ring-rose-100";
-    default:
-      return "bg-brand-50 text-brand-600 ring-brand-100";
-  }
 }
 
 function queuePriorityMeta(priority: WorkQueueItem["priority"]) {
@@ -510,96 +492,198 @@ function QueueIcon({ tone }: { tone: QueueTone }) {
   );
 }
 
-function QuickActionIcon({ type }: { type: "request" | "upload" | "shield" | "report" | "client" | "calendar" }) {
-  if (type === "request") {
-    return (
-      <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
-        <path d="M7.5 8.25h9m-9 4h5.5M8 18.25l-3.25 2v-14A2.25 2.25 0 0 1 7 4h10a2.25 2.25 0 0 1 2.25 2.25V16A2.25 2.25 0 0 1 17 18.25H8Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
-      </svg>
-    );
-  }
-
-  if (type === "upload") {
-    return (
-      <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
-        <path d="M12 16V5m0 0L8 9m4-4 4 4M5.5 17.5v1A2.5 2.5 0 0 0 8 21h8a2.5 2.5 0 0 0 2.5-2.5v-1" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
-      </svg>
-    );
-  }
-
-  if (type === "shield") {
-    return (
-      <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
-        <path d="M12 3.75 18.25 6v5.25c0 4.1-2.55 7.25-6.25 9-3.7-1.75-6.25-4.9-6.25-9V6L12 3.75Z" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.8" />
-        <path d="m9 12 2 2 4-4" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
-      </svg>
-    );
-  }
-
-  if (type === "report") {
-    return (
-      <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
-        <path d="M7.75 4h6.5L18 7.75v10.5A1.75 1.75 0 0 1 16.25 20H7.75A1.75 1.75 0 0 1 6 18.25V5.75A1.75 1.75 0 0 1 7.75 4Z" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.8" />
-        <path d="M14 4v4h4M9 12h6M9 15.5h5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
-      </svg>
-    );
-  }
-
-  if (type === "client") {
-    return (
-      <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
-        <path d="M9.5 12.25a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7ZM4.5 19.25c.75-2.65 2.48-4 5-4s4.25 1.35 5 4M17.5 9v6M14.5 12h6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
-      </svg>
-    );
-  }
+function ClientRiskProfileChart({ rows }: { rows: PortfolioRow[] }) {
+  const totalClients = Math.max(rows.length, 1);
+  const [activeSegmentId, setActiveSegmentId] = useState<string | null>(null);
+  const segments = [
+    {
+      id: "attention",
+      label: "Attention Needed",
+      count: rows.filter((row) => row.status === "attention").length,
+      color: "#009345",
+    },
+    {
+      id: "compliant",
+      label: "Compliant",
+      count: rows.filter((row) => row.status === "on_track").length,
+      color: "#005aa3",
+    },
+    {
+      id: "high-risk",
+      label: "High Risk",
+      count: rows.filter((row) => row.status === "overdue").length,
+      color: "#c65308",
+    },
+  ];
+  const activeSegment = segments.find((segment) => segment.id === activeSegmentId) ?? null;
+  const activePercentage = activeSegment ? Math.round((activeSegment.count / totalClients) * 100) : null;
+  const radius = 50;
+  const circumference = 2 * Math.PI * radius;
+  let offset = 0;
 
   return (
-    <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
-      <rect height="14" rx="2.5" stroke="currentColor" strokeWidth="1.8" width="16" x="4" y="6.5" />
-      <path d="M8 4.5v4m8-4v4M4 10.5h16" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
-    </svg>
+    <SurfaceCard className={cn(panelClass, "relative min-h-[334px] overflow-hidden p-0")}>
+      <div className="px-5 pt-5">
+        <h2 className="text-[1rem] font-semibold text-[#091333]">Client risk profile</h2>
+        <p className="mt-2 text-[0.82rem] font-medium text-[#53617f]">Distribution of client compliance status.</p>
+      </div>
+      <div className="flex justify-center px-5 pt-9">
+        <svg aria-label="Client risk profile chart" className="h-[170px] w-[170px]" role="img" viewBox="0 0 140 140">
+          <circle cx="70" cy="70" fill="none" r={radius} stroke="#e5edf5" strokeWidth="26" />
+          {segments.map((segment) => {
+            const length = (segment.count / totalClients) * circumference;
+            const dashOffset = -offset;
+            const percentage = Math.round((segment.count / totalClients) * 100);
+            const isActive = activeSegmentId === segment.id;
+            offset += length;
+
+            return segment.count > 0 ? (
+              <g
+                className="cursor-pointer"
+                key={segment.id}
+                onMouseEnter={() => setActiveSegmentId(segment.id)}
+                onMouseLeave={() => setActiveSegmentId(null)}
+              >
+                <title>{`${segment.label}: ${segment.count} client${segment.count === 1 ? "" : "s"} (${percentage}%)`}</title>
+                <circle
+                  cx="70"
+                  cy="70"
+                  fill="none"
+                  opacity={activeSegmentId && !isActive ? 0.45 : 1}
+                  r={radius}
+                  stroke={segment.color}
+                  strokeDasharray={`${length} ${circumference - length}`}
+                  strokeDashoffset={dashOffset}
+                  strokeLinecap="butt"
+                  strokeWidth="26"
+                  transform="rotate(-90 70 70)"
+                />
+              </g>
+            ) : null;
+          })}
+          <circle cx="70" cy="70" fill="#ffffff" pointerEvents="none" r="33" />
+        </svg>
+      </div>
+      <div className="mx-auto mt-2 flex min-h-[38px] w-full items-center justify-center px-5">
+        <div
+          className={cn(
+            "flex min-h-[38px] w-fit items-center justify-center rounded-xl bg-[#eef4fa] px-4 text-center text-[0.76rem] font-bold text-[#091333] transition-opacity",
+            activeSegment ? "opacity-100" : "opacity-0",
+          )}
+        >
+          <span>
+            {activeSegment
+              ? `${activeSegment.label}: ${activeSegment.count} client${activeSegment.count === 1 ? "" : "s"} (${activePercentage}%)`
+              : " "}
+          </span>
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center justify-center gap-x-7 gap-y-3 px-5 pb-5 text-[0.82rem] font-semibold text-[#091333]">
+        {segments.map((segment) => (
+          <button
+            className="flex items-center gap-2 rounded-lg px-1 py-0.5 transition hover:bg-[#eef4fa]"
+            key={segment.id}
+            onBlur={() => setActiveSegmentId(null)}
+            onFocus={() => setActiveSegmentId(segment.id)}
+            onMouseEnter={() => setActiveSegmentId(segment.id)}
+            onMouseLeave={() => setActiveSegmentId(null)}
+            type="button"
+          >
+            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: segment.color }} />
+            <span>{segment.label}</span>
+          </button>
+        ))}
+      </div>
+    </SurfaceCard>
   );
 }
 
-function RecentActivityIcon({ tone }: { tone: RecentActivityItem["tone"] }) {
-  if (tone === "emerald") {
-    return (
-      <svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
-        <path d="m7.5 12.5 3 3 6-7" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-        <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="1.8" />
-      </svg>
-    );
-  }
-
-  if (tone === "violet") {
-    return (
-      <svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
-        <path d="M8 4h6l4 4v12H8a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.8" />
-        <path d="M14 4v4h4M9 13h6M9 16h4" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
-      </svg>
-    );
-  }
-
-  if (tone === "sky") {
-    return (
-      <svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
-        <path d="M12 5v10m0 0 3.5-3.5M12 15l-3.5-3.5M6 19h12" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
-      </svg>
-    );
-  }
-
-  if (tone === "rose") {
-    return (
-      <svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
-        <path d="M12 8v4m0 4h.01M5 20h14L12 4 5 20Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
-      </svg>
-    );
-  }
+function ComplianceHealthTrendChart({ rows }: { rows: PortfolioRow[] }) {
+  const averageProgress =
+    rows.length > 0
+      ? Math.round(rows.reduce((total, row) => total + row.progressPercent, 0) / rows.length)
+      : 0;
+  const values = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"].map((month, index) => ({
+    month,
+    value: Math.max(0, Math.min(100, averageProgress - 12 + index * 2.4)),
+  }));
+  const yTicks = [40, 55, 70, 85, 100];
+  const width = 760;
+  const height = 300;
+  const padding = { top: 42, right: 36, bottom: 42, left: 38 };
+  const chartWidth = width - padding.left - padding.right;
+  const chartHeight = height - padding.top - padding.bottom;
+  const minValue = 40;
+  const maxValue = 100;
+  const points = values.map((item, index) => {
+    const x = padding.left + (chartWidth / (values.length - 1)) * index;
+    const y = padding.top + ((maxValue - item.value) / (maxValue - minValue)) * chartHeight;
+    return { ...item, x, y };
+  });
+  const linePoints = points.map((point) => `${point.x},${point.y}`).join(" ");
 
   return (
-    <svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
-      <path d="M7.5 8.25h9m-9 4h5.5M8 18.25l-3.25 2v-14A2.25 2.25 0 0 1 7 4h10a2.25 2.25 0 0 1 2.25 2.25V16A2.25 2.25 0 0 1 17 18.25H8Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
-    </svg>
+    <SurfaceCard className={cn(panelClass, "relative overflow-hidden p-0")}>
+      <div className="px-5 pt-5">
+        <h2 className="text-[1rem] font-semibold text-[#091333]">Compliance health trend</h2>
+        <p className="mt-2 text-[0.82rem] font-medium text-[#53617f]">Monthly compliance performance across all clients.</p>
+      </div>
+      <div className="px-2 pb-4 pt-4 sm:px-5">
+        <svg aria-label="Compliance health trend chart" className="h-auto w-full" role="img" viewBox={`0 0 ${width} ${height}`}>
+          {yTicks.map((tick) => {
+            const y = padding.top + ((maxValue - tick) / (maxValue - minValue)) * chartHeight;
+            return (
+              <g key={tick}>
+                <line
+                  stroke="#d9e4ef"
+                  strokeDasharray="3 4"
+                  strokeWidth="1"
+                  x1={padding.left}
+                  x2={width - padding.right}
+                  y1={y}
+                  y2={y}
+                />
+                <text fill="#53617f" fontSize="12" fontWeight="600" textAnchor="end" x={padding.left - 10} y={y + 4}>
+                  {tick}%
+                </text>
+              </g>
+            );
+          })}
+          <polyline fill="none" points={linePoints} stroke="#0a2f66" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" />
+          {points.map((point) => (
+            <g className="group cursor-pointer" key={`point-${point.month}`}>
+              <title>{`${point.month}: ${Math.round(point.value)}% compliance health`}</title>
+              <line
+                className="opacity-0 transition-opacity group-hover:opacity-100"
+                stroke="#0a2f66"
+                strokeDasharray="4 4"
+                strokeWidth="1.5"
+                x1={point.x}
+                x2={point.x}
+                y1={padding.top}
+                y2={height - padding.bottom}
+              />
+              <circle cx={point.x} cy={point.y} fill="#ffffff" r="4.5" stroke="#0a2f66" strokeWidth="2.5" />
+              <circle cx={point.x} cy={point.y} fill="transparent" r="18" />
+              <g className="pointer-events-none opacity-0 transition-opacity group-hover:opacity-100">
+                <rect fill="#091333" height="37" rx="7" width="118" x={Math.min(Math.max(point.x - 59, 44), width - 154)} y={Math.max(point.y - 52, 8)} />
+                <text fill="#ffffff" fontSize="10" fontWeight="800" textAnchor="middle" x={Math.min(Math.max(point.x, 103), width - 95)} y={Math.max(point.y - 35, 25)}>
+                  {point.month}
+                </text>
+                <text fill="#dbeafe" fontSize="10" fontWeight="700" textAnchor="middle" x={Math.min(Math.max(point.x, 103), width - 95)} y={Math.max(point.y - 20, 40)}>
+                  {Math.round(point.value)}% compliance
+                </text>
+              </g>
+            </g>
+          ))}
+          {points.map((point) => (
+            <text fill="#53617f" fontSize="12" fontWeight="600" key={point.month} textAnchor="middle" x={point.x} y={height - 18}>
+              {point.month}
+            </text>
+          ))}
+        </svg>
+      </div>
+    </SurfaceCard>
   );
 }
 
@@ -739,70 +823,30 @@ export function AccountantDashboardPage() {
     [deadlineQueueItems.length, reviewQueueItems.length],
   );
 
-  const calendarPreviewDeadlines = useMemo(
+  const sortedCalendarDeadlines = useMemo(
     () =>
       [...scopedDeadlines]
-        .sort((left, right) => new Date(left.dueDate).getTime() - new Date(right.dueDate).getTime())
-        .slice(0, 5),
+        .sort((left, right) => new Date(left.dueDate).getTime() - new Date(right.dueDate).getTime()),
     [scopedDeadlines],
+  );
+
+  const calendarPreviewDeadlines = useMemo(
+    () =>
+      sortedCalendarDeadlines
+        .filter((item) => isSameCalendarMonth(item.dueDate, calendarPreviewDate))
+        .slice(0, 5),
+    [calendarPreviewDate, sortedCalendarDeadlines],
   );
 
   const calendarEventDays = useMemo(
     () =>
       new Set(
-        calendarPreviewDeadlines
-          .filter((item) => {
-            const dueDate = new Date(item.dueDate);
-            const previewDate = calendarPreviewDate;
-            return dueDate.getFullYear() === previewDate.getFullYear() && dueDate.getMonth() === previewDate.getMonth();
-          })
+        sortedCalendarDeadlines
+          .filter((item) => isSameCalendarMonth(item.dueDate, calendarPreviewDate))
           .map((item) => new Date(item.dueDate).getDate()),
       ),
-    [calendarPreviewDate, calendarPreviewDeadlines],
+    [calendarPreviewDate, sortedCalendarDeadlines],
   );
-
-  const quickActions = useMemo(
-    () => [
-      { label: "Create Request", icon: "request" as const, onOpen: () => navigate("/firm/inbox") },
-      { label: "Upload Document", icon: "upload" as const, onOpen: () => navigate("/firm/documents") },
-      { label: "Review Compliance", icon: "shield" as const, onOpen: () => navigate("/firm/compliance") },
-      { label: "Generate Report", icon: "report" as const, onOpen: () => navigate("/firm/activity") },
-      { label: "Open Calendar", icon: "calendar" as const, onOpen: () => navigate("/firm/compliance/calendar") },
-    ],
-    [navigate],
-  );
-
-  const recentActivity = useMemo<RecentActivityItem[]>(() => {
-    const documentItems = data.latestOverallDocuments
-      .filter((item) => !item.clientName || scopedClientNames.has(item.clientName))
-      .map((item) => ({
-        id: `latest-${item.id}`,
-        title: `${item.clientName ? `${item.clientName} ` : ""}uploaded ${item.name}`,
-        meta: item.type,
-        timestamp: item.date,
-        tone: item.kind === "invoice" ? ("sky" as const) : ("violet" as const),
-      }));
-
-    const reviewItems = scopedReviewQueue.map((item) => ({
-      id: `review-activity-${item.id}`,
-      title: `${item.clientName} ${item.documentType} is ready for review`,
-      meta: item.monthLabel,
-      timestamp: item.submittedAt,
-      tone: item.status === "under_review" ? ("rose" as const) : ("brand" as const),
-    }));
-
-    const deadlineItems = scopedDeadlines.map((item) => ({
-      id: `deadline-activity-${item.id}`,
-      title: `${item.label} deadline is on the calendar`,
-      meta: item.owner,
-      timestamp: item.dueDate,
-      tone: item.tone === "danger" ? ("rose" as const) : ("emerald" as const),
-    }));
-
-    return [...documentItems, ...reviewItems, ...deadlineItems]
-      .sort((left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime())
-      .slice(0, 5);
-  }, [data.latestOverallDocuments, scopedClientNames, scopedDeadlines, scopedReviewQueue]);
 
   const notificationPreview = useMemo(() => data.notifications.slice(0, 4), [data.notifications]);
 
@@ -1156,7 +1200,7 @@ export function AccountantDashboardPage() {
         </div>
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-[minmax(0,1.12fr)_minmax(360px,0.88fr)] xl:items-start">
+      <section className="grid gap-5">
         <SurfaceCard className={cn(panelClass, "min-w-0 overflow-hidden p-0")}>
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e6edf4] bg-[#fbfdff] px-5 pb-4 pt-5">
             <div>
@@ -1226,7 +1270,7 @@ export function AccountantDashboardPage() {
 
                   return (
                     <button
-                      className="w-full space-y-3 py-3 pl-4 pr-8 text-left transition hover:bg-[#f7fbff] dark:hover:bg-[#132542] lg:grid lg:grid-cols-[minmax(140px,1.45fr)_minmax(112px,0.95fr)_minmax(98px,0.78fr)_minmax(64px,0.48fr)_minmax(68px,0.5fr)] lg:items-center lg:gap-3 lg:space-y-0"
+                      className="w-full space-y-3 py-3 pl-4 pr-8 text-left transition lg:grid lg:grid-cols-[minmax(140px,1.45fr)_minmax(112px,0.95fr)_minmax(98px,0.78fr)_minmax(64px,0.48fr)_minmax(68px,0.5fr)] lg:items-center lg:gap-3 lg:space-y-0"
                       key={row.id}
                       onClick={() => openClientWorkspace(row)}
                       type="button"
@@ -1508,76 +1552,17 @@ export function AccountantDashboardPage() {
                     </div>
                   );
                 })
-              ) : (
-                <div className="rounded-xl bg-slate-50 px-3 py-4 text-[0.76rem] font-medium text-[#53617f]">
-                  No compliance deadlines are scheduled for this preview.
-                </div>
-              )}
+              ) : null}
             </div>
           </div>
         </SurfaceCard>
 
-        <SurfaceCard className={cn(panelClass, "min-w-0 overflow-hidden p-0")}>
-          <div className="border-b border-[#edf2f7] bg-[#fbfdff] px-5 py-4">
-            <h2 className="text-[1rem] font-semibold text-[#091333]">Quick actions</h2>
-          </div>
-          <div className="grid grid-cols-2 gap-3 p-5 sm:grid-cols-3">
-            {quickActions.map((action) => (
-              <button
-                className={cn(dashboardActionButtonClass, "min-h-[94px] flex-col gap-3 rounded-xl px-3 py-4 text-center")}
-                key={action.label}
-                onClick={action.onOpen}
-                type="button"
-              >
-                <span className="text-current">
-                  <QuickActionIcon type={action.icon} />
-                </span>
-                <span className="text-[0.68rem] font-bold">{action.label}</span>
-              </button>
-            ))}
-          </div>
-        </SurfaceCard>
+        <ClientRiskProfileChart rows={scopedPortfolio} />
       </section>
 
-      <SurfaceCard className={cn(panelClass, "min-w-0 overflow-hidden p-0")}>
-        <div className="flex items-center justify-between gap-3 border-b border-[#edf2f7] bg-[#fbfdff] px-5 py-4">
-          <h2 className="text-[1rem] font-semibold text-[#091333]">Recent Activity</h2>
-          <button
-            className={cn(dashboardLinkClass, "inline-flex items-center gap-1.5 text-[0.72rem]")}
-            onClick={() => navigate("/firm/activity")}
-            type="button"
-          >
-            <span>View all activity</span>
-            <ChevronRightIcon />
-          </button>
-        </div>
-
-        {recentActivity.length > 0 ? (
-          <div className="divide-y divide-[#edf2f7]">
-            {recentActivity.map((item) => (
-              <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 px-5 py-3" key={item.id}>
-                <span className={cn("flex h-8 w-8 items-center justify-center rounded-full ring-1", recentActivityToneClasses(item.tone))}>
-                  <RecentActivityIcon tone={item.tone} />
-                </span>
-                <div className="min-w-0">
-                  <p className="truncate text-[0.78rem] font-bold text-[#091333]">{item.title}</p>
-                  <p className="mt-0.5 truncate text-[0.66rem] font-semibold text-[#53617f]">{item.meta}</p>
-                </div>
-                <span className="whitespace-nowrap text-[0.64rem] font-bold text-[#53617f]">
-                  {notificationRelativeLabel(item.timestamp)}
-                </span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="px-5 py-8">
-            <EmptyState
-              description="Recent client and compliance actions will appear here."
-              title="No recent activity"
-            />
-          </div>
-        )}
-      </SurfaceCard>
+      <section>
+        <ComplianceHealthTrendChart rows={scopedPortfolio} />
+      </section>
 
     </div>
   );
