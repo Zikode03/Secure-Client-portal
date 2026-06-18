@@ -2,9 +2,12 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { defaultPathForRole, useAuth } from "../../app/auth";
+import { hasApiBaseUrl } from "../../services/apiClient";
 
 interface InputFieldProps {
+  id: string;
   label: string;
+  name: string;
   type: string;
   placeholder: string;
   value: string;
@@ -130,8 +133,10 @@ function BrandVisual() {
 function InputField({
   autoComplete,
   endAdornment,
+  id,
   icon,
   label,
+  name,
   onChange,
   placeholder,
   type,
@@ -151,6 +156,8 @@ function InputField({
         <input
           autoComplete={autoComplete}
           className="h-12 w-full rounded-lg border border-slate-200 bg-white pl-12 pr-12 text-[0.9rem] font-medium text-[#07133d] shadow-[0_8px_18px_rgba(15,23,42,0.04)] outline-none placeholder:text-slate-400 focus:border-emerald-300 focus:ring-4 focus:ring-emerald-100"
+          id={id}
+          name={name}
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
           type={type}
@@ -169,7 +176,7 @@ function InputField({
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { authNotice, clearAuthNotice, login } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -177,33 +184,44 @@ export function LoginPage() {
   const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showDeveloperAccess, setShowDeveloperAccess] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setIsSubmitting(true);
+    clearAuthNotice();
 
-    const result = login({ email, password });
+    const result = await login({ email, password, rememberMe });
 
     if (!result.ok || !result.user) {
       setError(result.message ?? "Unable to sign in.");
+      setIsSubmitting(false);
       return;
     }
 
     setError("");
+    setIsSubmitting(false);
     navigate(defaultPathForRole(result.user.role));
   }
 
   function useMockAccount(nextEmail: string) {
-    const passwordsByEmail: Record<string, string> = {
-      "admin@example.com": "Admin@2026",
-      "accountant@example.com": "Accountant@2026",
-      "client@example.com": "Client@2026",
-    };
+    const passwordsByEmail: Record<string, string> = hasApiBaseUrl()
+      ? {
+          "admin@secureportal.local": "Password123!",
+          "accountant@secureportal.local": "Password123!",
+          "client@secureportal.local": "Password123!",
+        }
+      : {
+          "admin@example.com": "Admin@2026",
+          "accountant@example.com": "Accountant@2026",
+          "client@example.com": "Client@2026",
+        };
 
     setEmail(nextEmail);
     setPassword(passwordsByEmail[nextEmail] ?? "");
     setError("");
+    clearAuthNotice();
   }
-
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#071421] text-[#07133d]">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_28%_18%,rgba(22,163,116,0.26),transparent_28%),radial-gradient(circle_at_72%_78%,rgba(6,31,77,0.52),transparent_34%),linear-gradient(135deg,#071421_0%,#10233b_50%,#06111e_100%)]" />
@@ -243,13 +261,27 @@ export function LoginPage() {
                 <p className="mt-2 text-[0.86rem] font-medium text-slate-500">
                   Sign in to manage documents, compliance tasks, and monthly packs.
                 </p>
+                <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-left text-[0.78rem] leading-5 text-emerald-900">
+                  <p className="font-semibold">Access is created by your administrator.</p>
+                  <p className="mt-1 text-emerald-800/90">
+                    New clients and accountants receive a setup email first, then choose their own password before signing in.
+                  </p>
+                </div>
               </div>
 
               <form className="space-y-4" onSubmit={handleSubmit}>
+                {authNotice ? (
+                  <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-left text-[0.82rem] font-medium leading-6 text-sky-900">
+                    {authNotice}
+                  </div>
+                ) : null}
+
                 <InputField
                   autoComplete="email"
+                  id="login-email"
                   icon={<IconEmail />}
                   label="Work email"
+                  name="email"
                   onChange={setEmail}
                   placeholder="you@company.com"
                   type="email"
@@ -268,8 +300,10 @@ export function LoginPage() {
                       <IconEye open={showPassword} />
                     </button>
                   }
+                  id="login-password"
                   icon={<IconLock />}
                   label="Password"
+                  name="password"
                   onChange={setPassword}
                   placeholder="Enter your password"
                   type={showPassword ? "text" : "password"}
@@ -299,14 +333,14 @@ export function LoginPage() {
                         </span>
                       ) : null}
                     </span>
-                    Remember me
+                    Keep me signed in on this device
                   </label>
 
                   <Link
                     className="text-[#0b4f5f] transition hover:text-emerald-700"
                     to="/forgot-password"
                   >
-                    Forgot password
+                    Reset password
                   </Link>
                 </div>
 
@@ -317,11 +351,12 @@ export function LoginPage() {
                 ) : null}
 
                 <button
+                  disabled={isSubmitting}
                   className="flex h-12 w-full items-center justify-center gap-3 rounded-lg bg-[#074e5f] text-[0.9rem] font-bold text-white shadow-[0_12px_22px_rgba(7,78,95,0.22)] transition hover:bg-[#063f4d] active:translate-y-px"
                   type="submit"
                 >
                   <IconLock />
-                  Sign in
+                  {isSubmitting ? "Signing in..." : "Sign in"}
                 </button>
               </form>
 
@@ -356,30 +391,44 @@ export function LoginPage() {
                   <div className="mt-3 grid gap-2 text-left text-[0.72rem] font-semibold">
                     <button
                       className="rounded-lg bg-slate-50 px-3 py-2 text-slate-700 ring-1 ring-slate-200 transition hover:bg-brand-50"
-                      onClick={() => useMockAccount("client@example.com")}
+                      onClick={() =>
+                        useMockAccount(
+                          hasApiBaseUrl() ? "client@secureportal.local" : "client@example.com",
+                        )
+                      }
                       type="button"
                     >
-                      Client: <span className="text-emerald-600">client@example.com</span>
+                      Client: <span className="text-emerald-600">{hasApiBaseUrl() ? "client@secureportal.local" : "client@example.com"}</span>
                       <span className="mx-2 text-slate-400">&bull;</span>
-                      <span className="text-emerald-600">Client@2026</span>
+                      <span className="text-emerald-600">{hasApiBaseUrl() ? "Password123!" : "Client@2026"}</span>
                     </button>
                     <button
                       className="rounded-lg bg-slate-50 px-3 py-2 text-slate-700 ring-1 ring-slate-200 transition hover:bg-brand-50"
-                      onClick={() => useMockAccount("accountant@example.com")}
+                      onClick={() =>
+                        useMockAccount(
+                          hasApiBaseUrl()
+                            ? "accountant@secureportal.local"
+                            : "accountant@example.com",
+                        )
+                      }
                       type="button"
                     >
-                      Accountant: <span className="text-emerald-600">accountant@example.com</span>
+                      Accountant: <span className="text-emerald-600">{hasApiBaseUrl() ? "accountant@secureportal.local" : "accountant@example.com"}</span>
                       <span className="mx-2 text-slate-400">&bull;</span>
-                      <span className="text-emerald-600">Accountant@2026</span>
+                      <span className="text-emerald-600">{hasApiBaseUrl() ? "Password123!" : "Accountant@2026"}</span>
                     </button>
                     <button
                       className="rounded-lg bg-slate-50 px-3 py-2 text-slate-700 ring-1 ring-slate-200 transition hover:bg-brand-50"
-                      onClick={() => useMockAccount("admin@example.com")}
+                      onClick={() =>
+                        useMockAccount(
+                          hasApiBaseUrl() ? "admin@secureportal.local" : "admin@example.com",
+                        )
+                      }
                       type="button"
                     >
-                      Admin: <span className="text-emerald-600">admin@example.com</span>
+                      Admin: <span className="text-emerald-600">{hasApiBaseUrl() ? "admin@secureportal.local" : "admin@example.com"}</span>
                       <span className="mx-2 text-slate-400">&bull;</span>
-                      <span className="text-emerald-600">Admin@2026</span>
+                      <span className="text-emerald-600">{hasApiBaseUrl() ? "Password123!" : "Admin@2026"}</span>
                     </button>
                   </div>
                 ) : null}

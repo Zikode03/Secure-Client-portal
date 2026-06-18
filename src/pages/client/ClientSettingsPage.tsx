@@ -199,7 +199,7 @@ function sectionIcon(section: SettingsSection) {
 
 export function ClientSettingsPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { changePassword, user } = useAuth();
   const portal = usePortal();
 
   const [activeSection, setActiveSection] = useState<SettingsSection>("business");
@@ -212,6 +212,10 @@ export function ClientSettingsPage() {
   const [complianceAlerts, setComplianceAlerts] = useState(true);
   const [weeklySummary, setWeeklySummary] = useState(false);
   const [feedbackNotice, setFeedbackNotice] = useState<FeedbackNotice | null>(null);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [nextPassword, setNextPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
   const sections: Array<{
     id: SettingsSection;
@@ -263,6 +267,55 @@ export function ClientSettingsPage() {
       title: "Changes reset",
       message: "Profile fields were reset to the current workspace values.",
     });
+  }
+
+  async function handlePasswordChange() {
+    if (!currentPassword.trim()) {
+      setFeedbackNotice({
+        tone: "danger",
+        title: "Current password required",
+        message: "Enter your current password before choosing a new one.",
+      });
+      return;
+    }
+
+    if (nextPassword.trim().length < 8) {
+      setFeedbackNotice({
+        tone: "danger",
+        title: "Password too short",
+        message: "Use a new password with at least 8 characters.",
+      });
+      return;
+    }
+
+    if (nextPassword !== confirmPassword) {
+      setFeedbackNotice({
+        tone: "danger",
+        title: "Passwords do not match",
+        message: "Confirm the new password exactly before saving.",
+      });
+      return;
+    }
+
+    setIsUpdatingPassword(true);
+    const result = await changePassword(currentPassword, nextPassword);
+    setIsUpdatingPassword(false);
+
+    setFeedbackNotice({
+      tone: result.ok ? "success" : "danger",
+      title: result.ok ? "Password updated" : "Password update failed",
+      message:
+        result.message ??
+        (result.ok
+          ? "Your password was updated successfully."
+          : "The password could not be updated."),
+    });
+
+    if (result.ok) {
+      setCurrentPassword("");
+      setNextPassword("");
+      setConfirmPassword("");
+    }
   }
 
   function renderBusinessProfile() {
@@ -416,19 +469,44 @@ export function ClientSettingsPage() {
                 <p className="text-[0.84rem] text-slate-500">Last changed 18 days ago</p>
               </div>
             </div>
-            <Button
-              className="mt-4 h-10 rounded-xl border border-slate-200 bg-white px-4 text-slate-700 hover:bg-slate-50"
-              onClick={() =>
-                setFeedbackNotice({
-                  tone: "info",
-                  title: "Password controls",
-                  message: "Password reset and MFA flows are ready for backend wiring.",
-                })
-              }
-              variant="secondary"
-            >
-              Reset password
-            </Button>
+            <div className="mt-4 space-y-3">
+              <TextField
+                autoComplete="current-password"
+                id="client-current-password"
+                label="Current password"
+                onChange={(event) => setCurrentPassword(event.target.value)}
+                placeholder="Enter current password"
+                type="password"
+                value={currentPassword}
+              />
+              <TextField
+                autoComplete="new-password"
+                hint="Use at least 8 characters."
+                id="client-next-password"
+                label="New password"
+                onChange={(event) => setNextPassword(event.target.value)}
+                placeholder="Enter new password"
+                type="password"
+                value={nextPassword}
+              />
+              <TextField
+                autoComplete="new-password"
+                id="client-confirm-password"
+                label="Confirm new password"
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                placeholder="Confirm new password"
+                type="password"
+                value={confirmPassword}
+              />
+              <Button
+                className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-slate-700 hover:bg-slate-50"
+                disabled={isUpdatingPassword}
+                onClick={() => void handlePasswordChange()}
+                variant="secondary"
+              >
+                {isUpdatingPassword ? "Updating password..." : "Update password"}
+              </Button>
+            </div>
           </div>
 
           <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4">

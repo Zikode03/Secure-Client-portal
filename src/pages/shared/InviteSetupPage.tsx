@@ -4,12 +4,15 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { defaultPathForRole, useAuth } from "../../app/auth";
+import { hasApiBaseUrl } from "../../services/apiClient";
 
 // Component flow: gather data first, then render a focused UI state.
 export function InviteSetupPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const inviteEmail = searchParams.get("email") ?? "client@example.com";
+  const inviteToken = searchParams.get("token") ?? "";
+  const flowMode = searchParams.get("mode") ?? "invite";
   const { completeInvite } = useAuth();
 // Local UI state: keeps track of what the user is seeing or editing right now.
   const [fullName, setFullName] = useState("");
@@ -17,13 +20,15 @@ export function InviteSetupPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const emailLabel = useMemo(() => inviteEmail.toLowerCase(), [inviteEmail]);
+  const isPasswordReset = flowMode === "reset";
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!fullName.trim()) {
+    if (!isPasswordReset && !fullName.trim()) {
       setError("Enter the name that should appear in audit history.");
       return;
     }
@@ -43,18 +48,28 @@ export function InviteSetupPage() {
       return;
     }
 
-    const result = completeInvite({
+    if (hasApiBaseUrl() && !inviteToken.trim()) {
+      setError("This setup link is missing its invite token. Ask your administrator to resend the access email.");
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    const result = await completeInvite({
       email: emailLabel,
+      token: inviteToken,
       fullName,
       password,
     });
 
     if (!result.ok || !result.user) {
       setError(result.message ?? "Unable to complete the invite.");
+      setIsSubmitting(false);
       return;
     }
 
     setError("");
+    setIsSubmitting(false);
     navigate(defaultPathForRole(result.user.role));
   }
 
@@ -91,13 +106,17 @@ export function InviteSetupPage() {
                   </svg>
                 </div>
                 <p className="mt-8 text-sm font-black uppercase tracking-[0.42em] text-emerald-300">
-                  Invite setup
+                  {isPasswordReset ? "Password reset" : "Invite setup"}
                 </p>
                 <h1 className="mt-4 text-4xl font-light tracking-[-0.04em] text-white">
-                  Secure access starts here.
+                  {isPasswordReset
+                    ? "Choose a new password for your portal account."
+                    : "Set the password for your new portal access."}
                 </h1>
                 <p className="mt-5 text-sm leading-7 text-slate-300">
-                  Create your portal credentials, then manage document slots, audit history, and compliance tasks from your assigned workspace.
+                  {isPasswordReset
+                    ? "Use the secure reset email details to choose a new password, then continue back into your workspace."
+                    : "Your administrator already created the account. Use the invite email details to set your password, then continue into your assigned workspace."}
                 </p>
               </div>
             </div>
@@ -105,7 +124,7 @@ export function InviteSetupPage() {
             <div className="mx-auto w-full max-w-[420px]">
               <div className="mb-8">
                 <h2 className="text-[2.25rem] font-light tracking-[-0.04em] text-white">
-                  Create an Account
+                  {isPasswordReset ? "Reset password" : "Finish account setup"}
                 </h2>
                 <p className="mt-2 text-xs font-medium text-slate-400">
                   Already have an account?{" "}
@@ -116,9 +135,15 @@ export function InviteSetupPage() {
               </div>
 
               <form className="space-y-4" onSubmit={handleSubmit}>
+                <div className="rounded-md border border-emerald-300/20 bg-emerald-500/10 px-4 py-3 text-xs leading-5 text-emerald-100">
+                  {isPasswordReset
+                    ? "This step replaces the password for the existing sign-in account and keeps the email address unchanged."
+                    : "The sign-in account already exists. This step only sets the password and confirms access for the invited user."}
+                </div>
+
                 <label className="block">
                   <span className="mb-2 block text-xs font-bold text-slate-200">
-                    Invite Email*
+                    {isPasswordReset ? "Account Email*" : "Invite Email*"}
                   </span>
                   <input
                     className="h-11 w-full rounded-md border border-white/8 bg-slate-700/70 px-4 text-sm font-medium text-slate-200 outline-none ring-0 transition placeholder:text-slate-500 focus:border-emerald-300/60 focus:ring-4 focus:ring-emerald-400/10"
@@ -129,7 +154,7 @@ export function InviteSetupPage() {
 
                 <label className="block">
                   <span className="mb-2 block text-xs font-bold text-slate-200">
-                    Full Name*
+                    {isPasswordReset ? "Full Name" : "Full Name*"}
                   </span>
                   <input
                     className="h-11 w-full rounded-md border border-white/8 bg-slate-700/70 px-4 text-sm font-medium text-white outline-none ring-0 transition placeholder:text-slate-500 focus:border-emerald-300/60 focus:ring-4 focus:ring-emerald-400/10"
@@ -183,11 +208,24 @@ export function InviteSetupPage() {
                   </div>
                 ) : null}
 
+                {hasApiBaseUrl() && !inviteToken ? (
+                  <div className="rounded-md border border-sky-300/20 bg-sky-500/10 px-4 py-3 text-xs leading-5 text-sky-100">
+                    The access email should open this page with a secure setup token. If the token is missing, ask your administrator to resend the invite.
+                  </div>
+                ) : null}
+
                 <button
+                  disabled={isSubmitting}
                   className="h-12 w-full rounded-md bg-[linear-gradient(135deg,#18ac5f_0%,#0a7f74_48%,#0a2f66_100%)] text-sm font-black text-white shadow-[0_14px_30px_rgba(6,95,70,0.28)] transition hover:translate-y-[-1px] active:translate-y-0"
                   type="submit"
                 >
-                  Complete account setup
+                  {isSubmitting
+                    ? isPasswordReset
+                      ? "Resetting password..."
+                      : "Completing setup..."
+                    : isPasswordReset
+                      ? "Update password"
+                      : "Complete account setup"}
                 </button>
               </form>
             </div>

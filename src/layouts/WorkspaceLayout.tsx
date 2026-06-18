@@ -236,10 +236,11 @@ const routePrefetchers: Array<{ match: (path: string) => boolean; load: () => Pr
   { match: (path) => path.startsWith("/firm/notifications"), load: () => import("../pages/accountant/AccountantNotificationsPage") },
   { match: (path) => path.startsWith("/firm/settings"), load: () => import("../pages/firm/FirmSettingsPage") },
   { match: (path) => path.startsWith("/firm/clients/") && path.endsWith("/profile"), load: () => import("../pages/firm/FirmClient360Page") },
-  { match: (path) => path.startsWith("/firm/admin/accountants"), load: () => import("../pages/admin/AdminAccountantsPage") },
-  { match: (path) => path.startsWith("/firm/admin/assignments"), load: () => import("../pages/admin/AdminAssignmentsPage") },
-  { match: (path) => path.startsWith("/firm/admin/system-settings"), load: () => import("../pages/admin/AdminSettingsPage") },
-  { match: (path) => path.startsWith("/firm/admin/request-state-machine"), load: () => import("../pages/admin/AdminRequestStateMachinePage") },
+  { match: (path) => path.startsWith("/admin/dashboard"), load: () => import("../pages/admin/AdminDashboardPage") },
+  { match: (path) => path.startsWith("/admin/accountants"), load: () => import("../pages/admin/AdminAccountantsPage") },
+  { match: (path) => path.startsWith("/admin/assignments"), load: () => import("../pages/admin/AdminAssignmentsPage") },
+  { match: (path) => path.startsWith("/admin/system-settings"), load: () => import("../pages/admin/AdminSettingsPage") },
+  { match: (path) => path.startsWith("/admin/request-state-machine"), load: () => import("../pages/admin/AdminRequestStateMachinePage") },
 ];
 
 function prefetchRoute(path: string) {
@@ -273,7 +274,7 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
   const showSectionLabels = !effectiveCollapsed;
   const showSidebarSearch = !effectiveCollapsed;
   const settingsPath =
-    role === "admin" ? "/firm/admin/system-settings" : role === "client" ? "/client/settings" : "/firm/settings";
+    role === "admin" ? "/admin/system-settings" : role === "client" ? "/client/settings" : "/firm/settings";
   const isDark = theme === "dark";
 
   const activeItem = useMemo(

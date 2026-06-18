@@ -185,8 +185,11 @@ function renderPage(workflowOverrides: Record<string, unknown> = {}) {
       clientIds: ["client-apex"],
       assignedClientIds: [],
     },
+    authNotice: null,
+    clearAuthNotice: vi.fn(),
     login: vi.fn(),
     completeInvite: vi.fn(),
+    requestPasswordReset: vi.fn(),
     changePassword: vi.fn(),
     logout: vi.fn(),
   });

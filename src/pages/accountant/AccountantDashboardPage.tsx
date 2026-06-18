@@ -724,7 +724,6 @@ export function AccountantDashboardPage() {
   const portal = usePortal();
   const data = portal.accountantDashboard;
   const navigate = useNavigate();
-  const isAdmin = user?.role === "admin";
   const [activeQueueTab, setActiveQueueTab] = useState<QueueTab>("reviews");
 // Local UI state: keeps track of what the user is seeing or editing right now.
   const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
@@ -754,8 +753,8 @@ export function AccountantDashboardPage() {
     [data.reviewQueue, portal.adminClients, user],
   );
   const scopedDeadlines = useMemo(
-    () => (isAdmin ? data.deadlines : data.deadlines.filter((item) => item.owner === user?.fullName)),
-    [data.deadlines, isAdmin, user?.fullName],
+    () => data.deadlines.filter((item) => item.owner === user?.fullName),
+    [data.deadlines, user?.fullName],
   );
   const scopedMissingDocuments = useMemo(
     () =>
@@ -959,7 +958,7 @@ export function AccountantDashboardPage() {
   }, [isNotificationPanelOpen]);
 
   function handleExportView() {
-    downloadCsv(isAdmin ? "firm-portfolio-view.csv" : "accountant-portfolio-view.csv", [
+    downloadCsv("accountant-portfolio-view.csv", [
       ["Client Name", "Month", "Progress %", "Status", "Assigned Accountant"],
       ...scopedPortfolio.map((row) => [
         row.clientName,
@@ -994,16 +993,14 @@ export function AccountantDashboardPage() {
         <div className="relative grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
           <div className="space-y-3">
             <span className="inline-flex rounded-full bg-white/12 px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-white/80 ring-1 ring-white/15">
-              {isAdmin ? "Firm Workspace" : "Accountant Workspace"}
+              Accountant Workspace
             </span>
             <div className="space-y-1.5">
               <h1 className="text-[2.05rem] font-semibold tracking-tight text-white">
                 Welcome, {user?.name ?? "Accountant"}
               </h1>
               <p className="max-w-3xl text-[0.96rem] leading-7 text-white/78">
-                {isAdmin
-                  ? "Focus on the clients and operational work that need attention across the firm."
-                  : "Focus on the clients and tasks that need your attention."}
+                Focus on the clients and tasks that need your attention.
               </p>
             </div>
           </div>
@@ -1022,7 +1019,7 @@ export function AccountantDashboardPage() {
               <button
                 aria-expanded={isNotificationPanelOpen}
                 aria-haspopup="dialog"
-                aria-label={isAdmin ? "Open firm alerts" : "Open accountant alerts"}
+                aria-label="Open accountant alerts"
                 className="relative inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-white/20 bg-white/10 text-white shadow-[0_10px_30px_rgba(2,12,27,0.18)] backdrop-blur transition hover:bg-white/16"
                 onClick={() => setIsNotificationPanelOpen((current) => !current)}
                 type="button"
@@ -1037,7 +1034,7 @@ export function AccountantDashboardPage() {
 
               {isNotificationPanelOpen ? (
                 <div
-                  aria-label={isAdmin ? "Firm notifications" : "Accountant notifications"}
+                  aria-label="Accountant notifications"
                   className="absolute right-0 top-[calc(100%+0.75rem)] z-30 w-[min(420px,calc(100vw-1rem))] max-w-[calc(100vw-1rem)] overflow-hidden rounded-[1.6rem] border border-slate-200/90 bg-white text-slate-950 shadow-[0_24px_60px_rgba(15,23,42,0.14)]"
                   role="dialog"
                 >
@@ -1204,13 +1201,9 @@ export function AccountantDashboardPage() {
         <SurfaceCard className={cn(panelClass, "min-w-0 overflow-hidden p-0")}>
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e6edf4] bg-[#fbfdff] px-5 pb-4 pt-5">
             <div>
-              <h2 className="text-[1.05rem] font-semibold text-[#091333]">
-                {isAdmin ? "Firm clients" : "My assigned clients"}
-              </h2>
+              <h2 className="text-[1.05rem] font-semibold text-[#091333]">My assigned clients</h2>
               <p className="mt-1 text-[0.76rem] font-medium text-[#53617f]">
-                {isAdmin
-                  ? "Overview of the firm client portfolio and current pack progress."
-                  : "Overview of your clients and pack progress."}
+                Overview of your clients and pack progress.
               </p>
             </div>
             <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
@@ -1229,15 +1222,6 @@ export function AccountantDashboardPage() {
                   value={clientSearch}
                 />
               </label>
-              {isAdmin ? (
-                <Button
-                  className={cn(dashboardActionButtonClass, "h-9 rounded-lg border-0 px-3 text-[0.74rem] ring-0")}
-                  onClick={() => navigate("/firm/admin/assignments")}
-                >
-                  <span>Manage assignments</span>
-                  <ChevronRightIcon />
-                </Button>
-              ) : null}
               <Button
                 className={cn(dashboardActionButtonClass, "h-9 rounded-lg border-0 px-3 text-[0.74rem] ring-0")}
                 onClick={handleExportView}
@@ -1357,13 +1341,9 @@ export function AccountantDashboardPage() {
         <SurfaceCard className={cn(panelClass, "min-w-0 overflow-hidden p-0")}>
           <div className="space-y-4 border-b border-[#e6edf4] bg-[#fbfdff] px-5 pb-5 pt-5">
             <div>
-              <h2 className="text-[1.2rem] font-semibold text-[#091333]">
-                {isAdmin ? "Firm work queue" : "My work queue"}
-              </h2>
+              <h2 className="text-[1.2rem] font-semibold text-[#091333]">My work queue</h2>
               <p className="mt-1 text-[0.86rem] text-[#53617f]">
-                {isAdmin
-                  ? "Reviews and deadline items visible across the firm."
-                  : "Tasks that need your attention."}
+                Tasks that need your attention.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-5">

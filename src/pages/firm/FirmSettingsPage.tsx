@@ -206,7 +206,7 @@ function sectionIcon(section: SettingsSection) {
 
 export function FirmSettingsPage() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { changePassword, user } = useAuth();
   const portal = usePortal();
   const isAdmin = user?.role === "admin";
   const [activeSection, setActiveSection] = useState<SettingsSection>("operations");
@@ -254,6 +254,10 @@ export function FirmSettingsPage() {
     accountant: getPermissionsForRole("accountant"),
     client: getPermissionsForRole("client"),
   });
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [nextPassword, setNextPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   // Filing rule state controls which accepted categories are auto-filed.
   const [filingRules, setFilingRules] = useState<FilingRuleRecord[]>([]);
   const [savedFilingRules, setSavedFilingRules] = useState<FilingRuleRecord[]>([]);
@@ -439,6 +443,55 @@ export function FirmSettingsPage() {
     });
   }
 
+  async function handlePasswordChange() {
+    if (!currentPassword.trim()) {
+      setFeedbackNotice({
+        tone: "danger",
+        title: "Current password required",
+        message: "Enter your current password before choosing a new one.",
+      });
+      return;
+    }
+
+    if (nextPassword.trim().length < 8) {
+      setFeedbackNotice({
+        tone: "danger",
+        title: "Password too short",
+        message: "Use a new password with at least 8 characters.",
+      });
+      return;
+    }
+
+    if (nextPassword !== confirmPassword) {
+      setFeedbackNotice({
+        tone: "danger",
+        title: "Passwords do not match",
+        message: "Confirm the new password exactly before saving.",
+      });
+      return;
+    }
+
+    setIsUpdatingPassword(true);
+    const result = await changePassword(currentPassword, nextPassword);
+    setIsUpdatingPassword(false);
+
+    setFeedbackNotice({
+      tone: result.ok ? "success" : "danger",
+      title: result.ok ? "Password updated" : "Password update failed",
+      message:
+        result.message ??
+        (result.ok
+          ? "Your password was updated successfully."
+          : "The password could not be updated."),
+    });
+
+    if (result.ok) {
+      setCurrentPassword("");
+      setNextPassword("");
+      setConfirmPassword("");
+    }
+  }
+
   function renderOperations() {
     if (isAdmin) {
       return (
@@ -545,7 +598,7 @@ export function FirmSettingsPage() {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <Button onClick={() => navigate("/firm/admin/assignments")} variant="secondary">
+            <Button onClick={() => navigate("/admin/assignments")} variant="secondary">
               Open assignments
             </Button>
             <Button onClick={() => setActiveSection("access")} variant="secondary">
@@ -890,7 +943,7 @@ export function FirmSettingsPage() {
           </Button>
           {isAdmin ? (
             <>
-              <Button onClick={() => navigate("/firm/admin/assignments")} variant="secondary">
+              <Button onClick={() => navigate("/admin/assignments")} variant="secondary">
                 Open assignments
               </Button>
             </>
@@ -978,10 +1031,65 @@ export function FirmSettingsPage() {
           </div>
         </div>
 
+        <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4">
+          <div className="flex items-center gap-3">
+            <div className="text-slate-600">
+              <AccessIcon />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-950">Account password</p>
+              <p className="text-[0.84rem] text-slate-500">
+                Change the password for your current {isAdmin ? "admin" : "firm"} workspace sign-in.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-4 md:grid-cols-3">
+            <TextField
+              autoComplete="current-password"
+              id="firm-current-password"
+              label="Current password"
+              onChange={(event) => setCurrentPassword(event.target.value)}
+              placeholder="Enter current password"
+              type="password"
+              value={currentPassword}
+            />
+            <TextField
+              autoComplete="new-password"
+              hint="Use at least 8 characters."
+              id="firm-next-password"
+              label="New password"
+              onChange={(event) => setNextPassword(event.target.value)}
+              placeholder="Enter new password"
+              type="password"
+              value={nextPassword}
+            />
+            <TextField
+              autoComplete="new-password"
+              id="firm-confirm-password"
+              label="Confirm new password"
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              placeholder="Confirm new password"
+              type="password"
+              value={confirmPassword}
+            />
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Button
+              disabled={isUpdatingPassword}
+              onClick={() => void handlePasswordChange()}
+              variant="secondary"
+            >
+              {isUpdatingPassword ? "Updating password..." : "Update password"}
+            </Button>
+          </div>
+        </div>
+
         <div className="flex flex-wrap gap-3">
           {isAdmin ? (
             <>
-              <Button onClick={() => navigate("/firm/admin/system-settings")} variant="secondary">
+              <Button onClick={() => navigate("/admin/system-settings")} variant="secondary">
                 Open system settings
               </Button>
               <Button onClick={() => setActiveSection("access")} variant="secondary">
@@ -1138,7 +1246,7 @@ export function FirmSettingsPage() {
             </Button>
             <Button
               onClick={() =>
-                navigate(isAdmin ? "/firm/admin/system-settings" : "/firm/compliance")
+                navigate(isAdmin ? "/admin/system-settings" : "/firm/compliance")
               }
               size="sm"
               variant="secondary"

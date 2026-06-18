@@ -85,11 +85,9 @@ export function getUserPermissions(user: SessionUser | null | undefined) {
     return [] as Permission[];
   }
 
-  if (user.permissions && user.permissions.length > 0) {
-    return Array.from(new Set(user.permissions));
-  }
-
-  return getPermissionsForRole(user.role);
+  return Array.from(
+    new Set([...(user.permissions ?? []), ...getPermissionsForRole(user.role)]),
+  );
 }
 
 export function hasPermission(
@@ -303,28 +301,28 @@ export function canAccessRoute(
     return user.role === "client";
   }
 
-  if (route.startsWith("/firm/admin/assignments")) {
+  if (route.startsWith("/admin/assignments")) {
     return hasPermission(user, "manage:assignments");
   }
 
-  if (route.startsWith("/firm/admin/system-settings")) {
+  if (route.startsWith("/admin/system-settings")) {
     return hasPermission(user, "manage:system_settings");
   }
 
-  if (route.startsWith("/firm/admin/request-state-machine")) {
+  if (route.startsWith("/admin/request-state-machine")) {
     return hasPermission(user, "manage:system_settings");
   }
 
-  if (route.startsWith("/firm/admin/accountants")) {
+  if (route.startsWith("/admin/accountants")) {
     return hasPermission(user, "manage:users");
   }
 
   if (route.startsWith("/firm")) {
-    return user.role === "admin" || user.role === "accountant";
+    return user.role === "accountant" || user.role === "admin";
   }
 
   if (route.startsWith("/accountant")) {
-    return user.role === "accountant";
+    return user.role === "accountant" || user.role === "admin";
   }
 
   if (route.startsWith("/admin")) {

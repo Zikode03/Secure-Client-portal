@@ -106,7 +106,6 @@ export function AccountantComplianceCentrePage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const portal = usePortal();
-  const isAdmin = user?.role === "admin";
 // Local UI state: keeps track of what the user is seeing or editing right now.
   const [searchQuery, setSearchQuery] = useState("");
   const [riskFilter, setRiskFilter] = useState<RiskFilter>("all");
@@ -208,14 +207,9 @@ export function AccountantComplianceCentrePage() {
   function canTransitionStatus(
     from: ComplianceBoardStatus,
     to: ComplianceBoardStatus,
-    isAdminUser: boolean,
   ) {
     if (from === to) {
       return false;
-    }
-
-    if (isAdminUser) {
-      return true;
     }
 
     if (!canReviewDocuments) {
@@ -235,7 +229,7 @@ export function AccountantComplianceCentrePage() {
 
   function moveBoardItem(row: SupplierRow, to: ComplianceBoardStatus) {
     const from = statusForRow(row);
-    if (!canTransitionStatus(from, to, isAdmin)) {
+    if (!canTransitionStatus(from, to)) {
       return;
     }
 
@@ -884,7 +878,7 @@ export function AccountantComplianceCentrePage() {
                         .map((row) => (
                           <div
                             className="rounded-lg border border-[#d8e2ee] bg-white px-3 py-2"
-                            draggable={isAdmin || canReviewDocuments}
+                            draggable={canReviewDocuments}
                             key={row.id}
                             onDragStart={(event) => event.dataTransfer.setData("text/plain", row.id)}
                           >
@@ -906,30 +900,21 @@ export function AccountantComplianceCentrePage() {
               Showing {startIndex} to {endIndex} of {filteredSuppliers.length} items
             </p>
             <div className="flex flex-wrap items-center gap-3">
-              {isAdmin ? (
-                <Button onClick={() => navigate("/firm/admin/assignments")} size="sm">
-                  Assign accountant
-                </Button>
-              ) : null}
-              {!isAdmin ? (
-                <Button
-                  className="h-12 rounded-xl bg-[linear-gradient(135deg,#0aa66a_0%,#061848_100%)] px-6 text-white"
-                  disabled={!canRequestDocuments}
-                  onClick={() => createComplianceFollowUp(selectedClient)}
-                >
-                  Request documents
-                </Button>
-              ) : null}
-              {!isAdmin ? (
-                <Button
-                  className="h-12 rounded-xl border-[#d8e2ee] px-6 text-[#061848]"
-                  disabled={!canExportReports}
-                  onClick={downloadComplianceCsv}
-                  variant="secondary"
-                >
-                  Download client compliance report
-                </Button>
-              ) : null}
+              <Button
+                className="h-12 rounded-xl bg-[linear-gradient(135deg,#0aa66a_0%,#061848_100%)] px-6 text-white"
+                disabled={!canRequestDocuments}
+                onClick={() => createComplianceFollowUp(selectedClient)}
+              >
+                Request documents
+              </Button>
+              <Button
+                className="h-12 rounded-xl border-[#d8e2ee] px-6 text-[#061848]"
+                disabled={!canExportReports}
+                onClick={downloadComplianceCsv}
+                variant="secondary"
+              >
+                Download client compliance report
+              </Button>
               <div className="ml-2 flex items-center gap-1">
                 <button
                   className="rounded-md border border-[#d8e2ee] px-2 py-1 text-[#53617f] disabled:opacity-50"
@@ -987,19 +972,13 @@ export function AccountantComplianceCentrePage() {
                     Assigned to {user?.fullName ?? "Nayan Dhali"}
                   </p>
                 </div>
-                {!isAdmin ? (
-                  <Button
-                    className="h-12 rounded-xl border border-white/25 bg-white/10 px-5 text-white hover:bg-white/15"
-                    disabled={!canRequestDocuments}
-                    onClick={() => createComplianceFollowUp(selectedClient)}
-                  >
-                    Request client documents
-                  </Button>
-                ) : (
-                  <Button className="h-12 rounded-xl border border-white/25 bg-white/10 px-5 text-white hover:bg-white/15" onClick={() => navigate("/firm/admin/assignments")}>
-                    Assign accountant
-                  </Button>
-                )}
+                <Button
+                  className="h-12 rounded-xl border border-white/25 bg-white/10 px-5 text-white hover:bg-white/15"
+                  disabled={!canRequestDocuments}
+                  onClick={() => createComplianceFollowUp(selectedClient)}
+                >
+                  Request client documents
+                </Button>
               </div>
             </div>
             <div className="grid gap-5 p-6 lg:grid-cols-[repeat(3,minmax(0,1fr))_220px]">

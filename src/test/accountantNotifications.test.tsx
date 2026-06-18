@@ -58,8 +58,8 @@ describe("accountant notifications access", () => {
 
   it("keeps admin-only navigation items hidden from the accountant sidebar", () => {
     expect(navigationByRole.accountant.some((item) => item.to === "/firm/notifications")).toBe(false);
-    expect(
-      navigationByRole.accountant.some((item) => item.to === "/firm/admin/users"),
-    ).toBe(false);
+    expect(navigationByRole.accountant.some((item) => item.to === "/admin/accountants")).toBe(
+      false,
+    );
   });
 });

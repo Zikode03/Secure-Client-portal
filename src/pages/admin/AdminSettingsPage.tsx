@@ -359,9 +359,27 @@ export function AdminSettingsPage() {
     return (
       <SurfaceCard className="space-y-5">
         <h2 className="text-xl font-semibold text-slate-950">Manage users</h2>
+        <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm leading-6 text-emerald-900">
+          <p className="font-semibold">Admins create access for clients and accountants.</p>
+          <p className="mt-1 text-emerald-800/90">
+            New users are invited first, then set their own password from the access email before they can sign in.
+          </p>
+        </div>
         <div className="grid gap-4 md:grid-cols-4">
-          <TextField label="Full name" onChange={(event) => setNewUserName(event.target.value)} value={newUserName} />
-          <TextField label="Email" onChange={(event) => setNewUserEmail(event.target.value)} value={newUserEmail} />
+          <TextField
+            hint="This name appears in audit history and email invites."
+            id="admin-new-user-name"
+            label="Full name"
+            onChange={(event) => setNewUserName(event.target.value)}
+            value={newUserName}
+          />
+          <TextField
+            hint="The user will receive setup instructions at this email address."
+            id="admin-new-user-email"
+            label="Email"
+            onChange={(event) => setNewUserEmail(event.target.value)}
+            value={newUserEmail}
+          />
           <SelectField
             label="Role"
             onChange={(event) => setNewUserRole(event.target.value as Role)}
@@ -373,7 +391,7 @@ export function AdminSettingsPage() {
             value={newUserRole}
           />
           <div className="flex items-end">
-            <Button onClick={createUser}>Create user</Button>
+            <Button onClick={createUser}>Create user &amp; send invite</Button>
           </div>
         </div>
 
@@ -397,8 +415,12 @@ export function AdminSettingsPage() {
                 ]}
                 value={account.role}
               />
-              <p className="text-sm text-slate-600">{account.status}</p>
-              <Button onClick={() => setFeedbackMessage(portal.resetUserAccess(account.id).message)} size="sm" variant="secondary">Reset access</Button>
+              <p className="text-sm text-slate-600">
+                {account.status === "invited" ? "Awaiting password setup" : account.status}
+              </p>
+              <Button onClick={() => setFeedbackMessage(portal.resetUserAccess(account.id).message)} size="sm" variant="secondary">
+                {account.status === "invited" ? "Resend invite" : "Send reset email"}
+              </Button>
               <Button
                 onClick={() =>
                   setFeedbackMessage(

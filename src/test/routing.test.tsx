@@ -85,14 +85,27 @@ describe("role-based route access", () => {
     expect(await screen.findByRole("heading", { name: "Settings" })).toBeInTheDocument();
   });
 
+  it("admin lands on the dedicated admin dashboard", async () => {
+    renderAppAt("/admin", createUser("admin"));
+
+    expect(await screen.findByRole("heading", { name: "Firm dashboard" })).toBeInTheDocument();
+  });
+
   it("admin can access system settings", async () => {
-    renderAppAt("/firm/admin/system-settings", createUser("admin"));
+    renderAppAt("/admin/system-settings", createUser("admin"));
 
     expect(await screen.findByRole("heading", { name: "System settings" })).toBeInTheDocument();
   });
 
-  it("shows admin-only header badge only for admin role", async () => {
+  it("admin can access firm workspace routes when needed", async () => {
     renderAppAt("/firm/dashboard", createUser("admin"));
+
+    expect(await screen.findByText("Accountant Workspace")).toBeInTheDocument();
+    expect(screen.getByText("Welcome, Priya")).toBeInTheDocument();
+  });
+
+  it("shows admin-only header badge only for admin role", async () => {
+    renderAppAt("/admin/system-settings", createUser("admin"));
     expect(await screen.findByText("Admin only")).toBeInTheDocument();
 
     window.localStorage.clear();
@@ -160,7 +173,7 @@ describe("role-based route access", () => {
   });
 
   it("admin can open request SLA state machine page", async () => {
-    renderAppAt("/firm/admin/request-state-machine", createUser("admin"));
+    renderAppAt("/admin/request-state-machine", createUser("admin"));
 
     expect(await screen.findByRole("heading", { name: /Request State Machine/i })).toBeInTheDocument();
   });

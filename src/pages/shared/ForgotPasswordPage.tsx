@@ -3,15 +3,18 @@
 
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useAuth } from "../../app/auth";
 
 // Component flow: gather data first, then render a focused UI state.
 export function ForgotPasswordPage() {
 // Local UI state: keeps track of what the user is seeing or editing right now.
+  const { requestPasswordReset } = useAuth();
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (!email.includes("@")) {
@@ -20,10 +23,18 @@ export function ForgotPasswordPage() {
       return;
     }
 
+    setIsSubmitting(true);
+    const result = await requestPasswordReset(email);
+    setIsSubmitting(false);
+
+    if (!result.ok) {
+      setError(result.message ?? "Password reset could not be requested right now.");
+      setSuccessMessage("");
+      return;
+    }
+
     setError("");
-    setSuccessMessage(
-      "Reset instructions have been prepared for this frontend workspace. Backend integration can wire this form to the real identity service later.",
-    );
+    setSuccessMessage(result.message ?? "If the account exists, reset instructions will be sent.");
   }
 
 // Render output: this is the visual state users interact with.
@@ -62,10 +73,10 @@ export function ForgotPasswordPage() {
                   Password recovery
                 </p>
                 <h1 className="mt-4 text-4xl font-light tracking-[-0.04em] text-white">
-                  Restore access without slowing the workflow.
+                  Recover access the right way.
                 </h1>
                 <p className="mt-5 text-sm leading-7 text-slate-300">
-                  Request reset instructions for the email tied to your client or firm portal account. The reset flow can later connect to the production identity service.
+                  Request a password reset for the email tied to your portal access. If the account exists, the backend will prepare a secure reset link for that user.
                 </p>
               </div>
             </div>
@@ -106,14 +117,18 @@ export function ForgotPasswordPage() {
                 {successMessage ? (
                   <div className="rounded-md border border-emerald-300/30 bg-emerald-500/10 px-4 py-3 text-xs font-semibold leading-5 text-emerald-100">
                     {successMessage}
+                    <div className="mt-2 text-[0.72rem] font-medium text-emerald-100/85">
+                      The reset email will open the password-reset screen directly when the link is valid.
+                    </div>
                   </div>
                 ) : null}
 
                 <button
+                  disabled={isSubmitting}
                   className="h-12 w-full rounded-md bg-[linear-gradient(135deg,#18ac5f_0%,#0a7f74_48%,#0a2f66_100%)] text-sm font-black text-white shadow-[0_14px_30px_rgba(6,95,70,0.28)] transition hover:translate-y-[-1px] active:translate-y-0"
                   type="submit"
                 >
-                  Send reset instructions
+                  {isSubmitting ? "Sending reset instructions..." : "Send reset instructions"}
                 </button>
               </form>
             </div>

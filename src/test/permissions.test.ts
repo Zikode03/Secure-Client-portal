@@ -95,8 +95,18 @@ describe("permission and scoping helpers", () => {
   });
 
   it("admin can access system settings while accountants cannot", () => {
-    expect(canAccessRoute(adminUser, "/firm/admin/system-settings")).toBe(true);
-    expect(canAccessRoute(accountantUser, "/firm/admin/system-settings")).toBe(false);
+    expect(canAccessRoute(adminUser, "/admin/system-settings")).toBe(true);
+    expect(canAccessRoute(accountantUser, "/admin/system-settings")).toBe(false);
+    expect(canAccessRoute(adminUser, "/firm/dashboard")).toBe(true);
+  });
+
+  it("keeps role defaults even when backend permissions are present", () => {
+    const backendAdminUser: SessionUser = {
+      ...adminUser,
+      permissions: ["comment:documents"],
+    };
+
+    expect(canAccessRoute(backendAdminUser, "/admin/accountants")).toBe(true);
   });
 
   it("scoping follows dynamic assignment changes and ignores stale assignedClientIds", () => {

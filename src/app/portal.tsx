@@ -43,6 +43,7 @@ import {
 } from "../utils/compliance";
 import { formatDateLabel } from "../utils/formatters";
 import type {
+  AdminDashboardData,
   AccountantDashboardData,
   ActivityItem,
   AuditTrailEntry,
@@ -541,6 +542,7 @@ interface PortalContextValue {
   };
   accountantDashboard: AccountantDashboardData;
   adminClients: FirmClientAccount[];
+  adminDashboard: AdminDashboardData;
   adminPolicies: DocumentPolicy[];
   managedAccountants: ManagedAccountant[];
   userAccounts: UserAccountRecord[];
@@ -2787,7 +2789,7 @@ const assignedAccountantForApex =
       company: payload.company,
     });
 
-    return { ok: true, message: "User account created and invite queued." };
+    return { ok: true, message: "User account created. Setup instructions were sent to the new user." };
   }
 
   function disableUserAccount(userId: string): PortalActionResult {
@@ -2846,7 +2848,7 @@ const assignedAccountantForApex =
     );
     void portalServiceApi.resetUserAccess(userId, "admin_reset");
 
-    return { ok: true, message: "Access reset instructions were issued." };
+    return { ok: true, message: "Reset instructions were sent to the user." };
   }
 
   function assignUserRole(userId: string, role: Role): PortalActionResult {
@@ -3271,6 +3273,66 @@ const assignedAccountantForApex =
     smartAlerts,
   ]);
 
+  const adminDashboard = useMemo<AdminDashboardData>(() => {
+    const activeClients = adminClients.filter((client) => client.isActive ?? true);
+    const assignedAccountants = managedAccountants.filter(
+      (accountant) => accountant.assignedClientCount > 0,
+    );
+    const atRiskClients = adminClients.filter(
+      (client) => client.status !== "on_track" || client.completionRate < 80,
+    );
+    const trackedExpiries =
+      accountantComplianceCentre.expiredCount + accountantComplianceCentre.expiringCount;
+    const reviewQueueCount = accountantDashboard.reviewQueue.length;
+    const unassignedClients = adminClients.filter(
+      (client) => !client.assignedAccountantUserId,
+    ).length;
+
+    return {
+      summaryMetrics: [
+        {
+          id: "admin-metric-active-clients",
+          label: "Active clients",
+          value: String(activeClients.length),
+          helper: "Clients with live access and structured monthly workflows.",
+          tone: "info",
+        },
+        {
+          id: "admin-metric-assigned-accountants",
+          label: "Assigned accountants",
+          value: String(assignedAccountants.length),
+          helper: `${managedAccountants.length - assignedAccountants.length} workers still have spare capacity.`,
+          tone: assignedAccountants.length > 0 ? "success" : "warning",
+        },
+        {
+          id: "admin-metric-at-risk",
+          label: "At-risk clients",
+          value: String(atRiskClients.length),
+          helper: `${reviewQueueCount} review items and ${unassignedClients} unassigned clients need governance attention.`,
+          tone: atRiskClients.length > 0 || unassignedClients > 0 ? "danger" : "success",
+        },
+        {
+          id: "admin-metric-expiries",
+          label: "Tracked expiries",
+          value: String(trackedExpiries),
+          helper: `${accountantComplianceCentre.expiredCount} expired and ${accountantComplianceCentre.expiringCount} expiring soon.`,
+          tone: trackedExpiries > 0 ? "warning" : "success",
+        },
+      ],
+      clients: adminClients,
+      policies: adminPolicies,
+      notifications,
+    };
+  }, [
+    accountantComplianceCentre.expiredCount,
+    accountantComplianceCentre.expiringCount,
+    accountantDashboard.reviewQueue.length,
+    adminClients,
+    adminPolicies,
+    managedAccountants,
+    notifications,
+  ]);
+
   const value = useMemo<PortalContextValue>(
     () => ({
       clientProfile,
@@ -3299,6 +3361,7 @@ const assignedAccountantForApex =
       },
       accountantDashboard,
       adminClients,
+      adminDashboard,
       adminPolicies,
       managedAccountants,
       userAccounts,
@@ -3352,6 +3415,7 @@ const assignedAccountantForApex =
       accountantComplianceCentre,
       accountantDashboard,
       activity,
+      adminDashboard,
       adminClients,
       adminPolicies,
       clientComplianceCentre,

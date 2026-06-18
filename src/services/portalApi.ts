@@ -150,11 +150,7 @@ export const portalServiceApi = {
   async createUserAccount(payload: { fullName: string; email: string; role: Role; company?: string }) {
     if (!hasApiBaseUrl()) return { ok: true };
     try {
-      await fetch("/api/admin/users", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify(payload),
-      });
+      await apiPostJson("/api/admin/users", payload);
       return { ok: true };
     } catch {
       return { ok: false };
@@ -181,11 +177,7 @@ export const portalServiceApi = {
   async resetUserAccess(userId: string, reason = "admin_reset") {
     if (!hasApiBaseUrl()) return { ok: true };
     try {
-      await fetch(`/api/admin/users/${encodeURIComponent(userId)}/reset-access`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify({ reason }),
-      });
+      await apiPostJson(`/api/admin/users/${encodeURIComponent(userId)}/reset-access`, { reason });
       return { ok: true };
     } catch {
       return { ok: false };
@@ -215,11 +207,7 @@ export const portalServiceApi = {
   }) {
     if (!hasApiBaseUrl()) return { ok: true };
     try {
-      await fetch("/api/clients", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify(payload),
-      });
+      await apiPostJson("/api/clients", payload);
       return { ok: true };
     } catch {
       return { ok: false };
@@ -228,11 +216,7 @@ export const portalServiceApi = {
   async updateClientBusiness(clientId: string, payload: Record<string, unknown>) {
     if (!hasApiBaseUrl()) return { ok: true };
     try {
-      await fetch(`/api/clients/${encodeURIComponent(clientId)}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify(payload),
-      });
+      await apiPutJson(`/api/clients/${encodeURIComponent(clientId)}`, payload);
       return { ok: true };
     } catch {
       return { ok: false };
