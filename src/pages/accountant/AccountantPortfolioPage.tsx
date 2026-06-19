@@ -9,17 +9,11 @@ import type { FirmClientAccount, PortfolioRow } from "../../types/portal";
 import { cn } from "../../utils/cn";
 import { getScopedClients } from "../../utils/permissions";
 
-const portfolioSnapshotDate = "2026-05-07T08:00:00.000Z";
-
 type SortMode = "priority" | "deadline" | "progress";
 type ViewMode = "table" | "kanban";
 type LaneKey = "waitingOnClient" | "inReview" | "atRisk" | "done";
 type SavedFilter = "all" | "my_urgent" | "due_48h" | "blocked_3d";
 type PortfolioView = { account: FirmClientAccount | null; row: PortfolioRow };
-
-function getFirstName(value: string | undefined) {
-  return value?.split(" ").filter(Boolean)[0] ?? "there";
-}
 
 function portfolioRank(row: PortfolioRow) {
   const statusScore = row.status === "overdue" ? 3 : row.status === "attention" ? 2 : 1;
@@ -27,7 +21,7 @@ function portfolioRank(row: PortfolioRow) {
 }
 
 function dayDifference(dateValue: string) {
-  const currentDate = new Date(portfolioSnapshotDate);
+  const currentDate = new Date();
   const dueDate = new Date(dateValue);
   return Math.ceil((dueDate.getTime() - currentDate.getTime()) / (1000 * 60 * 60 * 24));
 }
@@ -133,7 +127,6 @@ export function AccountantPortfolioPage() {
   const { user } = useAuth();
   const portal = usePortal();
   const navigate = useNavigate();
-  const isAdmin = user?.role === "admin";
   const [search, setSearch] = useState("");
   const [sortMode, setSortMode] = useState<SortMode>("priority");
   const [viewMode, setViewMode] = useState<ViewMode>("table");
@@ -197,11 +190,6 @@ export function AccountantPortfolioPage() {
 
   return (
     <div className="mx-auto max-w-[1280px] space-y-5">
-      <div className="space-y-1.5">
-        <h1 className="text-[2.05rem] font-semibold tracking-tight text-slate-950">Good morning, {getFirstName(user?.fullName)}</h1>
-        <p className="max-w-3xl text-[0.96rem] leading-7 text-slate-500">{isAdmin ? "Firm client portfolio for May 2026." : "Your client portfolio for May 2026."}</p>
-      </div>
-
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
         <div className="flex items-center gap-3 text-sm text-slate-600">
           <span>Assigned: {summary.assigned}</span><span>Overdue: {summary.overdue}</span><span>Needs attention: {summary.attention}</span><span>On track: {summary.onTrack}</span>

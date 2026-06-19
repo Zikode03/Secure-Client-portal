@@ -138,6 +138,9 @@ export function AdminSettingsPage() {
   const [newUserName, setNewUserName] = useState("");
   const [newUserEmail, setNewUserEmail] = useState("");
   const [newUserRole, setNewUserRole] = useState<Role>("accountant");
+  const [isCreatingUser, setIsCreatingUser] = useState(false);
+  const [userInviteFeedback, setUserInviteFeedback] = useState("");
+  const [pendingUserActionId, setPendingUserActionId] = useState<string | null>(null);
   const [newClientName, setNewClientName] = useState("");
   const [newClientIndustry, setNewClientIndustry] = useState("");
   const [newClientRequiredPack, setNewClientRequiredPack] = useState("Standard monthly pack");
@@ -283,18 +286,62 @@ export function AdminSettingsPage() {
     }
   }
 
-  function createUser() {
-    const result = portal.createUserAccount({
-      name: newUserName,
-      email: newUserEmail,
-      role: newUserRole,
-      company: newUserRole === "client" ? "Client business" : "Finwell Advisory",
-    });
-    setFeedbackMessage(result.message);
-    if (result.ok) {
-      setNewUserName("");
-      setNewUserEmail("");
-      setNewUserRole("accountant");
+  async function createUser() {
+    if (isCreatingUser) {
+      return;
+    }
+
+    setIsCreatingUser(true);
+    const pendingMessage = "Creating the user account and sending the invite...";
+    setFeedbackMessage(pendingMessage);
+    setUserInviteFeedback(pendingMessage);
+
+    try {
+      const result = await portal.createUserAccount({
+        name: newUserName,
+        email: newUserEmail,
+        role: newUserRole,
+        company: newUserRole === "client" ? "Client business" : "Finwell Advisory",
+      });
+      setFeedbackMessage(result.message);
+      setUserInviteFeedback(result.message);
+      if (result.ok) {
+        setNewUserName("");
+        setNewUserEmail("");
+        setNewUserRole("accountant");
+      }
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Could not create the user account. Please try again.";
+      setFeedbackMessage(message);
+      setUserInviteFeedback(message);
+    } finally {
+      setIsCreatingUser(false);
+    }
+  }
+
+  async function resendUserAccess(userId: string) {
+    if (pendingUserActionId) {
+      return;
+    }
+
+    setPendingUserActionId(userId);
+    setFeedbackMessage("Sending access email...");
+    setUserInviteFeedback("Sending access email...");
+
+    try {
+      const result = await portal.resetUserAccess(userId);
+      setFeedbackMessage(result.message);
+      setUserInviteFeedback(result.message);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Could not resend access instructions.";
+      setFeedbackMessage(message);
+      setUserInviteFeedback(message);
+    } finally {
+      setPendingUserActionId(null);
     }
   }
 
@@ -370,19 +417,34 @@ export function AdminSettingsPage() {
             hint="This name appears in audit history and email invites."
             id="admin-new-user-name"
             label="Full name"
-            onChange={(event) => setNewUserName(event.target.value)}
+            onChange={(event) => {
+              setNewUserName(event.target.value);
+              if (userInviteFeedback) {
+                setUserInviteFeedback("");
+              }
+            }}
             value={newUserName}
           />
           <TextField
             hint="The user will receive setup instructions at this email address."
             id="admin-new-user-email"
             label="Email"
-            onChange={(event) => setNewUserEmail(event.target.value)}
+            onChange={(event) => {
+              setNewUserEmail(event.target.value);
+              if (userInviteFeedback) {
+                setUserInviteFeedback("");
+              }
+            }}
             value={newUserEmail}
           />
           <SelectField
             label="Role"
-            onChange={(event) => setNewUserRole(event.target.value as Role)}
+            onChange={(event) => {
+              setNewUserRole(event.target.value as Role);
+              if (userInviteFeedback) {
+                setUserInviteFeedback("");
+              }
+            }}
             options={[
               { label: "Admin", value: "admin" },
               { label: "Accountant", value: "accountant" },
@@ -391,8 +453,20 @@ export function AdminSettingsPage() {
             value={newUserRole}
           />
           <div className="flex items-end">
-            <Button onClick={createUser}>Create user &amp; send invite</Button>
+            <Button disabled={isCreatingUser} onClick={() => void createUser()}>
+              {isCreatingUser ? "Creating user..." : "Create user & send invite"}
+            </Button>
           </div>
+        </div>
+
+        {userInviteFeedback ? (
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+            {userInviteFeedback}
+          </div>
+        ) : null}
+
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+          Create a user only after all three fields are filled in. If the backend rejects the request, the exact result will show here and the account will not be added locally.
         </div>
 
         <div className="space-y-2">
@@ -418,8 +492,17 @@ export function AdminSettingsPage() {
               <p className="text-sm text-slate-600">
                 {account.status === "invited" ? "Awaiting password setup" : account.status}
               </p>
-              <Button onClick={() => setFeedbackMessage(portal.resetUserAccess(account.id).message)} size="sm" variant="secondary">
-                {account.status === "invited" ? "Resend invite" : "Send reset email"}
+              <Button
+                disabled={pendingUserActionId === account.id}
+                onClick={() => void resendUserAccess(account.id)}
+                size="sm"
+                variant="secondary"
+              >
+                {pendingUserActionId === account.id
+                  ? "Sending..."
+                  : account.status === "invited"
+                    ? "Resend invite"
+                    : "Send reset email"}
               </Button>
               <Button
                 onClick={() =>

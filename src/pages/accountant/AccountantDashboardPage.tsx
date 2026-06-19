@@ -13,7 +13,6 @@ import { cn } from "../../utils/cn";
 import { formatDateLabel } from "../../utils/formatters";
 import { getScopedClients, getScopedReviewQueue } from "../../utils/permissions";
 
-const accountantDashboardDate = "2026-05-07T08:00:00.000Z";
 const panelClass =
   "h-full rounded-2xl border border-[#dce6ef] bg-white shadow-[0_16px_38px_rgba(4,24,52,0.08)]";
 const iconTileClass =
@@ -79,7 +78,7 @@ function rowAccentClass(index: number) {
 }
 
 function dayDifference(dateValue: string) {
-  const currentDate = new Date(accountantDashboardDate);
+  const currentDate = new Date();
   const targetDate = new Date(dateValue);
   const difference = targetDate.getTime() - currentDate.getTime();
   return Math.ceil(difference / (1000 * 60 * 60 * 24));
@@ -192,6 +191,20 @@ function compactMonthDays(dateValue: string) {
 function isSameCalendarMonth(dateValue: string, monthDate: Date) {
   const date = new Date(dateValue);
   return date.getFullYear() === monthDate.getFullYear() && date.getMonth() === monthDate.getMonth();
+}
+
+function firstDayOfMonth(dateValue: string) {
+  const date = new Date(dateValue);
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function isSameCalendarDay(dateValue: string, comparisonDate: Date) {
+  const date = new Date(dateValue);
+  return (
+    date.getFullYear() === comparisonDate.getFullYear() &&
+    date.getMonth() === comparisonDate.getMonth() &&
+    date.getDate() === comparisonDate.getDate()
+  );
 }
 
 function deadlineStatusLabel(dueDate: string) {
@@ -316,7 +329,7 @@ function notificationKindLabel(kind: NotificationItem["kind"]) {
 }
 
 function notificationRelativeLabel(createdAt: string) {
-  const snapshot = new Date(accountantDashboardDate);
+  const snapshot = new Date();
   const difference = snapshot.getTime() - new Date(createdAt).getTime();
   const hours = Math.max(1, Math.floor(difference / (1000 * 60 * 60)));
 
@@ -728,7 +741,8 @@ export function AccountantDashboardPage() {
 // Local UI state: keeps track of what the user is seeing or editing right now.
   const [isNotificationPanelOpen, setIsNotificationPanelOpen] = useState(false);
   const [clientSearch, setClientSearch] = useState("");
-  const [calendarPreviewDate, setCalendarPreviewDate] = useState(() => new Date(accountantDashboardDate));
+  const [calendarPreviewDate, setCalendarPreviewDate] = useState(() => new Date());
+  const [selectedCalendarDay, setSelectedCalendarDay] = useState<number | null>(null);
   const notificationPanelRef = useRef<HTMLDivElement | null>(null);
 
   const scopedClients = useMemo(() => getScopedClients(user, portal.adminClients), [portal.adminClients, user]);
@@ -829,23 +843,65 @@ export function AccountantDashboardPage() {
     [scopedDeadlines],
   );
 
-  const calendarPreviewDeadlines = useMemo(
+  const monthCalendarDeadlines = useMemo(
     () =>
-      sortedCalendarDeadlines
-        .filter((item) => isSameCalendarMonth(item.dueDate, calendarPreviewDate))
-        .slice(0, 5),
+      sortedCalendarDeadlines.filter((item) => isSameCalendarMonth(item.dueDate, calendarPreviewDate)),
     [calendarPreviewDate, sortedCalendarDeadlines],
   );
+
+  const calendarPreviewDeadlines = useMemo(() => {
+    const filteredDeadlines =
+      selectedCalendarDay === null
+        ? monthCalendarDeadlines
+        : monthCalendarDeadlines.filter((item) =>
+            isSameCalendarDay(
+              item.dueDate,
+              new Date(
+                calendarPreviewDate.getFullYear(),
+                calendarPreviewDate.getMonth(),
+                selectedCalendarDay,
+              ),
+            ),
+          );
+
+    return filteredDeadlines.slice(0, 5);
+  }, [calendarPreviewDate, monthCalendarDeadlines, selectedCalendarDay]);
 
   const calendarEventDays = useMemo(
     () =>
       new Set(
-        sortedCalendarDeadlines
-          .filter((item) => isSameCalendarMonth(item.dueDate, calendarPreviewDate))
-          .map((item) => new Date(item.dueDate).getDate()),
+        monthCalendarDeadlines.map((item) => new Date(item.dueDate).getDate()),
       ),
-    [calendarPreviewDate, sortedCalendarDeadlines],
+    [monthCalendarDeadlines],
   );
+
+  useEffect(() => {
+    if (sortedCalendarDeadlines.length === 0) {
+      return;
+    }
+
+    const currentMonth = new Date();
+    const previewHasDeadlines = sortedCalendarDeadlines.some((item) =>
+      isSameCalendarMonth(item.dueDate, calendarPreviewDate),
+    );
+    const viewingCurrentMonth =
+      calendarPreviewDate.getFullYear() === currentMonth.getFullYear() &&
+      calendarPreviewDate.getMonth() === currentMonth.getMonth();
+
+    if (!previewHasDeadlines && viewingCurrentMonth) {
+      setCalendarPreviewDate(firstDayOfMonth(sortedCalendarDeadlines[0].dueDate));
+    }
+  }, [calendarPreviewDate, sortedCalendarDeadlines]);
+
+  useEffect(() => {
+    if (selectedCalendarDay === null) {
+      return;
+    }
+
+    if (!calendarEventDays.has(selectedCalendarDay)) {
+      setSelectedCalendarDay(null);
+    }
+  }, [calendarEventDays, selectedCalendarDay]);
 
   const notificationPreview = useMemo(() => data.notifications.slice(0, 4), [data.notifications]);
 
@@ -1008,11 +1064,11 @@ export function AccountantDashboardPage() {
           <div className="flex flex-wrap items-center gap-2.5 lg:justify-end">
             <button
               className="inline-flex h-12 items-center gap-3 rounded-2xl border border-white/20 bg-white/10 px-4 text-sm font-medium text-white shadow-[0_10px_30px_rgba(2,12,27,0.18)] backdrop-blur transition hover:bg-white/16"
-              onClick={() => undefined}
+              onClick={() => navigate("/firm/compliance/calendar")}
               type="button"
             >
               <CalendarIcon />
-              <span>{formatDateLabel(accountantDashboardDate)}</span>
+                    <span>{formatDateLabel(new Date().toISOString())}</span>
               <ChevronDownIcon />
             </button>
             <div className="relative" ref={notificationPanelRef}>
@@ -1459,9 +1515,10 @@ export function AccountantDashboardPage() {
               <div className="mb-3 flex items-center justify-between">
                 <button
                   className={cn(dashboardLinkClass)}
-                  onClick={() =>
-                    setCalendarPreviewDate((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))
-                  }
+                  onClick={() => {
+                    setSelectedCalendarDay(null);
+                    setCalendarPreviewDate((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1));
+                  }}
                   type="button"
                   aria-label="Previous month"
                 >
@@ -1472,9 +1529,10 @@ export function AccountantDashboardPage() {
                 <p className="text-[0.74rem] font-bold text-[#091333]">{monthPreviewLabel(calendarPreviewDate.toISOString())}</p>
                 <button
                   className={cn(dashboardLinkClass)}
-                  onClick={() =>
-                    setCalendarPreviewDate((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))
-                  }
+                  onClick={() => {
+                    setSelectedCalendarDay(null);
+                    setCalendarPreviewDate((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1));
+                  }}
                   type="button"
                   aria-label="Next month"
                 >
@@ -1490,19 +1548,32 @@ export function AccountantDashboardPage() {
                 {compactMonthDays(calendarPreviewDate.toISOString()).map((cell, index) => (
                   <div className="flex h-7 items-center justify-center" key={`${cell.day ?? "blank"}-${index}`}>
                     {cell.day ? (
-                      <span
+                      <button
+                        aria-pressed={selectedCalendarDay === cell.day}
                         className={cn(
-                          "relative flex h-6 w-6 items-center justify-center rounded-full text-[0.62rem] font-bold",
-                          cell.isActive
-                            ? "bg-[#091333] text-white"
-                            : "text-[#53617f]",
+                          "relative flex h-6 w-6 items-center justify-center rounded-full text-[0.62rem] font-bold transition",
+                          selectedCalendarDay === cell.day
+                            ? "bg-brand-700 text-white"
+                            : cell.isActive
+                              ? "bg-[#091333] text-white"
+                              : calendarEventDays.has(cell.day)
+                                ? "bg-amber-50 text-[#091333] ring-1 ring-amber-200"
+                                : "text-[#53617f]",
+                          calendarEventDays.has(cell.day)
+                            ? "cursor-pointer hover:bg-amber-100"
+                            : "cursor-default",
                         )}
+                        disabled={!calendarEventDays.has(cell.day)}
+                        onClick={() =>
+                          setSelectedCalendarDay((current) => (current === cell.day ? null : cell.day))
+                        }
+                        type="button"
                       >
                         {cell.day}
                         {calendarEventDays.has(cell.day) ? (
                           <span className="absolute -bottom-0.5 h-1 w-1 rounded-full bg-amber-500" />
                         ) : null}
-                      </span>
+                      </button>
                     ) : null}
                   </div>
                 ))}
@@ -1510,14 +1581,30 @@ export function AccountantDashboardPage() {
             </div>
 
             <div className="min-w-0 space-y-2.5">
+              {selectedCalendarDay !== null ? (
+                <div className="flex items-center justify-between gap-3 rounded-xl bg-[#fbfdff] px-2 py-1.5">
+                  <p className="text-[0.64rem] font-semibold text-[#53617f]">
+                    Showing deadlines for {selectedCalendarDay} {monthPreviewLabel(calendarPreviewDate.toISOString())}
+                  </p>
+                  <button
+                    className={cn(dashboardLinkClass, "text-[0.64rem]")}
+                    onClick={() => setSelectedCalendarDay(null)}
+                    type="button"
+                  >
+                    Clear
+                  </button>
+                </div>
+              ) : null}
               {calendarPreviewDeadlines.length > 0 ? (
                 calendarPreviewDeadlines.map((item) => {
                   const tone = deadlineToneClasses(item.tone);
 
                   return (
-                    <div
-                      className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-xl px-2 py-1.5 text-left"
+                    <button
+                      className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-xl px-2 py-1.5 text-left transition hover:bg-[#f7fbff]"
                       key={item.id}
+                      onClick={() => navigate(`/firm/compliance/calendar?date=${encodeURIComponent(item.dueDate)}`)}
+                      type="button"
                     >
                       <div className="flex min-w-0 items-center gap-2">
                         <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", tone.dot)} />
@@ -1529,10 +1616,17 @@ export function AccountantDashboardPage() {
                       <span className={cn("whitespace-nowrap rounded-md px-2 py-1 text-[0.58rem] font-bold", tone.badge)}>
                         {deadlineStatusLabel(item.dueDate)}
                       </span>
-                    </div>
+                    </button>
                   );
                 })
-              ) : null}
+              ) : (
+                <div className="rounded-xl border border-dashed border-[#dce6ef] bg-[#fbfdff] px-3 py-4 text-center">
+                  <p className="text-[0.7rem] font-bold text-[#091333]">No deadlines in this month</p>
+                  <p className="mt-1 text-[0.64rem] font-medium text-[#53617f]">
+                    Use the arrows to browse other months with compliance activity.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </SurfaceCard>

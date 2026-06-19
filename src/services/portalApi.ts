@@ -5,6 +5,7 @@ import type {
   DocumentComment,
   FirmClientAccount,
   Role,
+  UserAccountRecord,
   WorkflowRequest,
 } from "../types/portal";
 
@@ -34,6 +35,39 @@ interface RequestWithComments extends WorkflowRequest {
   comments: DocumentComment[];
 }
 
+interface BackendAdminUserRecord {
+  id: string;
+  fullName: string;
+  email: string;
+  role: Role;
+  securityStatus?: string;
+}
+
+interface BackendCreateUserResponse {
+  id: string;
+  fullName: string;
+  email: string;
+  role: Role;
+  invite?: {
+    expiresAtUtc?: string;
+    setupUrl?: string;
+  };
+  delivery?: string;
+  deliveryError?: string | null;
+}
+
+function toUserAccountStatus(status?: string): UserAccountRecord["status"] {
+  if (status === "disabled" || status === "locked" || status === "suspended") {
+    return "suspended";
+  }
+
+  if (status === "invited" || status === "reset_pending" || status === "password_reset_required") {
+    return "invited";
+  }
+
+  return "active";
+}
+
 function toPortfolioStatus(status: string): FirmClientAccount["status"] {
   if (status === "overdue" || status === "at_risk") {
     return "overdue";
@@ -49,11 +83,33 @@ async function getOrFallback<T>(path: string, fallback: () => T): Promise<T> {
     return fallback();
   }
 
+  if (shouldSkipBackendRoute(path)) {
+    return fallback();
+  }
+
   try {
     return await apiGetJson<T>(path);
   } catch {
     return fallback();
   }
+}
+
+const backendFallbackOnlyMatchers: Array<(path: string) => boolean> = [
+  (path) => path.startsWith("/api/session/demo-user"),
+  (path) => path === "/api/client/workflow-seed",
+  (path) => path === "/api/client/notifications",
+  (path) => path === "/api/client/compliance-centre",
+  (path) => path === "/api/client/document-centre",
+  (path) => path === "/api/accountant/dashboard",
+  (path) => path === "/api/accountant/compliance-centre",
+  (path) => path === "/api/accountant/notifications",
+  (path) => path === "/api/accountant/review-workspace",
+  (path) => path === "/api/admin/dashboard",
+  (path) => path === "/api/admin/policies",
+];
+
+function shouldSkipBackendRoute(path: string) {
+  return backendFallbackOnlyMatchers.some((matches) => matches(path));
 }
 
 export const portalServiceApi = {
@@ -147,13 +203,45 @@ export const portalServiceApi = {
       );
     }
   },
+  async getAdminUsers(): Promise<UserAccountRecord[]> {
+    if (!hasApiBaseUrl()) {
+      return [];
+    }
+
+    try {
+      const users = await apiGetJson<BackendAdminUserRecord[]>("/api/admin/users");
+      return users.map((user) => ({
+        id: user.id,
+        name: user.fullName,
+        email: user.email,
+        role: user.role,
+        status: toUserAccountStatus(user.securityStatus),
+      }));
+    } catch {
+      return [];
+    }
+  },
   async createUserAccount(payload: { fullName: string; email: string; role: Role; company?: string }) {
     if (!hasApiBaseUrl()) return { ok: true };
     try {
-      await apiPostJson("/api/admin/users", payload);
-      return { ok: true };
-    } catch {
-      return { ok: false };
+      const response = await apiPostJson<BackendCreateUserResponse, typeof payload>("/api/admin/users", payload);
+      return {
+        ok: true,
+        user: {
+          id: response.id,
+          name: response.fullName,
+          email: response.email,
+          role: response.role,
+          status: "invited",
+          company: payload.company?.trim() || undefined,
+        } satisfies UserAccountRecord,
+        invite: response.invite,
+        delivery: response.delivery,
+        deliveryError: response.deliveryError ?? undefined,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not create the user account.";
+      return { ok: false, message };
     }
   },
   async setUserStatus(userId: string, status: "active" | "suspended") {
@@ -177,10 +265,25 @@ export const portalServiceApi = {
   async resetUserAccess(userId: string, reason = "admin_reset") {
     if (!hasApiBaseUrl()) return { ok: true };
     try {
-      await apiPostJson(`/api/admin/users/${encodeURIComponent(userId)}/reset-access`, { reason });
-      return { ok: true };
-    } catch {
-      return { ok: false };
+      const response = await apiPostJson<{
+        delivery?: string;
+        deliveryError?: string | null;
+        invite?: {
+          setupUrl?: string;
+          expiresAtUtc?: string;
+        };
+      }, { reason: string }>(`/api/admin/users/${encodeURIComponent(userId)}/reset-access`, { reason });
+      return {
+        ok: true,
+        delivery: response.delivery,
+        deliveryError: response.deliveryError ?? undefined,
+        invite: response.invite,
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        message: error instanceof Error ? error.message : "Could not resend access instructions.",
+      };
     }
   },
   async putAdminSetting(

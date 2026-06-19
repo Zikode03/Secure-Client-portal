@@ -94,43 +94,72 @@ export function ForgotPasswordPage() {
                 </p>
               </div>
 
-              <form className="space-y-4" onSubmit={handleSubmit}>
-                <label className="block">
-                  <span className="mb-2 block text-xs font-bold text-slate-200">
-                    Email Address*
-                  </span>
-                  <input
-                    className="h-11 w-full rounded-md border border-white/8 bg-slate-700/70 px-4 text-sm font-medium text-white outline-none ring-0 transition placeholder:text-slate-500 focus:border-emerald-300/60 focus:ring-4 focus:ring-emerald-400/10"
-                    onChange={(event) => setEmail(event.target.value)}
-                    placeholder="name@firm.com"
-                    type="email"
-                    value={email}
-                  />
-                </label>
-
-                {error ? (
-                  <div className="rounded-md border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-xs font-semibold text-rose-100">
-                    {error}
+              {successMessage ? (
+                <div className="space-y-4 rounded-[1.5rem] border border-emerald-300/20 bg-emerald-500/10 px-5 py-6 shadow-[0_18px_34px_rgba(6,95,70,0.18)]">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-300/30 bg-white/10 text-emerald-200">
+                    <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24">
+                      <path d="m5 12 4 4L19 6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.6" />
+                    </svg>
                   </div>
-                ) : null}
-
-                {successMessage ? (
-                  <div className="rounded-md border border-emerald-300/30 bg-emerald-500/10 px-4 py-3 text-xs font-semibold leading-5 text-emerald-100">
-                    {successMessage}
-                    <div className="mt-2 text-[0.72rem] font-medium text-emerald-100/85">
-                      The reset email will open the password-reset screen directly when the link is valid.
+                  <div>
+                    <h3 className="text-xl font-semibold text-white">Reset email is on the way</h3>
+                    <p className="mt-2 text-sm leading-7 text-emerald-50/90">{successMessage}</p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-slate-900/30 px-4 py-3 text-xs leading-6 text-slate-200">
+                    Inbox to check: <span className="font-semibold text-white">{email}</span>
+                    <div className="mt-1 text-slate-300">
+                      The reset link will open the password-reset screen directly when the token is still valid.
                     </div>
                   </div>
-                ) : null}
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Link
+                      className="flex h-12 items-center justify-center rounded-md bg-[linear-gradient(135deg,#18ac5f_0%,#0a7f74_48%,#0a2f66_100%)] text-sm font-black text-white shadow-[0_14px_30px_rgba(6,95,70,0.28)] transition hover:translate-y-[-1px]"
+                      to="/login"
+                    >
+                      Back to sign in
+                    </Link>
+                    <button
+                      className="h-12 rounded-md border border-white/12 bg-slate-900/28 text-sm font-bold text-white transition hover:bg-slate-900/40"
+                      onClick={() => {
+                        setSuccessMessage("");
+                        setError("");
+                      }}
+                      type="button"
+                    >
+                      Use a different email
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <form className="space-y-4" onSubmit={handleSubmit}>
+                  <label className="block">
+                    <span className="mb-2 block text-xs font-bold text-slate-200">
+                      Email Address*
+                    </span>
+                    <input
+                      className="h-11 w-full rounded-md border border-white/8 bg-slate-700/70 px-4 text-sm font-medium text-white outline-none ring-0 transition placeholder:text-slate-500 focus:border-emerald-300/60 focus:ring-4 focus:ring-emerald-400/10"
+                      onChange={(event) => setEmail(event.target.value)}
+                      placeholder="name@firm.com"
+                      type="email"
+                      value={email}
+                    />
+                  </label>
 
-                <button
-                  disabled={isSubmitting}
-                  className="h-12 w-full rounded-md bg-[linear-gradient(135deg,#18ac5f_0%,#0a7f74_48%,#0a2f66_100%)] text-sm font-black text-white shadow-[0_14px_30px_rgba(6,95,70,0.28)] transition hover:translate-y-[-1px] active:translate-y-0"
-                  type="submit"
-                >
-                  {isSubmitting ? "Sending reset instructions..." : "Send reset instructions"}
-                </button>
-              </form>
+                  {error ? (
+                    <div className="rounded-md border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-xs font-semibold text-rose-100">
+                      {error}
+                    </div>
+                  ) : null}
+
+                  <button
+                    disabled={isSubmitting}
+                    className="h-12 w-full rounded-md bg-[linear-gradient(135deg,#18ac5f_0%,#0a7f74_48%,#0a2f66_100%)] text-sm font-black text-white shadow-[0_14px_30px_rgba(6,95,70,0.28)] transition hover:translate-y-[-1px] active:translate-y-0"
+                    type="submit"
+                  >
+                    {isSubmitting ? "Sending reset instructions..." : "Send reset instructions"}
+                  </button>
+                </form>
+              )}
             </div>
           </div>
         </div>

@@ -183,14 +183,20 @@ function SessionLanding() {
   return <Navigate replace to={user ? defaultPathForRole(user.role) : "/login"} />;
 }
 
-function PublicRoute({ children }: { children: JSX.Element }) {
+function PublicRoute({
+  allowWhenAuthenticated = false,
+  children,
+}: {
+  allowWhenAuthenticated?: boolean;
+  children: JSX.Element;
+}) {
   const { ready, user } = useAuth();
 
   if (!ready) {
     return <LoadingShell />;
   }
 
-  if (user) {
+  if (user && !allowWhenAuthenticated) {
     return <Navigate replace to={defaultPathForRole(user.role)} />;
   }
 
@@ -396,7 +402,7 @@ export default function App() {
         />
         <Route
           element={
-            <PublicRoute>
+            <PublicRoute allowWhenAuthenticated>
               <InviteSetupPage />
             </PublicRoute>
           }

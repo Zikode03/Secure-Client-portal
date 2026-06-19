@@ -10,6 +10,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { hasApiBaseUrl } from "../services/apiClient";
 import { buildComplianceCentreDataFromStatuses } from "../services/complianceData";
 import { portalService } from "../services/portalData";
 import { portalServiceApi } from "../services/portalApi";
@@ -244,6 +245,23 @@ const initialRolePermissionMatrix: RolePermissionMatrix[] = [
   { role: "accountant", permissions: ["view:assigned_clients", "view:assigned_documents", "view:assigned_review_queue", "view:assigned_compliance", "export:client_reports", "request:documents", "review:documents", "comment:documents", "comment:requests"] },
   { role: "client", permissions: ["export:client_reports", "comment:documents", "comment:requests"] },
 ];
+
+function mergeUserAccounts(
+  currentUsers: UserAccountRecord[],
+  backendUsers: UserAccountRecord[],
+) {
+  const mergedByEmail = new Map<string, UserAccountRecord>();
+
+  currentUsers.forEach((user) => {
+    mergedByEmail.set(user.email.toLowerCase(), user);
+  });
+
+  backendUsers.forEach((user) => {
+    mergedByEmail.set(user.email.toLowerCase(), user);
+  });
+
+  return Array.from(mergedByEmail.values());
+}
 
 function findAccountantById(accountantId: string) {
   return initialAccountants.find((accountant) => accountant.id === accountantId);
@@ -624,10 +642,10 @@ interface PortalContextValue {
     email: string;
     role: Role;
     company?: string;
-  }) => PortalActionResult;
+  }) => Promise<PortalActionResult>;
   disableUserAccount: (userId: string) => PortalActionResult;
   activateUserAccount: (userId: string) => PortalActionResult;
-  resetUserAccess: (userId: string) => PortalActionResult;
+  resetUserAccess: (userId: string) => Promise<PortalActionResult>;
   assignUserRole: (userId: string, role: Role) => PortalActionResult;
   addClientBusiness: (payload: {
     clientName: string;
@@ -1048,7 +1066,9 @@ export function PortalProvider({ children }: { children: ReactNode }) {
   const [adminClients, setAdminClients] = useState(() => clone(baseAdminClients));
   const adminPolicies = useMemo(() => clone(baseAdminPolicies), [baseAdminPolicies]);
   const [managedAccountants, setManagedAccountants] = useState(() => clone(initialAccountants));
-  const [userAccounts, setUserAccounts] = useState(() => clone(initialUsers));
+  const [userAccounts, setUserAccounts] = useState(() =>
+    hasApiBaseUrl() ? [] : clone(initialUsers),
+  );
   const [documentRequirementRules, setDocumentRequirementRules] = useState(
     () => clone(initialDocumentRequirementRules),
   );
@@ -1069,6 +1089,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
         nextClientSeed,
         nextAccountantDashboard,
         nextAdminClients,
+        nextAdminUsers,
         nextAdminPolicies,
         nextClientCompliance,
         nextAccountantCompliance,
@@ -1076,6 +1097,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
         portalServiceApi.getClientWorkflowSeed(),
         portalServiceApi.getAccountantDashboard(),
         portalServiceApi.getAdminClients(),
+        portalServiceApi.getAdminUsers(),
         portalServiceApi.getAdminPolicies(),
         portalServiceApi.getClientComplianceCentre(),
         portalServiceApi.getAccountantComplianceCentre(),
@@ -1089,6 +1111,38 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       setBaseAdminPolicies(nextAdminPolicies);
       setBaseClientComplianceCentre(nextClientCompliance);
       setSeededAccountantComplianceCentre(nextAccountantCompliance);
+      if (nextAdminUsers.length > 0) {
+        setUserAccounts((current) => mergeUserAccounts(current, clone(nextAdminUsers)));
+        setManagedAccountants((current) => {
+          const currentByEmail = new Map(
+            current.map((accountant) => [accountant.email.toLowerCase(), accountant]),
+          );
+          const mergedAccountants = nextAdminUsers
+            .filter((user) => user.role === "accountant")
+            .map((user) => {
+              const existing = currentByEmail.get(user.email.toLowerCase());
+              return existing
+                ? { ...existing, id: user.id, name: user.name, email: user.email }
+                : {
+                    id: user.id,
+                    name: user.name,
+                    email: user.email,
+                    title: "Accountant",
+                    assignedClientCount: 0,
+                    openReviews: 0,
+                    status: "capacity_available" as const,
+                  };
+            });
+
+          const mergedEmails = new Set(
+            mergedAccountants.map((accountant) => accountant.email.toLowerCase()),
+          );
+          const preserved = current.filter(
+            (accountant) => !mergedEmails.has(accountant.email.toLowerCase()),
+          );
+          return [...mergedAccountants, ...preserved];
+        });
+      }
       setAdminClients(clone(nextAdminClients));
       setComplianceClients(clone(nextAccountantCompliance.clientStatuses ?? []));
     };
@@ -2741,12 +2795,12 @@ const assignedAccountantForApex =
     return { ok: true, message: "Backup accountant assignment updated." };
   }
 
-  function createUserAccount(payload: {
+  async function createUserAccount(payload: {
     name: string;
     email: string;
     role: Role;
     company?: string;
-  }): PortalActionResult {
+  }): Promise<PortalActionResult> {
     const normalizedEmail = payload.email.trim().toLowerCase();
     if (!payload.name.trim() || !normalizedEmail.includes("@")) {
       return { ok: false, message: "Provide a valid name and email for the new user." };
@@ -2756,16 +2810,23 @@ const assignedAccountantForApex =
       return { ok: false, message: "A user with that email already exists." };
     }
 
-    const nextUser: UserAccountRecord = {
-      id: `user-local-${Date.now()}`,
-      name: payload.name.trim(),
+    const apiResult = await portalServiceApi.createUserAccount({
+      fullName: payload.name.trim(),
       email: normalizedEmail,
       role: payload.role,
-      status: "invited",
-      company: payload.company?.trim() || undefined,
-    };
+      company: payload.company,
+    });
+    if (!apiResult.ok || !apiResult.user) {
+      return {
+        ok: false,
+        message:
+          apiResult.message ??
+          "Could not create the user account. Check the backend response and email configuration.",
+      };
+    }
 
-    setUserAccounts((current) => [nextUser, ...current]);
+    const nextUser: UserAccountRecord = apiResult.user;
+    setUserAccounts((current) => mergeUserAccounts([nextUser, ...current], [nextUser]));
 
     if (payload.role === "accountant") {
       setManagedAccountants((current) => [
@@ -2782,14 +2843,20 @@ const assignedAccountantForApex =
       ]);
     }
 
-    void portalServiceApi.createUserAccount({
-      fullName: payload.name.trim(),
-      email: normalizedEmail,
-      role: payload.role,
-      company: payload.company,
-    });
+    const refreshedUsers = await portalServiceApi.getAdminUsers();
+    if (refreshedUsers.length > 0) {
+      setUserAccounts((current) => mergeUserAccounts(current, clone(refreshedUsers)));
+    }
 
-    return { ok: true, message: "User account created. Setup instructions were sent to the new user." };
+    return {
+      ok: true,
+      message:
+        apiResult.delivery === "smtp"
+          ? "User account created. Setup instructions were emailed to the new user."
+          : apiResult.delivery === "failed"
+            ? `User account created, but the invite email could not be sent. ${apiResult.deliveryError ?? "Use the invite link from the backend response or check SMTP settings."}`
+          : "User account created, but email delivery is not active. Use the generated invite link from the backend response.",
+    };
   }
 
   function disableUserAccount(userId: string): PortalActionResult {
@@ -2830,7 +2897,7 @@ const assignedAccountantForApex =
     return { ok: true, message: "User access has been activated." };
   }
 
-  function resetUserAccess(userId: string): PortalActionResult {
+  async function resetUserAccess(userId: string): Promise<PortalActionResult> {
     const target = userAccounts.find((user) => user.id === userId);
     if (!target) {
       return { ok: false, message: "User account not found." };
@@ -2846,9 +2913,38 @@ const assignedAccountantForApex =
         target.email,
       ),
     );
-    void portalServiceApi.resetUserAccess(userId, "admin_reset");
+    const apiResult = await portalServiceApi.resetUserAccess(userId, "admin_reset");
+    if (!apiResult.ok) {
+      return {
+        ok: false,
+        message:
+          apiResult.message ??
+          "Could not resend access instructions. Check the backend response or email configuration.",
+      };
+    }
 
-    return { ok: true, message: "Reset instructions were sent to the user." };
+    if (apiResult.delivery === "smtp") {
+      return {
+        ok: true,
+        message:
+          target.status === "invited"
+            ? "Invite email sent successfully."
+            : "Reset email sent successfully.",
+      };
+    }
+
+    if (apiResult.delivery === "failed") {
+      return {
+        ok: false,
+        message: `The email could not be sent. ${apiResult.deliveryError ?? "Check SMTP settings or backend logs."}`,
+      };
+    }
+
+    return {
+      ok: true,
+      message:
+        "Email delivery is not active. Use the generated setup link from the backend response or enable SMTP.",
+    };
   }
 
   function assignUserRole(userId: string, role: Role): PortalActionResult {

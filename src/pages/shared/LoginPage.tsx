@@ -271,8 +271,9 @@ export function LoginPage() {
 
               <form className="space-y-4" onSubmit={handleSubmit}>
                 {authNotice ? (
-                  <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-left text-[0.82rem] font-medium leading-6 text-sky-900">
-                    {authNotice}
+                  <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-left text-[0.82rem] leading-6 text-sky-900">
+                    <div className="font-semibold">Session update</div>
+                    <div className="mt-1 font-medium">{authNotice}</div>
                   </div>
                 ) : null}
 
@@ -345,8 +346,9 @@ export function LoginPage() {
                 </div>
 
                 {error ? (
-                  <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[0.78rem] font-semibold text-rose-700">
-                    {error}
+                  <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[0.78rem] text-rose-700">
+                    <div className="font-semibold">Couldn&apos;t sign you in</div>
+                    <div className="mt-1 font-medium">{error}</div>
                   </div>
                 ) : null}
 

@@ -1,7 +1,7 @@
 // Friendly guide: this module (InviteSetupPage) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { defaultPathForRole, useAuth } from "../../app/auth";
 import { hasApiBaseUrl } from "../../services/apiClient";
@@ -21,9 +21,26 @@ export function InviteSetupPage() {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successState, setSuccessState] = useState<{
+    headline: string;
+    detail: string;
+    nextPath: string;
+  } | null>(null);
 
   const emailLabel = useMemo(() => inviteEmail.toLowerCase(), [inviteEmail]);
   const isPasswordReset = flowMode === "reset";
+
+  useEffect(() => {
+    if (!successState) {
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      navigate(successState.nextPath);
+    }, 1800);
+
+    return () => window.clearTimeout(timer);
+  }, [navigate, successState]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -70,7 +87,13 @@ export function InviteSetupPage() {
 
     setError("");
     setIsSubmitting(false);
-    navigate(defaultPathForRole(result.user.role));
+    setSuccessState({
+      headline: isPasswordReset ? "Password updated successfully" : "Account setup complete",
+      detail: isPasswordReset
+        ? "Your new password is active. We’re signing you back into your workspace now."
+        : "Your password is set and your portal access is ready. We’re taking you to your workspace now.",
+      nextPath: defaultPathForRole(result.user.role),
+    });
   }
 
 // Render output: this is the visual state users interact with.
@@ -124,110 +147,146 @@ export function InviteSetupPage() {
             <div className="mx-auto w-full max-w-[420px]">
               <div className="mb-8">
                 <h2 className="text-[2.25rem] font-light tracking-[-0.04em] text-white">
-                  {isPasswordReset ? "Reset password" : "Finish account setup"}
+                  {successState
+                    ? isPasswordReset
+                      ? "Password reset complete"
+                      : "Setup complete"
+                    : isPasswordReset
+                      ? "Reset password"
+                      : "Finish account setup"}
                 </h2>
                 <p className="mt-2 text-xs font-medium text-slate-400">
-                  Already have an account?{" "}
-                  <Link className="font-bold text-emerald-300 transition hover:text-emerald-200" to="/login">
-                    log in
-                  </Link>
+                  {successState ? (
+                    "You can continue immediately or wait for the automatic redirect."
+                  ) : (
+                    <>
+                      Already have an account?{" "}
+                      <Link className="font-bold text-emerald-300 transition hover:text-emerald-200" to="/login">
+                        log in
+                      </Link>
+                    </>
+                  )}
                 </p>
               </div>
 
-              <form className="space-y-4" onSubmit={handleSubmit}>
-                <div className="rounded-md border border-emerald-300/20 bg-emerald-500/10 px-4 py-3 text-xs leading-5 text-emerald-100">
-                  {isPasswordReset
-                    ? "This step replaces the password for the existing sign-in account and keeps the email address unchanged."
-                    : "The sign-in account already exists. This step only sets the password and confirms access for the invited user."}
+              {successState ? (
+                <div className="space-y-4 rounded-[1.5rem] border border-emerald-300/20 bg-emerald-500/10 px-5 py-6 text-left shadow-[0_18px_34px_rgba(6,95,70,0.18)]">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-300/30 bg-white/10 text-emerald-200">
+                    <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24">
+                      <path d="m5 12 4 4L19 6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.6" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold text-white">{successState.headline}</h3>
+                    <p className="mt-2 text-sm leading-7 text-emerald-50/90">{successState.detail}</p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-slate-900/30 px-4 py-3 text-xs leading-6 text-slate-200">
+                    Account: <span className="font-semibold text-white">{emailLabel}</span>
+                  </div>
+                  <button
+                    className="h-12 w-full rounded-md bg-[linear-gradient(135deg,#18ac5f_0%,#0a7f74_48%,#0a2f66_100%)] text-sm font-black text-white shadow-[0_14px_30px_rgba(6,95,70,0.28)] transition hover:translate-y-[-1px] active:translate-y-0"
+                    onClick={() => navigate(successState.nextPath)}
+                    type="button"
+                  >
+                    Continue to workspace
+                  </button>
                 </div>
-
-                <label className="block">
-                  <span className="mb-2 block text-xs font-bold text-slate-200">
-                    {isPasswordReset ? "Account Email*" : "Invite Email*"}
-                  </span>
-                  <input
-                    className="h-11 w-full rounded-md border border-white/8 bg-slate-700/70 px-4 text-sm font-medium text-slate-200 outline-none ring-0 transition placeholder:text-slate-500 focus:border-emerald-300/60 focus:ring-4 focus:ring-emerald-400/10"
-                    readOnly
-                    value={emailLabel}
-                  />
-                </label>
-
-                <label className="block">
-                  <span className="mb-2 block text-xs font-bold text-slate-200">
-                    {isPasswordReset ? "Full Name" : "Full Name*"}
-                  </span>
-                  <input
-                    className="h-11 w-full rounded-md border border-white/8 bg-slate-700/70 px-4 text-sm font-medium text-white outline-none ring-0 transition placeholder:text-slate-500 focus:border-emerald-300/60 focus:ring-4 focus:ring-emerald-400/10"
-                    onChange={(event) => setFullName(event.target.value)}
-                    placeholder="Your full name"
-                    value={fullName}
-                  />
-                </label>
-
-                <label className="block">
-                  <span className="mb-2 block text-xs font-bold text-slate-200">
-                    Create Password*
-                  </span>
-                  <input
-                    className="h-11 w-full rounded-md border border-white/8 bg-slate-700/70 px-4 text-sm font-medium text-white outline-none ring-0 transition placeholder:text-slate-500 focus:border-emerald-300/60 focus:ring-4 focus:ring-emerald-400/10"
-                    onChange={(event) => setPassword(event.target.value)}
-                    placeholder="Create password"
-                    type="password"
-                    value={password}
-                  />
-                </label>
-
-                <label className="block">
-                  <span className="mb-2 block text-xs font-bold text-slate-200">
-                    Confirm Password*
-                  </span>
-                  <input
-                    className="h-11 w-full rounded-md border border-white/8 bg-slate-700/70 px-4 text-sm font-medium text-white outline-none ring-0 transition placeholder:text-slate-500 focus:border-emerald-300/60 focus:ring-4 focus:ring-emerald-400/10"
-                    onChange={(event) => setConfirmPassword(event.target.value)}
-                    placeholder="Confirm password"
-                    type="password"
-                    value={confirmPassword}
-                  />
-                </label>
-
-                <label className="flex items-start gap-3 rounded-md border border-white/8 bg-slate-900/38 px-4 py-3 text-xs leading-5 text-slate-300">
-                  <input
-                    checked={acceptedTerms}
-                    className="mt-1 h-4 w-4 rounded border-slate-500 bg-slate-800 text-emerald-500 focus:ring-emerald-400"
-                    onChange={(event) => setAcceptedTerms(event.target.checked)}
-                    type="checkbox"
-                  />
-                  <span>
-                    I understand that portal actions appear in audit history and that uploads must go into their assigned document slots.
-                  </span>
-                </label>
-
-                {error ? (
-                  <div className="rounded-md border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-xs font-semibold text-rose-100">
-                    {error}
+              ) : (
+                <form className="space-y-4" onSubmit={handleSubmit}>
+                  <div className="rounded-md border border-emerald-300/20 bg-emerald-500/10 px-4 py-3 text-xs leading-5 text-emerald-100">
+                    {isPasswordReset
+                      ? "This step replaces the password for the existing sign-in account and keeps the email address unchanged."
+                      : "The sign-in account already exists. This step only sets the password and confirms access for the invited user."}
                   </div>
-                ) : null}
 
-                {hasApiBaseUrl() && !inviteToken ? (
-                  <div className="rounded-md border border-sky-300/20 bg-sky-500/10 px-4 py-3 text-xs leading-5 text-sky-100">
-                    The access email should open this page with a secure setup token. If the token is missing, ask your administrator to resend the invite.
-                  </div>
-                ) : null}
+                  <label className="block">
+                    <span className="mb-2 block text-xs font-bold text-slate-200">
+                      {isPasswordReset ? "Account Email*" : "Invite Email*"}
+                    </span>
+                    <input
+                      className="h-11 w-full rounded-md border border-white/8 bg-slate-700/70 px-4 text-sm font-medium text-slate-200 outline-none ring-0 transition placeholder:text-slate-500 focus:border-emerald-300/60 focus:ring-4 focus:ring-emerald-400/10"
+                      readOnly
+                      value={emailLabel}
+                    />
+                  </label>
 
-                <button
-                  disabled={isSubmitting}
-                  className="h-12 w-full rounded-md bg-[linear-gradient(135deg,#18ac5f_0%,#0a7f74_48%,#0a2f66_100%)] text-sm font-black text-white shadow-[0_14px_30px_rgba(6,95,70,0.28)] transition hover:translate-y-[-1px] active:translate-y-0"
-                  type="submit"
-                >
-                  {isSubmitting
-                    ? isPasswordReset
-                      ? "Resetting password..."
-                      : "Completing setup..."
-                    : isPasswordReset
-                      ? "Update password"
-                      : "Complete account setup"}
-                </button>
-              </form>
+                  <label className="block">
+                    <span className="mb-2 block text-xs font-bold text-slate-200">
+                      {isPasswordReset ? "Full Name" : "Full Name*"}
+                    </span>
+                    <input
+                      className="h-11 w-full rounded-md border border-white/8 bg-slate-700/70 px-4 text-sm font-medium text-white outline-none ring-0 transition placeholder:text-slate-500 focus:border-emerald-300/60 focus:ring-4 focus:ring-emerald-400/10"
+                      onChange={(event) => setFullName(event.target.value)}
+                      placeholder="Your full name"
+                      value={fullName}
+                    />
+                  </label>
+
+                  <label className="block">
+                    <span className="mb-2 block text-xs font-bold text-slate-200">
+                      Create Password*
+                    </span>
+                    <input
+                      className="h-11 w-full rounded-md border border-white/8 bg-slate-700/70 px-4 text-sm font-medium text-white outline-none ring-0 transition placeholder:text-slate-500 focus:border-emerald-300/60 focus:ring-4 focus:ring-emerald-400/10"
+                      onChange={(event) => setPassword(event.target.value)}
+                      placeholder="Create password"
+                      type="password"
+                      value={password}
+                    />
+                  </label>
+
+                  <label className="block">
+                    <span className="mb-2 block text-xs font-bold text-slate-200">
+                      Confirm Password*
+                    </span>
+                    <input
+                      className="h-11 w-full rounded-md border border-white/8 bg-slate-700/70 px-4 text-sm font-medium text-white outline-none ring-0 transition placeholder:text-slate-500 focus:border-emerald-300/60 focus:ring-4 focus:ring-emerald-400/10"
+                      onChange={(event) => setConfirmPassword(event.target.value)}
+                      placeholder="Confirm password"
+                      type="password"
+                      value={confirmPassword}
+                    />
+                  </label>
+
+                  <label className="flex items-start gap-3 rounded-md border border-white/8 bg-slate-900/38 px-4 py-3 text-xs leading-5 text-slate-300">
+                    <input
+                      checked={acceptedTerms}
+                      className="mt-1 h-4 w-4 rounded border-slate-500 bg-slate-800 text-emerald-500 focus:ring-emerald-400"
+                      onChange={(event) => setAcceptedTerms(event.target.checked)}
+                      type="checkbox"
+                    />
+                    <span>
+                      I understand that portal actions appear in audit history and that uploads must go into their assigned document slots.
+                    </span>
+                  </label>
+
+                  {error ? (
+                    <div className="rounded-md border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-xs font-semibold text-rose-100">
+                      {error}
+                    </div>
+                  ) : null}
+
+                  {hasApiBaseUrl() && !inviteToken ? (
+                    <div className="rounded-md border border-sky-300/20 bg-sky-500/10 px-4 py-3 text-xs leading-5 text-sky-100">
+                      The access email should open this page with a secure setup token. If the token is missing, ask your administrator to resend the invite.
+                    </div>
+                  ) : null}
+
+                  <button
+                    disabled={isSubmitting}
+                    className="h-12 w-full rounded-md bg-[linear-gradient(135deg,#18ac5f_0%,#0a7f74_48%,#0a2f66_100%)] text-sm font-black text-white shadow-[0_14px_30px_rgba(6,95,70,0.28)] transition hover:translate-y-[-1px] active:translate-y-0"
+                    type="submit"
+                  >
+                    {isSubmitting
+                      ? isPasswordReset
+                        ? "Resetting password..."
+                        : "Completing setup..."
+                      : isPasswordReset
+                        ? "Update password"
+                        : "Complete account setup"}
+                  </button>
+                </form>
+              )}
             </div>
           </div>
         </div>

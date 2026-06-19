@@ -106,6 +106,7 @@ export function AccountantComplianceCentrePage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const portal = usePortal();
+  const currentDateLabel = useMemo(() => formatDateLabel(new Date().toISOString()), []);
 // Local UI state: keeps track of what the user is seeing or editing right now.
   const [searchQuery, setSearchQuery] = useState("");
   const [riskFilter, setRiskFilter] = useState<RiskFilter>("all");
@@ -393,7 +394,7 @@ export function AccountantComplianceCentrePage() {
                 <rect height="14" rx="2.5" stroke="currentColor" strokeWidth="1.8" width="16" x="4" y="6.5" />
                 <path d="M8 4.5v4m8-4v4M4 10.5h16" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
               </svg>
-              <span>07 May 2026</span>
+              <span>{currentDateLabel}</span>
             </button>
             <Button
               className="h-12 rounded-xl bg-[#061848] px-5 text-white hover:bg-[#0b255f]"
