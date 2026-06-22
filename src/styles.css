@@ -451,6 +451,16 @@
     box-shadow: 0 16px 30px rgba(6, 27, 65, 0.3);
   }
 
+  .client-inbox-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  @media (min-width: 1280px) {
+    .client-inbox-layout {
+      grid-template-columns: 440px minmax(0, 1fr);
+    }
+  }
+
   .client-inbox-secondary-button {
     background: #ffffff !important;
     color: #091333 !important;

@@ -1031,7 +1031,7 @@ export function ClientRequestsPage() {
       ) : null}
 
       {visibleRequests.length > 0 && activeRequest ? (
-        <div className="grid items-stretch gap-4 xl:grid-cols-[440px_minmax(0,1fr)]">
+        <div className="client-inbox-layout grid items-stretch gap-4">
           <ThreadListPane
             checkboxAnchorId={checkboxAnchorId}
             checkedRequestIds={checkedRequestIds}
