@@ -101,6 +101,10 @@ export function useClientWorkflow(options: ClientWorkflowOptions = {}) {
     return result;
   }
 
+  function toggleRequestStar(requestId: string) {
+    return portal.toggleRequestStar(requestId);
+  }
+
   function createClientRequest(
     payload: Pick<WorkflowRequest, "title" | "description" | "dueDate" | "priority" | "monthLabel">,
     actor: SessionUser,
@@ -140,6 +144,7 @@ export function useClientWorkflow(options: ClientWorkflowOptions = {}) {
     submitMonth,
     finaliseInvoice,
     replyToRequest,
+    toggleRequestStar,
     resolveRequest,
     createClientRequest,
     triggerView,

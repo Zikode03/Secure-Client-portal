@@ -68,6 +68,7 @@ function renderPage(
   const createClientRequest = overrides?.createClientRequest ?? vi.fn(() => ({ ok: true, message: "Request sent." }));
   const replyToRequest = overrides?.replyToRequest ?? vi.fn(() => ({ ok: true, message: "Reply added." }));
   const resolveRequest = overrides?.resolveRequest ?? vi.fn(() => ({ ok: true, message: "Resolved." }));
+  const toggleRequestStar = vi.fn(() => ({ ok: true, message: "Request starred." }));
 
   mockedUseAuth.mockReturnValue({
     ready: true,
@@ -86,6 +87,9 @@ function renderPage(
     login: vi.fn(),
     completeInvite: vi.fn(),
     changePassword: vi.fn(),
+    requestPasswordReset: vi.fn(),
+    authNotice: null,
+    clearAuthNotice: vi.fn(),
     logout: vi.fn(),
   });
 
@@ -96,6 +100,7 @@ function renderPage(
     feedbackNotice: null,
     replyToRequest,
     resolveRequest,
+    toggleRequestStar,
     requests,
   } as never);
 
@@ -105,7 +110,7 @@ function renderPage(
     </MemoryRouter>,
   );
 
-  return { createClientRequest, replyToRequest, resolveRequest };
+  return { createClientRequest, replyToRequest, resolveRequest, toggleRequestStar };
 }
 
 describe("ClientRequestsPage", () => {
@@ -162,51 +167,38 @@ describe("ClientRequestsPage", () => {
       createRequest({ id: "open-1", status: "open", title: "Open bank statement task", comments: [] }),
     ]);
 
-    fireEvent.click(screen.getByRole("button", { name: "Filter messages" }));
+    fireEvent.click(screen.getByRole("button", { name: "Filter threads" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Unresolved" }));
     expect(screen.queryByText("Resolved tax query")).not.toBeInTheDocument();
     expect(screen.getAllByText("Open bank statement task").length).toBeGreaterThan(0);
-    fireEvent.click(screen.getByRole("button", { name: "Filter messages" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "All" }));
+    fireEvent.click(screen.getByRole("button", { name: "Filter threads" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Inbox" }));
     expect(screen.getAllByText("Resolved tax query").length).toBeGreaterThan(0);
   });
 
   it("supports filter menu options", () => {
     renderPage([createRequest()]);
 
-    fireEvent.click(screen.getByRole("button", { name: "Filter messages" }));
+    fireEvent.click(screen.getByRole("button", { name: "Filter threads" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Resolved" }));
-    expect(screen.getByText("No messages match your filters")).toBeInTheDocument();
+    expect(screen.getByText("No threads match your filters")).toBeInTheDocument();
   });
 
-  it("reveals checkboxes after selecting a thread and shows bulk actions for multiple checked messages", () => {
-    renderPage([
-      createRequest({ id: "request-1", title: "First request" }),
-      createRequest({ id: "request-2", title: "Second request" }),
-    ]);
+  it("shows the simplified thread actions in the reader header", () => {
+    renderPage([createRequest()]);
 
-    expect(screen.queryByRole("checkbox", { name: "Select First request" })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /First request/ }));
-    fireEvent.click(screen.getByRole("checkbox", { name: "Select First request" }));
-    fireEvent.click(screen.getByRole("checkbox", { name: "Select Second request" }));
-
-    expect(screen.getByText("2 messages selected")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Mark resolved" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Clear selection" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Star thread" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reply to thread" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Resolve" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Selection mode" })).not.toBeInTheDocument();
   });
 
-  it("toggles selection mode from the toolbar", () => {
-    renderPage([
-      createRequest({ id: "request-1", title: "First request" }),
-      createRequest({ id: "request-2", title: "Second request" }),
-    ]);
+  it("toggles the persisted request star action", () => {
+    const { toggleRequestStar } = renderPage([createRequest()]);
 
-    expect(screen.queryByRole("checkbox", { name: "Select First request" })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Selection mode" }));
-    expect(screen.getByRole("checkbox", { name: "Select First request" })).toBeInTheDocument();
-    expect(screen.getByRole("checkbox", { name: "Select Second request" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Selection mode" }));
-    expect(screen.queryByRole("checkbox", { name: "Select First request" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Star thread" }));
+
+    expect(toggleRequestStar).toHaveBeenCalledWith("request-1");
   });
 
   it("refreshes toolbar state back to the default inbox view", () => {
@@ -215,7 +207,7 @@ describe("ClientRequestsPage", () => {
       createRequest({ id: "open-1", status: "open", title: "Open bank statement task", comments: [] }),
     ]);
 
-    fireEvent.click(screen.getByRole("button", { name: "Filter messages" }));
+    fireEvent.click(screen.getByRole("button", { name: "Filter threads" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Resolved" }));
     expect(screen.queryByText("Open bank statement task")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Refresh inbox" }));
@@ -241,7 +233,7 @@ describe("ClientRequestsPage", () => {
     const newerBeforeSort = screen.getByRole("button", { name: /Newer request/ });
     expect(newerBeforeSort.compareDocumentPosition(olderBeforeSort) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "Sort messages" }));
+    fireEvent.click(screen.getByRole("button", { name: "Sort threads" }));
 
     const olderAfterSort = screen.getByRole("button", { name: /Older request/ });
     const newerAfterSort = screen.getByRole("button", { name: /Newer request/ });

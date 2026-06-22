@@ -112,6 +112,7 @@ const initialRequests: WorkflowRequest[] = [
       "Please upload the full April supplier and customer invoice evidence so review can begin.",
     monthLabel: "April 2026",
     status: "open",
+    isStarred: false,
     priority: "high",
     relatedDocumentId: "doc-1002",
     requestedBy: "Daniel Mokoena",
@@ -139,6 +140,7 @@ const initialRequests: WorkflowRequest[] = [
       "Go to Monthly Packs and upload the April bank statement in the Bank Statement slot.",
     monthLabel: "April 2026",
     status: "open",
+    isStarred: false,
     priority: "high",
     requestedBy: "Daniel Mokoena",
     requestedByRole: "accountant",
@@ -598,6 +600,7 @@ interface PortalContextValue {
   createFollowUpRequest: (payload: FollowUpRequestPayload) => PortalActionResult;
   createComplianceRequest: (payload: ComplianceRequestPayload) => PortalActionResult;
   uploadComplianceVersion: (payload: ComplianceVersionUploadPayload) => PortalActionResult;
+  toggleRequestStar: (requestId: string) => PortalActionResult;
   resolveRequest: (requestId: string, actorName: string) => PortalActionResult;
   updateRequestControls: (
     requestId: string,
@@ -2215,14 +2218,6 @@ const assignedAccountantForApex =
   }
 
   function createClientRequest(payload: ClientRequestPayload): PortalActionResult {
-    if (payload.actor.role === "client") {
-      return {
-        ok: false,
-        message:
-          "Request threads are created by accountant/admin only. Use reply in an existing thread to respond.",
-      };
-    }
-
     const trimmedTitle = payload.title.trim();
     const trimmedDescription = payload.description.trim();
 
@@ -2241,6 +2236,7 @@ const assignedAccountantForApex =
         description: trimmedDescription,
         monthLabel: payload.monthLabel,
         status: "awaiting_accountant",
+        isStarred: false,
         priority: payload.priority,
         requestedBy: payload.actor.fullName,
         requestedByRole: payload.actor.role,
@@ -2297,6 +2293,7 @@ const assignedAccountantForApex =
         description: payload.description,
         monthLabel: payload.monthLabel,
         status: "awaiting_client",
+        isStarred: false,
         priority: "high",
         relatedDocumentId: payload.relatedDocumentId,
         requestedBy: payload.actor.fullName,
@@ -2352,6 +2349,7 @@ const assignedAccountantForApex =
         description: details.description,
         monthLabel: record.monthlyPeriod ?? "Compliance",
         status: "awaiting_client",
+        isStarred: false,
         priority:
           payload.requestType === "clarification_request"
             ? "medium"
@@ -2446,6 +2444,29 @@ const assignedAccountantForApex =
     return {
       ok: true,
       message: "New compliance version uploaded and moved into review.",
+    };
+  }
+
+  function toggleRequestStar(requestId: string): PortalActionResult {
+    const targetRequest = requests.find((request) => request.id === requestId);
+    if (!targetRequest) {
+      return { ok: false, message: "The selected request could not be found." };
+    }
+
+    setRequests((current) =>
+      current.map((request) =>
+        request.id === requestId
+          ? {
+              ...request,
+              isStarred: !request.isStarred,
+            }
+          : request,
+      ),
+    );
+
+    return {
+      ok: true,
+      message: targetRequest.isStarred ? "Request unstarred." : "Request starred.",
     };
   }
 
@@ -3478,6 +3499,7 @@ const assignedAccountantForApex =
       createFollowUpRequest,
       createComplianceRequest,
       uploadComplianceVersion,
+      toggleRequestStar,
       resolveRequest,
       updateRequestControls,
       createUserAccount,

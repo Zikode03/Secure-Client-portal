@@ -346,32 +346,35 @@
     border-color: #2b486c !important;
   }
 
-  .ui-btn-primary {
-    background: linear-gradient(135deg, #18ac5f 0%, #0a2f66 100%);
-    color: #ffffff;
-    box-shadow: 0 10px 22px rgba(10, 47, 102, 0.25);
+  .ui-btn-primary,
+  .ui-btn-secondary,
+  .client-dashboard-action-button,
+  .monthly-pack-action-button,
+  .client-inbox-primary-button,
+  .client-inbox-secondary-button {
+    background: #061b41 !important;
+    color: #ffffff !important;
+    border: 0 !important;
+    box-shadow: 0 12px 24px rgba(6, 27, 65, 0.22) !important;
   }
 
-  .ui-btn-primary:hover {
-    background: linear-gradient(135deg, #149553 0%, #08264f 100%);
+  .ui-btn-primary:hover,
+  .ui-btn-secondary:hover,
+  .client-dashboard-action-button:hover,
+  .monthly-pack-action-button:hover:not(:disabled),
+  .client-inbox-primary-button:hover:not(:disabled),
+  .client-inbox-secondary-button:hover:not(:disabled) {
+    background: #09275c !important;
+    box-shadow: 0 16px 30px rgba(6, 27, 65, 0.3) !important;
   }
 
-  .ui-btn-primary:focus-visible {
-    outline-color: #18ac5f;
-  }
-
-  .ui-btn-secondary {
-    background: #ffffff;
-    color: #0a2f66;
-    box-shadow: inset 0 0 0 1px #cfe5d8;
-  }
-
-  .ui-btn-secondary:hover {
-    background: #eef9f4;
-  }
-
-  .ui-btn-secondary:focus-visible {
-    outline-color: #18ac5f;
+  .ui-btn-primary:focus-visible,
+  .ui-btn-secondary:focus-visible,
+  .client-dashboard-action-button:focus-visible,
+  .monthly-pack-action-button:focus-visible,
+  .client-inbox-primary-button:focus-visible,
+  .client-inbox-secondary-button:focus-visible {
+    outline-color: #0a2f66;
   }
 
   .ui-btn-ghost {
@@ -405,72 +408,12 @@
     color: #047857;
   }
 
-  .client-dashboard-action-button {
-    background-color: #074e5f;
-    color: #ffffff;
-    box-shadow: 0 12px 22px rgba(7, 78, 95, 0.22);
-  }
-
-  .client-dashboard-action-button:hover {
-    background-color: #063f4d;
-    box-shadow: 0 16px 30px rgba(7, 78, 95, 0.34);
-  }
-
-  .client-dashboard-action-button:focus-visible {
-    outline-color: #074e5f;
-  }
-
-  .monthly-pack-action-button {
-    background: #062044 !important;
-    color: #ffffff !important;
-    box-shadow: 0 12px 24px rgba(6, 32, 68, 0.22);
-  }
-
   .monthly-pack-action-button:hover:not(:disabled) {
-    background: #0a2f66 !important;
-    box-shadow: 0 16px 30px rgba(6, 32, 68, 0.32);
     transform: translateY(-2px);
   }
 
   .monthly-pack-action-button:active:not(:disabled) {
     transform: translateY(1px);
-  }
-
-  .monthly-pack-action-button:focus-visible {
-    outline-color: #0a2f66;
-  }
-
-  .client-inbox-primary-button {
-    background: #061b41 !important;
-    color: #ffffff !important;
-    box-shadow: 0 12px 24px rgba(6, 27, 65, 0.22);
-  }
-
-  .client-inbox-primary-button:hover:not(:disabled) {
-    background: #09275c !important;
-    box-shadow: 0 16px 30px rgba(6, 27, 65, 0.3);
-  }
-
-  .client-inbox-layout {
-    display: grid !important;
-    grid-template-columns: minmax(0, 1fr) !important;
-  }
-
-  @media (min-width: 1024px) {
-    .client-inbox-layout {
-      grid-template-columns: 440px minmax(0, 1fr) !important;
-    }
-  }
-
-  .client-inbox-secondary-button {
-    background: #ffffff !important;
-    color: #091333 !important;
-    border: 1px solid #cdd8ea !important;
-    box-shadow: 0 8px 18px rgba(4, 24, 52, 0.05) !important;
-  }
-
-  .client-inbox-secondary-button:hover:not(:disabled) {
-    background: #f8fbff !important;
   }
 
   .ui-btn-danger {
@@ -487,20 +430,25 @@
     outline-color: #be123c;
   }
 
-  html.theme-dark .ui-btn-secondary {
-    background: #132542 !important;
-    color: #dbeafe !important;
-    box-shadow:
-      inset 0 0 0 1px #2b486c,
-      0 10px 22px rgba(1, 8, 22, 0.22);
+  html.theme-dark .ui-btn-primary,
+  html.theme-dark .ui-btn-secondary,
+  html.theme-dark .client-dashboard-action-button,
+  html.theme-dark .monthly-pack-action-button,
+  html.theme-dark .client-inbox-primary-button,
+  html.theme-dark .client-inbox-secondary-button {
+    background: #8ccf45 !important;
+    color: #062044 !important;
+    box-shadow: 0 14px 28px rgba(140, 207, 69, 0.24) !important;
   }
 
-  html.theme-dark .ui-btn-secondary:hover {
-    background: #193153 !important;
-    color: #ffffff !important;
-    box-shadow:
-      inset 0 0 0 1px #3a5d84,
-      0 12px 24px rgba(1, 8, 22, 0.3);
+  html.theme-dark .ui-btn-primary:hover,
+  html.theme-dark .ui-btn-secondary:hover,
+  html.theme-dark .client-dashboard-action-button:hover,
+  html.theme-dark .monthly-pack-action-button:hover:not(:disabled),
+  html.theme-dark .client-inbox-primary-button:hover:not(:disabled),
+  html.theme-dark .client-inbox-secondary-button:hover:not(:disabled) {
+    background: #a7dc55 !important;
+    box-shadow: 0 18px 34px rgba(140, 207, 69, 0.34) !important;
   }
 
   html.theme-dark .ui-btn-ghost {
@@ -524,18 +472,12 @@
     color: #b7e46a !important;
   }
 
-  html.theme-dark .client-dashboard-action-button {
-    background-color: #8ccf45 !important;
-    color: #062044 !important;
-    box-shadow: 0 14px 28px rgba(140, 207, 69, 0.24) !important;
-  }
-
-  html.theme-dark .client-dashboard-action-button:hover {
-    background-color: #a7dc55 !important;
-    box-shadow: 0 18px 34px rgba(140, 207, 69, 0.34) !important;
-  }
-
-  html.theme-dark .client-dashboard-action-button:focus-visible {
+  html.theme-dark .client-dashboard-action-button:focus-visible,
+  html.theme-dark .ui-btn-primary:focus-visible,
+  html.theme-dark .ui-btn-secondary:focus-visible,
+  html.theme-dark .monthly-pack-action-button:focus-visible,
+  html.theme-dark .client-inbox-primary-button:focus-visible,
+  html.theme-dark .client-inbox-secondary-button:focus-visible {
     outline-color: #b7e46a;
   }
 

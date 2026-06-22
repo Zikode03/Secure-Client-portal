@@ -443,6 +443,7 @@ export interface WorkflowRequest {
   description: string;
   monthLabel: string;
   status: RequestStatus;
+  isStarred?: boolean;
   priority: RequestPriority;
   relatedDocumentId?: string;
   requestedBy: string;
