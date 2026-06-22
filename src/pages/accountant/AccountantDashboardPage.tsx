@@ -194,41 +194,6 @@ function isSameCalendarMonth(dateValue: string, monthDate: Date) {
   return date.getFullYear() === monthDate.getFullYear() && date.getMonth() === monthDate.getMonth();
 }
 
-function deadlineStatusLabel(dueDate: string) {
-  const days = dayDifference(dueDate);
-
-  if (days < 0) {
-    return `Overdue ${Math.abs(days)}d`;
-  }
-
-  if (days === 0) {
-    return "Due today";
-  }
-
-  return `Due in ${days}d`;
-}
-
-function deadlineToneClasses(tone: DeadlineItem["tone"]) {
-  if (tone === "danger") {
-    return {
-      dot: "bg-rose-500",
-      badge: "bg-rose-50 text-rose-600",
-    };
-  }
-
-  if (tone === "warning") {
-    return {
-      dot: "bg-amber-500",
-      badge: "bg-amber-50 text-amber-600",
-    };
-  }
-
-  return {
-    dot: "bg-brand-500",
-    badge: "bg-brand-50 text-brand-600",
-  };
-}
-
 function queuePriorityMeta(priority: WorkQueueItem["priority"]) {
   if (priority === "high") {
     return "bg-rose-50 text-rose-600 ring-rose-200";
@@ -830,14 +795,6 @@ export function AccountantDashboardPage() {
     [scopedDeadlines],
   );
 
-  const calendarPreviewDeadlines = useMemo(
-    () =>
-      sortedCalendarDeadlines
-        .filter((item) => isSameCalendarMonth(item.dueDate, calendarPreviewDate))
-        .slice(0, 5),
-    [calendarPreviewDate, sortedCalendarDeadlines],
-  );
-
   const calendarEventDays = useMemo(
     () =>
       new Set(
@@ -1166,7 +1123,7 @@ export function AccountantDashboardPage() {
       </section>
 
       <section aria-label="Today's focus">
-        <div className="grid items-stretch gap-5 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid items-stretch gap-5 md:grid-cols-2">
           {focusMetrics.map((metric) => (
             <article
               className={cn(panelClass, "flex min-h-[152px] flex-col justify-between p-5")}
@@ -1474,9 +1431,9 @@ export function AccountantDashboardPage() {
             </button>
           </div>
 
-          <div className="grid gap-5 px-5 py-4 md:grid-cols-[minmax(0,0.95fr)_minmax(190px,1fr)]">
-            <div className="min-w-0">
-              <div className="mb-3 flex items-center justify-between">
+          <div className="min-h-[268px]">
+            <div className="min-w-0 p-5">
+              <div className="mb-4 flex items-center justify-between">
                 <button
                   className={cn(dashboardLinkClass)}
                   onClick={() =>
@@ -1501,21 +1458,21 @@ export function AccountantDashboardPage() {
                   <ChevronRightIcon />
                 </button>
               </div>
-              <div className="grid grid-cols-7 gap-1 text-center">
+              <div className="grid grid-cols-7 gap-1.5 text-center">
                 {weekDayShortLabels().map((label) => (
                   <div className="py-1 text-[0.55rem] font-bold uppercase tracking-[0.08em] text-[#73809a]" key={label}>
                     {label}
                   </div>
                 ))}
                 {compactMonthDays(calendarPreviewDate.toISOString()).map((cell, index) => (
-                  <div className="flex h-7 items-center justify-center" key={`${cell.day ?? "blank"}-${index}`}>
+                  <div className="flex h-8 items-center justify-center" key={`${cell.day ?? "blank"}-${index}`}>
                     {cell.day ? (
                       <span
                         className={cn(
-                          "relative flex h-6 w-6 items-center justify-center rounded-full text-[0.62rem] font-bold",
+                          "relative flex h-8 w-full items-center justify-center rounded-lg text-[0.68rem] font-bold",
                           cell.isActive
                             ? "bg-[#091333] text-white"
-                            : "text-[#53617f]",
+                            : "bg-[#f4f7fb] text-[#53617f]",
                         )}
                       >
                         {cell.day}
@@ -1527,32 +1484,6 @@ export function AccountantDashboardPage() {
                   </div>
                 ))}
               </div>
-            </div>
-
-            <div className="min-w-0 space-y-2.5">
-              {calendarPreviewDeadlines.length > 0 ? (
-                calendarPreviewDeadlines.map((item) => {
-                  const tone = deadlineToneClasses(item.tone);
-
-                  return (
-                    <div
-                      className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-xl px-2 py-1.5 text-left"
-                      key={item.id}
-                    >
-                      <div className="flex min-w-0 items-center gap-2">
-                        <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", tone.dot)} />
-                        <div className="min-w-0">
-                          <p className="truncate text-[0.7rem] font-bold text-[#091333]">{formatDateLabel(item.dueDate)}</p>
-                          <p className="truncate text-[0.66rem] font-semibold text-[#53617f]">{item.label}</p>
-                        </div>
-                      </div>
-                      <span className={cn("whitespace-nowrap rounded-md px-2 py-1 text-[0.58rem] font-bold", tone.badge)}>
-                        {deadlineStatusLabel(item.dueDate)}
-                      </span>
-                    </div>
-                  );
-                })
-              ) : null}
             </div>
           </div>
         </SurfaceCard>
