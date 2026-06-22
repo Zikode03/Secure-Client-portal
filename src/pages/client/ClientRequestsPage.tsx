@@ -236,6 +236,7 @@ function ThreadListPane({
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
   const unreadTotal = requests.reduce((sum, request) => sum + unreadFromAccountantCount(request), 0);
+  const visibleThreadCount = requests.length;
   const filterOptions: Array<{ label: string; value: ThreadFilter; count?: number }> = [
     { label: "All", value: "all" },
     { label: "Unread", value: "unread", count: unreadTotal },
@@ -245,8 +246,8 @@ function ThreadListPane({
 
   return (
     <section className={`${inboxPanelClass} flex h-full min-h-[720px] flex-col overflow-hidden rounded-lg`}>
-      <div className="flex min-h-[74px] items-center justify-between gap-3 border-b border-slate-100 bg-white px-4">
-        <div className="flex min-w-0 items-center gap-7 text-sm font-semibold">
+      <div className="flex min-h-[74px] items-center justify-between gap-3 border-b border-slate-100 bg-white px-5">
+        <div className="flex min-w-0 items-center gap-3 text-sm font-semibold">
           <button
             className={`relative h-10 transition after:absolute after:inset-x-0 after:-bottom-3 after:h-1 after:rounded-full ${filter === "all" ? "text-[#091333] after:bg-[#00856f]" : "text-[#35466d] after:bg-transparent hover:text-[#091333]"}`}
             onClick={() => onChangeFilter("all")}
@@ -254,8 +255,11 @@ function ThreadListPane({
           >
             Focused
           </button>
+          <span className="inline-flex items-center rounded-full bg-[#eef4fa] px-2.5 py-1 text-[0.68rem] font-semibold text-[#41506f]">
+            {visibleThreadCount} threads
+          </span>
         </div>
-        <div className="relative flex shrink-0 items-center gap-3 text-[#061b41]">
+        <div className="relative flex shrink-0 items-center gap-2 rounded-full border border-slate-200 bg-slate-50/80 px-2 py-1 text-[#061b41]">
           <button
             aria-pressed={isSelectionMode}
             aria-label="Selection mode"
@@ -323,7 +327,7 @@ function ThreadListPane({
         </div>
       </div>
 
-      <div className="border-b border-slate-100 bg-white px-4 py-4">
+      <div className="border-b border-slate-100 bg-white px-5 py-4">
         <div className="flex h-11 items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 shadow-[0_10px_22px_rgba(4,24,52,0.06)]">
           <Search aria-hidden="true" className="h-4 w-4 text-slate-500" />
           <input
@@ -354,7 +358,7 @@ function ThreadListPane({
               {showSection ? (
                 <button
                   aria-expanded={!isSectionCollapsed}
-                  className="flex h-12 w-full items-center gap-2 border-y border-slate-100 bg-[#f7fafc] px-5 text-left text-sm font-semibold text-[#091333] transition hover:bg-[#eef4fa]"
+                  className="flex h-11 w-full items-center gap-2 border-y border-slate-100 bg-[#f7fafc] px-5 text-left text-[0.95rem] font-semibold text-[#091333] transition hover:bg-[#eef4fa]"
                   onClick={() =>
                     setCollapsedSections((current) => ({
                       ...current,
@@ -373,14 +377,16 @@ function ThreadListPane({
               ) : null}
               {isSectionCollapsed ? null : (
               <button
-                className={`relative mx-3 grid w-[calc(100%-1.5rem)] grid-cols-[auto_auto_1fr_auto] items-start gap-3 rounded-lg px-3 py-4 text-left transition ${
-                  selected ? "bg-[#0a2f66]/[0.08] shadow-[0_10px_22px_rgba(4,24,52,0.08)]" : "hover:bg-slate-50"
+                className={`relative mx-3 my-1.5 grid w-[calc(100%-1.5rem)] grid-cols-[auto_auto_1fr_auto] items-start gap-3 rounded-xl border px-3 py-3 text-left transition ${
+                  selected
+                    ? "border-[#c8d6ee] bg-[#eef4fb] shadow-[0_12px_24px_rgba(4,24,52,0.08)]"
+                    : "border-transparent hover:border-slate-100 hover:bg-slate-50"
                 }`}
                 onClick={() => onSelectRequest(request.id)}
                 type="button"
               >
-                {selected ? <span className="absolute inset-y-2 left-0 w-1 rounded-r-full bg-[#0a2f66]/50" /> : null}
-                <span className="mt-3.5 inline-flex h-4 w-4 items-center justify-center">
+                {selected ? <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-[#0a2f66]/60" /> : null}
+                <span className="mt-3 inline-flex h-4 w-4 items-center justify-center">
                   {showCheckbox ? (
                     <input
                       aria-label={`Select ${request.title}`}
@@ -398,11 +404,11 @@ function ThreadListPane({
                   {initials(request.requestedBy)}
                 </span>
                 <div className="min-w-0 pt-0.5">
-                  <p className="line-clamp-1 text-[0.92rem] font-semibold leading-5 text-[#091333]">{request.requestedBy}</p>
-                  <p className="mt-0.5 line-clamp-1 text-[0.78rem] font-semibold leading-4 text-[#091333]">{request.title}</p>
-                  <p className="mt-1 line-clamp-1 text-[0.75rem] font-medium leading-4 text-[#53617f]">{preview}</p>
+                  <p className="line-clamp-1 text-[0.84rem] font-semibold leading-5 text-[#091333]">{request.requestedBy}</p>
+                  <p className="mt-0.5 line-clamp-1 text-[0.74rem] font-semibold leading-4 text-[#091333]">{request.title}</p>
+                  <p className="mt-1 line-clamp-1 text-[0.72rem] font-medium leading-4 text-[#53617f]">{preview}</p>
                 </div>
-                <div className="flex min-h-14 shrink-0 flex-col items-end justify-between gap-1 pt-0.5">
+                <div className="flex min-h-12 shrink-0 flex-col items-end justify-between gap-1 pt-0.5">
                   <p className="text-[0.68rem] font-medium leading-4 text-[#061b41]">{formatShortThreadTime(lastActivity(request))}</p>
                   {unread > 0 ? (
                     <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#087d69] px-1.5 text-[0.62rem] font-bold leading-none text-white">
@@ -591,21 +597,21 @@ function ConversationPane({
   return (
     <section className={`${inboxPanelClass} flex h-full min-h-[720px] flex-col overflow-hidden rounded-lg`} onClick={() => setMessageContextMenu(null)}>
       <p className="sr-only">{requestTypeHelperText(request)}</p>
-      <div className="border-b border-slate-100 bg-white px-7 py-6">
+      <div className="border-b border-slate-100 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] px-7 py-6">
         <div className="flex min-w-0 items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
             <span className={`inline-flex rounded-full px-3 py-1 text-[0.7rem] font-semibold ${priorityBadgeClass(request.priority)}`}>
               {request.priority.toUpperCase()} PRIORITY
             </span>
-            <h2 className="mt-5 text-[1.35rem] font-semibold tracking-tight text-[#091333]">{request.title}</h2>
+            <h2 className="mt-4 text-[1.45rem] font-semibold tracking-tight text-[#091333]">{request.title}</h2>
             <div className="mt-4 text-xs font-medium text-[#8b97ad]">
               <p>
                 Assigned accountant: <span className="font-semibold text-[#35466d]">{request.requestedBy} ({accountantEmail(request.requestedBy)})</span>
               </p>
             </div>
           </div>
-          <div className="flex shrink-0 flex-col items-end gap-10">
-            <div className="flex items-center gap-4 text-[#061b41]">
+          <div className="flex shrink-0 flex-col items-end gap-8">
+            <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-2 py-1 text-[#061b41] shadow-sm">
               <button
                 aria-label={isStarred ? "Unstar thread" : "Star thread"}
                 aria-pressed={isStarred}
@@ -1024,13 +1030,18 @@ export function ClientRequestsPage() {
   }
 
   return (
-    <div className="client-inbox-page mx-auto max-w-[1500px] space-y-4 pb-8">
-      <header className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-[1.55rem] font-semibold tracking-tight text-[#091333]">Inbox</h1>
-          <p className="mt-1 max-w-2xl text-[0.9rem] leading-6 text-[#53617f]">
+    <div className="client-inbox-page mx-auto max-w-[1500px] space-y-5 pb-8">
+      <header className="flex flex-wrap items-end justify-between gap-4">
+        <div className="space-y-2">
+          <p className="text-[0.78rem] font-semibold uppercase tracking-[0.18em] text-[#8190ab]">
+            Client communications
+          </p>
+          <p className="max-w-2xl text-[0.95rem] leading-6 text-[#53617f]">
             Review accountant follow-ups, reply with context, and keep document requests moving.
           </p>
+        </div>
+        <div className="inline-flex items-center rounded-full bg-white px-3 py-1.5 text-[0.78rem] font-semibold text-[#41506f] shadow-[0_10px_24px_rgba(4,24,52,0.06)] ring-1 ring-slate-200">
+          {visibleRequests.length} active thread{visibleRequests.length === 1 ? "" : "s"}
         </div>
       </header>
 
