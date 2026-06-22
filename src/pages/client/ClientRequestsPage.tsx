@@ -861,6 +861,9 @@ export function ClientRequestsPage() {
   const [checkboxAnchorId, setCheckboxAnchorId] = useState("");
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const [isDesktopInboxLayout, setIsDesktopInboxLayout] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth >= 1024 : true,
+  );
 
   const orderedRequests = useMemo(
     () =>
@@ -923,6 +926,16 @@ export function ClientRequestsPage() {
       setCurrentPage(totalPages);
     }
   }, [currentPage, totalPages]);
+
+  useEffect(() => {
+    function handleResize() {
+      setIsDesktopInboxLayout(window.innerWidth >= 1024);
+    }
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   useEffect(() => {
     setCheckedRequestIds((current) =>
@@ -1031,7 +1044,12 @@ export function ClientRequestsPage() {
       ) : null}
 
       {visibleRequests.length > 0 && activeRequest ? (
-        <div className="client-inbox-layout grid items-stretch gap-4">
+        <div
+          className="client-inbox-layout grid items-stretch gap-4"
+          style={{
+            gridTemplateColumns: isDesktopInboxLayout ? "440px minmax(0, 1fr)" : "minmax(0, 1fr)",
+          }}
+        >
           <ThreadListPane
             checkboxAnchorId={checkboxAnchorId}
             checkedRequestIds={checkedRequestIds}
