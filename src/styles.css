@@ -452,12 +452,13 @@
   }
 
   .client-inbox-layout {
-    grid-template-columns: minmax(0, 1fr);
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
   }
 
-  @media (min-width: 1280px) {
+  @media (min-width: 1024px) {
     .client-inbox-layout {
-      grid-template-columns: 440px minmax(0, 1fr);
+      grid-template-columns: 440px minmax(0, 1fr) !important;
     }
   }
 
