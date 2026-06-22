@@ -739,7 +739,7 @@ export function ClientDashboardPage() {
         />
       ) : null}
 
-      <div className="grid items-stretch gap-5 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid items-stretch gap-5 md:grid-cols-2">
         <MetricTile
           accent
           helper={`${expiredComplianceCount} expired / ${expiringComplianceCount} expiring soon`}

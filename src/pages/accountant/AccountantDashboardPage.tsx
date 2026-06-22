@@ -241,7 +241,6 @@ function deadlineToneClasses(tone: DeadlineItem["tone"]) {
     badge: "bg-brand-50 text-brand-600",
   };
 }
-
 function queuePriorityMeta(priority: WorkQueueItem["priority"]) {
   if (priority === "high") {
     return "bg-rose-50 text-rose-600 ring-rose-200";
@@ -866,7 +865,6 @@ export function AccountantDashboardPage() {
 
     return filteredDeadlines.slice(0, 5);
   }, [calendarPreviewDate, monthCalendarDeadlines, selectedCalendarDay]);
-
   const calendarEventDays = useMemo(
     () =>
       new Set(
@@ -1219,7 +1217,7 @@ export function AccountantDashboardPage() {
       </section>
 
       <section aria-label="Today's focus">
-        <div className="grid items-stretch gap-5 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid items-stretch gap-5 md:grid-cols-2">
           {focusMetrics.map((metric) => (
             <article
               className={cn(panelClass, "flex min-h-[152px] flex-col justify-between p-5")}
@@ -1510,9 +1508,9 @@ export function AccountantDashboardPage() {
             </button>
           </div>
 
-          <div className="grid gap-5 px-5 py-4 md:grid-cols-[minmax(0,0.95fr)_minmax(190px,1fr)]">
-            <div className="min-w-0">
-              <div className="mb-3 flex items-center justify-between">
+          <div className="min-h-[268px]">
+            <div className="min-w-0 p-5">
+              <div className="mb-4 flex items-center justify-between">
                 <button
                   className={cn(dashboardLinkClass)}
                   onClick={() => {
@@ -1539,14 +1537,14 @@ export function AccountantDashboardPage() {
                   <ChevronRightIcon />
                 </button>
               </div>
-              <div className="grid grid-cols-7 gap-1 text-center">
+              <div className="grid grid-cols-7 gap-1.5 text-center">
                 {weekDayShortLabels().map((label) => (
                   <div className="py-1 text-[0.55rem] font-bold uppercase tracking-[0.08em] text-[#73809a]" key={label}>
                     {label}
                   </div>
                 ))}
                 {compactMonthDays(calendarPreviewDate.toISOString()).map((cell, index) => (
-                  <div className="flex h-7 items-center justify-center" key={`${cell.day ?? "blank"}-${index}`}>
+                  <div className="flex h-8 items-center justify-center" key={`${cell.day ?? "blank"}-${index}`}>
                     {cell.day ? (
                       <button
                         aria-pressed={selectedCalendarDay === cell.day}
