@@ -1058,7 +1058,7 @@ export function ClientRequestsPage() {
         <div
           className="client-inbox-layout grid items-start gap-4"
           style={{
-            gridTemplateColumns: isDesktopInboxLayout ? "440px minmax(0, 1fr)" : "minmax(0, 1fr)",
+            gridTemplateColumns: isDesktopInboxLayout ? "380px minmax(0, 1.45fr)" : "minmax(0, 1fr)",
           }}
         >
           <ThreadListPane
