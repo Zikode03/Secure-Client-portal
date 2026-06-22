@@ -245,7 +245,7 @@ function ThreadListPane({
   ];
 
   return (
-    <section className={`${inboxPanelClass} flex h-full min-h-[720px] flex-col overflow-hidden rounded-lg`}>
+    <section className={`${inboxPanelClass} flex min-h-[720px] self-start flex-col overflow-hidden rounded-lg`}>
       <div className="flex min-h-[74px] items-center justify-between gap-3 border-b border-slate-100 bg-white px-5">
         <div className="flex min-w-0 items-center gap-3 text-sm font-semibold">
           <button
@@ -595,7 +595,7 @@ function ConversationPane({
   }
 
   return (
-    <section className={`${inboxPanelClass} flex h-full min-h-[720px] flex-col overflow-hidden rounded-lg`} onClick={() => setMessageContextMenu(null)}>
+    <section className={`${inboxPanelClass} flex min-h-[580px] self-start flex-col overflow-hidden rounded-lg`} onClick={() => setMessageContextMenu(null)}>
       <p className="sr-only">{requestTypeHelperText(request)}</p>
       <div className="border-b border-slate-100 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] px-7 py-6">
         <div className="flex min-w-0 items-start justify-between gap-4">
@@ -804,7 +804,7 @@ function BulkSelectionPane({
   onResolveSelected: () => void;
 }) {
   return (
-    <section className={`${inboxPanelClass} flex h-full min-h-[720px] flex-col overflow-hidden rounded-lg`}>
+    <section className={`${inboxPanelClass} flex min-h-[420px] self-start flex-col overflow-hidden rounded-lg`}>
       <div className="border-b border-slate-100 bg-white px-7 py-6">
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#53617f]">Bulk selection</p>
         <h2 className="mt-3 text-[1.45rem] font-semibold tracking-tight text-[#091333]">
@@ -1056,7 +1056,7 @@ export function ClientRequestsPage() {
 
       {visibleRequests.length > 0 && activeRequest ? (
         <div
-          className="client-inbox-layout grid items-stretch gap-4"
+          className="client-inbox-layout grid items-start gap-4"
           style={{
             gridTemplateColumns: isDesktopInboxLayout ? "440px minmax(0, 1fr)" : "minmax(0, 1fr)",
           }}
