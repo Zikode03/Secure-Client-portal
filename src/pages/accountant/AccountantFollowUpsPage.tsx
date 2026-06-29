@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { Clock, FolderOpen, Mail, MessageSquare, PlusCircle, Search, ShieldAlert, SlidersHorizontal } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
@@ -15,6 +16,8 @@ type ThreadFilter = "all" | "unread" | "resolved" | "unresolved";
 type ThreadSort = "needs_action" | "newest" | "oldest";
 
 const PREF_KEY = "firm-inbox-preferences-v1";
+const inboxPanelClass =
+  "border border-slate-200/80 bg-white shadow-[0_18px_44px_rgba(4,24,52,0.07)]";
 
 function defaultInboxDueDate() {
   const date = new Date();
@@ -26,6 +29,17 @@ function priorityBadgeClass(priority: WorkflowRequest["priority"]) {
   if (priority === "high") return "bg-amber-100 text-amber-800";
   if (priority === "medium") return "bg-brand-100 text-brand-700";
   return "bg-slate-100 text-slate-700";
+}
+
+function initials(value: string) {
+  return (
+    value
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "DM"
+  );
 }
 
 function trailingClientUnreadCount(request: WorkflowRequest) {
@@ -104,23 +118,31 @@ function ThreadListPane({
   const unreadTotal = requests.reduce((sum, request) => sum + trailingClientUnreadCount(request), 0);
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="space-y-3 border-b border-slate-100 p-4">
-        <input
-          className="h-11 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-900 outline-none ring-brand-300 transition focus:ring-2"
-          onChange={(event) => onChangeSearch(event.target.value)}
-          placeholder="Search messages..."
-          value={searchValue}
-        />
+    <section className={`${inboxPanelClass} flex h-full min-h-[640px] flex-col overflow-hidden rounded-lg`}>
+      <div className="space-y-4 border-b border-slate-100 bg-white p-4">
+        <div className="flex h-12 items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 shadow-[0_10px_24px_rgba(4,24,52,0.05)]">
+          <Search aria-hidden="true" className="h-4 w-4 text-[#53617f]" />
+          <input
+            className="h-full min-w-0 flex-1 bg-transparent text-sm text-[#091333] outline-none placeholder:text-[#7b879e]"
+            onChange={(event) => onChangeSearch(event.target.value)}
+            placeholder="Search messages..."
+            value={searchValue}
+          />
+          <SlidersHorizontal aria-hidden="true" className="h-4 w-4 text-[#53617f]" />
+        </div>
         <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="font-semibold text-slate-500">Sort</span>
+          <span className="mr-1 font-semibold text-[#091333]">Sort</span>
           {[
             { id: "needs_action" as const, label: "Needs action" },
             { id: "newest" as const, label: "Newest" },
             { id: "oldest" as const, label: "Oldest" },
           ].map((item) => (
             <button
-              className={`rounded-full px-2.5 py-1 ${sort === item.id ? "bg-brand-600 text-white" : "bg-brand-50 text-brand-700"}`}
+              className={`rounded-full px-3 py-1.5 font-semibold transition ${
+                sort === item.id
+                  ? "bg-[#062b73] text-white shadow-[0_8px_16px_rgba(6,43,115,0.18)]"
+                  : "bg-slate-100 text-[#35466d] hover:bg-slate-200"
+              }`}
               key={item.id}
               onClick={() => onChangeSort(item.id)}
               type="button"
@@ -131,16 +153,16 @@ function ThreadListPane({
         </div>
       </div>
 
-      <div className="flex items-center gap-5 border-b border-slate-100 px-4 py-3 text-sm font-medium">
-        <button className={filter === "all" ? "text-emerald-700" : "text-slate-500"} onClick={() => onChangeFilter("all")} type="button">All</button>
-        <button className={filter === "unread" ? "text-emerald-700" : "text-slate-500"} onClick={() => onChangeFilter("unread")} type="button">
+      <div className="flex min-h-[54px] items-center gap-6 border-b border-slate-100 bg-white px-4 text-sm font-semibold">
+        <button className={`relative h-10 transition after:absolute after:inset-x-0 after:-bottom-2 after:h-1 after:rounded-full ${filter === "all" ? "text-[#062b73] after:bg-[#062b73]" : "text-[#53617f] after:bg-transparent hover:text-[#091333]"}`} onClick={() => onChangeFilter("all")} type="button">All</button>
+        <button className={`relative h-10 transition after:absolute after:inset-x-0 after:-bottom-2 after:h-1 after:rounded-full ${filter === "unread" ? "text-[#062b73] after:bg-[#062b73]" : "text-[#53617f] after:bg-transparent hover:text-[#091333]"}`} onClick={() => onChangeFilter("unread")} type="button">
           Unread <span className="ml-1 rounded-full bg-emerald-600 px-1.5 text-xs text-white">{unreadTotal}</span>
         </button>
-        <button className={filter === "resolved" ? "text-emerald-700" : "text-slate-500"} onClick={() => onChangeFilter("resolved")} type="button">Resolved</button>
-        <button className={filter === "unresolved" ? "text-emerald-700" : "text-slate-500"} onClick={() => onChangeFilter("unresolved")} type="button">Unresolved</button>
+        <button className={`relative h-10 transition after:absolute after:inset-x-0 after:-bottom-2 after:h-1 after:rounded-full ${filter === "resolved" ? "text-[#062b73] after:bg-[#062b73]" : "text-[#53617f] after:bg-transparent hover:text-[#091333]"}`} onClick={() => onChangeFilter("resolved")} type="button">Resolved</button>
+        <button className={`relative h-10 transition after:absolute after:inset-x-0 after:-bottom-2 after:h-1 after:rounded-full ${filter === "unresolved" ? "text-[#062b73] after:bg-[#062b73]" : "text-[#53617f] after:bg-transparent hover:text-[#091333]"}`} onClick={() => onChangeFilter("unresolved")} type="button">Unresolved</button>
       </div>
 
-      <div className="max-h-[66vh] divide-y divide-slate-100 overflow-y-auto">
+      <div className="min-h-0 flex-1 divide-y divide-slate-100 overflow-y-auto bg-white">
         {requests.map((request) => {
           const selected = request.id === selectedRequestId;
           const checked = selectedRequestIds.includes(request.id);
@@ -149,21 +171,22 @@ function ThreadListPane({
           const risk = dueRisk(request);
 
           return (
-            <div className={`w-full px-4 py-4 transition ${selected ? "bg-emerald-50/40" : "hover:bg-slate-50"}`} key={request.id}>
-              <div className="mb-2 flex items-start gap-2">
-                <input checked={checked} onChange={() => onToggleSelect(request.id)} type="checkbox" />
+            <div className={`relative w-full px-4 py-4 transition ${selected ? "bg-[#f4f8ff]" : "hover:bg-slate-50"}`} key={request.id}>
+              {selected ? <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-[#062b73]" /> : null}
+              <div className="flex items-start gap-3">
+                <input checked={checked} className="mt-1" onChange={() => onToggleSelect(request.id)} type="checkbox" />
                 <button className="w-full text-left" onClick={() => onSelectRequest(request.id)} type="button">
                   <div className="flex items-start justify-between gap-2">
-                    <p className="line-clamp-1 text-base font-semibold text-slate-900">{request.title}</p>
-                    <p className="text-xs text-slate-500">{formatThreadTime(lastActivity(request))}</p>
+                    <p className="line-clamp-1 text-[0.95rem] font-semibold text-[#091333]">{request.title}</p>
+                    <p className="shrink-0 text-xs font-semibold text-[#35466d]">{formatThreadTime(lastActivity(request))}</p>
                   </div>
-                  <p className="mt-1 text-sm text-slate-700">{request.clientName}</p>
-                  <p className="mt-1 line-clamp-1 text-sm text-slate-500">{lastComment?.message ?? request.description}</p>
-                  <div className="mt-2 flex items-center justify-between">
+                  <p className="mt-1 text-sm font-medium text-[#35466d]">{request.clientName}</p>
+                  <p className="mt-1 line-clamp-1 text-sm text-[#53617f]">{lastComment?.message ?? request.description}</p>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
                     <span className={`rounded-full px-2 py-0.5 text-[0.68rem] font-semibold ${priorityBadgeClass(request.priority)}`}>
                       {request.priority.toUpperCase()}
                     </span>
-                    <span className={`text-xs font-semibold ${risk.tone}`}>{risk.label}</span>
+                    <span className={`ml-auto text-xs font-semibold ${risk.tone}`}>{risk.label}</span>
                     {unread > 0 ? <span className="text-xs font-semibold text-emerald-700">{unread} new</span> : null}
                   </div>
                 </button>
@@ -225,25 +248,20 @@ function ConversationPane({
   }, [request.assignedTo, request.dueDate, request.priority, request.id]);
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-6">
-        <div>
+    <section className={`${inboxPanelClass} grid min-h-[680px] overflow-hidden rounded-lg lg:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.78fr)]`}>
+      <div className="flex min-h-0 flex-col px-7 py-7 lg:border-r lg:border-slate-100">
+        <div className="min-w-0">
           <p className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${priorityBadgeClass(request.priority)}`}>
             {request.priority.toUpperCase()} PRIORITY
           </p>
-          <h2 className="mt-3 text-[2rem] font-semibold tracking-tight text-slate-950">{request.title}</h2>
-          <p className="mt-2 text-sm text-slate-500">
-            {request.monthLabel} | Request ID: {request.id}
+          <h2 className="mt-5 text-[1.7rem] font-semibold tracking-tight text-[#091333]">{request.title}</h2>
+          <p className="mt-4 text-sm font-medium text-[#35466d]">
+            {formatDateLabel(request.createdAt)} | Request ID: {request.id}
           </p>
-          <p className="mt-2 text-sm text-slate-600">{request.description}</p>
-        </div>
-        <div className="min-w-[240px] rounded-xl border border-slate-200 p-3">
-          <p className="text-xs text-slate-500">Client</p>
-          <p className="mt-1 text-sm font-semibold text-slate-900">{request.clientName}</p>
-          <p className="text-xs text-slate-500">Requested by {request.requestedBy}</p>
+          <p className="mt-4 max-w-3xl text-[0.98rem] leading-7 text-[#35466d]">{request.description}</p>
           {request.relatedDocumentId ? (
             <button
-              className="mt-3 rounded-lg border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+              className="mt-4 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-[#062b73] transition hover:bg-slate-50"
               onClick={onOpenLinkedDocument}
               type="button"
             >
@@ -251,102 +269,125 @@ function ConversationPane({
             </button>
           ) : null}
         </div>
-      </div>
 
-      <div className="space-y-3 border-b border-slate-100 p-4">
-        <p className="text-sm font-semibold text-slate-900">Lifecycle actions</p>
-        <div className="flex flex-wrap gap-2">
-          <Button onClick={onSetOpen} variant="secondary">Set open</Button>
-          <Button onClick={onSetAwaitingClient} variant="secondary">Set awaiting client</Button>
-          <Button onClick={onResolve} variant="secondary">Resolve</Button>
-          <Button onClick={onSetClosed} variant="secondary">Close</Button>
-          <Button onClick={onEscalate} variant="secondary">Escalate</Button>
-          <Button onClick={onReassign} variant="secondary">Reassign note</Button>
+        <div className="mt-8 border-t border-slate-200 pt-6">
+          <p className="text-sm font-semibold text-[#091333]">Lifecycle actions</p>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+            <Button className="h-11 rounded-lg px-4" onClick={onSetOpen} variant="secondary">Set open</Button>
+            <Button className="h-11 rounded-lg px-4" onClick={onSetAwaitingClient} variant="secondary">Set awaiting client</Button>
+            <Button className="h-11 rounded-lg border-emerald-200 px-4 text-emerald-700 hover:bg-emerald-50" onClick={onResolve} variant="secondary">Resolve</Button>
+            <Button className="h-11 rounded-lg px-4" onClick={onSetClosed} variant="secondary">Close</Button>
+            <Button className="h-11 rounded-lg border-rose-200 px-4 text-rose-700 hover:bg-rose-50" onClick={onEscalate} variant="secondary">Escalate</Button>
+            <Button className="h-11 rounded-lg px-4" onClick={onReassign} variant="secondary">Reassign note</Button>
+          </div>
         </div>
-      </div>
 
-      <div className="space-y-3 border-b border-slate-100 p-4">
-        <p className="text-sm font-semibold text-slate-900">Assignment and SLA controls</p>
-        <div className="grid gap-3 md:grid-cols-3">
-          <TextField id="assigned-to" label="Assigned to" onChange={(event) => setAssignedToDraft(event.target.value)} value={assignedToDraft} />
-          <TextField id="due-date" label="Due date" onChange={(event) => setDueDateDraft(event.target.value)} type="date" value={dueDateDraft} />
-          <SelectField
-            id="priority"
-            label="Priority"
-            onChange={(event) => setPriorityDraft(event.target.value as WorkflowRequest["priority"])}
-            options={[
-              { label: "Low", value: "low" },
-              { label: "Medium", value: "medium" },
-              { label: "High", value: "high" },
-            ]}
-            value={priorityDraft}
-          />
-        </div>
-        <div>
-          <Button
-            onClick={() =>
-              onUpdateAssignment({
-                assignedTo: assignedToDraft,
-                dueDate: new Date(`${dueDateDraft}T17:00:00.000Z`).toISOString(),
-                priority: priorityDraft,
-                addAuditNote,
-              })}
-            variant="secondary"
-          >
-            Save assignment controls
-          </Button>
-        </div>
-        <label className="inline-flex items-center gap-2 text-xs text-slate-600">
-          <input checked={addAuditNote} onChange={(event) => setAddAuditNote(event.target.checked)} type="checkbox" />
-          Also add internal note to audit timeline
-        </label>
-      </div>
-
-      <div className="max-h-[36vh] space-y-4 overflow-y-auto p-6">
-        {request.comments.map((comment) => {
-          const internal = isInternalNote(comment.message);
-          const cleaned = stripInternalPrefix(comment.message);
-          return (
-            <article
-              className={`max-w-[78%] rounded-2xl border px-4 py-3 ${
-                internal
-                  ? "ml-auto border-amber-200 bg-amber-50"
-                  : comment.role === "client"
-                    ? "border-slate-200 bg-slate-50"
-                    : "ml-auto border-brand-100 bg-brand-50"
-              }`}
-              key={comment.id}
+        <div className="mt-6 border-t border-slate-200 pt-6">
+          <p className="text-sm font-semibold text-[#091333]">Assignment and SLA controls</p>
+          <div className="mt-4 grid gap-4 md:grid-cols-3">
+            <TextField id="assigned-to" label="Assigned to" onChange={(event) => setAssignedToDraft(event.target.value)} value={assignedToDraft} />
+            <TextField id="due-date" label="Due date" onChange={(event) => setDueDateDraft(event.target.value)} type="date" value={dueDateDraft} />
+            <SelectField
+              id="priority"
+              label="Priority"
+              onChange={(event) => setPriorityDraft(event.target.value as WorkflowRequest["priority"])}
+              options={[
+                { label: "Low", value: "low" },
+                { label: "Medium", value: "medium" },
+                { label: "High", value: "high" },
+              ]}
+              value={priorityDraft}
+            />
+          </div>
+          <div className="mt-4 flex flex-wrap items-center gap-4">
+            <Button
+              className="rounded-lg"
+              onClick={() =>
+                onUpdateAssignment({
+                  assignedTo: assignedToDraft,
+                  dueDate: new Date(`${dueDateDraft}T17:00:00.000Z`).toISOString(),
+                  priority: priorityDraft,
+                  addAuditNote,
+                })}
+              variant="secondary"
             >
-              <div className="mb-1 flex items-center gap-2">
-                <p className="text-sm font-semibold text-slate-900">{comment.author}</p>
-                {internal ? (
-                  <span className="rounded-full bg-amber-200 px-2 py-0.5 text-[0.64rem] font-semibold uppercase tracking-[0.06em] text-amber-800">
-                    Internal note
+              Save assignment controls
+            </Button>
+            <label className="inline-flex items-center gap-2 text-xs text-[#53617f]">
+              <input checked={addAuditNote} onChange={(event) => setAddAuditNote(event.target.checked)} type="checkbox" />
+              Also add internal note to audit timeline
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex min-h-0 flex-col bg-white px-6 py-7">
+        <div className="mb-6 rounded-lg border border-slate-200 bg-white p-4 shadow-[0_10px_24px_rgba(4,24,52,0.04)]">
+          <p className="text-xs text-[#53617f]">Client</p>
+          <p className="mt-1 text-sm font-semibold text-[#091333]">{request.clientName}</p>
+          <p className="text-xs text-[#35466d]">Requested by {request.requestedBy}</p>
+        </div>
+
+        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto pr-1">
+          {request.comments.map((comment) => {
+            const internal = isInternalNote(comment.message);
+            const cleaned = stripInternalPrefix(comment.message);
+            const isClient = comment.role === "client";
+            return (
+              <div className={`flex items-start gap-3 ${isClient ? "justify-end" : ""}`} key={comment.id}>
+                {!isClient ? (
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#062b73] text-xs font-semibold text-white shadow-[0_8px_18px_rgba(6,43,115,0.18)]">
+                    {initials(comment.author)}
                   </span>
                 ) : null}
-                <p className="text-xs text-slate-500">{formatDateLabel(comment.createdAt)}</p>
+                <article
+                  className={`w-full max-w-[430px] rounded-lg border px-5 py-4 shadow-[0_10px_24px_rgba(4,24,52,0.04)] ${
+                    internal
+                      ? "border-amber-200 bg-amber-50"
+                      : isClient
+                        ? "border-emerald-100 bg-[#edf8f2]"
+                        : "border-slate-200 bg-white"
+                  }`}
+                >
+                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-[#091333]">{comment.author}</p>
+                      {internal ? (
+                        <span className="rounded-full bg-amber-200 px-2 py-0.5 text-[0.64rem] font-semibold uppercase tracking-[0.06em] text-amber-800">
+                          Internal note
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="text-xs text-[#53617f]">{formatDateLabel(comment.createdAt)}</p>
+                  </div>
+                  <p className="text-sm leading-6 text-[#1e2f5b]">{cleaned}</p>
+                </article>
+                {isClient ? (
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#d9efe6] text-xs font-semibold text-[#047857]">
+                    {initials(comment.author)}
+                  </span>
+                ) : null}
               </div>
-              <p className="text-sm text-slate-700">{cleaned}</p>
-            </article>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
 
-      <div className="space-y-3 border-t border-slate-100 p-6">
-        <label className="inline-flex items-center gap-2 text-sm text-slate-700">
-          <input checked={isInternal} onChange={(event) => onChangeInternal(event.target.checked)} type="checkbox" />
-          Send as internal note (not client-facing)
-        </label>
-        <div className="flex gap-3">
-          <input
-            className="h-12 flex-1 rounded-xl border border-slate-200 px-4 text-sm text-slate-900 outline-none ring-brand-300 transition focus:ring-2"
-            onChange={(event) => onChangeMessageDraft(event.target.value)}
-            placeholder={isInternal ? "Type internal note..." : "Type your message to the client..."}
-            value={messageDraft}
-          />
-          <Button disabled={!messageDraft.trim()} onClick={onSendMessage}>
-            Send
-          </Button>
+        <div className="mt-6 space-y-3 border-t border-slate-100 bg-white pt-5">
+          <label className="inline-flex items-center gap-2 text-sm text-[#35466d]">
+            <input checked={isInternal} onChange={(event) => onChangeInternal(event.target.checked)} type="checkbox" />
+            Send as internal note (not client-facing)
+          </label>
+          <div className="flex gap-3">
+            <input
+              className="h-14 flex-1 rounded-lg border border-slate-200 px-4 text-sm text-[#091333] outline-none ring-brand-300 transition placeholder:text-[#7b879e] focus:ring-2"
+              onChange={(event) => onChangeMessageDraft(event.target.value)}
+              placeholder={isInternal ? "Type internal note..." : "Type your message to the client..."}
+              value={messageDraft}
+            />
+            <Button className="h-14 rounded-lg border-0 bg-[#062b73] px-6 text-white ring-0 hover:bg-[#06235d]" disabled={!messageDraft.trim()} onClick={onSendMessage}>
+              Send
+            </Button>
+          </div>
         </div>
       </div>
     </section>
@@ -576,22 +617,27 @@ export function AccountantFollowUpsPage() {
 
   if (!selectedClient || !selectedWorkspace) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600">
+      <div className={`${inboxPanelClass} rounded-lg p-6 text-sm text-[#53617f]`}>
         No accessible clients found for this workspace.
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <header className="flex flex-wrap items-start justify-between gap-3">
+    <div className="client-inbox-page mx-auto max-w-[1500px] space-y-4 pb-8">
+      <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-4xl font-semibold tracking-tight text-slate-950">Firm inbox and requests</h1>
-          <p className="mt-2 text-lg text-slate-600">Manage client communication and follow-up requests.</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#315ca8]">Accountant workspace</p>
+          <h1 className="mt-2 text-[1.75rem] font-semibold tracking-tight text-[#091333]">Inbox</h1>
+          <p className="mt-2 max-w-2xl text-[0.95rem] leading-6 text-[#53617f]">Manage client communication and follow-up requests.</p>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={() => setIsRequestModalOpen(true)} variant="secondary">New request</Button>
+        <div className="flex flex-wrap justify-end gap-3">
+          <Button className="h-12 rounded-lg border-0 bg-[#062b73] px-6 text-white ring-0 hover:bg-[#06235d]" onClick={() => setIsRequestModalOpen(true)}>
+            <PlusCircle aria-hidden="true" className="h-4 w-4" />
+            New request
+          </Button>
           <Button
+            className="h-12 rounded-lg px-6"
             onClick={() =>
               navigate(
                 activeRequest
@@ -600,76 +646,97 @@ export function AccountantFollowUpsPage() {
               )}
             variant="secondary"
           >
+            <FolderOpen aria-hidden="true" className="h-4 w-4" />
             Open documents
           </Button>
         </div>
       </header>
 
-      <section className="grid gap-3 rounded-2xl border border-slate-200 bg-white p-4 md:grid-cols-4">
-        <div className="rounded-xl border border-slate-200 p-3">
-          <p className="text-xs text-slate-500">Unresolved</p>
-          <p className="text-lg font-semibold text-slate-900">{slaSummary.unresolved}</p>
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className={`${inboxPanelClass} flex items-center gap-4 rounded-lg p-5`}>
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#eef3ff] text-[#062b73]">
+            <Mail aria-hidden="true" className="h-6 w-6" />
+          </span>
+          <div>
+            <p className="text-sm font-medium text-[#35466d]">Unresolved</p>
+            <p className="mt-1 text-2xl font-semibold text-[#062b73]">{slaSummary.unresolved}</p>
+          </div>
         </div>
-        <div className="rounded-xl border border-slate-200 p-3">
-          <p className="text-xs text-slate-500">SLA breached</p>
-          <p className="text-lg font-semibold text-rose-700">{slaSummary.breached}</p>
+        <div className={`${inboxPanelClass} flex items-center gap-4 rounded-lg p-5`}>
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-rose-50 text-rose-600">
+            <ShieldAlert aria-hidden="true" className="h-6 w-6" />
+          </span>
+          <div>
+            <p className="text-sm font-medium text-[#35466d]">SLA breached</p>
+            <p className="mt-1 text-2xl font-semibold text-rose-600">{slaSummary.breached}</p>
+          </div>
         </div>
-        <div className="rounded-xl border border-slate-200 p-3">
-          <p className="text-xs text-slate-500">Due soon</p>
-          <p className="text-lg font-semibold text-amber-700">{slaSummary.dueSoon}</p>
+        <div className={`${inboxPanelClass} flex items-center gap-4 rounded-lg p-5`}>
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-orange-500">
+            <Clock aria-hidden="true" className="h-6 w-6" />
+          </span>
+          <div>
+            <p className="text-sm font-medium text-[#35466d]">Due soon</p>
+            <p className="mt-1 text-2xl font-semibold text-orange-500">{slaSummary.dueSoon}</p>
+          </div>
         </div>
-        <div className="rounded-xl border border-slate-200 p-3">
-          <p className="text-xs text-slate-500">Unread from clients</p>
-          <p className="text-lg font-semibold text-emerald-700">{slaSummary.unread}</p>
+        <div className={`${inboxPanelClass} flex items-center gap-4 rounded-lg p-5`}>
+          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
+            <MessageSquare aria-hidden="true" className="h-6 w-6" />
+          </span>
+          <div>
+            <p className="text-sm font-medium text-[#35466d]">Unread from clients</p>
+            <p className="mt-1 text-2xl font-semibold text-emerald-600">{slaSummary.unread}</p>
+          </div>
         </div>
       </section>
 
-      <div className="rounded-2xl border border-slate-200 bg-white p-4">
-        <SelectField
-          id="inbox-client-select"
-          label="Client workspace"
-          onChange={(event) => {
-            setSelectedClientId(event.target.value);
-            setSelectedRequestId("");
-            setSelectedRequestIds([]);
-            setInboxNotice("");
-          }}
-          options={scopedClients.map((client) => ({ label: client.clientName, value: client.id }))}
-          value={selectedClient.id}
-        />
-      </div>
-
-      <div className="rounded-2xl border border-slate-200 bg-white p-4">
-        <p className="mb-2 text-sm font-semibold text-slate-900">Bulk triage</p>
-        <div className="flex flex-wrap gap-2">
-          <Button disabled={selectedRequestIds.length === 0} onClick={handleBulkResolve} variant="secondary">Bulk resolve</Button>
-          <Button disabled={selectedRequestIds.length === 0} onClick={handleBulkNudge} variant="secondary">Bulk nudge client</Button>
-          <span className="self-center text-xs text-slate-500">{selectedRequestIds.length} selected</span>
-        </div>
-      </div>
-
       {inboxNotice ? (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">{inboxNotice}</div>
+        <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-[#35466d]">{inboxNotice}</div>
       ) : null}
 
       {visibleRequests.length > 0 && activeRequest ? (
-        <div className="grid gap-4 xl:grid-cols-[390px_minmax(0,1fr)]">
-          <ThreadListPane
-            filter={threadFilter}
-            onChangeFilter={setThreadFilter}
-            onChangeSearch={setThreadSearch}
-            onChangeSort={setThreadSort}
-            onSelectRequest={setSelectedRequestId}
-            onToggleSelect={(requestId) =>
-              setSelectedRequestIds((current) =>
-                current.includes(requestId) ? current.filter((id) => id !== requestId) : [...current, requestId],
-              )}
-            requests={visibleRequests}
-            searchValue={threadSearch}
-            selectedRequestId={activeRequest.id}
-            selectedRequestIds={selectedRequestIds}
-            sort={threadSort}
-          />
+        <div className="grid items-stretch gap-4 xl:grid-cols-[510px_minmax(0,1fr)]">
+          <div className="flex h-full flex-col gap-4">
+            <div className={`${inboxPanelClass} rounded-lg p-5`}>
+              <SelectField
+                id="inbox-client-select"
+                label="Client workspace"
+                onChange={(event) => {
+                  setSelectedClientId(event.target.value);
+                  setSelectedRequestId("");
+                  setSelectedRequestIds([]);
+                  setInboxNotice("");
+                }}
+                options={scopedClients.map((client) => ({ label: client.clientName, value: client.id }))}
+                value={selectedClient.id}
+              />
+            </div>
+            <ThreadListPane
+              filter={threadFilter}
+              onChangeFilter={setThreadFilter}
+              onChangeSearch={setThreadSearch}
+              onChangeSort={setThreadSort}
+              onSelectRequest={setSelectedRequestId}
+              onToggleSelect={(requestId) =>
+                setSelectedRequestIds((current) =>
+                  current.includes(requestId) ? current.filter((id) => id !== requestId) : [...current, requestId],
+                )}
+              requests={visibleRequests}
+              searchValue={threadSearch}
+              selectedRequestId={activeRequest.id}
+              selectedRequestIds={selectedRequestIds}
+              sort={threadSort}
+            />
+            <div className={`${inboxPanelClass} rounded-lg p-4`}>
+              <p className="mb-2 text-sm font-semibold text-[#091333]">Bulk triage</p>
+              <div className="flex flex-wrap gap-2">
+                <Button disabled={selectedRequestIds.length === 0} onClick={handleBulkResolve} variant="secondary">Bulk resolve</Button>
+                <Button disabled={selectedRequestIds.length === 0} onClick={handleBulkNudge} variant="secondary">Bulk nudge client</Button>
+                <span className="self-center text-xs text-[#53617f]">{selectedRequestIds.length} selected</span>
+              </div>
+            </div>
+          </div>
           <ConversationPane
             isInternal={sendAsInternal}
             messageDraft={messageDraft}
@@ -696,11 +763,11 @@ export function AccountantFollowUpsPage() {
           />
         </div>
       ) : (
-        <section className="rounded-2xl border border-slate-200 bg-white px-6 py-10 text-center shadow-sm">
-          <h2 className="text-xl font-semibold text-slate-900">
+        <section className={`${inboxPanelClass} rounded-lg px-6 py-10 text-center`}>
+          <h2 className="text-xl font-semibold text-[#091333]">
             {scopedRequests.length > 0 ? "No messages match your filters" : "No inbox threads yet"}
           </h2>
-          <p className="mt-2 text-sm text-slate-600">
+          <p className="mt-2 text-sm text-[#53617f]">
             {scopedRequests.length > 0
               ? "Try clearing search or switching back to All."
               : "Start a thread by creating a new request for this client."}

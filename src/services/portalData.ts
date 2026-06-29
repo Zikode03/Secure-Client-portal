@@ -1482,19 +1482,15 @@ function createCleanClientWorkflowSeed(): ClientWorkflowSeed {
 
 const cleanClientWorkflowSeed = createCleanClientWorkflowSeed();
 const emptyReviewDocument = createEmptyReviewDocument();
-const cleanAdminClients: AdminDashboardData["clients"] = [
-  {
-    id: "firm-client-1",
-    clientName: "Apex Trading Ltd",
-    industry: "Wholesale",
-    assignedAccountant: "Daniel Mokoena",
-    assignedAccountantUserId: "user-accountant-1",
-    requiredPack: "Trading monthly pack",
-    completionRate: 0,
-    deadlinePolicy: "6th working day",
-    status: "on_track",
-  },
-];
+const cleanAdminClients: AdminDashboardData["clients"] = adminDashboardData.clients.map((client) =>
+  client.id === "firm-client-1"
+    ? {
+        ...client,
+        completionRate: 0,
+        status: "on_track",
+      }
+    : client,
+);
 
 const cleanAccountantDashboardData: AccountantDashboardData = {
   ...clone(accountantDashboardData),
