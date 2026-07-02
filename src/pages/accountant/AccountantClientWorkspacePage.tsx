@@ -244,12 +244,14 @@ export function AccountantClientWorkspacePage() {
     if (!documentId) {
       return;
     }
-    const targetDocument = workspace.documents.find((document) => document.id === documentId);
+    const targetDocument = workspaceViewDocuments.find((document) => document.id === documentId);
     if (!targetDocument) {
       return;
     }
-    navigate(`/firm/documents?client=${workspace.client.id}`, { replace: true });
-  }, [navigate, searchParamString, searchParams, workspace.client.id, workspace.documents]);
+    setActiveTab(tabForDocumentType(targetDocument.documentType));
+    setSelectedDocumentId(targetDocument.id);
+    setIsDocumentModalOpen(true);
+  }, [searchParamString, searchParams, workspaceViewDocuments]);
 
   useEffect(() => {
     setDecisionMessage("");

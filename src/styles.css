@@ -73,6 +73,17 @@
 }
 
 @layer utilities {
+  .accountant-inbox-page {
+    font-family:
+      "Segoe UI Variable Display",
+      "Segoe UI",
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      sans-serif;
+  }
+
   html.theme-dark .bg-white,
   html.theme-dark .bg-white\/80,
   html.theme-dark .bg-white\/90,

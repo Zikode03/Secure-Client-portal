@@ -3060,10 +3060,11 @@ const assignedAccountantForApex =
     setComplianceClients(clone(seededAccountantComplianceCentre.clientStatuses ?? []));
     setComplianceAuditTrail(fresh.complianceAuditTrail);
     setReportGeneratedAt(fresh.reportGeneratedAt);
+    setAdminClients(clone(baseAdminClients));
 
     return {
       ok: true,
-      message: "Demo workflow state has been restored, including review queue records.",
+      message: "Demo workflow state and client assignments have been restored, including review queue records.",
     };
   }
 

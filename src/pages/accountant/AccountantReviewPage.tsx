@@ -892,6 +892,14 @@ export function AccountantReviewPage() {
     setSelectedAccountant("all");
   }
 
+  function reloadDemoQueue() {
+    const result = portal.resetClientPortalDemoState();
+    setViewerOpen(false);
+    setSelectedRecordId("");
+    clearFilters();
+    setReviewMessage(result.message);
+  }
+
   function openInClientWorkspace(recordId: string) {
     const row = queueRows.find((item) => item.item.id === recordId);
     if (!row) {
@@ -1064,7 +1072,7 @@ export function AccountantReviewPage() {
           <div className="flex justify-center">
             <Button
               className="h-10 rounded-xl px-4"
-              onClick={() => portal.resetClientPortalDemoState()}
+              onClick={reloadDemoQueue}
               size="sm"
             >
               Reload demo queue
@@ -1155,14 +1163,24 @@ export function AccountantReviewPage() {
                   ],
                 )}
 
-                <button
-                  className="flex h-11 items-center gap-2 whitespace-nowrap rounded-xl px-2 text-sm font-medium text-brand-600 transition hover:text-brand-700"
-                  onClick={clearFilters}
-                  type="button"
-                >
-                  <RefreshIcon />
-                  Clear filters
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    className="flex h-11 items-center gap-2 whitespace-nowrap rounded-xl px-2 text-sm font-medium text-brand-600 transition hover:text-brand-700"
+                    onClick={clearFilters}
+                    type="button"
+                  >
+                    <RefreshIcon />
+                    Clear filters
+                  </button>
+                  <Button
+                    className="h-11 whitespace-nowrap rounded-xl px-4"
+                    onClick={reloadDemoQueue}
+                    size="sm"
+                    variant="secondary"
+                  >
+                    Reload demo queue
+                  </Button>
+                </div>
               </div>
             </div>
 
