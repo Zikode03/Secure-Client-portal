@@ -25,6 +25,7 @@
 
   html {
     scroll-behavior: smooth;
+    font-size: 17px;
   }
 
   body {
@@ -35,15 +36,7 @@
       radial-gradient(circle at 85% -12%, rgba(24, 172, 95, 0.11), transparent 44%),
       #f4f8fb;
     color: #0f172a;
-    font-family:
-      Manrope,
-      "Segoe UI Variable Display",
-      ui-sans-serif,
-      system-ui,
-      -apple-system,
-      BlinkMacSystemFont,
-      "Segoe UI",
-      sans-serif;
+    font-family: Calibri;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -62,6 +55,14 @@
   }
 }
 
+@media (max-width: 768px) {
+  @layer base {
+    html {
+      font-size: 16px;
+    }
+  }
+}
+
 @layer base {
   html.theme-dark body {
     background:
@@ -73,6 +74,79 @@
 }
 
 @layer utilities {
+  .inbox-scroll-region {
+    overflow-y: auto;
+    overscroll-behavior-y: auto;
+    touch-action: pan-y;
+    scroll-padding-top: 1rem;
+    scroll-padding-bottom: 1.5rem;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(123, 135, 158, 0.55) transparent;
+    scrollbar-gutter: stable;
+  }
+
+  .inbox-scroll-region::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .inbox-scroll-region::-webkit-scrollbar-thumb {
+    background-color: rgba(123, 135, 158, 0.45);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+
+  .inbox-scroll-region::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(83, 97, 127, 0.62);
+  }
+
+  .inbox-scroll-region::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .accountant-inbox-page {
+    font-family: inherit;
+    font-size: inherit;
+    line-height: inherit;
+  }
+
+  .accountant-inbox-page input,
+  .accountant-inbox-page select,
+  .accountant-inbox-page textarea,
+  .accountant-inbox-page button {
+    font-family: inherit;
+  }
+
+  .accountant-inbox-page .client-inbox-primary-button {
+    background: #061b41 !important;
+    color: #ffffff !important;
+    border: 0 !important;
+    box-shadow: 0 12px 24px rgba(6, 27, 65, 0.22) !important;
+  }
+
+  .accountant-inbox-page .client-inbox-primary-button:hover:not(:disabled) {
+    background: #09275c !important;
+    box-shadow: 0 16px 30px rgba(6, 27, 65, 0.3) !important;
+  }
+
+  .accountant-inbox-page .client-inbox-secondary-button {
+    background: #ffffff !important;
+    color: #091333 !important;
+    border: 1px solid #cdd8ea !important;
+    box-shadow: 0 8px 18px rgba(4, 24, 52, 0.05) !important;
+  }
+
+  .accountant-inbox-page .client-inbox-secondary-button:hover:not(:disabled) {
+    background: #f8fbff !important;
+    box-shadow: 0 12px 22px rgba(4, 24, 52, 0.08) !important;
+  }
+
+  .accountant-inbox-page .client-inbox-primary-button:focus-visible,
+  .accountant-inbox-page .client-inbox-secondary-button:focus-visible {
+    outline-color: #0a2f66;
+  }
+
   html.theme-dark .bg-white,
   html.theme-dark .bg-white\/80,
   html.theme-dark .bg-white\/90,
@@ -514,6 +588,39 @@
   html.theme-dark .client-compliance-centre .bg-slate-50\/70,
   html.theme-dark .client-compliance-centre .bg-slate-100 {
     background-color: #1a2f50 !important;
+  }
+
+  html.theme-dark .accountant-inbox-page .client-inbox-primary-button {
+    background: #8ccf45 !important;
+    color: #062044 !important;
+    box-shadow: 0 14px 28px rgba(140, 207, 69, 0.24) !important;
+  }
+
+  html.theme-dark .accountant-inbox-page .client-inbox-primary-button:hover:not(:disabled) {
+    background: #a7dc55 !important;
+    box-shadow: 0 18px 34px rgba(140, 207, 69, 0.34) !important;
+  }
+
+  html.theme-dark .accountant-inbox-page .client-inbox-secondary-button {
+    background: #132542 !important;
+    color: #dbeafe !important;
+    border-color: #2b486c !important;
+    box-shadow:
+      inset 0 0 0 1px #2b486c,
+      0 10px 22px rgba(1, 8, 22, 0.22) !important;
+  }
+
+  html.theme-dark .accountant-inbox-page .client-inbox-secondary-button:hover:not(:disabled) {
+    background: #193153 !important;
+    color: #ffffff !important;
+    box-shadow:
+      inset 0 0 0 1px #3a5d84,
+      0 12px 24px rgba(1, 8, 22, 0.3) !important;
+  }
+
+  html.theme-dark .accountant-inbox-page .client-inbox-primary-button:focus-visible,
+  html.theme-dark .accountant-inbox-page .client-inbox-secondary-button:focus-visible {
+    outline-color: #b7e46a;
   }
 
   html.theme-dark .client-compliance-centre .border-slate-100,

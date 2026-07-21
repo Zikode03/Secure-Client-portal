@@ -23,7 +23,7 @@ export function ComplianceExpiryQueuePanel({
   return (
     <SurfaceCard className="space-y-5">
       <div>
-        <h2 className="text-xl font-semibold text-slate-950">{title}</h2>
+        <h2 className="text-xl font-medium text-slate-950">{title}</h2>
         <p className="mt-1 text-sm text-slate-500">{description}</p>
       </div>
 
@@ -33,7 +33,7 @@ export function ComplianceExpiryQueuePanel({
             <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4" key={item.id}>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-slate-950">{item.name}</p>
+                  <p className="text-sm font-medium text-slate-950">{item.name}</p>
                   <p className="mt-1 text-sm text-slate-500">Owner: {item.owner}</p>
                 </div>
                 <StatusBadge status={item.status} />

@@ -138,6 +138,29 @@ function queueDueMeta(item: ReviewQueueItem) {
   };
 }
 
+function queuePriorityMeta(item: ReviewQueueItem) {
+  const statusMeta = queueStatusMeta(item);
+
+  if (statusMeta.key === "overdue" || statusMeta.key === "under_review") {
+    return {
+      label: "High",
+      pill: "bg-rose-50 text-rose-700 ring-rose-200",
+    };
+  }
+
+  if (statusMeta.key === "attention") {
+    return {
+      label: "Medium",
+      pill: "bg-amber-50 text-amber-700 ring-amber-200",
+    };
+  }
+
+  return {
+    label: "Low",
+    pill: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+  };
+}
+
 function queueTypeClasses(documentType: string) {
   const normalized = documentType.toLowerCase();
 
@@ -265,7 +288,7 @@ function openDocumentInNewTab(record: DocumentRecord) {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${record.fileName}</title>
     <style>
-      body { margin: 0; padding: 24px; font-family: Inter, system-ui, -apple-system, Segoe UI, sans-serif; background: #f8fafc; color: #0f172a; }
+      body { margin: 0; padding: 24px; font-family: Calibri, system-ui, -apple-system, Segoe UI, sans-serif; background: #f8fafc; color: #0f172a; }
       pre { white-space: pre-wrap; line-height: 1.6; font-size: 14px; }
     </style>
   </head>
@@ -298,11 +321,33 @@ function QueueFileIcon({ documentType, fileName }: { documentType: string; fileN
   return (
     <div
       className={cn(
-        "flex h-12 w-12 shrink-0 items-center justify-center rounded-[1rem] ring-1",
+        "relative flex h-12 w-12 shrink-0 items-center justify-center rounded-[1rem] ring-1",
         queueTypeClasses(documentType),
       )}
     >
-      <span className="text-[0.68rem] font-semibold">{fileExtensionLabel(fileName)}</span>
+      <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
+        <path
+          d="M8 3.75h5.25L18.25 8.75V18A2.25 2.25 0 0 1 16 20.25H8A2.25 2.25 0 0 1 5.75 18V6A2.25 2.25 0 0 1 8 3.75Z"
+          stroke="currentColor"
+          strokeLinejoin="round"
+          strokeWidth="1.8"
+        />
+        <path
+          d="M13 3.75V8.25H17.5"
+          stroke="currentColor"
+          strokeLinejoin="round"
+          strokeWidth="1.8"
+        />
+        <path
+          d="M9 12.25h6M9 15.25h4.25"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeWidth="1.8"
+        />
+      </svg>
+      <span className="absolute -bottom-1.5 rounded-full border border-white bg-white px-1.5 py-0.5 text-[0.56rem] font-medium uppercase leading-none text-slate-500 shadow-sm">
+        {fileExtensionLabel(fileName)}
+      </span>
     </div>
   );
 }
@@ -414,15 +459,15 @@ function ZoomInIcon() {
   );
 }
 
-function RefreshIcon() {
+function MoreVerticalIcon() {
   return (
     <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
       <path
-        d="M18.5 7.5V4.5m0 3h-3m3 0-2.5-2.5A7 7 0 1 0 19 11"
+        d="M12 5.25a1.25 1.25 0 1 0 0 .001M12 12a1.25 1.25 0 1 0 0 .001M12 18.75a1.25 1.25 0 1 0 0 .001"
         stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"
-        strokeWidth="1.8"
+        strokeWidth="2.2"
       />
     </svg>
   );
@@ -433,20 +478,6 @@ function CloseIcon() {
     <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
       <path
         d="m6 6 12 12M18 6 6 18"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
-}
-
-function OfficeIcon() {
-  return (
-    <svg aria-hidden="true" className="h-4.5 w-4.5 text-slate-400" fill="none" viewBox="0 0 24 24">
-      <path
-        d="M4 19h16M6.5 19V7.5A1.5 1.5 0 0 1 8 6h8a1.5 1.5 0 0 1 1.5 1.5V19M9 6V4.75A1.25 1.25 0 0 1 10.25 3.5h3.5A1.25 1.25 0 0 1 15 4.75V6"
         stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -584,24 +615,24 @@ function PreviewCanvas({
           <div className="space-y-2">
             <span
               className={cn(
-                "inline-flex rounded-lg px-2.5 py-1 text-[0.72rem] font-semibold uppercase ring-1 ring-inset",
+                "inline-flex rounded-lg px-2.5 py-1 text-[0.72rem] font-medium uppercase ring-1 ring-inset",
                 queueTypeClasses(document.documentType),
               )}
             >
               {fileExtensionLabel(document.fileName)}
             </span>
             <div>
-              <h3 className="text-[1.15rem] font-semibold text-slate-950">{document.fileName}</h3>
-              <p className="mt-1 text-sm text-slate-500">
+              <h3 className="text-[1.04rem] font-medium text-slate-950">{document.fileName}</h3>
+              <p className="mt-1 text-[0.92rem] text-slate-500">
                 {document.clientName} / {document.monthLabel}
               </p>
             </div>
           </div>
           <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-right">
-            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-slate-400">
+            <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-slate-400">
               File type
             </p>
-            <p className="mt-2 text-sm font-medium text-slate-700">{document.documentType}</p>
+            <p className="mt-2 text-[0.92rem] text-slate-700">{document.documentType}</p>
           </div>
         </div>
         {hasRealFile ? (
@@ -663,10 +694,11 @@ export function AccountantReviewPage() {
   const [reviewMessage, setReviewMessage] = useState("");
   const [previewPage, setPreviewPage] = useState(1);
   const [previewZoom, setPreviewZoom] = useState(100);
-  const [showReviewGuidance, setShowReviewGuidance] = useState(false);
+  const [openActionMenuId, setOpenActionMenuId] = useState("");
   const [workspaceAuditEntries, setWorkspaceAuditEntries] = useState<
     Record<string, AuditTrailEntry[]>
   >({});
+  const rowActionMenuRef = useRef<HTMLDivElement | null>(null);
 
   const queueRows = useMemo(
     () =>
@@ -720,6 +752,17 @@ export function AccountantReviewPage() {
     [queueRows, selectedAccountant, selectedClient, selectedDueWindow, selectedStatus, selectedType],
   );
 
+  const queueStatusCounts = useMemo(
+    () => ({
+      all: queueRows.length,
+      under_review: queueRows.filter((row) => row.statusMeta.key === "under_review").length,
+      overdue: queueRows.filter((row) => row.statusMeta.key === "overdue").length,
+      attention: queueRows.filter((row) => row.statusMeta.key === "attention").length,
+      on_track: queueRows.filter((row) => row.statusMeta.key === "on_track").length,
+    }),
+    [queueRows],
+  );
+
   const orderedRows = useMemo(() => {
     const rows = [...filteredRows];
 
@@ -752,14 +795,61 @@ export function AccountantReviewPage() {
     return rows.sort((left, right) => priorityScore(right) - priorityScore(left));
   }, [filteredRows, queueOrder]);
 
+  const hasActiveFilters =
+    selectedAccountant !== "all" ||
+    selectedClient !== "all" ||
+    selectedType !== "all" ||
+    selectedStatus !== "all" ||
+    selectedDueWindow !== "all";
+
+  const emptyStateCopy = useMemo(() => {
+    if (selectedStatus === "overdue") {
+      return {
+        title: "No overdue records",
+        description: "There are no overdue items in the current queue view.",
+      };
+    }
+
+    if (selectedStatus === "under_review") {
+      return {
+        title: "No records under review",
+        description: "There are no items currently marked as under review for these filters.",
+      };
+    }
+
+    if (selectedStatus === "attention") {
+      return {
+        title: "No attention items",
+        description: "No records currently need attention in this filtered queue view.",
+      };
+    }
+
+    if (selectedClient !== "all") {
+      return {
+        title: "No records for this client",
+        description: "Try another client or clear the current queue filters.",
+      };
+    }
+
+    if (selectedType !== "all") {
+      return {
+        title: "No records for this type",
+        description: "No queue records match the selected document type and filters.",
+      };
+    }
+
+    return {
+      title: "Nothing in this view",
+      description: "No review records match the current filters.",
+    };
+  }, [selectedClient, selectedStatus, selectedType]);
+
   const activeRow = useMemo(
     () => queueRows.find((row) => row.item.id === selectedRecordId) ?? null,
     [queueRows, selectedRecordId],
   );
   const activeDocument = activeRow?.record ?? null;
-  const activeStatus = activeDocument ? documentStatusMeta(activeDocument.status) : null;
-  const requiresReason =
-    activeDocument?.status === "rejected" || activeDocument?.status === "under_review";
+  const activePriority = activeRow ? queuePriorityMeta(activeRow.item) : null;
   const selectedRowIndex = useMemo(
     () => orderedRows.findIndex((row) => row.item.id === selectedRecordId),
     [orderedRows, selectedRecordId],
@@ -804,41 +894,6 @@ export function AccountantReviewPage() {
     () => (activeDocument ? buildVersionHistory(activeDocument, combinedAuditTrail) : []),
     [activeDocument, combinedAuditTrail],
   );
-  const confidenceChecks = useMemo(() => {
-    if (!activeDocument) {
-      return [];
-    }
-
-    const uploadedAtTime = new Date(activeDocument.uploadedAt).getTime();
-    const reviewedAtTime = activeDocument.reviewedAt
-      ? new Date(activeDocument.reviewedAt).getTime()
-      : 0;
-    const commentsUnread = orderedComments.length > 0;
-
-    return [
-      {
-        id: "doc-present",
-        label: "Document loaded in preview",
-        passed: true,
-      },
-      {
-        id: "history-checked",
-        label: "Version history available",
-        passed: versionHistory.length > 0,
-      },
-      {
-        id: "comments-seen",
-        label: commentsUnread ? "Comments exist and should be reviewed" : "No pending comments",
-        passed: !commentsUnread,
-      },
-      {
-        id: "recent-review",
-        label: "Reviewed timestamp is after upload",
-        passed: reviewedAtTime === 0 || reviewedAtTime >= uploadedAtTime,
-      },
-    ];
-  }, [activeDocument, orderedComments.length, versionHistory.length]);
-
 // Reactive sync: this block responds when dependencies change.
   useEffect(() => {
     if (!filteredRows.length) {
@@ -859,7 +914,6 @@ export function AccountantReviewPage() {
 
     setPreviewPage(1);
     setPreviewZoom(100);
-    setShowReviewGuidance(false);
   }, [activeDocument?.id, activeDocument]);
 
   useEffect(() => {
@@ -1004,6 +1058,32 @@ export function AccountantReviewPage() {
   }
 
   useEffect(() => {
+    if (!openActionMenuId) {
+      return;
+    }
+
+    function handlePointerDown(event: MouseEvent) {
+      if (rowActionMenuRef.current && !rowActionMenuRef.current.contains(event.target as Node)) {
+        setOpenActionMenuId("");
+      }
+    }
+
+    function handleEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpenActionMenuId("");
+      }
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [openActionMenuId]);
+
+  useEffect(() => {
     if (!viewerOpen) {
       return;
     }
@@ -1075,13 +1155,49 @@ export function AccountantReviewPage() {
         <>
           <div className="grid gap-6">
           <SurfaceCard className="overflow-hidden rounded-[1.55rem] border border-slate-200/90 bg-white p-0 shadow-[0_16px_36px_rgba(15,23,42,0.05)]">
-            <div className="border-b border-slate-100 px-5 pb-5 pt-5">
+            <div className="space-y-4 border-b border-[#e6edf4] bg-[#fbfdff] px-5 pb-5 pt-5">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                    <h2 className="text-[1.18rem] font-medium text-[#091333]">My work queue</h2>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3" />
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                {[
+                  { id: "all" as const, label: "All", count: queueStatusCounts.all },
+                  { id: "under_review" as const, label: "Under review", count: queueStatusCounts.under_review },
+                  { id: "overdue" as const, label: "Overdue", count: queueStatusCounts.overdue },
+                  { id: "attention" as const, label: "Attention", count: queueStatusCounts.attention },
+                  { id: "on_track" as const, label: "On track", count: queueStatusCounts.on_track },
+                ].map((item) => (
+                  <button
+                    className={cn(
+                      "inline-flex items-center gap-2 border-b-2 px-0.5 pb-2 text-[0.96rem] transition",
+                      selectedStatus === item.id
+                        ? "border-[#203a72] text-[#203a72]"
+                        : "border-transparent text-[#6b7894] hover:text-[#203a72]",
+                    )}
+                    key={item.id}
+                    onClick={() => setSelectedStatus(item.id)}
+                    type="button"
+                  >
+                    <span>{item.label}</span>
+                    <span className="rounded-full bg-[#eff3f8] px-2 py-0.5 text-[0.78rem] text-[#6b7894]">
+                      {item.count}
+                    </span>
+                  </button>
+                ))}
+              </div>
+
               <div
                 className={cn(
-                  "grid gap-4 lg:items-end",
+                  "grid gap-4 border-t border-[#edf2f7] pt-4 lg:items-end",
                   user?.role === "admin"
-                    ? "lg:grid-cols-[repeat(6,minmax(0,1fr))_auto]"
-                    : "lg:grid-cols-[repeat(5,minmax(0,1fr))_auto]",
+                    ? "lg:grid-cols-[repeat(5,minmax(0,1fr))_auto]"
+                    : "lg:grid-cols-[repeat(4,minmax(0,1fr))_auto]",
                 )}
               >
                 {user?.role === "admin"
@@ -1120,19 +1236,6 @@ export function AccountantReviewPage() {
                 )}
 
                 {renderSelectField(
-                  "Status",
-                  selectedStatus,
-                  (value) => setSelectedStatus(value as QueueStatusFilter),
-                  [
-                    { label: "All statuses", value: "all" },
-                    { label: "Under review", value: "under_review" },
-                    { label: "Overdue", value: "overdue" },
-                    { label: "Attention", value: "attention" },
-                    { label: "On track", value: "on_track" },
-                  ],
-                )}
-
-                {renderSelectField(
                   "Due date",
                   selectedDueWindow,
                   (value) => setSelectedDueWindow(value as DueWindowFilter),
@@ -1155,49 +1258,31 @@ export function AccountantReviewPage() {
                   ],
                 )}
 
-                <button
-                  className="flex h-11 items-center gap-2 whitespace-nowrap rounded-xl px-2 text-sm font-medium text-brand-600 transition hover:text-brand-700"
-                  onClick={clearFilters}
-                  type="button"
-                >
-                  <RefreshIcon />
-                  Clear filters
-                </button>
               </div>
             </div>
 
-            <div className="hidden border-b border-slate-100 px-5 py-4 text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-slate-400 lg:grid lg:grid-cols-[1.34fr_1fr_0.72fr_0.82fr_0.7fr_3.5rem] lg:gap-4">
-              <div>Record</div>
-              <div>Client & period</div>
+            <div className="hidden border-b border-slate-100 px-5 py-4 text-[0.78rem] uppercase tracking-[0.12em] text-slate-400 lg:grid lg:grid-cols-[1.7fr_0.9fr_0.9fr_4.5rem] lg:gap-4">
+              <div>Task</div>
               <div>Submitted</div>
-              <div>Due date</div>
-              <div>Status</div>
-              <div aria-hidden="true" />
+              <div>Priority</div>
+              <div className="text-right">Action</div>
             </div>
 
             {orderedRows.length > 0 ? (
               <div className="divide-y divide-slate-100">
                 {orderedRows.map((row) => {
                   const selected = viewerOpen && row.item.id === selectedRecordId;
+                  const priority = queuePriorityMeta(row.item);
 
                   return (
                     <div
                       className={cn(
-                        "relative cursor-pointer border-l-[4px] px-5 py-4 transition lg:grid lg:grid-cols-[1.34fr_1fr_0.72fr_0.82fr_0.7fr_3.5rem] lg:items-center lg:gap-4",
+                        "relative border-l-[4px] px-5 py-4 transition lg:grid lg:grid-cols-[1.7fr_0.9fr_0.9fr_4.5rem] lg:items-center lg:gap-4",
                         selected
                           ? "border-l-brand-500 bg-brand-50/28 shadow-[inset_0_0_0_1px_rgba(84,66,255,0.14)]"
                           : "border-l-transparent hover:bg-slate-50",
                       )}
                       key={row.item.id}
-                      onClick={() => openViewer(row.item.id)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.preventDefault();
-                          openViewer(row.item.id);
-                        }
-                      }}
-                      role="button"
-                      tabIndex={0}
                     >
                       <div className="flex items-start gap-3">
                         <QueueFileIcon
@@ -1205,70 +1290,95 @@ export function AccountantReviewPage() {
                           fileName={row.record.fileName}
                         />
                         <div className="min-w-0">
-                          <p className="text-[0.98rem] font-semibold text-slate-950">
-                            {row.item.documentType}
+                          <p className="text-[0.98rem] font-medium text-slate-950">
+                            {row.item.documentType} review
                           </p>
                           <p className="mt-1 text-[0.88rem] text-slate-500">
-                            {row.item.monthLabel}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="mt-3 flex items-start gap-3 lg:mt-0">
-                        <div className="hidden h-10 w-10 items-center justify-center rounded-[0.95rem] bg-slate-50 ring-1 ring-slate-200 lg:flex">
-                          <OfficeIcon />
-                        </div>
-                        <div>
-                          <p className="text-[0.94rem] font-semibold text-slate-950">
-                            {row.item.clientName}
-                          </p>
-                          <p className="mt-1 text-[0.86rem] text-slate-500">
-                            {row.item.monthLabel} Pack
+                            {row.item.clientName} | {row.item.monthLabel}
                           </p>
                         </div>
                       </div>
 
                       <div className="mt-3 lg:mt-0">
-                        <p className="text-[0.92rem] font-semibold text-slate-950">
+                        <p className="text-[0.9rem] text-slate-950">
                           {formatDateLabel(row.item.submittedAt)}
-                        </p>
-                        <p className="mt-1 text-[0.84rem] text-slate-500">
-                          by {row.record.uploadedBy}
-                        </p>
-                      </div>
-
-                      <div className="mt-3 lg:mt-0">
-                        <p className="text-[0.92rem] font-semibold text-slate-950">
-                          {row.dueMeta.label}
-                        </p>
-                        <p className={cn("mt-1 text-[0.84rem]", row.dueMeta.helperClass)}>
-                          {row.dueMeta.helper}
                         </p>
                       </div>
 
                       <div className="mt-3 lg:mt-0">
                         <span
                           className={cn(
-                            "inline-flex rounded-full px-2.5 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.04em] ring-1 ring-inset",
-                            row.statusMeta.pill,
+                            "mt-2 inline-flex rounded-full px-2.5 py-1 text-[0.74rem] font-medium uppercase tracking-[0.04em] ring-1 ring-inset",
+                            priority.pill,
                           )}
                         >
-                          {row.statusMeta.label}
+                          {priority.label}
                         </span>
+                        <p className="mt-2 text-[0.78rem] text-slate-500">
+                          {row.dueMeta.helper}
+                        </p>
                       </div>
 
                       <div
                         className="relative mt-3 flex items-center lg:mt-0 lg:justify-end"
                         onClick={(event) => event.stopPropagation()}
                       >
-                        <Button
-                          className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-                          onClick={() => openViewer(row.item.id)}
-                          type="button"
-                          variant="ghost"
+                        <div
+                          className="relative"
+                          ref={openActionMenuId === row.item.id ? rowActionMenuRef : undefined}
                         >
-                          View
-                        </Button>
+                          <button
+                            aria-expanded={openActionMenuId === row.item.id}
+                            aria-label={`Actions for ${row.item.documentType}`}
+                            className={cn(
+                              "inline-flex h-9 w-9 items-center justify-center rounded-lg text-brand-700 transition hover:bg-brand-50",
+                              openActionMenuId === row.item.id ? "bg-brand-50" : "",
+                            )}
+                            onClick={() =>
+                              setOpenActionMenuId((current) =>
+                                current === row.item.id ? "" : row.item.id,
+                              )
+                            }
+                            type="button"
+                          >
+                            <MoreVerticalIcon />
+                          </button>
+
+                          {openActionMenuId === row.item.id ? (
+                            <div className="absolute right-0 top-11 z-30 w-44 overflow-hidden rounded-lg border border-slate-200 bg-white p-1 text-left shadow-[0_18px_38px_rgba(15,23,42,0.16)]">
+                              <button
+                                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-[0.84rem] text-slate-700 transition hover:bg-slate-50"
+                                onClick={() => {
+                                  setOpenActionMenuId("");
+                                  openInClientWorkspace(row.item.id);
+                                }}
+                                type="button"
+                              >
+                                Open in workspace
+                              </button>
+                              <button
+                                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-[0.84rem] text-slate-700 transition hover:bg-slate-50"
+                                onClick={() => {
+                                  setOpenActionMenuId("");
+                                  openViewer(row.item.id);
+                                }}
+                                type="button"
+                              >
+                                Open review
+                              </button>
+                              <button
+                                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-[0.84rem] text-slate-700 transition hover:bg-slate-50"
+                                onClick={() => {
+                                  setOpenActionMenuId("");
+                                  void openDocumentInNewTab(row.record);
+                                }}
+                                type="button"
+                              >
+                                Open file
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
                       </div>
                     </div>
                   );
@@ -1277,9 +1387,21 @@ export function AccountantReviewPage() {
             ) : (
               <div className="px-5 py-10">
                 <EmptyState
-                  description="No review records match the current filters."
-                  title="Nothing in this view"
+                  description={emptyStateCopy.description}
+                  title={emptyStateCopy.title}
                 />
+                {hasActiveFilters ? (
+                  <div className="mt-4 flex justify-center">
+                    <Button
+                      className="h-10 rounded-xl px-4"
+                      onClick={clearFilters}
+                      size="sm"
+                      variant="ghost"
+                    >
+                      Clear filters
+                    </Button>
+                  </div>
+                ) : null}
               </div>
             )}
           </SurfaceCard>
@@ -1292,37 +1414,15 @@ export function AccountantReviewPage() {
             >
               <div className="mx-auto h-full w-full max-w-[1320px] overflow-y-auto" onClick={(event) => event.stopPropagation()}>
               <SurfaceCard className="overflow-hidden rounded-[1.65rem] border border-slate-200/90 bg-white p-0 shadow-[0_16px_36px_rgba(15,23,42,0.05)]">
-              <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 px-5 py-5">
-                <div className="flex min-w-0 items-start gap-4">
-                  <QueueFileIcon
-                    documentType={activeDocument.documentType}
-                    fileName={activeDocument.fileName}
-                  />
-                  <div className="min-w-0">
-                    <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                      Work Queue
-                    </p>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span
-                        className={cn(
-                          "rounded-full px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.06em] ring-1 ring-inset",
-                          activeRow.statusMeta.pill,
-                        )}
-                      >
-                        {activeRow.statusMeta.label}
-                      </span>
-                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.06em] text-slate-500">
-                        {activeDocument.documentType}
-                      </span>
-                    </div>
-                    <h2 className="mt-3 text-[1.22rem] font-semibold text-slate-950">
-                      {activeDocument.fileName}
-                    </h2>
-                    <p className="mt-1 text-[0.9rem] text-slate-500">
-                      {activeDocument.clientName} / {activeDocument.monthLabel}
-                    </p>
-                  </div>
-                </div>
+              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 px-5 py-4">
+                <button
+                  className="inline-flex items-center gap-2 text-[0.96rem] text-slate-600 transition hover:text-slate-900"
+                  onClick={closeViewer}
+                  type="button"
+                >
+                  <ChevronLeftIcon />
+                  <span>Back to queue</span>
+                </button>
 
                 <div className="flex items-center gap-2">
                   <Button
@@ -1330,20 +1430,11 @@ export function AccountantReviewPage() {
                     onClick={() => openInClientWorkspace(activeRow.item.id)}
                     size="sm"
                   >
-                    Open Monthly Pack
-                  </Button>
-                  <Button
-                    className="h-10 rounded-xl px-4 text-slate-700"
-                    onClick={closeViewer}
-                    size="sm"
-                    variant="secondary"
-                  >
-                    <ChevronLeftIcon />
-                    <span>Back to Work Queue</span>
+                    Open exact document context
                   </Button>
                   <button
-                  aria-label="Close review workspace"
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
+                    aria-label="Close review workspace"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
                     onClick={closeViewer}
                     type="button"
                   >
@@ -1352,101 +1443,110 @@ export function AccountantReviewPage() {
                 </div>
               </div>
 
-              <div className="grid gap-0 lg:grid-cols-[minmax(0,1.08fr)_420px]">
+              <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_380px]">
                 <div className="border-b border-slate-200 lg:border-b-0 lg:border-r lg:border-slate-200">
                   <div className="space-y-6 px-5 py-5">
-                    <section className="overflow-hidden rounded-[1.2rem] border border-slate-200 bg-white">
-                      <div className="border-b border-slate-200 bg-slate-50/70 px-4 py-3">
-                        <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                          Document details
-                        </p>
-                        <h3 className="mt-1 text-[1rem] font-semibold text-slate-950">
-                          {activeDocument.fileName}
-                        </h3>
+                    <section className="rounded-[1.2rem] border border-slate-200 bg-white p-5">
+                      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                        <div className="flex min-w-0 items-start gap-4">
+                          <QueueFileIcon
+                            documentType={activeDocument.documentType}
+                            fileName={activeDocument.fileName}
+                          />
+                          <div className="min-w-0">
+                            <span
+                              className={cn(
+                                "inline-flex rounded-full px-2.5 py-1 text-[0.68rem] font-medium uppercase tracking-[0.06em] ring-1 ring-inset",
+                                activeRow.statusMeta.pill,
+                              )}
+                            >
+                              {activeRow.statusMeta.label}
+                            </span>
+                            <h2 className="mt-3 text-[1.16rem] font-medium text-slate-950">
+                              {activeDocument.fileName}
+                            </h2>
+                            <p className="mt-1 text-[0.9rem] text-slate-500">
+                              {activeDocument.clientName}  •  {activeDocument.monthLabel}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+                          <Button
+                            className="h-9 rounded-xl px-3 text-slate-700"
+                            onClick={() => {
+                              if (!openDocumentInNewTab(activeDocument)) {
+                                setReviewMessage("Pop-up blocked. Please allow pop-ups to open the file.");
+                              }
+                            }}
+                            size="sm"
+                            variant="secondary"
+                          >
+                            <span>Open in new tab</span>
+                          </Button>
+                          <Button
+                            className="h-9 rounded-xl px-3 text-brand-700"
+                            onClick={() => downloadDocumentFile(activeDocument)}
+                            size="sm"
+                            variant="secondary"
+                          >
+                            <DownloadIcon />
+                            <span>Download</span>
+                          </Button>
+                        </div>
                       </div>
-                      <dl className="grid gap-0 sm:grid-cols-2">
-                        <div className="border-b border-slate-200 px-4 py-3 sm:border-r">
-                          <dt className="text-[0.7rem] font-semibold uppercase tracking-[0.11em] text-slate-400">
-                            File type
-                          </dt>
-                          <dd className="mt-1.5 text-sm font-medium text-slate-900">
-                            {fileExtensionLabel(activeDocument.fileName)} / {activeDocument.documentType}
-                          </dd>
-                        </div>
-                        <div className="border-b border-slate-200 px-4 py-3">
-                          <dt className="text-[0.7rem] font-semibold uppercase tracking-[0.11em] text-slate-400">
-                            Uploaded date
-                          </dt>
-                          <dd className="mt-1.5 text-sm font-medium text-slate-900">
-                            {formatDateTimeLabel(activeDocument.uploadedAt)}
-                          </dd>
-                        </div>
-                        <div className="px-4 py-3 sm:border-r sm:border-slate-200">
-                          <dt className="text-[0.7rem] font-semibold uppercase tracking-[0.11em] text-slate-400">
-                            Uploaded by
-                          </dt>
-                          <dd className="mt-1.5 text-sm font-medium text-slate-900">
-                            {activeDocument.uploadedBy}
-                          </dd>
-                        </div>
-                        <div className="px-4 py-3">
-                          <dt className="text-[0.7rem] font-semibold uppercase tracking-[0.11em] text-slate-400">
-                            Client period
-                          </dt>
-                          <dd className="mt-1.5 text-sm font-medium text-slate-900">
-                            {activeDocument.clientName} / {activeDocument.monthLabel}
-                          </dd>
-                        </div>
-                      </dl>
                     </section>
 
-                    <div className="flex flex-wrap items-center justify-between gap-2 rounded-[1rem] border border-slate-200 bg-slate-50/60 px-3 py-2.5">
-                      <Button
-                        className="h-9 rounded-xl px-3 text-brand-700"
-                        onClick={() => downloadDocumentFile(activeDocument)}
-                        size="sm"
-                        variant="secondary"
-                      >
-                        <DownloadIcon />
-                        <span>Download</span>
-                      </Button>
-                      <Button
-                        className="h-9 rounded-xl px-3 text-slate-700"
-                        onClick={() => {
-                          if (!openDocumentInNewTab(activeDocument)) {
-                            setReviewMessage("Pop-up blocked. Please allow pop-ups to open the file.");
-                          }
-                        }}
-                        size="sm"
-                        variant="secondary"
-                      >
-                        <span>Open in new tab</span>
-                      </Button>
-                      <div className="flex flex-wrap items-center gap-2">
-                      <Button
-                        className="h-9 rounded-xl px-3 text-slate-700"
-                        disabled={!previousRecordId}
-                        onClick={openPreviousRecord}
-                        size="sm"
-                        variant="secondary"
-                      >
-                        <ChevronLeftIcon />
-                        <span>Previous</span>
-                      </Button>
-                      <Button
-                        className="h-9 rounded-xl px-3 text-slate-700"
-                        disabled={!nextRecordId}
-                        onClick={openNextRecord}
-                        size="sm"
-                        variant="secondary"
-                      >
-                        <span>Next</span>
-                        <ChevronRightIcon />
-                      </Button>
+                    <section className="rounded-[1.2rem] border border-slate-200 bg-white p-5">
+                      <h3 className="text-[1rem] font-medium text-slate-950">Key details</h3>
+                      <div className="mt-4 grid gap-0 overflow-hidden rounded-[1rem] border border-slate-200 sm:grid-cols-2 xl:grid-cols-4">
+                        <div className="border-b border-slate-200 px-4 py-3.5 sm:border-r xl:border-b-0">
+                          <p className="text-[0.72rem] font-medium uppercase tracking-[0.12em] text-slate-400">
+                            File type
+                          </p>
+                          <p className="mt-1.5 text-[0.92rem] text-slate-900">
+                            {activeDocument.documentType}
+                          </p>
+                        </div>
+                        <div className="border-b border-slate-200 px-4 py-3.5 xl:border-b-0 xl:border-r">
+                          <p className="text-[0.72rem] font-medium uppercase tracking-[0.12em] text-slate-400">
+                            Submitted
+                          </p>
+                          <p className="mt-1.5 text-[0.92rem] text-slate-900">
+                            {formatDateTimeLabel(activeDocument.uploadedAt)}
+                          </p>
+                        </div>
+                        <div className="border-b border-slate-200 px-4 py-3.5 sm:border-r sm:border-slate-200 xl:border-b-0">
+                          <p className="text-[0.72rem] font-medium uppercase tracking-[0.12em] text-slate-400">
+                            Due by
+                          </p>
+                          <p className="mt-1.5 text-[0.92rem] text-slate-900">
+                            {activeRow.dueMeta.label}
+                          </p>
+                          <p className={cn("mt-1 text-[0.8rem]", activeRow.dueMeta.helperClass)}>
+                            {activeRow.dueMeta.helper}
+                          </p>
+                        </div>
+                        <div className="px-4 py-3.5">
+                          <p className="text-[0.72rem] font-medium uppercase tracking-[0.12em] text-slate-400">
+                            Priority
+                          </p>
+                          <span
+                            className={cn(
+                              "mt-1.5 inline-flex rounded-full px-2.5 py-1 text-[0.72rem] font-medium uppercase tracking-[0.04em] ring-1 ring-inset",
+                              activePriority?.pill ?? "bg-slate-50 text-slate-600 ring-slate-200",
+                            )}
+                          >
+                            {activePriority?.label ?? "Normal"}
+                          </span>
+                        </div>
                       </div>
-                    </div>
+                    </section>
 
-                    <section className="overflow-hidden rounded-[1.35rem] border border-slate-200 bg-white">
+                    <section className="overflow-hidden rounded-[1.2rem] border border-slate-200 bg-white">
+                      <div className="border-b border-slate-200 px-5 py-4">
+                        <h3 className="text-[1rem] font-medium text-slate-950">Document preview</h3>
+                      </div>
                       {!activeDocument.fileDataUrl ? (
                         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3">
                           <div className="flex items-center gap-2">
@@ -1458,7 +1558,7 @@ export function AccountantReviewPage() {
                             >
                               <ChevronLeftIcon />
                             </button>
-                            <span className="min-w-[86px] text-center text-sm font-medium text-slate-700">
+                            <span className="min-w-[86px] text-center text-[0.92rem] text-slate-700">
                               Page {previewPage} / {previewPages.length}
                             </span>
                             <button
@@ -1486,7 +1586,7 @@ export function AccountantReviewPage() {
                             >
                               <ZoomOutIcon />
                             </button>
-                            <span className="min-w-[62px] text-center text-sm font-medium text-slate-700">
+                            <span className="min-w-[62px] text-center text-[0.92rem] text-slate-700">
                               {previewZoom}%
                             </span>
                             <button
@@ -1511,19 +1611,15 @@ export function AccountantReviewPage() {
                       />
                     </section>
 
+                    {versionHistory.length > 1 ? (
                     <section className="border-t border-slate-200 pt-6">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <h3 className="text-[1.02rem] font-semibold text-slate-950">
-                            File version history
-                          </h3>
-                          <p className="mt-1 text-sm text-slate-500">
-                            Each uploaded version keeps its own outcome and timeline.
-                          </p>
-                        </div>
-                        <span className="rounded-full bg-slate-100 px-3 py-1 text-[0.75rem] font-semibold text-slate-500">
-                          {versionHistory.length} version{versionHistory.length === 1 ? "" : "s"}
-                        </span>
+                      <div>
+                        <h3 className="text-[1rem] font-medium text-slate-950">
+                          File version history
+                        </h3>
+                        <p className="mt-1 text-sm text-slate-500">
+                          Each uploaded version keeps its own outcome and timeline.
+                        </p>
                       </div>
 
                       <div className="mt-4 space-y-3">
@@ -1540,25 +1636,22 @@ export function AccountantReviewPage() {
                             <div className="flex flex-wrap items-start justify-between gap-3">
                               <div className="space-y-1">
                                 <div className="flex flex-wrap items-center gap-2">
-                                  <p className="text-sm font-semibold text-slate-950">
+                                  <p className="text-[0.92rem] font-medium text-slate-950">
                                     Version {version.versionNumber}
                                   </p>
                                   {version.isLatest ? (
-                                    <span className="rounded-full bg-white px-2 py-0.5 text-[0.68rem] font-semibold text-brand-700 ring-1 ring-brand-200">
+                                    <span className="rounded-full bg-white px-2 py-0.5 text-[0.68rem] font-medium text-brand-700 ring-1 ring-brand-200">
                                       Latest
                                     </span>
                                   ) : null}
                                 </div>
-                                <p className="text-sm text-slate-500">
-                                  Uploaded by {version.uploadedBy}
-                                </p>
                                 <p className="text-sm text-slate-400">
                                   {formatDateTimeLabel(version.uploadedAt)}
                                 </p>
                               </div>
                               <span
                                 className={cn(
-                                  "inline-flex rounded-full px-2.5 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.04em] ring-1 ring-inset",
+                                  "inline-flex rounded-full px-2.5 py-1 text-[0.72rem] font-medium uppercase tracking-[0.04em] ring-1 ring-inset",
                                   documentStatusMeta(version.status).panel.includes("emerald")
                                     ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
                                     : version.status === "rejected"
@@ -1581,124 +1674,101 @@ export function AccountantReviewPage() {
                         ))}
                       </div>
                     </section>
+                    ) : null}
                   </div>
                 </div>
 
                 <div className="space-y-6 px-5 py-5">
-                  <section className="rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <h3 className="text-[1.02rem] font-semibold text-slate-950">
-                          Decision assistant
-                        </h3>
-                        <p className="mt-1 text-sm text-slate-500">
-                          Confirm file quality, then set the decision and reason if needed.
+                  <section className="rounded-[1.25rem] border border-slate-200 bg-white p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+                    <div className="flex items-center gap-2">
+                      <span className="inline-flex h-2.5 w-2.5 rounded-full bg-brand-500" />
+                      <h3 className="text-[1rem] font-medium text-slate-950">
+                        Decision
+                      </h3>
+                    </div>
+                    <p className="mt-3 text-[0.92rem] leading-7 text-slate-500">
+                      Use this page to inspect the file before moving to the monthly pack for the actual workflow action.
+                    </p>
+                    <span
+                      className={cn(
+                        "mt-4 inline-flex rounded-full px-2.5 py-1 text-[0.72rem] font-medium uppercase tracking-[0.04em] ring-1 ring-inset",
+                        activeRow.statusMeta.pill,
+                      )}
+                    >
+                      {formatStatusLabel(activeDocument.status)}
+                    </span>
+
+                    <div className="mt-4 space-y-3">
+                      <div className="rounded-[0.95rem] border border-slate-200 bg-slate-50/60 px-3.5 py-3">
+                        <p className="text-[0.72rem] font-medium uppercase tracking-[0.12em] text-slate-400">
+                          Client
+                        </p>
+                        <p className="mt-1 text-[0.92rem] text-slate-900">
+                          {activeDocument.clientName}
                         </p>
                       </div>
-                      <span
-                        className={cn(
-                          "inline-flex rounded-full px-2.5 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.05em] ring-1 ring-inset",
-                          activeDocument?.status === "accepted"
-                            ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
-                            : activeDocument?.status === "rejected"
-                              ? "bg-rose-50 text-rose-700 ring-rose-200"
-                              : activeDocument?.status === "under_review"
-                                ? "bg-amber-50 text-amber-700 ring-amber-200"
-                                : "bg-brand-50 text-brand-700 ring-brand-200",
-                        )}
-                      >
-                        {formatStatusLabel(activeDocument.status)}
-                      </span>
-                    </div>
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                      <div className="rounded-[0.95rem] border border-slate-200 bg-white px-3.5 py-3">
-                        <p className="text-[0.78rem] font-semibold uppercase tracking-[0.1em] text-slate-400">
-                          Last updated
+                      <div className="rounded-[0.95rem] border border-slate-200 bg-slate-50/60 px-3.5 py-3">
+                        <p className="text-[0.72rem] font-medium uppercase tracking-[0.12em] text-slate-400">
+                          Period
                         </p>
-                        <p className="mt-1 text-sm font-medium text-slate-700">
-                          {formatDateTimeLabel(
-                            activeDocument.reviewedAt ?? activeDocument.uploadedAt,
-                          )}
+                        <p className="mt-1 text-[0.92rem] text-slate-900">
+                          {activeDocument.monthLabel}
                         </p>
                       </div>
-                      <div className="rounded-[0.95rem] border border-slate-200 bg-white px-3.5 py-3">
-                        <p className="text-[0.78rem] font-semibold uppercase tracking-[0.1em] text-slate-400">
-                          Reason required
-                        </p>
-                        <p
-                          className={cn(
-                            "mt-1 text-sm font-medium",
-                            requiresReason ? "text-rose-700" : "text-emerald-700",
-                          )}
-                        >
-                          {requiresReason ? "Yes for rejection/correction" : "No"}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="mt-3">
-                      <button
-                        aria-expanded={showReviewGuidance}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-800"
-                        onClick={() => setShowReviewGuidance((current) => !current)}
-                        type="button"
-                      >
-                        <span>{showReviewGuidance ? "Hide review guidance" : "Show review guidance"}</span>
-                        <span
-                          className={cn(
-                            "transition-transform duration-200",
-                            showReviewGuidance ? "rotate-180" : "rotate-0",
-                          )}
-                        >
-                          <ChevronDownIcon />
-                        </span>
-                      </button>
-                    </div>
-                    {showReviewGuidance ? (
-                      <>
-                        <div className="mt-3 rounded-[0.95rem] border border-slate-200 bg-white px-3.5 py-3 text-sm text-slate-600">
-                          Quick flow: review preview and comments, choose outcome, add reason when requesting correction or rejection.
-                        </div>
-                        <div className="mt-3 rounded-[0.95rem] border border-slate-200 bg-white px-3.5 py-3">
-                          <p className="text-[0.78rem] font-semibold uppercase tracking-[0.1em] text-slate-400">
-                            Confidence checks
+                      {activeDocument.rejectionReason ? (
+                        <div className="rounded-[0.95rem] border border-rose-100 bg-rose-50 px-3.5 py-3">
+                          <p className="text-[0.72rem] font-medium uppercase tracking-[0.12em] text-rose-500">
+                            Previous return reason
                           </p>
-                          <div className="mt-2 space-y-1.5">
-                            {confidenceChecks.map((item) => (
-                              <div className="flex items-center gap-2 text-sm" key={item.id}>
-                                <span
-                                  className={cn(
-                                    "h-2.5 w-2.5 rounded-full",
-                                    item.passed ? "bg-emerald-500" : "bg-amber-500",
-                                  )}
-                                />
-                                <span className={item.passed ? "text-slate-700" : "text-amber-700"}>
-                                  {item.label}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
+                          <p className="mt-1 text-[0.9rem] leading-6 text-rose-700">
+                            {activeDocument.rejectionReason}
+                          </p>
                         </div>
-                      </>
-                    ) : null}
+                      ) : null}
+                    </div>
+
+                    <div className="mt-4 space-y-2">
+                      <Button
+                        className="h-11 w-full rounded-xl px-4"
+                        onClick={() => openInClientWorkspace(activeRow.item.id)}
+                        size="sm"
+                      >
+                        Move to monthly pack
+                      </Button>
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        <Button
+                          className="h-10 rounded-xl px-3 text-slate-700"
+                          onClick={() => {
+                            if (!openDocumentInNewTab(activeDocument)) {
+                              setReviewMessage("Pop-up blocked. Please allow pop-ups to open the file.");
+                            }
+                          }}
+                          size="sm"
+                          variant="secondary"
+                        >
+                          Open in new tab
+                        </Button>
+                        <Button
+                          className="h-10 rounded-xl px-3 text-brand-700"
+                          onClick={() => downloadDocumentFile(activeDocument)}
+                          size="sm"
+                          variant="secondary"
+                        >
+                          <DownloadIcon />
+                          <span>Download</span>
+                        </Button>
+                      </div>
+                    </div>
                   </section>
 
-                  <section className="sticky bottom-0 z-10 border-t border-slate-200 bg-white/95 pb-6 pt-5 backdrop-blur">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <h3 className="text-[1.02rem] font-semibold text-slate-950">
-                          Document comments
-                        </h3>
-                        <p className="mt-1 text-sm text-slate-500">
-                          Client and accountant messages stay attached to this document.
-                        </p>
-                      </div>
-                      <span className="rounded-full bg-slate-100 px-3 py-1 text-[0.75rem] font-semibold text-slate-500">
-                        {orderedComments.length} comment{orderedComments.length === 1 ? "" : "s"}
-                      </span>
-                    </div>
-
-                    <div className="mt-4 rounded-[1rem] border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-700">
-                      Documents must be uploaded through the structured upload slot, not through comments.
+                  <section className="rounded-[1.25rem] border border-slate-200 bg-white p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+                    <div>
+                      <h3 className="text-[1rem] font-medium text-slate-950">
+                        Conversation
+                      </h3>
+                      <p className="mt-1 text-[0.9rem] text-slate-500">
+                        Conversation that may affect your decision on this file.
+                      </p>
                     </div>
 
                     <div className="mt-4 max-h-[22rem] space-y-3 overflow-y-auto pr-1">
@@ -1708,34 +1778,27 @@ export function AccountantReviewPage() {
                             className={cn(
                               "rounded-[1.15rem] border px-4 py-4",
                               comment.role !== "client"
-                                ? "ml-6 border-brand-100 bg-brand-50/75"
-                                : "mr-6 border-emerald-100 bg-emerald-50/60",
+                                ? "ml-6 border-brand-100 bg-brand-50/50"
+                                : "mr-6 border-slate-200 bg-white",
                             )}
                             key={comment.id}
                           >
                             <div className="flex items-start gap-3">
                               <div
                                 className={cn(
-                                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white",
+                                  "flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-medium text-white",
                                   comment.role !== "client"
-                                    ? "bg-[linear-gradient(135deg,#4f46e5,#4338ca)]"
-                                    : "bg-emerald-500",
+                                    ? "bg-brand-700"
+                                    : "bg-slate-500",
                                 )}
                               >
                                 {getInitials(comment.author)}
                               </div>
                               <div className="min-w-0 flex-1">
                                 <div className="flex flex-wrap items-center gap-2">
-                                  <p className="text-[0.92rem] font-semibold text-slate-950">
+                                  <p className="text-[0.92rem] font-medium text-slate-950">
                                     {comment.author}
                                   </p>
-                                  <span className="rounded-full bg-white/80 px-2 py-0.5 text-[0.68rem] font-semibold text-slate-500 ring-1 ring-slate-200">
-                                    {comment.role === "client"
-                                      ? "Client"
-                                      : comment.role === "admin"
-                                        ? "Admin"
-                                        : "Accountant"}
-                                  </span>
                                   <span className="text-[0.8rem] text-slate-400">
                                     {formatDateTimeLabel(comment.createdAt)}
                                   </span>
@@ -1749,46 +1812,12 @@ export function AccountantReviewPage() {
                         ))
                       ) : (
                         <EmptyState
-                          description="No one has commented on this record yet. Add a note when the client needs precise feedback."
+                          description="No one has commented on this record yet."
                           title="No comments yet"
                         />
                       )}
                     </div>
-
-                    <div className="mt-4 rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                      Commenting is disabled in Work Queue view. Open Monthly Pack to add comments.
-                    </div>
                   </section>
-
-                  <section className="border-b border-slate-200 pb-6">
-                    <div className="space-y-2">
-                      <h3 className="text-[1.02rem] font-semibold text-slate-950">
-                        Review decision
-                      </h3>
-                      <p className="text-sm text-slate-500">
-                        Choose the outcome that best matches the file quality and completion status.
-                      </p>
-                    </div>
-
-                    {activeStatus ? (
-                      <div className={cn("mt-4 rounded-[1.15rem] border px-4 py-4", activeStatus.panel)}>
-                        <p className="text-[0.74rem] font-semibold uppercase tracking-[0.12em] text-slate-400">
-                          Current status
-                        </p>
-                        <p className={cn("mt-2 text-[0.96rem] font-semibold", activeStatus.value)}>
-                          {formatStatusLabel(activeDocument.status)}
-                        </p>
-                        <p className="mt-2 text-[0.82rem] leading-6 text-slate-600">
-                          {activeStatus.description}
-                        </p>
-                      </div>
-                    ) : null}
-
-                    <div className="mt-4 rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                      This is a view-only preview. Use <span className="font-semibold text-slate-900">Open Monthly Pack</span> to mark the document as under review, return, reject, or accept.
-                    </div>
-                  </section>
-
                 </div>
               </div>
               </SurfaceCard>

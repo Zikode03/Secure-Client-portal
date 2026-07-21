@@ -670,10 +670,10 @@ function PreviewShell({
       >
         <div className="flex items-start justify-between gap-6">
           <div>
-            <p className="text-[1.95rem] font-semibold uppercase tracking-tight text-brand-700">
+            <p className="text-[1.95rem] font-medium uppercase tracking-tight text-brand-700">
               Invoice
             </p>
-            <p className="mt-3 text-[1.05rem] font-semibold text-slate-950">
+            <p className="mt-3 text-[1.05rem] font-medium text-slate-950">
               {document.clientName}
             </p>
             <p className="mt-1 text-sm leading-6 text-slate-500">
@@ -732,7 +732,7 @@ function PreviewShell({
             <span>GST (10%)</span>
             <span>{formatPreviewMoney(invoiceLayout.tax)}</span>
           </div>
-          <div className="flex items-center justify-between border-t border-slate-200 pt-2 text-base font-semibold text-slate-950">
+          <div className="flex items-center justify-between border-t border-slate-200 pt-2 text-base font-medium text-slate-950">
             <span>Total Due</span>
             <span>{formatPreviewMoney(invoiceLayout.total)}</span>
           </div>
@@ -750,10 +750,10 @@ function PreviewShell({
     >
       <div className="flex items-start justify-between gap-4 border-b border-slate-200 pb-5">
         <div>
-          <p className="text-[0.75rem] font-semibold uppercase tracking-[0.18em] text-brand-600">
+          <p className="text-[0.75rem] font-medium uppercase tracking-[0.18em] text-brand-600">
             {document.documentType}
           </p>
-          <h3 className="mt-2 text-[1.35rem] font-semibold text-slate-950">
+          <h3 className="mt-2 text-[1.35rem] font-medium text-slate-950">
             {displayResultTitle(result)}
           </h3>
           <p className="mt-2 text-sm text-slate-500">
@@ -767,7 +767,7 @@ function PreviewShell({
 
       <div className="mt-5 grid gap-3 sm:grid-cols-2">
         <div className="rounded-[0.95rem] border border-slate-200 bg-slate-50 px-4 py-3">
-          <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-slate-400">
+          <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-slate-400">
             Uploaded
           </p>
           <p className="mt-2 text-sm font-medium text-slate-900">
@@ -775,7 +775,7 @@ function PreviewShell({
           </p>
         </div>
         <div className="rounded-[0.95rem] border border-slate-200 bg-slate-50 px-4 py-3">
-          <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-slate-400">
+          <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-slate-400">
             Reviewed by
           </p>
           <p className="mt-2 text-sm font-medium text-slate-900">
@@ -785,7 +785,7 @@ function PreviewShell({
       </div>
 
       <div className="mt-5 rounded-[1rem] border border-slate-200 px-5 py-4">
-        <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-slate-400">
+        <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-slate-400">
           Preview snapshot
         </p>
         <div className="mt-4 space-y-3 font-mono text-[0.84rem] leading-7 text-slate-600">
@@ -1180,7 +1180,7 @@ export function AccountantFilingPage() {
     >
       <section className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-1.5">
-          <h1 className="text-[2.05rem] font-semibold tracking-tight text-slate-950">
+          <h1 className="text-[2.05rem] font-medium text-slate-950">
             Document Filing Register
           </h1>
           <p className="max-w-3xl text-[0.96rem] leading-7 text-slate-500">
@@ -1301,7 +1301,7 @@ export function AccountantFilingPage() {
                   value={filters.year}
                 />
                 <button
-                  className="inline-flex h-10 items-center gap-1.5 rounded-xl px-1 text-sm font-semibold text-brand-600 transition hover:text-brand-700"
+                  className="inline-flex h-10 items-center gap-1.5 rounded-xl px-1 text-sm font-medium text-brand-600 transition hover:text-brand-700"
                   onClick={() => {
                     setFilters((current) => ({
                       ...current,
@@ -1340,7 +1340,7 @@ export function AccountantFilingPage() {
                     <span>{tab.label}</span>
                     <span
                       className={cn(
-                        "rounded-full px-2 py-0.5 text-[0.72rem] font-semibold",
+                        "rounded-full px-2 py-0.5 text-[0.72rem] font-medium",
                         activeResultTab === tab.id
                           ? "bg-brand-50 text-brand-700"
                           : "bg-slate-100 text-slate-500",
@@ -1369,7 +1369,7 @@ export function AccountantFilingPage() {
               </div>
             ) : (
               <>
-                <div className="hidden border-b border-slate-100 px-5 py-4 text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-slate-400 lg:grid lg:grid-cols-[minmax(0,1.85fr)_0.9fr_0.72fr_3.5rem] lg:gap-4">
+                <div className="hidden border-b border-slate-100 px-5 py-4 text-[0.72rem] font-medium uppercase tracking-[0.12em] text-slate-400 lg:grid lg:grid-cols-[minmax(0,1.85fr)_0.9fr_0.72fr_3.5rem] lg:gap-4">
                   <div>Filed record</div>
                   <div>Filed on</div>
                   <div>Archive status</div>
@@ -1394,7 +1394,7 @@ export function AccountantFilingPage() {
                         <div className="flex items-start gap-4">
                           <div
                             className={cn(
-                              "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.9rem] border text-[0.72rem] font-semibold",
+                              "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.9rem] border text-[0.72rem] font-medium",
                               fileLabelClasses(fileLabel),
                             )}
                           >
@@ -1402,11 +1402,11 @@ export function AccountantFilingPage() {
                           </div>
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
-                              <p className="truncate text-[0.95rem] font-semibold text-slate-950">
+                              <p className="truncate text-[0.95rem] font-medium text-slate-950">
                                 {displayResultTitle(result)}
                               </p>
                               {isNewResult(result.date) ? (
-                                <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[0.68rem] font-semibold text-brand-700">
+                                <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[0.68rem] font-medium text-brand-700">
                                   New
                                 </span>
                               ) : null}
@@ -1426,7 +1426,7 @@ export function AccountantFilingPage() {
                         </div>
 
                         <div className="mt-3 lg:mt-0">
-                          <p className="text-[0.9rem] font-semibold text-slate-950">
+                          <p className="text-[0.9rem] font-medium text-slate-950">
                             {formatDateLabel(result.date)}
                           </p>
                           <p className="mt-1 text-[0.84rem] text-slate-500">
@@ -1441,7 +1441,7 @@ export function AccountantFilingPage() {
                         <div className="mt-3 lg:mt-0">
                           <span
                             className={cn(
-                              "inline-flex rounded-full px-2.5 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.04em] ring-1 ring-inset",
+                              "inline-flex rounded-full px-2.5 py-1 text-[0.7rem] font-medium uppercase tracking-[0.04em] ring-1 ring-inset",
                               toneToAccentClass(statusToTone(result.status)),
                             )}
                           >
@@ -1526,13 +1526,13 @@ export function AccountantFilingPage() {
             >
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <h2 className="truncate text-[1.7rem] font-semibold tracking-tight text-slate-950">
+                <h2 className="truncate text-[1.7rem] font-medium text-slate-950">
                   {displayResultTitle(selectedResult)}
                 </h2>
                 <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-500">
                   <span
                     className={cn(
-                      "inline-flex rounded-lg border px-2 py-0.5 text-[0.72rem] font-semibold",
+                      "inline-flex rounded-lg border px-2 py-0.5 text-[0.72rem] font-medium",
                       fileLabelClasses(inferFileLabel(selectedResult, selectedDocument)),
                     )}
                   >
@@ -1651,7 +1651,7 @@ export function AccountantFilingPage() {
                 <div className="space-y-5">
                   <div className="grid gap-x-8 gap-y-5 sm:grid-cols-2">
                     <div>
-                      <p className="text-[0.76rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                      <p className="text-[0.76rem] font-medium uppercase tracking-[0.14em] text-slate-400">
                         Document type
                       </p>
                       <p className="mt-2 text-sm font-medium text-slate-950">
@@ -1659,13 +1659,13 @@ export function AccountantFilingPage() {
                       </p>
                     </div>
                     <div>
-                      <p className="text-[0.76rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                      <p className="text-[0.76rem] font-medium uppercase tracking-[0.14em] text-slate-400">
                         Status
                       </p>
                       <div className="mt-2">
                         <span
                           className={cn(
-                            "inline-flex rounded-full px-2.5 py-1 text-[0.72rem] font-semibold ring-1 ring-inset",
+                            "inline-flex rounded-full px-2.5 py-1 text-[0.72rem] font-medium ring-1 ring-inset",
                             toneToAccentClass(statusToTone(selectedResult.status)),
                           )}
                         >
@@ -1674,7 +1674,7 @@ export function AccountantFilingPage() {
                       </div>
                     </div>
                     <div>
-                      <p className="text-[0.76rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                      <p className="text-[0.76rem] font-medium uppercase tracking-[0.14em] text-slate-400">
                         Uploaded by
                       </p>
                       <p className="mt-2 text-sm font-medium text-slate-950">
@@ -1682,7 +1682,7 @@ export function AccountantFilingPage() {
                       </p>
                     </div>
                     <div>
-                      <p className="text-[0.76rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                      <p className="text-[0.76rem] font-medium uppercase tracking-[0.14em] text-slate-400">
                         Uploaded on
                       </p>
                       <p className="mt-2 text-sm font-medium text-slate-950">
@@ -1690,7 +1690,7 @@ export function AccountantFilingPage() {
                       </p>
                     </div>
                     <div>
-                      <p className="text-[0.76rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                      <p className="text-[0.76rem] font-medium uppercase tracking-[0.14em] text-slate-400">
                         Filed by
                       </p>
                       <p className="mt-2 text-sm font-medium text-slate-950">
@@ -1698,7 +1698,7 @@ export function AccountantFilingPage() {
                       </p>
                     </div>
                     <div>
-                      <p className="text-[0.76rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                      <p className="text-[0.76rem] font-medium uppercase tracking-[0.14em] text-slate-400">
                         Period
                       </p>
                       <p className="mt-2 text-sm font-medium text-slate-950">
@@ -1706,7 +1706,7 @@ export function AccountantFilingPage() {
                       </p>
                     </div>
                     <div>
-                      <p className="text-[0.76rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                      <p className="text-[0.76rem] font-medium uppercase tracking-[0.14em] text-slate-400">
                         Assigned to
                       </p>
                       <p className="mt-2 text-sm font-medium text-slate-950">
@@ -1737,12 +1737,12 @@ export function AccountantFilingPage() {
                       >
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div className="flex items-center gap-2">
-                            <span className="rounded-full bg-white px-2 py-0.5 text-[0.7rem] font-semibold text-slate-600 ring-1 ring-slate-200">
+                            <span className="rounded-full bg-white px-2 py-0.5 text-[0.7rem] font-medium text-slate-600 ring-1 ring-slate-200">
                               {entry.versionLabel}
                             </span>
-                            <p className="text-sm font-semibold text-slate-950">{entry.actionLabel}</p>
+                            <p className="text-sm font-medium text-slate-950">{entry.actionLabel}</p>
                             {entry.isFinalFiledVersion ? (
-                              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[0.68rem] font-semibold text-emerald-700">
+                              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[0.68rem] font-medium text-emerald-700">
                                 Final filed version
                               </span>
                             ) : null}
@@ -1775,7 +1775,7 @@ export function AccountantFilingPage() {
                         type="button"
                       >
                         <div>
-                          <p className="text-sm font-semibold text-slate-950">
+                          <p className="text-sm font-medium text-slate-950">
                             {displayResultTitle(result)}
                           </p>
                           <p className="mt-1 text-sm text-slate-500">

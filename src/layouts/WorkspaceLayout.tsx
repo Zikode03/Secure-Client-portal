@@ -286,6 +286,8 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
     : location.pathname.includes("/notifications/preferences")
       ? "Notification Preferences"
       : activeItem.label;
+  const useWideContentCanvas =
+    location.pathname.startsWith("/firm/inbox") || location.pathname.startsWith("/client/inbox");
 
   const navSurfaceClass = isDark
     ? "border-brand-700 bg-brand-800 text-slate-100 shadow-[14px_0_34px_rgba(10,47,102,0.28)]"
@@ -596,7 +598,7 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
           </div>
         </aside>
 
-        <main className="min-w-0 flex-1">
+        <main className="min-w-0 flex min-h-0 flex-1 flex-col">
           <header className="border-b border-slate-200 bg-white/92 px-4 py-3 backdrop-blur sm:px-6 lg:px-8">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3">
@@ -647,7 +649,12 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
             </div>
           </header>
 
-          <div className="mx-auto w-full max-w-[1320px] px-4 py-4 sm:px-6 lg:px-8">
+          <div
+            className={cn(
+              "mx-auto flex min-h-0 w-full flex-1 flex-col py-4",
+              useWideContentCanvas ? "max-w-[1720px] px-3 sm:px-4 lg:px-6" : "max-w-[1320px] px-4 sm:px-6 lg:px-8",
+            )}
+          >
             <Outlet />
           </div>
         </main>

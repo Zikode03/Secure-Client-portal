@@ -32,7 +32,7 @@ const navyPanelClass =
   "rounded-2xl border border-[#dce6ef] bg-white shadow-[0_16px_38px_rgba(4,24,52,0.08)]";
 const navySoftPanelClass = "rounded-2xl border border-[#dce6ef] bg-[#f7faff]";
 const navyButtonClass =
-  "client-dashboard-action-button inline-flex items-center justify-center rounded-lg border-0 font-bold ring-0";
+  "client-dashboard-action-button inline-flex items-center justify-center rounded-lg border-0 font-medium ring-0";
 const navySecondaryButtonClass =
   "border border-[#cdd8ea] bg-white text-[#091333] shadow-[0_8px_18px_rgba(4,24,52,0.05)] hover:bg-[#f8fbff]";
 
@@ -244,12 +244,13 @@ export function AccountantClientWorkspacePage() {
     if (!documentId) {
       return;
     }
-    const targetDocument = workspace.documents.find((document) => document.id === documentId);
+    const targetDocument = workspaceViewDocuments.find((document) => document.id === documentId);
     if (!targetDocument) {
       return;
     }
-    navigate(`/firm/documents?client=${workspace.client.id}`, { replace: true });
-  }, [navigate, searchParamString, searchParams, workspace.client.id, workspace.documents]);
+    setSelectedDocumentId(targetDocument.id);
+    setIsDocumentModalOpen(true);
+  }, [searchParamString, searchParams, workspaceViewDocuments]);
 
   useEffect(() => {
     setDecisionMessage("");
@@ -415,44 +416,45 @@ export function AccountantClientWorkspacePage() {
 // Render output: this is the visual state users interact with.
   return (
     <div className="space-y-6 text-[#091333]">
-      <section className="relative overflow-hidden rounded-2xl border border-[#dce6ef] bg-[linear-gradient(135deg,#062044_0%,#0a2f66_58%,#0b4f5f_100%)] p-5 text-white shadow-[0_24px_60px_rgba(4,24,52,0.18)] md:p-6">
+      <section className="relative overflow-hidden rounded-[28px] border border-[#dce6ef] bg-[linear-gradient(135deg,#ffffff_0%,#f7faff_62%,#eef5fb_100%)] p-5 text-[#091333] shadow-[0_22px_50px_rgba(4,24,52,0.08)] md:p-6">
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-[34%] bg-[radial-gradient(circle_at_top_right,rgba(160,190,220,0.24),transparent_62%)]" />
         <div className="relative z-10 flex flex-wrap items-start justify-between gap-5">
           <div className="max-w-3xl">
-            <p className="text-[0.72rem] font-bold uppercase tracking-[0.18em] text-white/72">
+            <p className="text-[0.72rem] font-medium uppercase tracking-[0.16em] text-[#6f7d96]">
               Accountant Client Workspace
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-3">
-              <h1 className="text-2xl font-semibold tracking-tight text-white md:text-3xl">
+              <h1 className="text-2xl font-medium text-[#091333] md:text-3xl">
                 {workspace.client.clientName}
               </h1>
               <StatusBadge status={workspace.client.status} />
             </div>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-white/78">
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-[#53617f]">
               Keep this client's month pack, document review, compliance, requests, messages, and audit trail in one accountable workspace.
             </p>
-            <div className="mt-5 flex flex-wrap gap-2 text-[0.78rem] font-semibold text-white/82">
-              <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1">
+            <div className="mt-5 flex flex-wrap gap-2 text-[0.78rem] font-medium text-[#41526f]">
+              <span className="rounded-full border border-[#d8e2ef] bg-white px-3 py-1 shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
                 {workspace.client.industry}
               </span>
-              <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1">
+              <span className="rounded-full border border-[#d8e2ef] bg-white px-3 py-1 shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
                 Assigned to {workspace.client.assignedAccountant}
               </span>
-              <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1">
+              <span className="rounded-full border border-[#d8e2ef] bg-white px-3 py-1 shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
                 {workspace.client.deadlinePolicy}
               </span>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 self-end">
             <Button
-              className={cn(navySecondaryButtonClass, "h-10 rounded-lg px-4 text-sm")}
+              className={cn("h-10 rounded-xl border border-[#cdd8ea] bg-white px-4 text-sm font-medium text-[#091333] shadow-[0_8px_18px_rgba(4,24,52,0.05)] hover:bg-[#f8fbff]",)}
               onClick={() => navigate(`/firm/documents?client=${workspace.client.id}`)}
               variant="secondary"
             >
               Open document centre
             </Button>
             <Button
-              className={cn(navyButtonClass, "h-10 px-4 text-sm")}
-              onClick={() => navigate("/firm/inbox")}
+              className={cn("client-dashboard-action-button h-10 rounded-xl border-0 px-4 text-sm font-medium ring-0",)}
+              onClick={() => navigate(`/firm/inbox?client=${workspace.client.id}`)}
             >
               Open inbox
             </Button>
@@ -461,7 +463,7 @@ export function AccountantClientWorkspacePage() {
       </section>
 
       {feedbackMessage ? (
-        <div className="rounded-2xl border border-[#cdd8ea] bg-[#f7faff] px-5 py-4 text-sm font-semibold text-[#0a2f66]">
+        <div className="rounded-2xl border border-[#cdd8ea] bg-[#f7faff] px-5 py-4 text-sm font-medium text-[#0a2f66]">
           {feedbackMessage}
         </div>
       ) : null}
@@ -471,15 +473,15 @@ export function AccountantClientWorkspacePage() {
         <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-3">
-              <h2 className="text-xl font-semibold text-[#091333]">{workspace.client.clientName}</h2>
+              <h2 className="text-xl font-medium text-[#091333]">{workspace.client.clientName}</h2>
               <StatusBadge status={workspace.client.status} />
             </div>
-            <p className="text-sm font-medium text-[#53617f]">
+            <p className="text-sm text-[#53617f]">
               {workspace.client.industry} / {workspace.client.assignedAccountant} / {workspace.client.deadlinePolicy}
             </p>
           </div>
           <div className={cn(navySoftPanelClass, "space-y-2 p-4")}>
-            <div className="flex items-center justify-between text-sm font-semibold text-[#091333]">
+            <div className="flex items-center justify-between text-sm font-medium text-[#091333]">
               <span>Month pack progress</span>
               <span>{workspace.monthPack.progressPercent}%</span>
             </div>
@@ -492,7 +494,7 @@ export function AccountantClientWorkspacePage() {
           {workspaceTabs.map((tab) => (
             <button
               className={cn(
-                "rounded-lg px-3 py-2 text-sm font-bold transition",
+                "rounded-lg px-3 py-2 text-sm font-medium transition",
                 activeTab === tab.id
                   ? "bg-[#062044] text-white shadow-[0_10px_22px_rgba(6,32,68,0.22)]"
                   : "bg-[#eef4fa] text-[#53617f] hover:bg-[#dfeaf5] hover:text-[#091333]",
@@ -508,9 +510,9 @@ export function AccountantClientWorkspacePage() {
 
         {activeTab !== "packs" ? (
           <div className="mx-5 mb-5 flex items-center justify-between gap-3 rounded-xl border border-[#dce6ef] bg-[#f7faff] px-3 py-2.5">
-            <p className="text-sm font-medium text-[#53617f]">
+            <p className="text-sm text-[#53617f]">
               Viewing:{" "}
-              <span className="font-bold text-[#091333]">
+              <span className="font-medium text-[#091333]">
                 {workspaceTabs.find((tab) => tab.id === activeTab)?.label ?? "Section"}
               </span>
             </p>
@@ -522,15 +524,16 @@ export function AccountantClientWorkspacePage() {
       </SurfaceCard>
 
       {["packs", "bank_statement", "invoices", "signed_documents", "compliance_record"].includes(activeTab) ? (
-        <SurfaceCard className={cn(navyPanelClass, "space-y-4")}>
-          <div>
-            <h2 className="text-xl font-semibold text-[#091333]">Client monthly pack</h2>
-            <p className="mt-1 text-sm font-medium text-[#53617f]">
+        <SurfaceCard className={cn(navyPanelClass, "space-y-5 rounded-[1.45rem] border border-[#dce6ef] bg-white p-0 shadow-[0_12px_30px_rgba(15,23,42,0.05)]")}>
+          <div className="px-6 pb-4 pt-6">
+            <h2 className="text-[1.28rem] font-medium text-[#091333]">Client monthly pack</h2>
+            <p className="mt-2 text-sm leading-6 text-[#53617f]">
               Review the structured slots and focus on anything still missing, rejected, or pending.
             </p>
           </div>
-          <div className="overflow-hidden rounded-2xl border border-[#dce6ef] bg-white">
-            <div className="hidden border-b border-[#e6edf4] bg-[#f7faff] px-5 py-3 text-[0.68rem] font-bold uppercase tracking-[0.12em] text-[#73809a] lg:grid lg:grid-cols-[minmax(0,1fr)_120px_140px_220px] lg:gap-4">
+          <div className="px-6 pb-1">
+            <div className="overflow-hidden rounded-[1rem] border border-[#dce6ef] bg-white">
+            <div className="hidden border-b border-[#0a2f66] bg-[linear-gradient(180deg,#0b2f63_0%,#08264f_100%)] px-6 py-3 text-[0.72rem] font-medium uppercase tracking-[0.08em] text-white lg:grid lg:grid-cols-[minmax(0,1fr)_120px_160px_220px] lg:gap-4">
               <div>Document slot</div>
               <div>Required</div>
               <div>Due date</div>
@@ -570,26 +573,26 @@ export function AccountantClientWorkspacePage() {
 
                 return (
                   <div
-                    className="grid gap-3 px-4 py-4 transition hover:bg-[#f9fbfe] lg:grid-cols-[minmax(0,1fr)_120px_140px_220px] lg:items-center lg:gap-4 lg:px-5"
+                    className="grid gap-4 px-5 py-4 transition hover:bg-[#fcfdff] lg:grid-cols-[minmax(0,1fr)_120px_160px_220px] lg:items-center lg:gap-4 lg:px-6"
                     key={slot.id}
                   >
                     <div className="min-w-0">
-                      <p className="text-sm font-bold text-[#091333]">{slot.documentType}</p>
-                      <p className="mt-1 line-clamp-2 text-sm font-medium text-[#53617f]">{slot.description}</p>
+                      <p className="text-[0.98rem] font-medium text-[#091333]">{slot.documentType}</p>
+                      <p className="mt-1 line-clamp-1 max-w-xl text-sm text-[#53617f]">{slot.description}</p>
                     </div>
                     <div>
-                      <p className="text-[0.7rem] font-bold uppercase tracking-[0.08em] text-[#73809a] lg:hidden">
+                      <p className="text-[0.7rem] font-medium uppercase tracking-[0.08em] text-[#73809a] lg:hidden">
                         Required
                       </p>
-                      <p className="mt-1 text-sm font-semibold text-[#091333] lg:mt-0">
+                      <p className="mt-1 text-sm text-[#091333] lg:mt-0">
                         {slot.isRequired ? "Yes" : "Optional"}
                       </p>
                     </div>
                     <div>
-                      <p className="text-[0.7rem] font-bold uppercase tracking-[0.08em] text-[#73809a] lg:hidden">
+                      <p className="text-[0.7rem] font-medium uppercase tracking-[0.08em] text-[#73809a] lg:hidden">
                         Due date
                       </p>
-                      <p className="mt-1 text-sm font-semibold text-[#091333] lg:mt-0">
+                      <p className="mt-1 text-sm text-[#091333] lg:mt-0">
                         {formatDateLabel(slotDueDate)}
                       </p>
                       {dueDeltaDays < 0 ? (
@@ -601,7 +604,7 @@ export function AccountantClientWorkspacePage() {
                     <div className="flex flex-wrap items-center gap-2 lg:justify-end">
                       <span
                         className={cn(
-                          "inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset",
+                          "inline-flex rounded-full px-3 py-1 text-xs font-medium ring-1 ring-inset shadow-none",
                           statusPillClass(slotStatusLabel),
                         )}
                       >
@@ -609,7 +612,7 @@ export function AccountantClientWorkspacePage() {
                       </span>
                       {activeTab === "packs" ? (
                         <Button
-                          className={cn(navySecondaryButtonClass, "h-8 rounded-lg px-3 text-xs")}
+                          className="h-8 rounded-md border border-[#d5deea] bg-white px-3 text-xs font-medium text-[#33425f] shadow-none hover:bg-[#f8fbff]"
                           onClick={() => handlePackSlotOpen(slot.documentType)}
                           size="sm"
                           variant="secondary"
@@ -624,31 +627,48 @@ export function AccountantClientWorkspacePage() {
             ))}
             </div>
           </div>
+          </div>
           {activePackDocumentType ? (
-            <div className="space-y-3">
-              <div>
-                <h3 className="text-base font-semibold text-[#091333]">
+            <div className="space-y-4 px-6 pb-6">
+              <div className="border-t border-[#edf2f7] pt-5">
+                <h3 className="text-[1.02rem] font-medium text-[#091333]">
                   Submitted {activePackDocumentType.toLowerCase()} files ({workspace.monthPack.monthLabel})
                 </h3>
-                <p className="mt-1 text-sm font-medium text-[#53617f]">
+                <p className="mt-1 text-sm leading-6 text-[#53617f]">
                   These are the client files currently attached to this pack for the selected month.
                 </p>
               </div>
               {submittedPackDocuments.length > 0 ? (
-                <div className="overflow-hidden rounded-2xl border border-[#dce6ef] bg-white">
+                <div className="overflow-hidden rounded-[1rem] border border-[#dce6ef] bg-white">
+                  <div className="hidden border-b border-[#e6edf4] bg-[#f8fafc] px-5 py-3 text-[0.72rem] font-medium uppercase tracking-[0.08em] text-[#73809a] md:grid md:grid-cols-[minmax(0,1.2fr)_180px_150px_auto] md:gap-4">
+                    <div>File</div>
+                    <div>Type</div>
+                    <div>Status</div>
+                    <div className="text-right">Action</div>
+                  </div>
                   <div className="divide-y divide-[#edf2f7]">
                     {submittedPackDocuments.map((document) => (
-                      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3" key={document.id}>
+                      <div className="grid gap-4 px-5 py-4 md:grid-cols-[minmax(0,1.2fr)_180px_150px_auto] md:items-center" key={document.id}>
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-bold text-[#091333]">{document.fileName}</p>
-                          <p className="mt-1 text-xs font-medium text-[#53617f]">
-                            {document.documentType} / {document.monthLabel}
+                          <p className="truncate text-[0.95rem] font-medium text-[#091333]">{document.fileName}</p>
+                        </div>
+                        <div>
+                          <p className="text-[0.7rem] font-medium uppercase tracking-[0.08em] text-[#73809a] md:hidden">
+                            Type
+                          </p>
+                          <p className="mt-1 text-sm text-[#53617f] md:mt-0">
+                            {document.documentType}
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
+                          <p className="text-[0.7rem] font-medium uppercase tracking-[0.08em] text-[#73809a] md:hidden">
+                            Status
+                          </p>
                           <StatusBadge status={document.status} />
+                        </div>
+                        <div className="flex items-center gap-2 md:justify-end">
                           <Button
-                            className={cn(navySecondaryButtonClass, "h-8 rounded-lg px-3 text-xs")}
+                            className="h-8 rounded-md border border-[#d5deea] bg-white px-3 text-xs font-medium text-[#33425f] shadow-none hover:bg-[#f8fbff]"
                             onClick={() => openDocument(document.id)}
                             size="sm"
                             variant="secondary"
@@ -661,7 +681,7 @@ export function AccountantClientWorkspacePage() {
                   </div>
                 </div>
               ) : (
-                <div className="rounded-xl border border-[#dce6ef] bg-[#f7faff] px-4 py-3 text-sm font-medium text-[#53617f]">
+                <div className="rounded-[1rem] border border-[#dce6ef] bg-[#fafcff] px-5 py-4 text-sm text-[#53617f]">
                   No client files have been submitted for this pack in {workspace.monthPack.monthLabel} yet.
                 </div>
               )}
@@ -674,8 +694,8 @@ export function AccountantClientWorkspacePage() {
         <section className="mx-auto w-full max-w-[1040px] space-y-4">
           <div className={cn(navyPanelClass, "flex flex-wrap items-center justify-between gap-3 px-4 py-3")}>
             <div>
-              <h2 className="text-xl font-semibold text-[#091333]">Documents</h2>
-              <p className="mt-1 text-sm font-medium text-[#53617f]">
+              <h2 className="text-xl font-medium text-[#091333]">Documents</h2>
+              <p className="mt-1 text-sm text-[#53617f]">
                 Open a document to inspect the file, review context, and leave controlled feedback.
               </p>
             </div>
@@ -692,7 +712,7 @@ export function AccountantClientWorkspacePage() {
 
           {acceptedDocuments.length > 0 ? (
             <SurfaceCard className={cn(navyPanelClass, "overflow-hidden p-0")}>
-              <div className="grid grid-cols-[minmax(0,1.25fr)_180px_120px_auto] gap-4 border-b border-[#e6edf4] bg-[#f7faff] px-5 py-3 text-[0.7rem] font-bold uppercase tracking-[0.12em] text-[#73809a]">
+              <div className="grid grid-cols-[minmax(0,1.25fr)_180px_120px_auto] gap-4 border-b border-[#e6edf4] bg-[#f7faff] px-5 py-3 text-[0.7rem] font-medium uppercase tracking-[0.12em] text-[#73809a]">
                 <div>File</div>
                 <div>Type/Month</div>
                 <div>Status</div>
@@ -701,8 +721,8 @@ export function AccountantClientWorkspacePage() {
               <div className="divide-y divide-[#edf2f7]">
                 {acceptedDocuments.map((document) => (
                   <div className="grid grid-cols-[minmax(0,1.25fr)_180px_120px_auto] items-center gap-4 px-5 py-3" key={document.id}>
-                    <p className="truncate text-sm font-bold text-[#091333]">{document.fileName}</p>
-                    <p className="text-sm font-medium text-[#53617f]">{document.documentType} / {document.monthLabel}</p>
+                    <p className="truncate text-sm font-medium text-[#091333]">{document.fileName}</p>
+                    <p className="text-sm text-[#53617f]">{document.documentType} / {document.monthLabel}</p>
                     <StatusBadge status={document.status} />
                     <Button className={cn(navySecondaryButtonClass, "h-8 rounded-lg px-3 text-xs")} onClick={() => openDocument(document.id)} size="sm" variant="secondary">
                       Open
@@ -719,6 +739,7 @@ export function AccountantClientWorkspacePage() {
         description="Review the file and add controlled feedback."
         isOpen={isDocumentModalOpen && !!selectedDocument}
         onClose={() => setIsDocumentModalOpen(false)}
+        panelClassName="max-w-[96vw] xl:max-w-[1420px] p-6 xl:p-7"
         title={selectedDocument?.fileName ?? "Document preview"}
       >
         <div className="space-y-6">
@@ -731,11 +752,11 @@ export function AccountantClientWorkspacePage() {
           {selectedDocument ? (
             <section className="space-y-3 rounded-xl border border-[#dce6ef] bg-[#f7faff] p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-sm font-semibold text-[#091333]">Review actions (workspace only)</p>
+                <p className="text-sm font-medium text-[#091333]">Review actions (workspace only)</p>
                 <StatusBadge status={selectedDocument.status} />
               </div>
               <label className="block space-y-1">
-                <span className="text-xs font-bold uppercase tracking-[0.08em] text-[#73809a]">
+                <span className="text-xs font-medium uppercase tracking-[0.08em] text-[#73809a]">
                   Reason (required for return/reject)
                 </span>
                 <textarea
@@ -808,7 +829,7 @@ export function AccountantClientWorkspacePage() {
       {(activeTab as string) === "invoices_legacy" ? (
         <SurfaceCard className="space-y-4">
           <div>
-            <h2 className="text-xl font-semibold text-slate-950">Invoices</h2>
+            <h2 className="text-xl font-medium text-slate-950">Invoices</h2>
             <p className="mt-1 text-sm text-slate-500">
               Track lifecycle from draft through accountant acceptance or rejection.
             </p>
@@ -818,7 +839,7 @@ export function AccountantClientWorkspacePage() {
               <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4" key={invoice.id}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p className="text-sm font-semibold text-slate-950">{invoice.invoiceNumber}</p>
+                    <p className="text-sm font-medium text-slate-950">{invoice.invoiceNumber}</p>
                     <p className="mt-1 text-sm text-slate-500">{invoice.amountLabel} / {invoice.monthLabel}</p>
                   </div>
                   <StatusBadge status={invoice.status} />
@@ -837,7 +858,7 @@ export function AccountantClientWorkspacePage() {
                 <div className="space-y-4 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <p className="text-sm font-semibold text-slate-950">Compliance overview</p>
+                      <p className="text-sm font-medium text-slate-950">Compliance overview</p>
                       <p className="mt-1 text-sm text-slate-500">
                         Structured readiness by category, version, review state, and expiry status.
                       </p>
@@ -854,19 +875,19 @@ export function AccountantClientWorkspacePage() {
                   <div className="grid gap-3 sm:grid-cols-3">
                     <div className="rounded-[1.15rem] border border-slate-200 bg-white px-4 py-3">
                       <p className="text-xs uppercase tracking-[0.16em] text-slate-400">Expired</p>
-                      <p className="mt-2 text-xl font-semibold text-rose-500">
+                      <p className="mt-2 text-xl font-medium text-rose-500">
                         {workspace.compliance.expiredCount}
                       </p>
                     </div>
                     <div className="rounded-[1.15rem] border border-slate-200 bg-white px-4 py-3">
                       <p className="text-xs uppercase tracking-[0.16em] text-slate-400">Expiring</p>
-                      <p className="mt-2 text-xl font-semibold text-amber-500">
+                      <p className="mt-2 text-xl font-medium text-amber-500">
                         {workspace.compliance.expiringCount}
                       </p>
                     </div>
                     <div className="rounded-[1.15rem] border border-slate-200 bg-white px-4 py-3">
                       <p className="text-xs uppercase tracking-[0.16em] text-slate-400">Missing</p>
-                      <p className="mt-2 text-xl font-semibold text-indigo-500">
+                      <p className="mt-2 text-xl font-medium text-indigo-500">
                         {workspace.compliance.missingCount}
                       </p>
                     </div>
@@ -875,26 +896,26 @@ export function AccountantClientWorkspacePage() {
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5">
-                    <p className="text-sm font-semibold text-slate-950">Readiness summary</p>
+                    <p className="text-sm font-medium text-slate-950">Readiness summary</p>
                     <p className="mt-2 text-sm leading-6 text-slate-600">
                       {workspace.compliance.readinessSummary}
                     </p>
                   </div>
                   <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5">
-                    <p className="text-sm font-semibold text-slate-950">Next best action</p>
+                    <p className="text-sm font-medium text-slate-950">Next best action</p>
                     <p className="mt-2 text-sm leading-6 text-slate-600">
                       {workspace.compliance.nextBestAction}
                     </p>
                   </div>
                   <div className="rounded-[1.5rem] border border-slate-200 bg-white p-5 md:col-span-2">
-                    <p className="text-sm font-semibold text-slate-950">Top priorities</p>
+                    <p className="text-sm font-medium text-slate-950">Top priorities</p>
                     <div className="mt-3 grid gap-3 md:grid-cols-3">
                       {workspace.compliance.topPriorities.slice(0, 3).map((priority) => (
                         <div
                           className="rounded-[1.15rem] border border-slate-200 bg-slate-50 px-4 py-4"
                           key={priority.id}
                         >
-                          <p className="text-sm font-semibold text-slate-950">{priority.label}</p>
+                          <p className="text-sm font-medium text-slate-950">{priority.label}</p>
                           <p className="mt-1 text-sm text-slate-500">{priority.detail}</p>
                         </div>
                       ))}
@@ -925,15 +946,15 @@ export function AccountantClientWorkspacePage() {
             {activeComplianceView === "overview" ? (
               <SurfaceCard className="space-y-4">
                 <div>
-                  <h2 className="text-xl font-semibold text-slate-950">Compliance readiness</h2>
+                  <h2 className="text-xl font-medium text-slate-950">Compliance readiness</h2>
                   <p className="mt-1 text-sm text-slate-500">
                     Use this summary to see why the client is compliant, at risk, overdue, or high risk.
                   </p>
                 </div>
                 <div className="grid gap-4 lg:grid-cols-2">
                   <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
-                    <p className="text-sm font-semibold text-slate-950">Risk status</p>
-                    <p className="mt-2 text-2xl font-semibold text-slate-950">
+                    <p className="text-sm font-medium text-slate-950">Risk status</p>
+                    <p className="mt-2 text-2xl font-medium text-slate-950">
                       {formatStatusLabel(workspace.compliance.riskStatus)}
                     </p>
                     <p className="mt-2 text-sm leading-6 text-slate-600">
@@ -941,7 +962,7 @@ export function AccountantClientWorkspacePage() {
                     </p>
                   </div>
                   <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5">
-                    <p className="text-sm font-semibold text-slate-950">Action queue</p>
+                    <p className="text-sm font-medium text-slate-950">Action queue</p>
                     <p className="mt-2 text-sm leading-6 text-slate-600">
                       {workspace.compliance.nextBestAction}
                     </p>
@@ -970,7 +991,7 @@ export function AccountantClientWorkspacePage() {
               <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
                 <SurfaceCard className="space-y-4">
                   <div>
-                    <h2 className="text-xl font-semibold text-slate-950">Compliance categories</h2>
+                    <h2 className="text-xl font-medium text-slate-950">Compliance categories</h2>
                     <p className="mt-1 text-sm text-slate-500">
                       Category cards summarize the controlled score and document counts for this client.
                     </p>
@@ -990,7 +1011,7 @@ export function AccountantClientWorkspacePage() {
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div>
-                            <p className="text-sm font-semibold">{category.name}</p>
+                            <p className="text-sm font-medium">{category.name}</p>
                             <p
                               className={cn(
                                 "mt-1 text-sm",
@@ -1002,7 +1023,7 @@ export function AccountantClientWorkspacePage() {
                               {category.description}
                             </p>
                           </div>
-                          <p className="text-lg font-semibold">{category.complianceScore}%</p>
+                          <p className="text-lg font-medium">{category.complianceScore}%</p>
                         </div>
                         <div className="mt-4 space-y-2">
                           <ProgressBar value={category.complianceScore} />
@@ -1029,7 +1050,7 @@ export function AccountantClientWorkspacePage() {
                   {selectedComplianceCategory ? (
                     <>
                       <div>
-                        <h2 className="text-xl font-semibold text-slate-950">
+                        <h2 className="text-xl font-medium text-slate-950">
                           {selectedComplianceCategory.name}
                         </h2>
                         <p className="mt-1 text-sm text-slate-500">
@@ -1044,7 +1065,7 @@ export function AccountantClientWorkspacePage() {
                           >
                             <div className="flex flex-wrap items-center justify-between gap-3">
                               <div>
-                                <p className="text-sm font-semibold text-slate-950">{document.name}</p>
+                                <p className="text-sm font-medium text-slate-950">{document.name}</p>
                                 <p className="mt-1 text-sm text-slate-500">{document.description}</p>
                               </div>
                               <StatusBadge status={document.status} />
@@ -1077,7 +1098,7 @@ export function AccountantClientWorkspacePage() {
             {activeComplianceView === "expired" ? (
               <SurfaceCard className="space-y-4">
                 <div>
-                  <h2 className="text-xl font-semibold text-slate-950">Expired documents</h2>
+                  <h2 className="text-xl font-medium text-slate-950">Expired documents</h2>
                   <p className="mt-1 text-sm text-slate-500">
                     Expired documents remain visible until a valid replacement version is reviewed.
                   </p>
@@ -1091,7 +1112,7 @@ export function AccountantClientWorkspacePage() {
                       >
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div>
-                            <p className="text-sm font-semibold text-slate-950">{document.name}</p>
+                            <p className="text-sm font-medium text-slate-950">{document.name}</p>
                             <p className="mt-1 text-sm text-slate-500">
                               Expired {document.expiryDate ? formatDateLabel(document.expiryDate) : "recently"}
                             </p>
@@ -1141,7 +1162,7 @@ export function AccountantClientWorkspacePage() {
             {activeComplianceView === "expiring" ? (
               <SurfaceCard className="space-y-4">
                 <div>
-                  <h2 className="text-xl font-semibold text-slate-950">Expiring soon</h2>
+                  <h2 className="text-xl font-medium text-slate-950">Expiring soon</h2>
                   <p className="mt-1 text-sm text-slate-500">
                     These documents are inside their 30-day reminder window.
                   </p>
@@ -1155,7 +1176,7 @@ export function AccountantClientWorkspacePage() {
                       >
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div>
-                            <p className="text-sm font-semibold text-slate-950">{document.name}</p>
+                            <p className="text-sm font-medium text-slate-950">{document.name}</p>
                             <p className="mt-1 text-sm text-slate-500">
                               Expires {document.expiryDate ? formatDateLabel(document.expiryDate) : "soon"}
                             </p>
@@ -1209,7 +1230,7 @@ export function AccountantClientWorkspacePage() {
             {activeComplianceView === "missing" ? (
               <SurfaceCard className="space-y-4">
                 <div>
-                  <h2 className="text-xl font-semibold text-slate-950">Missing required</h2>
+                  <h2 className="text-xl font-medium text-slate-950">Missing required</h2>
                   <p className="mt-1 text-sm text-slate-500">
                     Required items with no current uploaded version.
                   </p>
@@ -1223,7 +1244,7 @@ export function AccountantClientWorkspacePage() {
                       >
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div>
-                            <p className="text-sm font-semibold text-slate-950">{document.name}</p>
+                            <p className="text-sm font-medium text-slate-950">{document.name}</p>
                             <p className="mt-1 text-sm text-slate-500">{document.description}</p>
                           </div>
                           <StatusBadge status={document.status} />
@@ -1252,7 +1273,7 @@ export function AccountantClientWorkspacePage() {
             {activeComplianceView === "audit" ? (
               <SurfaceCard className="space-y-4">
                 <div>
-                  <h2 className="text-xl font-semibold text-slate-950">Compliance audit trail</h2>
+                  <h2 className="text-xl font-medium text-slate-950">Compliance audit trail</h2>
                   <p className="mt-1 text-sm text-slate-500">
                     Upload, review, expiry, renewal, rejection, and request events stay visible here.
                   </p>
@@ -1291,7 +1312,7 @@ export function AccountantClientWorkspacePage() {
             <SurfaceCard className="space-y-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <h2 className="text-xl font-semibold text-slate-950">Selected request</h2>
+                  <h2 className="text-xl font-medium text-slate-950">Selected request</h2>
                   <p className="mt-1 text-sm text-slate-500">
                     Review who asked for what, then reply in-thread or close the task once it is handled.
                   </p>
@@ -1306,13 +1327,13 @@ export function AccountantClientWorkspacePage() {
                 <div className="grid gap-4 rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4 md:grid-cols-2">
                   <div>
                     <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Request title</p>
-                    <p className="mt-2 text-sm font-semibold text-slate-950">{selectedRequest.title}</p>
+                    <p className="mt-2 text-sm font-medium text-slate-950">{selectedRequest.title}</p>
                     <p className="mt-1 text-sm text-slate-500">{selectedRequest.description}</p>
                   </div>
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div className="rounded-[1rem] border border-slate-200 bg-white px-3 py-3 text-sm text-slate-600">
                       <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Requested by</p>
-                      <p className="mt-2 font-semibold text-slate-950">
+                      <p className="mt-2 font-medium text-slate-950">
                         {selectedRequest.requestedBy}
                       </p>
                       <p className="mt-1 text-xs text-slate-500">
@@ -1321,7 +1342,7 @@ export function AccountantClientWorkspacePage() {
                     </div>
                     <div className="rounded-[1rem] border border-slate-200 bg-white px-3 py-3 text-sm text-slate-600">
                       <p className="text-xs uppercase tracking-[0.14em] text-slate-400">Assigned to</p>
-                      <p className="mt-2 font-semibold text-slate-950">{selectedRequest.assignedTo}</p>
+                      <p className="mt-2 font-medium text-slate-950">{selectedRequest.assignedTo}</p>
                       <p className="mt-1 text-xs text-slate-500">
                         Due {formatDateLabel(selectedRequest.dueDate)}
                       </p>
@@ -1337,7 +1358,7 @@ export function AccountantClientWorkspacePage() {
             </SurfaceCard>
             <SurfaceCard className="space-y-4">
               <div>
-                <h2 className="text-xl font-semibold text-slate-950">Request comments</h2>
+                <h2 className="text-xl font-medium text-slate-950">Request comments</h2>
                 <p className="mt-1 text-sm text-slate-500">
                   Use the request thread when the issue is task-based rather than document-based.
                 </p>
@@ -1358,7 +1379,7 @@ export function AccountantClientWorkspacePage() {
       {(activeTab as string) === "messages_legacy" ? (
         <SurfaceCard className="space-y-4">
           <div>
-            <h2 className="text-xl font-semibold text-slate-950">Controlled messages</h2>
+            <h2 className="text-xl font-medium text-slate-950">Controlled messages</h2>
             <p className="mt-1 text-sm text-slate-500">
               Message history lives inside the selected document and request tabs, not in a free-form chat stream.
             </p>
@@ -1374,7 +1395,7 @@ export function AccountantClientWorkspacePage() {
       {(activeTab as string) === "audit_legacy" ? (
         <SurfaceCard className="space-y-4">
           <div>
-            <h2 className="text-xl font-semibold text-slate-950">Audit trail</h2>
+            <h2 className="text-xl font-medium text-slate-950">Audit trail</h2>
             <p className="mt-1 text-sm text-slate-500">
               This combines document and request workflow events for the selected client.
             </p>

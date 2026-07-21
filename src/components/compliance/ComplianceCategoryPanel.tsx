@@ -17,7 +17,7 @@ export function ComplianceCategoryPanel({ group }: ComplianceCategoryPanelProps)
   return (
     <SurfaceCard className="space-y-5">
       <div>
-        <h2 className="text-xl font-semibold text-slate-950">{group.title}</h2>
+        <h2 className="text-xl font-medium text-slate-950">{group.title}</h2>
         <p className="mt-1 text-sm text-slate-500">{group.description}</p>
       </div>
 
@@ -26,7 +26,7 @@ export function ComplianceCategoryPanel({ group }: ComplianceCategoryPanelProps)
           <div className="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4" key={document.id}>
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-slate-950">{document.name}</p>
+                <p className="text-sm font-medium text-slate-950">{document.name}</p>
                 <p className="mt-1 text-sm text-slate-500">
                   Owner: {document.owner} / {document.storageLabel}
                 </p>

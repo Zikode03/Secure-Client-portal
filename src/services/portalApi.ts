@@ -3,20 +3,10 @@ import { portalService } from "./portalData";
 import { getAccountantComplianceCentreData, getClientComplianceCentreData } from "./complianceData";
 import type {
   DocumentComment,
-  FirmClientAccount,
   Role,
   UserAccountRecord,
   WorkflowRequest,
 } from "../types/portal";
-
-interface BackendClientRecord {
-  id: string;
-  name: string;
-  entityType: string;
-  status: string;
-  complianceHealth: number;
-  assignedAccountantId: string;
-}
 
 interface BackendRequestRecord {
   id: string;
@@ -68,16 +58,6 @@ function toUserAccountStatus(status?: string): UserAccountRecord["status"] {
   return "active";
 }
 
-function toPortfolioStatus(status: string): FirmClientAccount["status"] {
-  if (status === "overdue" || status === "at_risk") {
-    return "overdue";
-  }
-  if (status === "attention" || status === "pending") {
-    return "attention";
-  }
-  return "on_track";
-}
-
 async function getOrFallback<T>(path: string, fallback: () => T): Promise<T> {
   if (!hasApiBaseUrl()) {
     return fallback();
@@ -106,6 +86,7 @@ const backendFallbackOnlyMatchers: Array<(path: string) => boolean> = [
   (path) => path === "/api/accountant/review-workspace",
   (path) => path === "/api/admin/dashboard",
   (path) => path === "/api/admin/policies",
+  (path) => path === "/api/clients",
 ];
 
 function shouldSkipBackendRoute(path: string) {
@@ -148,29 +129,7 @@ export const portalServiceApi = {
     return getOrFallback("/api/admin/dashboard", () => portalService.getAdminDashboard());
   },
   getAdminClients() {
-    if (!hasApiBaseUrl()) {
-      return portalService.getAdminClients();
-    }
-
-    return apiGetJson<BackendClientRecord[]>("/api/clients")
-      .then((clients) =>
-        clients.map((client) => ({
-          id: client.id,
-          clientName: client.name,
-          industry: client.entityType || "General",
-          assignedAccountant:
-            portalService
-              .getAdminClients()
-              .find((item) => item.assignedAccountantUserId === client.assignedAccountantId)
-              ?.assignedAccountant ?? "Unassigned",
-          assignedAccountantUserId: client.assignedAccountantId,
-          requiredPack: "Standard monthly pack",
-          completionRate: Math.max(0, Math.min(100, client.complianceHealth ?? 0)),
-          deadlinePolicy: "6th working day",
-          status: toPortfolioStatus(client.status),
-        })),
-      )
-      .catch(() => portalService.getAdminClients());
+    return getOrFallback("/api/clients", () => portalService.getAdminClients());
   },
   async updateClientAssignment(
     clientId: string,

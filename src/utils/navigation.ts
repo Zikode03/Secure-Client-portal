@@ -7,7 +7,6 @@ export type NavigationSection =
   | "Main"
   | "Documents"
   | "Compliance"
-  | "Operations"
   | "Management"
   | "Configuration";
 
@@ -137,20 +136,6 @@ export const navigationByRole: Record<Role, NavigationItem[]> = {
       section: "Compliance",
       icon: "deadlines",
     },
-    {
-      label: "Exceptions Queue",
-      to: "/firm/exceptions",
-      description: "Operational inbox for overdue requests and compliance exceptions",
-      section: "Operations",
-      icon: "exceptions",
-    },
-    {
-      label: "Activity Feed",
-      to: "/firm/activity",
-      description: "Unified timeline across requests, reviews, and compliance",
-      section: "Operations",
-      icon: "notifications",
-    },
   ],
   admin: [
     {
@@ -203,24 +188,10 @@ export const navigationByRole: Record<Role, NavigationItem[]> = {
       icon: "deadlines",
     },
     {
-      label: "Exceptions Queue",
-      to: "/firm/exceptions",
-      description: "Operational inbox for overdue requests and compliance exceptions",
-      section: "Operations",
-      icon: "exceptions",
-    },
-    {
-      label: "Activity Feed",
-      to: "/firm/activity",
-      description: "Unified timeline across requests, reviews, and compliance",
-      section: "Operations",
-      icon: "notifications",
-    },
-    {
       label: "Assignments",
       to: "/firm/admin/assignments",
       description: "Assign accountants to clients",
-      section: "Operations",
+      section: "Management",
       icon: "assignments",
     },
     {

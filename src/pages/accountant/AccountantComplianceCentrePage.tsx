@@ -377,7 +377,7 @@ export function AccountantComplianceCentrePage() {
       <div className="space-y-7">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-[2.15rem] font-bold tracking-tight text-[#061848]">
+            <h1 className="text-[2.15rem] font-medium text-[#061848]">
               Compliance Workspace
             </h1>
             <p className="mt-2 text-[1rem] font-medium text-[#53617f]">
@@ -386,7 +386,7 @@ export function AccountantComplianceCentrePage() {
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <button
-              className="inline-flex h-12 items-center gap-3 rounded-xl border border-[#d8e2ee] bg-white px-4 text-sm font-bold text-[#061848] shadow-[0_10px_28px_rgba(4,24,52,0.04)] transition hover:bg-[#f7fbff]"
+              className="inline-flex h-12 items-center gap-3 rounded-xl border border-[#d8e2ee] bg-white px-4 text-sm font-medium text-[#061848] shadow-[0_10px_28px_rgba(4,24,52,0.04)] transition hover:bg-[#f7fbff]"
               onClick={() => navigate("/firm/compliance/calendar")}
               type="button"
             >
@@ -469,9 +469,9 @@ export function AccountantComplianceCentrePage() {
                   )}
                 </div>
                 <div>
-                  <p className="text-[0.86rem] font-bold text-[#061848]">{metric.label}</p>
-                  <p className="mt-1 text-[2rem] font-bold leading-none text-[#061848]">{metric.value}</p>
-                  <p className={`mt-2 text-[0.78rem] font-semibold ${metric.tone === "rose" ? "text-rose-600" : metric.tone === "amber" ? "text-amber-600" : "text-emerald-600"}`}>
+                  <p className="text-[0.86rem] font-medium text-[#061848]">{metric.label}</p>
+                  <p className="mt-1 text-[2rem] font-medium leading-none text-[#061848]">{metric.value}</p>
+                  <p className={`mt-2 text-[0.78rem] font-medium ${metric.tone === "rose" ? "text-rose-600" : metric.tone === "amber" ? "text-amber-600" : "text-emerald-600"}`}>
                     {metric.tone === "amber" ? "- " : "↑ "}{metric.helper}
                   </p>
                 </div>
@@ -480,77 +480,10 @@ export function AccountantComplianceCentrePage() {
           ))}
         </div>
 
-        <SurfaceCard className="rounded-2xl border border-[#dce6ef] bg-white p-4 shadow-[0_18px_38px_rgba(4,24,52,0.06)]">
-          <div className="flex flex-wrap items-center gap-3">
-            <TextField
-              className="min-w-[260px] flex-1"
-              label=""
-              onChange={(event) => {
-                setSearchQuery(event.target.value);
-                setCurrentPage(1);
-              }}
-              placeholder="Search client"
-              value={searchQuery}
-            />
-            <SelectField
-              className="w-[170px]"
-              label=""
-              onChange={(event) => {
-                setRiskFilter(event.target.value as RiskFilter);
-                setCurrentPage(1);
-              }}
-              options={[
-                { label: "Risk filter", value: "all" },
-                { label: "Low", value: "low" },
-                { label: "Medium", value: "medium" },
-                { label: "High", value: "high" },
-              ]}
-              value={riskFilter}
-            />
-            <SelectField
-              className="w-[190px]"
-              label=""
-              onChange={(event) => {
-                setCategoryFilter(event.target.value);
-                setCurrentPage(1);
-              }}
-              options={[
-                { label: "Category filter", value: "all" },
-                ...[...new Set(supplierRows.map((item) => item.category))].map((category) => ({
-                  label: category,
-                  value: category,
-                })),
-              ]}
-              value={categoryFilter}
-            />
-            <Button
-              className="ml-auto h-11 rounded-xl border-[#d8e2ee] px-4 text-[#061848]"
-              onClick={() => {
-                setSearchQuery("");
-                setRiskFilter("all");
-                setStatusFilter("all");
-                setCategoryFilter("all");
-                setDueAttentionOnly(false);
-                setCurrentPage(1);
-              }}
-              variant="secondary"
-            >
-              Clear filters
-            </Button>
-            <Button
-              className="h-11 rounded-xl bg-[#061848] px-5 text-white hover:bg-[#0b255f]"
-              disabled={!canExportReports}
-              onClick={downloadComplianceCsv}
-            >
-              Export CSV
-            </Button>
-          </div>
-        </SurfaceCard>
-
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)]">
           <SurfaceCard className="rounded-2xl border border-[#dce6ef] bg-white p-5 shadow-[0_18px_38px_rgba(4,24,52,0.06)]">
             <div className="mb-4 flex items-center justify-between gap-3">
-              <h2 className="text-lg font-bold text-[#061848]">Compliance Status Overview</h2>
+              <h2 className="text-lg font-medium text-[#061848]">Compliance Status Overview</h2>
               <SelectField
                 className="w-[150px]"
                 label=""
@@ -573,8 +506,8 @@ export function AccountantComplianceCentrePage() {
                 }}
               >
                 <div className="absolute inset-7 grid place-items-center rounded-full bg-white text-center">
-                  <p className="text-3xl font-bold text-[#061848]">{totalStatusCount}</p>
-                  <p className="text-xs font-semibold text-[#53617f]">Total Items</p>
+                  <p className="text-3xl font-medium text-[#061848]">{totalStatusCount}</p>
+                  <p className="text-xs font-medium text-[#53617f]">Total Items</p>
                 </div>
               </div>
               <div className="overflow-hidden rounded-xl border border-[#dce6ef]">
@@ -584,18 +517,18 @@ export function AccountantComplianceCentrePage() {
                   { label: "Compliant", value: compliantCount, percent: compliantPercent, color: "bg-emerald-500" },
                 ].map((row) => (
                   <div className="flex items-center justify-between border-b border-[#edf2f7] px-5 py-4 last:border-b-0" key={row.label}>
-                    <span className="inline-flex items-center gap-3 text-sm font-semibold text-[#061848]">
+                    <span className="inline-flex items-center gap-3 text-sm font-medium text-[#061848]">
                       <span className={`h-3 w-3 rounded-full ${row.color}`} />
                       {row.label}
                     </span>
-                    <span className="text-sm font-semibold text-[#53617f]">{row.value} ({row.percent}%)</span>
+                    <span className="text-sm font-medium text-[#53617f]">{row.value} ({row.percent}%)</span>
                   </div>
                 ))}
               </div>
             </div>
             <div className="mt-5 flex items-center justify-between border-t border-[#edf2f7] pt-4 text-sm">
               <p className="font-medium text-[#53617f]">Keep your compliance up to date to avoid penalties and disruptions.</p>
-              <button className="inline-flex items-center gap-2 font-bold text-brand-700" onClick={focusComplianceItems} type="button">
+              <button className="inline-flex items-center gap-2 font-medium text-brand-700" onClick={focusComplianceItems} type="button">
                 <span>View full report</span>
                 <span>→</span>
               </button>
@@ -604,8 +537,8 @@ export function AccountantComplianceCentrePage() {
 
           <SurfaceCard className="rounded-2xl border border-[#dce6ef] bg-white p-5 shadow-[0_18px_38px_rgba(4,24,52,0.06)]">
             <div className="mb-4 flex items-center justify-between gap-3">
-              <h2 className="text-lg font-bold text-[#061848]">Upcoming Expiry</h2>
-              <button className="text-sm font-bold text-brand-700" onClick={focusExpiringAndOverdueItems} type="button">
+              <h2 className="text-lg font-medium text-[#061848]">Upcoming Expiry</h2>
+              <button className="text-sm font-medium text-brand-700" onClick={focusExpiringAndOverdueItems} type="button">
                 View all
               </button>
             </div>
@@ -615,15 +548,15 @@ export function AccountantComplianceCentrePage() {
                 const dueStatus = dueStatusLabel(item.contractExpiry);
                 return (
                   <div className="flex items-center gap-4 rounded-xl border border-[#dce6ef] px-4 py-3" key={item.id}>
-                    <div className={dueStatus === "Overdue" ? "inline-flex h-10 w-10 items-center justify-center rounded-full bg-rose-50 text-lg font-bold text-rose-600" : "inline-flex h-10 w-10 items-center justify-center rounded-full bg-amber-50 text-lg font-bold text-amber-600"}>
+                    <div className={dueStatus === "Overdue" ? "inline-flex h-10 w-10 items-center justify-center rounded-full bg-rose-50 text-lg font-medium text-rose-600" : "inline-flex h-10 w-10 items-center justify-center rounded-full bg-amber-50 text-lg font-medium text-amber-600"}>
                       !
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-bold text-[#061848]">{item.category}</p>
+                      <p className="truncate text-sm font-medium text-[#061848]">{item.category}</p>
                       <p className="truncate text-xs font-medium text-[#53617f]">{item.name}</p>
                     </div>
                     <div className="text-right">
-                      <p className={dueStatus === "Overdue" ? "text-lg font-bold text-rose-600" : "text-lg font-bold text-orange-500"}>
+                      <p className={dueStatus === "Overdue" ? "text-lg font-medium text-rose-600" : "text-lg font-medium text-orange-500"}>
                         {Math.abs(days)} days
                       </p>
                       <p className="text-[0.68rem] font-medium text-[#53617f]">Expires on {formatDateLabel(item.contractExpiry)}</p>
@@ -642,7 +575,7 @@ export function AccountantComplianceCentrePage() {
             <div className="mx-6 mt-6 flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
               <span>Showing expiring and overdue items only.</span>
               <button
-                className="font-semibold text-amber-800 underline"
+                className="font-medium text-amber-800 underline"
                 onClick={focusComplianceItems}
                 type="button"
               >
@@ -655,8 +588,8 @@ export function AccountantComplianceCentrePage() {
               <button
                 className={
                   activeView === "list"
-                    ? "rounded-lg bg-[#061848] px-4 py-3 text-sm font-semibold text-white shadow-sm"
-                    : "rounded-lg px-4 py-3 text-sm font-semibold text-[#53617f]"
+                    ? "rounded-lg bg-[#061848] px-4 py-3 text-sm font-medium text-white shadow-sm"
+                    : "rounded-lg px-4 py-3 text-sm font-medium text-[#53617f]"
                 }
                 onClick={() => setActiveView("list")}
                 type="button"
@@ -666,8 +599,8 @@ export function AccountantComplianceCentrePage() {
               <button
                 className={
                   activeView === "board"
-                    ? "rounded-lg bg-[#061848] px-4 py-3 text-sm font-semibold text-white shadow-sm"
-                    : "rounded-lg px-4 py-3 text-sm font-semibold text-[#53617f]"
+                    ? "rounded-lg bg-[#061848] px-4 py-3 text-sm font-medium text-white shadow-sm"
+                    : "rounded-lg px-4 py-3 text-sm font-medium text-[#53617f]"
                 }
                 onClick={() => setActiveView("board")}
                 type="button"
@@ -684,6 +617,21 @@ export function AccountantComplianceCentrePage() {
               }}
               placeholder="Search compliance items..."
               value={searchQuery}
+            />
+            <SelectField
+              className="w-[170px]"
+              label=""
+              onChange={(event) => {
+                setRiskFilter(event.target.value as RiskFilter);
+                setCurrentPage(1);
+              }}
+              options={[
+                { label: "All Risk", value: "all" },
+                { label: "Low", value: "low" },
+                { label: "Medium", value: "medium" },
+                { label: "High", value: "high" },
+              ]}
+              value={riskFilter}
             />
             <SelectField
               className="w-[180px]"
@@ -729,6 +677,35 @@ export function AccountantComplianceCentrePage() {
               ]}
               value={statusFilter}
             />
+            <button
+              className={
+                dueAttentionOnly
+                  ? "inline-flex h-12 items-center rounded-xl bg-[#061848] px-4 text-sm font-medium text-white shadow-sm"
+                  : "inline-flex h-12 items-center rounded-xl border border-[#d8e2ee] bg-white px-4 text-sm font-medium text-[#53617f] transition hover:bg-[#f7fbff]"
+              }
+              onClick={() => {
+                setDueAttentionOnly((current) => !current);
+                setCurrentPage(1);
+              }}
+              type="button"
+            >
+              Attention only
+            </button>
+            <Button
+              className="h-12 rounded-xl border-[#d8e2ee] px-4 text-[#061848]"
+              onClick={() => {
+                setSearchQuery("");
+                setSelectedClientId("");
+                setRiskFilter("all");
+                setStatusFilter("all");
+                setCategoryFilter("all");
+                setDueAttentionOnly(false);
+                setCurrentPage(1);
+              }}
+              variant="secondary"
+            >
+              Clear
+            </Button>
             <Button
               className="h-12 rounded-xl border-[#d8e2ee] px-5 text-[#061848]"
               disabled={!canExportReports}
@@ -743,14 +720,14 @@ export function AccountantComplianceCentrePage() {
           <div className="overflow-x-auto px-6">
             <table className="min-w-full text-left">
               <thead>
-                <tr className="border-b border-[#dce6ef] text-[0.76rem] font-semibold text-[#53617f]">
-                  <th className="px-2 py-4 font-semibold">Item Name</th>
-                  <th className="px-2 py-4 font-semibold">Client</th>
-                  <th className="px-2 py-4 font-semibold">Category</th>
-                  <th className="px-2 py-4 font-semibold">Expiry Date</th>
-                  <th className="px-2 py-4 font-semibold">Status</th>
-                  <th className="px-2 py-4 font-semibold">Owner</th>
-                  <th className="px-2 py-4 font-semibold">Actions</th>
+                <tr className="border-b border-[#dce6ef] text-[0.76rem] font-medium text-[#53617f]">
+                  <th className="px-2 py-4 font-medium">Item Name</th>
+                  <th className="px-2 py-4 font-medium">Client</th>
+                  <th className="px-2 py-4 font-medium">Category</th>
+                  <th className="px-2 py-4 font-medium">Expiry Date</th>
+                  <th className="px-2 py-4 font-medium">Status</th>
+                  <th className="px-2 py-4 font-medium">Owner</th>
+                  <th className="px-2 py-4 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -758,13 +735,13 @@ export function AccountantComplianceCentrePage() {
                   const dueStatus = dueStatusLabel(row.contractExpiry);
                   return (
                     <tr className="border-b border-[#edf2f7]" key={row.id}>
-                      <td className="px-2 py-5 text-sm font-bold text-[#061848]">
+                      <td className="px-2 py-5 text-sm font-medium text-[#061848]">
                         <span className="mr-3 inline-block h-3 w-3 rounded-full bg-rose-500 align-middle" />
                         {row.category}
                       </td>
                       <td className="px-2 py-5 text-sm text-[#061848]">
                         <button
-                          className="text-left text-sm font-semibold text-[#061848] hover:text-brand-700"
+                          className="text-left text-sm font-medium text-[#061848] hover:text-brand-700"
                           onClick={() => setSelectedClientId(row.id)}
                           type="button"
                         >
@@ -772,15 +749,15 @@ export function AccountantComplianceCentrePage() {
                         </button>
                       </td>
                       <td className="px-2 py-5 text-sm font-medium text-[#53617f]">{row.category}</td>
-                      <td className="px-2 py-5 text-sm font-semibold text-[#061848]">{formatDateLabel(row.contractExpiry)}</td>
+                      <td className="px-2 py-5 text-sm font-medium text-[#061848]">{formatDateLabel(row.contractExpiry)}</td>
                       <td className="px-2 py-5">
-                        <span className={`inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-bold ring-1 ring-inset ${dueStatusClasses(dueStatus)}`}>
+                        <span className={`inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium ring-1 ring-inset ${dueStatusClasses(dueStatus)}`}>
                           <span className={dueStatus === "Overdue" ? "h-1.5 w-1.5 rounded-full bg-rose-500" : dueStatus === "Expiring Soon" ? "h-1.5 w-1.5 rounded-full bg-amber-500" : "h-1.5 w-1.5 rounded-full bg-emerald-500"} />
                           {dueStatus}
                         </span>
                       </td>
                       <td className="px-2 py-5 text-sm text-[#061848]">
-                        <span className="mr-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-brand-100 text-xs font-bold text-brand-700">
+                        <span className="mr-3 inline-flex h-9 w-9 items-center justify-center rounded-full bg-brand-100 text-xs font-medium text-brand-700">
                           {initialsForName(user?.fullName)}
                         </span>
                         <span className="font-medium">{user?.fullName ?? "Assigned accountant"}</span>
@@ -788,7 +765,7 @@ export function AccountantComplianceCentrePage() {
                       <td className="relative px-2 py-5">
                         <div className="flex items-center gap-2">
                           <Button
-                            className="h-10 rounded-xl border-[#d8e2ee] px-6 font-bold text-[#061848]"
+                            className="h-10 rounded-xl border-[#d8e2ee] px-6 font-medium text-[#061848]"
                             onClick={() => openSelectedClientWorkspace(row.id)}
                             variant="secondary"
                           >
@@ -796,7 +773,7 @@ export function AccountantComplianceCentrePage() {
                           </Button>
                           <button
                             aria-label="Open client actions"
-                            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[#d8e2ee] bg-white text-sm font-bold text-[#061848] transition hover:bg-[#f7fbff]"
+                            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[#d8e2ee] bg-white text-sm font-medium text-[#061848] transition hover:bg-[#f7fbff]"
                             onClick={() =>
                               setOpenClientActionsId((current) => (current === row.id ? "" : row.id))
                             }
@@ -872,7 +849,7 @@ export function AccountantComplianceCentrePage() {
                       }
                     }}
                   >
-                    <h3 className="mb-3 text-sm font-bold text-[#061848]">{statusColumn}</h3>
+                    <h3 className="mb-3 text-sm font-medium text-[#061848]">{statusColumn}</h3>
                     <div className="space-y-2">
                       {filteredSuppliers
                         .filter((row) => statusForRow(row) === statusColumn)
@@ -883,7 +860,7 @@ export function AccountantComplianceCentrePage() {
                             key={row.id}
                             onDragStart={(event) => event.dataTransfer.setData("text/plain", row.id)}
                           >
-                            <p className="text-sm font-bold text-[#061848]">{row.category}</p>
+                            <p className="text-sm font-medium text-[#061848]">{row.category}</p>
                             <p className="text-xs text-[#53617f]">{row.name}</p>
                             <p className="mt-1 text-xs text-[#73809a]">
                               Due {formatDateLabel(row.contractExpiry)}
@@ -942,7 +919,7 @@ export function AccountantComplianceCentrePage() {
 
           {activeView === "board" ? (
             <div className="mx-6 mb-6 rounded-xl border border-[#d8e2ee] bg-[#f7fbff] p-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-500">
+              <p className="text-xs font-medium uppercase tracking-[0.08em] text-slate-500">
                 Board Activity
               </p>
               <div className="mt-2 space-y-1 text-xs text-slate-600">
@@ -963,12 +940,12 @@ export function AccountantComplianceCentrePage() {
           <SurfaceCard className="overflow-hidden rounded-2xl border border-[#dce6ef] bg-white p-0 shadow-[0_18px_42px_rgba(4,24,52,0.06)]">
             <div className="relative overflow-hidden bg-[linear-gradient(135deg,#061848_0%,#082a62_100%)] px-7 py-7 text-white">
               <div className="pointer-events-none absolute inset-y-0 right-0 w-1/2 opacity-20 [background:repeating-radial-gradient(circle_at_center,transparent_0,transparent_10px,#5bb4ff_11px,#5bb4ff_12px)]" />
-              <p className="relative text-xs font-semibold uppercase tracking-[0.22em] text-white/70">
+              <p className="relative text-xs font-medium uppercase tracking-[0.22em] text-white/70">
                 Selected Client
               </p>
               <div className="relative mt-3 flex flex-wrap items-start justify-between gap-3">
                 <div className="space-y-1">
-                  <p className="text-2xl font-bold text-white">{selectedClient.name}</p>
+                  <p className="text-2xl font-medium text-white">{selectedClient.name}</p>
                   <p className="text-sm font-medium text-white/80">
                     Assigned to {user?.fullName ?? "Nayan Dhali"}
                   </p>
@@ -982,44 +959,44 @@ export function AccountantComplianceCentrePage() {
                 </Button>
               </div>
             </div>
-            <div className="grid gap-5 p-6 lg:grid-cols-[repeat(3,minmax(0,1fr))_220px]">
+            <div className="grid gap-5 p-6 md:grid-cols-2 xl:grid-cols-4">
                 <div className="rounded-xl border border-[#d8e2ee] bg-white p-5">
-                  <p className="text-xs font-semibold text-[#53617f]">Top risks</p>
-                  <p className="mt-2 text-base font-bold text-[#061848]">
+                  <p className="text-xs font-medium text-[#53617f]">Top risks</p>
+                  <p className="mt-2 text-base font-medium text-[#061848]">
                     {selectedClient.riskLevel.toUpperCase()} risk exposure
                   </p>
-                  <p className="mt-6 text-xs font-semibold text-[#53617f]">Risk score <span className="ml-4 rounded-full bg-emerald-50 px-5 py-2 text-emerald-700">{selectedClient.riskLevel}</span></p>
+                  <p className="mt-6 text-xs font-medium text-[#53617f]">Risk score <span className="ml-4 rounded-full bg-emerald-50 px-5 py-2 text-emerald-700">{selectedClient.riskLevel}</span></p>
                 </div>
                 <div className="rounded-xl border border-[#d8e2ee] bg-white p-5">
-                  <p className="text-xs font-semibold text-[#53617f]">Next action</p>
-                  <p className="mt-2 text-base font-bold text-[#061848]">
+                  <p className="text-xs font-medium text-[#53617f]">Next action</p>
+                  <p className="mt-2 text-base font-medium text-[#061848]">
                     Review {selectedClient.category} pack
                   </p>
-                  <p className="mt-6 text-xs font-semibold text-[#53617f]">Action required <span className="ml-4 rounded-full bg-violet-50 px-5 py-2 text-violet-700">Review</span></p>
+                  <p className="mt-6 text-xs font-medium text-[#53617f]">Action required <span className="ml-4 rounded-full bg-violet-50 px-5 py-2 text-violet-700">Review</span></p>
                 </div>
                 <div className="rounded-xl border border-[#d8e2ee] bg-white p-5">
-                  <p className="text-xs font-semibold text-[#53617f]">Due date</p>
-                  <p className="mt-2 text-base font-bold text-[#061848]">
+                  <p className="text-xs font-medium text-[#53617f]">Due date</p>
+                  <p className="mt-2 text-base font-medium text-[#061848]">
                     {formatDateLabel(selectedClient.contractExpiry)}
                   </p>
-                  <p className="mt-6 text-xs font-semibold text-rose-600">
+                  <p className="mt-6 text-xs font-medium text-rose-600">
                     <span className="mr-2 inline-block h-2 w-2 rounded-full bg-rose-500" />
                     {dueStatusLabel(selectedClient.contractExpiry)}
                   </p>
                 </div>
                 <div className="rounded-xl bg-white p-5">
-                  <p className="text-xs font-semibold text-[#53617f]">Compliance progress</p>
+                  <p className="text-xs font-medium text-[#53617f]">Compliance progress</p>
                   <div className="mt-4 grid place-items-center">
                     <div
                       className="grid h-28 w-28 place-items-center rounded-full"
                       style={{ background: `conic-gradient(#10b981 0% ${Math.max(0, 100 - selectedClient.riskScore)}%, #e7edf4 ${Math.max(0, 100 - selectedClient.riskScore)}% 100%)` }}
                     >
                       <div className="grid h-20 w-20 place-items-center rounded-full bg-white">
-                        <span className="text-xl font-bold text-[#061848]">{Math.max(0, 100 - selectedClient.riskScore)}%</span>
+                        <span className="text-xl font-medium text-[#061848]">{Math.max(0, 100 - selectedClient.riskScore)}%</span>
                       </div>
                     </div>
                   </div>
-                  <p className="mt-3 text-center text-xs font-semibold text-[#53617f]">{Math.round((Math.max(0, 100 - selectedClient.riskScore) / 100) * 10)} of 10 items completed</p>
+                  <p className="mt-3 text-center text-xs font-medium text-[#53617f]">{Math.round((Math.max(0, 100 - selectedClient.riskScore) / 100) * 10)} of 10 items completed</p>
                 </div>
             </div>
           </SurfaceCard>

@@ -11,10 +11,11 @@ interface ModalProps {
   description?: string;
   children: ReactNode;
   onClose: () => void;
+  panelClassName?: string;
 }
 
 // Component flow: gather data first, then render a focused UI state.
-export function Modal({ children, description, isOpen, onClose, title }: ModalProps) {
+export function Modal({ children, description, isOpen, onClose, panelClassName, title }: ModalProps) {
   if (!isOpen) {
     return null;
   }
@@ -30,6 +31,7 @@ export function Modal({ children, description, isOpen, onClose, title }: ModalPr
       <div
         className={cn(
           "relative z-10 max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[2rem] border border-white/40 bg-white p-6 shadow-2xl shadow-slate-900/20",
+          panelClassName,
         )}
         role="dialog"
         aria-modal="true"

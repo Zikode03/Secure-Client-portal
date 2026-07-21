@@ -1,6 +1,21 @@
-import { useEffect, useMemo, useState } from "react";
-import { Clock, FolderOpen, Mail, MessageSquare, PlusCircle, Search, ShieldAlert, SlidersHorizontal } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  CalendarDays,
+  CheckCircle2,
+  ChevronDown,
+  ChevronUp,
+  Flag,
+  Forward,
+  Paperclip,
+  RefreshCw,
+  Reply,
+  Search,
+  Send,
+  ShieldAlert,
+  Star,
+  UserRound,
+} from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
 import { Button } from "../../components/ui/Button";
@@ -13,16 +28,51 @@ import { formatDateLabel } from "../../utils/formatters";
 import { getScopedClients, getScopedRequests } from "../../utils/permissions";
 
 type ThreadFilter = "all" | "unread" | "resolved" | "unresolved";
-type ThreadSort = "needs_action" | "newest" | "oldest";
+const ATTACHMENT_PREFIX = "[[attachment:";
+const ATTACHMENT_SUFFIX = "]]";
 
 const PREF_KEY = "firm-inbox-preferences-v1";
 const inboxPanelClass =
   "border border-slate-200/80 bg-white shadow-[0_18px_44px_rgba(4,24,52,0.07)]";
 
-function defaultInboxDueDate() {
+interface ParsedAttachment {
+  name: string;
+  mimeType: string;
+  size: number;
+  dataUrl: string;
+}
+
+function defaultFollowUpDueDate() {
   const date = new Date();
-  date.setDate(date.getDate() + 3);
+  date.setDate(date.getDate() + 7);
   return date.toISOString().slice(0, 10);
+}
+
+function encodeAttachment(attachment: ParsedAttachment) {
+  return `${ATTACHMENT_PREFIX}${encodeURIComponent(JSON.stringify(attachment))}${ATTACHMENT_SUFFIX}`;
+}
+
+function decodeAttachment(message: string): ParsedAttachment | null {
+  const start = message.indexOf(ATTACHMENT_PREFIX);
+  const end = message.indexOf(ATTACHMENT_SUFFIX, start + ATTACHMENT_PREFIX.length);
+  if (start === -1 || end === -1) {
+    return null;
+  }
+
+  try {
+    const raw = message.slice(start + ATTACHMENT_PREFIX.length, end);
+    return JSON.parse(decodeURIComponent(raw)) as ParsedAttachment;
+  } catch {
+    return null;
+  }
+}
+
+function plainMessageText(message: string) {
+  const start = message.indexOf(ATTACHMENT_PREFIX);
+  if (start === -1) {
+    return message;
+  }
+  return message.slice(0, start).trim();
 }
 
 function priorityBadgeClass(priority: WorkflowRequest["priority"]) {
@@ -32,14 +82,12 @@ function priorityBadgeClass(priority: WorkflowRequest["priority"]) {
 }
 
 function initials(value: string) {
-  return (
-    value
-      .split(" ")
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0]?.toUpperCase())
-      .join("") || "DM"
-  );
+  return value
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("") || "DM";
 }
 
 function trailingClientUnreadCount(request: WorkflowRequest) {
@@ -63,23 +111,39 @@ function formatThreadTime(value: string) {
     .padStart(2, "0")}`;
 }
 
-function dueRisk(request: WorkflowRequest) {
-  const due = new Date(request.dueDate);
+function formatShortThreadTime(value: string) {
+  const date = new Date(value);
+  const now = new Date();
+
+  if (date.toDateString() === now.toDateString()) {
+    return formatThreadTime(value);
+  }
+
+  return new Intl.DateTimeFormat("en-ZA", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+  }).format(date);
+}
+
+function formatChipDate(value: string) {
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(value));
+}
+
+function dueControlStatus(value: string) {
+  const due = new Date(value);
   const now = new Date();
   now.setHours(0, 0, 0, 0);
   due.setHours(0, 0, 0, 0);
-  const days = Math.round((due.getTime() - now.getTime()) / 86400000);
+  const days = Math.round((now.getTime() - due.getTime()) / 86_400_000);
 
-  if (request.status === "resolved" || request.status === "closed") {
-    return { label: "Resolved", tone: "text-emerald-700" };
-  }
-  if (days < 0) {
-    return { label: `SLA breached by ${Math.abs(days)}d`, tone: "text-rose-700" };
-  }
-  if (days <= 1) {
-    return { label: "Due soon", tone: "text-amber-700" };
-  }
-  return { label: `Due in ${days}d`, tone: "text-slate-500" };
+  if (days > 0) return `Overdue by ${days} ${days === 1 ? "day" : "days"}`;
+  if (days === 0) return "Due today";
+  return `Due in ${Math.abs(days)} ${Math.abs(days) === 1 ? "day" : "days"}`;
 }
 
 function isInternalNote(message: string) {
@@ -90,107 +154,116 @@ function stripInternalPrefix(message: string) {
   return message.replace(/^\[INTERNAL\]\s*/, "");
 }
 
+function inboxSectionLabel(value: string) {
+  const date = new Date(value);
+  const today = new Date();
+  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const startOfDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const daysAgo = Math.floor((startOfToday.getTime() - startOfDate.getTime()) / 86_400_000);
+
+  if (daysAgo <= 0) return "Today";
+  if (daysAgo <= 7) return "This week";
+  return "Last week";
+}
+
 function ThreadListPane({
   requests,
   selectedRequestId,
-  selectedRequestIds,
-  onToggleSelect,
   onSelectRequest,
-  filter,
-  onChangeFilter,
-  sort,
-  onChangeSort,
   searchValue,
   onChangeSearch,
 }: {
   requests: WorkflowRequest[];
   selectedRequestId: string;
-  selectedRequestIds: string[];
-  onToggleSelect: (requestId: string) => void;
   onSelectRequest: (requestId: string) => void;
-  filter: ThreadFilter;
-  onChangeFilter: (value: ThreadFilter) => void;
-  sort: ThreadSort;
-  onChangeSort: (value: ThreadSort) => void;
   searchValue: string;
   onChangeSearch: (value: string) => void;
 }) {
-  const unreadTotal = requests.reduce((sum, request) => sum + trailingClientUnreadCount(request), 0);
+  const totalUnread = requests.reduce((sum, request) => sum + trailingClientUnreadCount(request), 0);
 
   return (
-    <section className={`${inboxPanelClass} flex h-full min-h-[640px] flex-col overflow-hidden rounded-lg`}>
-      <div className="space-y-4 border-b border-slate-100 bg-white p-4">
-        <div className="flex h-12 items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 shadow-[0_10px_24px_rgba(4,24,52,0.05)]">
-          <Search aria-hidden="true" className="h-4 w-4 text-[#53617f]" />
+    <section
+      className={`${inboxPanelClass} flex h-full min-h-[660px] flex-col overflow-hidden rounded-[20px] border-0 bg-white/96 shadow-[0_18px_42px_rgba(15,23,42,0.07)] min-[1080px]:min-h-0`}
+    >
+      <div className="border-b border-slate-100/80 bg-[linear-gradient(180deg,#f7f8fb_0%,#f1f2f5_100%)] px-4 py-3 sm:px-4 lg:px-4 lg:py-3.5">
+        <div className="mb-2 flex items-center justify-between gap-3 px-1">
+          <div>
+            <p className="text-[0.72rem] font-medium uppercase tracking-[0.12em] text-[#7b879e]">Threads</p>
+            <p className="text-[0.88rem] font-medium text-[#091333]">{requests.length} active conversations</p>
+          </div>
+          <span className="rounded-full bg-[#edf6f2] px-2.5 py-1 text-[0.68rem] font-medium text-[#087d69]">
+            {totalUnread} unread
+          </span>
+        </div>
+        <div className="flex h-10 items-center gap-3 rounded-xl border border-slate-200/80 bg-white px-3 shadow-[0_8px_18px_rgba(15,23,42,0.05)]">
+          <Search aria-hidden="true" className="h-4 w-4 text-slate-500" />
           <input
-            className="h-full min-w-0 flex-1 bg-transparent text-sm text-[#091333] outline-none placeholder:text-[#7b879e]"
+            className="h-full w-full bg-transparent text-sm text-[#091333] outline-none placeholder:text-[#7b879e]"
             onChange={(event) => onChangeSearch(event.target.value)}
-            placeholder="Search messages..."
+            placeholder="Search threads..."
             value={searchValue}
           />
-          <SlidersHorizontal aria-hidden="true" className="h-4 w-4 text-[#53617f]" />
-        </div>
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="mr-1 font-semibold text-[#091333]">Sort</span>
-          {[
-            { id: "needs_action" as const, label: "Needs action" },
-            { id: "newest" as const, label: "Newest" },
-            { id: "oldest" as const, label: "Oldest" },
-          ].map((item) => (
-            <button
-              className={`rounded-full px-3 py-1.5 font-semibold transition ${
-                sort === item.id
-                  ? "bg-[#062b73] text-white shadow-[0_8px_16px_rgba(6,43,115,0.18)]"
-                  : "bg-slate-100 text-[#35466d] hover:bg-slate-200"
-              }`}
-              key={item.id}
-              onClick={() => onChangeSort(item.id)}
-              type="button"
-            >
-              {item.label}
-            </button>
-          ))}
         </div>
       </div>
 
-      <div className="flex min-h-[54px] items-center gap-6 border-b border-slate-100 bg-white px-4 text-sm font-semibold">
-        <button className={`relative h-10 transition after:absolute after:inset-x-0 after:-bottom-2 after:h-1 after:rounded-full ${filter === "all" ? "text-[#062b73] after:bg-[#062b73]" : "text-[#53617f] after:bg-transparent hover:text-[#091333]"}`} onClick={() => onChangeFilter("all")} type="button">All</button>
-        <button className={`relative h-10 transition after:absolute after:inset-x-0 after:-bottom-2 after:h-1 after:rounded-full ${filter === "unread" ? "text-[#062b73] after:bg-[#062b73]" : "text-[#53617f] after:bg-transparent hover:text-[#091333]"}`} onClick={() => onChangeFilter("unread")} type="button">
-          Unread <span className="ml-1 rounded-full bg-emerald-600 px-1.5 text-xs text-white">{unreadTotal}</span>
-        </button>
-        <button className={`relative h-10 transition after:absolute after:inset-x-0 after:-bottom-2 after:h-1 after:rounded-full ${filter === "resolved" ? "text-[#062b73] after:bg-[#062b73]" : "text-[#53617f] after:bg-transparent hover:text-[#091333]"}`} onClick={() => onChangeFilter("resolved")} type="button">Resolved</button>
-        <button className={`relative h-10 transition after:absolute after:inset-x-0 after:-bottom-2 after:h-1 after:rounded-full ${filter === "unresolved" ? "text-[#062b73] after:bg-[#062b73]" : "text-[#53617f] after:bg-transparent hover:text-[#091333]"}`} onClick={() => onChangeFilter("unresolved")} type="button">Unresolved</button>
-      </div>
-
-      <div className="min-h-0 flex-1 divide-y divide-slate-100 overflow-y-auto bg-white">
-        {requests.map((request) => {
+      <div className="inbox-scroll-region min-h-0 flex-1 bg-white pb-3 pr-1">
+        {requests.map((request, index) => {
           const selected = request.id === selectedRequestId;
-          const checked = selectedRequestIds.includes(request.id);
           const lastComment = request.comments[request.comments.length - 1];
           const unread = trailingClientUnreadCount(request);
-          const risk = dueRisk(request);
+          const sectionLabel = inboxSectionLabel(lastActivity(request));
+          const previousRequest = requests[index - 1];
+          const previousSection = previousRequest ? inboxSectionLabel(lastActivity(previousRequest)) : "";
+          const showSection = index === 0 || sectionLabel !== previousSection;
 
           return (
-            <div className={`relative w-full px-4 py-4 transition ${selected ? "bg-[#f4f8ff]" : "hover:bg-slate-50"}`} key={request.id}>
-              {selected ? <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-[#062b73]" /> : null}
-              <div className="flex items-start gap-3">
-                <input checked={checked} className="mt-1" onChange={() => onToggleSelect(request.id)} type="checkbox" />
-                <button className="w-full text-left" onClick={() => onSelectRequest(request.id)} type="button">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="line-clamp-1 text-[0.95rem] font-semibold text-[#091333]">{request.title}</p>
-                    <p className="shrink-0 text-xs font-semibold text-[#35466d]">{formatThreadTime(lastActivity(request))}</p>
+            <div key={request.id}>
+              {showSection ? (
+                <div className="flex h-9 w-full items-center gap-2 border-b border-slate-100 bg-[#f7f9fc] px-4 text-left text-[0.82rem] font-medium text-[#091333] sm:px-4 lg:px-4">
+                  <ChevronDown aria-hidden="true" className="h-4 w-4 text-[#35466d]" />
+                  {sectionLabel}
+                </div>
+              ) : null}
+              <button
+                className={`relative grid w-full grid-cols-[auto_1fr_auto] items-start gap-3 px-4 py-3 text-left transition sm:px-4 lg:px-4 lg:py-3.5 ${
+                  selected ? "bg-[#eef3fb] shadow-[inset_0_0_0_1px_rgba(127,155,203,0.14)]" : "hover:bg-slate-50/80"
+                }`}
+                onClick={() => onSelectRequest(request.id)}
+                type="button"
+              >
+                {selected ? <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-[#7f9bcb]" /> : null}
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0b2451] text-[0.88rem] font-medium text-white shadow-[0_8px_18px_rgba(11,36,81,0.18)]">
+                  {initials(request.clientName)}
+                </span>
+                <div className="min-w-0 pt-0.5">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="line-clamp-1 text-[0.92rem] font-medium leading-5 text-[#091333]">{request.clientName}</p>
+                    <p className="shrink-0 text-[0.78rem] font-medium text-[#091333]">{formatShortThreadTime(lastActivity(request))}</p>
                   </div>
-                  <p className="mt-1 text-sm font-medium text-[#35466d]">{request.clientName}</p>
-                  <p className="mt-1 line-clamp-1 text-sm text-[#53617f]">{lastComment?.message ?? request.description}</p>
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <span className={`rounded-full px-2 py-0.5 text-[0.68rem] font-semibold ${priorityBadgeClass(request.priority)}`}>
-                      {request.priority.toUpperCase()}
+                  <p className="mt-0.5 line-clamp-1 text-[0.8rem] font-medium leading-5 text-[#091333]">{request.title}</p>
+                  <p className="mt-1 line-clamp-1 text-[0.78rem] font-medium leading-5 text-[#5f7090]">
+                    {lastComment?.message ?? request.description}
+                  </p>
+                </div>
+                <div className="flex min-h-12 shrink-0 flex-col items-end justify-between gap-1 pt-0.5">
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[0.58rem] font-medium uppercase tracking-[0.08em] ${
+                      request.status === "awaiting_client"
+                        ? "bg-amber-50 text-amber-700"
+                        : request.status === "resolved" || request.status === "closed"
+                          ? "bg-emerald-50 text-emerald-700"
+                          : "bg-slate-100 text-slate-600"
+                    }`}
+                  >
+                    {request.status.replace(/_/g, " ")}
+                  </span>
+                  {unread > 0 ? (
+                    <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-[#087d69] px-1.5 text-[0.58rem] font-semibold leading-none text-white">
+                      {unread}
                     </span>
-                    <span className={`ml-auto text-xs font-semibold ${risk.tone}`}>{risk.label}</span>
-                    {unread > 0 ? <span className="text-xs font-semibold text-emerald-700">{unread} new</span> : null}
-                  </div>
-                </button>
-              </div>
+                  ) : null}
+                </div>
+              </button>
             </div>
           );
         })}
@@ -210,8 +283,8 @@ function ConversationPane({
   onSetAwaitingClient,
   onSetOpen,
   onSetClosed,
-  onOpenLinkedDocument,
   onEscalate,
+  onForward,
   onReassign,
   onUpdateAssignment,
 }: {
@@ -220,13 +293,13 @@ function ConversationPane({
   isInternal: boolean;
   onChangeInternal: (value: boolean) => void;
   onChangeMessageDraft: (value: string) => void;
-  onSendMessage: () => void;
+  onSendMessage: (messageOverride?: string) => void;
   onResolve: () => void;
   onSetAwaitingClient: () => void;
   onSetOpen: () => void;
   onSetClosed: () => void;
-  onOpenLinkedDocument: () => void;
   onEscalate: () => void;
+  onForward: () => void;
   onReassign: () => void;
   onUpdateAssignment: (payload: {
     assignedTo: string;
@@ -239,181 +312,415 @@ function ConversationPane({
   const [dueDateDraft, setDueDateDraft] = useState(request.dueDate.slice(0, 10));
   const [priorityDraft, setPriorityDraft] = useState<WorkflowRequest["priority"]>(request.priority);
   const [addAuditNote, setAddAuditNote] = useState(false);
+  const [isStarred, setIsStarred] = useState(false);
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const [isSummaryExpanded, setIsSummaryExpanded] = useState(true);
+  const [attachedFile, setAttachedFile] = useState<ParsedAttachment | null>(null);
+  const replyInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setAssignedToDraft(request.assignedTo);
     setDueDateDraft(request.dueDate.slice(0, 10));
     setPriorityDraft(request.priority);
     setAddAuditNote(false);
+    setIsMoreMenuOpen(false);
+    setAttachedFile(null);
   }, [request.assignedTo, request.dueDate, request.priority, request.id]);
 
+  function handleAddInternalNote() {
+    onChangeInternal(true);
+    replyInputRef.current?.focus();
+  }
+
+  async function handleAttachmentSelected(file: File | null) {
+    if (!file) {
+      setAttachedFile(null);
+      return;
+    }
+
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
+      reader.onerror = () => reject(reader.error ?? new Error("Failed to read file."));
+      reader.readAsDataURL(file);
+    });
+
+    setAttachedFile({
+      name: file.name,
+      mimeType: file.type || "application/octet-stream",
+      size: file.size,
+      dataUrl,
+    });
+  }
+
+  function handleComposerSend() {
+    const message = messageDraft.trim();
+    if (!message && !attachedFile) {
+      return;
+    }
+
+    const composedMessage = attachedFile
+      ? `${message || "Attached file for review."}\n\n${encodeAttachment(attachedFile)}`
+      : message;
+    onSendMessage(composedMessage);
+    setAttachedFile(null);
+  }
+
   return (
-    <section className={`${inboxPanelClass} grid min-h-[680px] overflow-hidden rounded-lg lg:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.78fr)]`}>
-      <div className="flex min-h-0 flex-col px-7 py-7 lg:border-r lg:border-slate-100">
-        <div className="min-w-0">
-          <p className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${priorityBadgeClass(request.priority)}`}>
-            {request.priority.toUpperCase()} PRIORITY
-          </p>
-          <h2 className="mt-5 text-[1.7rem] font-semibold tracking-tight text-[#091333]">{request.title}</h2>
-          <p className="mt-4 text-sm font-medium text-[#35466d]">
-            {formatDateLabel(request.createdAt)} | Request ID: {request.id}
-          </p>
-          <p className="mt-4 max-w-3xl text-[0.98rem] leading-7 text-[#35466d]">{request.description}</p>
-          {request.relatedDocumentId ? (
+    <section className="flex h-full min-h-[720px] flex-col bg-transparent min-[1080px]:min-h-0">
+      <div className={`${inboxPanelClass} flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white`}>
+        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 px-4 py-4 sm:px-5 lg:px-6">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <p className={`inline-flex rounded-full px-3 py-1 text-[0.62rem] font-medium ${priorityBadgeClass(request.priority)}`}>
+                {request.priority.toUpperCase()} PRIORITY
+              </p>
+              <p className="text-xs font-medium text-[#6f7d96]">
+                {formatDateLabel(lastActivity(request))}, {formatThreadTime(lastActivity(request))}
+              </p>
+              <span className="rounded-full bg-[#eef3fb] px-2.5 py-1 text-[0.66rem] font-medium text-[#315b9c]">
+                {request.comments.length} messages
+              </span>
+            </div>
+            <h2 className="mt-3 max-w-[760px] text-[1.12rem] font-medium leading-7 text-[#091333] sm:text-[1.2rem]">
+              {request.title}
+            </h2>
+            <div className="mt-2 space-y-1 text-sm text-[#6c7b94]">
+              <p>
+                Client: <span className="text-[#4b5f7c]">{request.assignedTo}</span>
+              </p>
+              <p>{request.clientName}</p>
+            </div>
+          </div>
+          <div className="flex shrink-0 items-center gap-1 rounded-full border border-slate-200/80 bg-white px-2 py-1 shadow-[0_8px_20px_rgba(15,23,42,0.06)]">
             <button
-              className="mt-4 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-[#062b73] transition hover:bg-slate-50"
-              onClick={onOpenLinkedDocument}
+              aria-label={isStarred ? "Unstar thread" : "Star thread"}
+              aria-pressed={isStarred}
+              className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition ${isStarred ? "bg-amber-50 text-amber-500" : "text-[#061b41] hover:bg-slate-50"}`}
+              onClick={() => setIsStarred((current) => !current)}
               type="button"
             >
-              Open linked document
+              <Star aria-hidden="true" className={`h-4 w-4 ${isStarred ? "fill-current" : ""}`} />
             </button>
-          ) : null}
-        </div>
-
-        <div className="mt-8 border-t border-slate-200 pt-6">
-          <p className="text-sm font-semibold text-[#091333]">Lifecycle actions</p>
-          <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-            <Button className="h-11 rounded-lg px-4" onClick={onSetOpen} variant="secondary">Set open</Button>
-            <Button className="h-11 rounded-lg px-4" onClick={onSetAwaitingClient} variant="secondary">Set awaiting client</Button>
-            <Button className="h-11 rounded-lg border-emerald-200 px-4 text-emerald-700 hover:bg-emerald-50" onClick={onResolve} variant="secondary">Resolve</Button>
-            <Button className="h-11 rounded-lg px-4" onClick={onSetClosed} variant="secondary">Close</Button>
-            <Button className="h-11 rounded-lg border-rose-200 px-4 text-rose-700 hover:bg-rose-50" onClick={onEscalate} variant="secondary">Escalate</Button>
-            <Button className="h-11 rounded-lg px-4" onClick={onReassign} variant="secondary">Reassign note</Button>
-          </div>
-        </div>
-
-        <div className="mt-6 border-t border-slate-200 pt-6">
-          <p className="text-sm font-semibold text-[#091333]">Assignment and SLA controls</p>
-          <div className="mt-4 grid gap-4 md:grid-cols-3">
-            <TextField id="assigned-to" label="Assigned to" onChange={(event) => setAssignedToDraft(event.target.value)} value={assignedToDraft} />
-            <TextField id="due-date" label="Due date" onChange={(event) => setDueDateDraft(event.target.value)} type="date" value={dueDateDraft} />
-            <SelectField
-              id="priority"
-              label="Priority"
-              onChange={(event) => setPriorityDraft(event.target.value as WorkflowRequest["priority"])}
-              options={[
-                { label: "Low", value: "low" },
-                { label: "Medium", value: "medium" },
-                { label: "High", value: "high" },
-              ]}
-              value={priorityDraft}
-            />
-          </div>
-          <div className="mt-4 flex flex-wrap items-center gap-4">
-            <Button
-              className="rounded-lg"
-              onClick={() =>
-                onUpdateAssignment({
-                  assignedTo: assignedToDraft,
-                  dueDate: new Date(`${dueDateDraft}T17:00:00.000Z`).toISOString(),
-                  priority: priorityDraft,
-                  addAuditNote,
-                })}
-              variant="secondary"
+            <button
+              aria-label="Reply to thread"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[#061b41] transition hover:bg-slate-50"
+              onClick={() => replyInputRef.current?.focus()}
+              type="button"
             >
-              Save assignment controls
-            </Button>
-            <label className="inline-flex items-center gap-2 text-xs text-[#53617f]">
-              <input checked={addAuditNote} onChange={(event) => setAddAuditNote(event.target.checked)} type="checkbox" />
-              Also add internal note to audit timeline
-            </label>
+              <Reply aria-hidden="true" className="h-4 w-4" />
+            </button>
+            <button
+              aria-label="Forward thread"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[#061b41] transition hover:bg-slate-50"
+              onClick={onForward}
+              type="button"
+            >
+              <Forward aria-hidden="true" className="h-4 w-4" />
+            </button>
           </div>
         </div>
-      </div>
 
-      <div className="flex min-h-0 flex-col bg-white px-6 py-7">
-        <div className="mb-6 rounded-lg border border-slate-200 bg-white p-4 shadow-[0_10px_24px_rgba(4,24,52,0.04)]">
-          <p className="text-xs text-[#53617f]">Client</p>
-          <p className="mt-1 text-sm font-semibold text-[#091333]">{request.clientName}</p>
-          <p className="text-xs text-[#35466d]">Requested by {request.requestedBy}</p>
+        <div className="border-b border-slate-100 bg-[#fbfcfe] px-4 py-3 sm:px-5 lg:px-6">
+          <div className="flex flex-wrap items-center gap-2 text-[0.72rem] font-medium text-[#6f7d96]">
+            <span className="rounded-full bg-white px-2.5 py-1 shadow-[0_4px_10px_rgba(15,23,42,0.04)]">Client and accountant conversation</span>
+            <span className="rounded-full bg-[#eef6f2] px-2.5 py-1 text-[#087d69]">Reply here to continue the thread</span>
+          </div>
         </div>
 
-        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto pr-1">
+        <div className="inbox-scroll-region min-h-[360px] flex-1 space-y-3 bg-[#fbfcfe] px-4 py-5 pb-6 pr-1 sm:px-5 lg:px-6">
           {request.comments.map((comment) => {
             const internal = isInternalNote(comment.message);
-            const cleaned = stripInternalPrefix(comment.message);
-            const isClient = comment.role === "client";
+            const strippedMessage = stripInternalPrefix(comment.message);
+            const attachment = decodeAttachment(strippedMessage);
+            const cleaned = plainMessageText(strippedMessage);
+            const isAccountant = comment.role !== "client";
             return (
-              <div className={`flex items-start gap-3 ${isClient ? "justify-end" : ""}`} key={comment.id}>
-                {!isClient ? (
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#062b73] text-xs font-semibold text-white shadow-[0_8px_18px_rgba(6,43,115,0.18)]">
-                    {initials(comment.author)}
-                  </span>
-                ) : null}
-                <article
-                  className={`w-full max-w-[430px] rounded-lg border px-5 py-4 shadow-[0_10px_24px_rgba(4,24,52,0.04)] ${
-                    internal
-                      ? "border-amber-200 bg-amber-50"
-                      : isClient
-                        ? "border-emerald-100 bg-[#edf8f2]"
-                        : "border-slate-200 bg-white"
+              <div className={`flex items-end gap-3 ${isAccountant ? "justify-end" : ""}`} key={comment.id}>
+                <span
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[0.82rem] font-medium ${
+                    isAccountant ? "order-2 bg-[#d9efe6] text-[#047857]" : "bg-[#061b41] text-white"
                   }`}
                 >
-                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold text-[#091333]">{comment.author}</p>
+                  {initials(comment.author)}
+                </span>
+                <div className={`w-full max-w-[760px] ${isAccountant ? "items-end" : "items-start"} flex flex-col`}>
+                  <div
+                    className={`mb-1.5 flex w-full max-w-[760px] items-center gap-2 px-1 text-[0.72rem] font-medium ${
+                      isAccountant ? "justify-end text-[#5f7090]" : "justify-start text-[#6f7d96]"
+                    }`}
+                  >
+                    <span>{isAccountant ? "Accountant" : "Client"}</span>
+                    <span className="text-[#b0b9cb]">•</span>
+                    <span>{comment.author}</span>
+                    <span className="text-[#b0b9cb]">•</span>
+                    <span>{formatDateLabel(comment.createdAt)}</span>
+                  </div>
+                  <article
+                    className={`w-full rounded-[22px] border px-4 py-3.5 shadow-[0_8px_18px_rgba(15,23,42,0.04)] sm:px-5 ${
+                    internal
+                      ? "border-amber-200 bg-amber-50"
+                      : isAccountant
+                        ? "border-emerald-100 bg-[#eaf7f0]"
+                        : "border-slate-200 bg-white"
+                    }`}
+                  >
+                    <div className="mb-2 flex flex-wrap items-center gap-2">
                       {internal ? (
-                        <span className="rounded-full bg-amber-200 px-2 py-0.5 text-[0.64rem] font-semibold uppercase tracking-[0.06em] text-amber-800">
+                        <span className="rounded-full bg-amber-200 px-2 py-0.5 text-[0.64rem] font-medium uppercase tracking-[0.06em] text-amber-800">
                           Internal note
                         </span>
                       ) : null}
                     </div>
-                    <p className="text-xs text-[#53617f]">{formatDateLabel(comment.createdAt)}</p>
-                  </div>
-                  <p className="text-sm leading-6 text-[#1e2f5b]">{cleaned}</p>
-                </article>
-                {isClient ? (
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#d9efe6] text-xs font-semibold text-[#047857]">
-                    {initials(comment.author)}
-                  </span>
-                ) : null}
+                    {cleaned ? <p className="text-[0.9rem] leading-6 text-[#1e2f5b]">{cleaned}</p> : null}
+                    {attachment ? (
+                      <a
+                        className="client-dashboard-link mt-3 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium"
+                        download={attachment.name}
+                        href={attachment.dataUrl}
+                      >
+                        <Paperclip aria-hidden="true" className="h-3.5 w-3.5" />
+                        Download: {attachment.name}
+                      </a>
+                    ) : null}
+                  </article>
+                </div>
               </div>
             );
           })}
         </div>
 
-        <div className="mt-6 space-y-3 border-t border-slate-100 bg-white pt-5">
-          <label className="inline-flex items-center gap-2 text-sm text-[#35466d]">
+        <div className="space-y-3 bg-white px-4 py-4 sm:px-5 lg:px-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-[0.88rem] font-medium text-[#091333]">Reply to this conversation</p>
+              <p className="text-[0.78rem] text-[#6f7d96]">Send a client reply, attach a file, or switch to an internal note.</p>
+            </div>
+            <label className="inline-flex items-center gap-2 text-sm text-[#53617f]">
             <input checked={isInternal} onChange={(event) => onChangeInternal(event.target.checked)} type="checkbox" />
-            Send as internal note (not client-facing)
-          </label>
-          <div className="flex gap-3">
-            <input
-              className="h-14 flex-1 rounded-lg border border-slate-200 px-4 text-sm text-[#091333] outline-none ring-brand-300 transition placeholder:text-[#7b879e] focus:ring-2"
-              onChange={(event) => onChangeMessageDraft(event.target.value)}
-              placeholder={isInternal ? "Type internal note..." : "Type your message to the client..."}
-              value={messageDraft}
-            />
-            <Button className="h-14 rounded-lg border-0 bg-[#062b73] px-6 text-white ring-0 hover:bg-[#06235d]" disabled={!messageDraft.trim()} onClick={onSendMessage}>
-              Send
+            Send as internal note
+            </label>
+          </div>
+          {attachedFile ? (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-[#53617f]">
+              Attached: {attachedFile.name}
+            </div>
+          ) : null}
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex h-[52px] min-w-[240px] flex-1 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 ring-brand-300 transition focus-within:ring-2">
+              <label className="inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-md text-[#061b41] transition hover:bg-[#0a2f66]/10">
+                <Paperclip aria-hidden="true" className="h-4.5 w-4.5" />
+                <span className="sr-only">Attach</span>
+                <input
+                  className="hidden"
+                  onChange={(event) => void handleAttachmentSelected(event.target.files?.[0] ?? null)}
+                  type="file"
+                />
+              </label>
+              <input
+                className="h-full min-w-0 flex-1 border-0 bg-transparent px-1 text-sm text-[#091333] outline-none placeholder:text-[#7b879e]"
+                onChange={(event) => onChangeMessageDraft(event.target.value)}
+                placeholder={isInternal ? "Type internal note..." : "Reply to the client..."}
+                ref={replyInputRef}
+                value={messageDraft}
+              />
+            </div>
+            <Button
+              aria-label="Send"
+              className="client-inbox-primary-button h-[52px] min-w-[116px] shrink-0 rounded-xl border-0 px-5 ring-0 disabled:opacity-100"
+              disabled={!messageDraft.trim() && !attachedFile}
+              onClick={handleComposerSend}
+              title="Send"
+            >
+              <span className="inline-flex items-center gap-2">
+                <Send aria-hidden="true" className="h-4 w-4" />
+                Send
+              </span>
+            </Button>
+            <Button
+              aria-label="Resolve"
+              className="client-inbox-secondary-button h-[52px] min-w-[128px] shrink-0 rounded-xl px-5"
+              onClick={onResolve}
+              title="Resolve"
+              variant="secondary"
+            >
+              <span className="inline-flex items-center gap-2">
+                <CheckCircle2 aria-hidden="true" className="h-4 w-4" />
+                Resolve
+              </span>
             </Button>
           </div>
         </div>
       </div>
+
+      <div className="relative mt-4">
+        <button
+          aria-expanded={isMoreMenuOpen}
+          aria-haspopup="menu"
+          className="inline-flex h-10 items-center gap-3 rounded-xl bg-[#0b2451] px-5 text-sm font-medium text-white shadow-[0_10px_22px_rgba(6,27,65,0.18)] transition hover:bg-[#123063]"
+          onClick={() => setIsMoreMenuOpen((current) => !current)}
+          type="button"
+        >
+          Thread actions
+          <ChevronDown aria-hidden="true" className={`h-4 w-4 transition ${isMoreMenuOpen ? "rotate-180" : ""}`} />
+        </button>
+        {isMoreMenuOpen ? (
+          <div className="absolute left-0 top-12 z-20 w-56 rounded-lg border border-slate-200 bg-white py-2 shadow-[0_18px_36px_rgba(4,24,52,0.14)]" role="menu">
+            {[
+              { icon: CheckCircle2, label: "Set open", onClick: onSetOpen },
+              { icon: RefreshCw, label: "Set awaiting client", onClick: onSetAwaitingClient },
+              { icon: CheckCircle2, label: "Close", onClick: onSetClosed },
+              { icon: ShieldAlert, label: "Escalate", onClick: onEscalate },
+              { icon: UserRound, label: "Reassign note", onClick: onReassign },
+              { icon: Reply, label: "Add internal note", onClick: handleAddInternalNote },
+            ].map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-xs font-medium text-[#091333] transition hover:bg-slate-50"
+                  key={item.label}
+                  onClick={() => {
+                    item.onClick();
+                    setIsMoreMenuOpen(false);
+                  }}
+                  role="menuitem"
+                  type="button"
+                >
+                  <Icon aria-hidden="true" className="h-4 w-4 text-[#315b9c]" />
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+      </div>
+
+      <section className="mt-4 overflow-hidden rounded-2xl border border-slate-200/80 bg-white/88 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+        <button
+          aria-expanded={isSummaryExpanded}
+          className="flex w-full items-center justify-between gap-3 border-b border-slate-200/80 px-5 py-3.5 text-left"
+          onClick={() => setIsSummaryExpanded((current) => !current)}
+          type="button"
+        >
+          <div className="flex items-center gap-3">
+            <UserRound aria-hidden="true" className="h-4 w-4 text-[#315b9c]" />
+            <div>
+              <p className="text-[0.88rem] font-medium text-[#091333]">Assignment &amp; SLA</p>
+              <p className="text-[0.76rem] text-[#6f7d96]">Operational details for this thread</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="rounded-full bg-emerald-50 px-3 py-1 text-[0.68rem] font-medium text-emerald-700">
+              {isSummaryExpanded ? "Expanded" : "Collapsed"}
+            </span>
+            {isSummaryExpanded ? <ChevronUp aria-hidden="true" className="h-4 w-4 text-[#567194]" /> : <ChevronDown aria-hidden="true" className="h-4 w-4 text-[#567194]" />}
+          </div>
+        </button>
+        {isSummaryExpanded ? (
+          <>
+            <div className="grid divide-y divide-slate-200/80 lg:grid-cols-3 lg:divide-x lg:divide-y-0">
+              <div className="space-y-3.5 p-4">
+                <p className="text-xs font-medium text-[#6f7d96]">Assigned Contact</p>
+                <div className="flex items-start gap-3">
+                  <UserRound aria-hidden="true" className="mt-0.5 h-5 w-5 text-[#315b9c]" />
+                  <label className="min-w-0 flex-1">
+                    <span className="sr-only">Client contact</span>
+                    <input
+                      className="w-full border-0 bg-transparent p-0 text-[0.98rem] font-normal text-[#091333] outline-none"
+                      onChange={(event) => setAssignedToDraft(event.target.value)}
+                      value={assignedToDraft}
+                    />
+                    <span className="mt-1 block text-sm font-normal text-[#53617f]">Client Contact</span>
+                  </label>
+                </div>
+              </div>
+              <div className="space-y-3.5 p-4">
+                <p className="flex items-center gap-2 text-xs font-medium text-[#6f7d96]">
+                  <CalendarDays aria-hidden="true" className="h-4 w-4 text-[#315b9c]" />
+                  Due Date
+                </p>
+                <label className="block">
+                  <span className="sr-only">Due date</span>
+                  <input
+                    className="w-full border-0 bg-transparent p-0 text-[0.98rem] font-normal text-[#091333] outline-none"
+                    onChange={(event) => setDueDateDraft(event.target.value)}
+                    type="date"
+                    value={dueDateDraft}
+                  />
+                </label>
+                <p className="text-sm font-medium text-rose-600">{dueControlStatus(`${dueDateDraft}T00:00:00`)}</p>
+              </div>
+              <div className="space-y-3.5 p-4">
+                <p className="flex items-center gap-2 text-xs font-medium text-[#6f7d96]">
+                  <Flag aria-hidden="true" className="h-4 w-4 text-[#315b9c]" />
+                  Priority
+                </p>
+                <label className="relative inline-flex items-center">
+                  <span className="sr-only">Priority</span>
+                  <select
+                    className="h-9 appearance-none rounded-full border border-rose-100 bg-rose-50 py-0 pl-4 pr-9 text-sm font-medium capitalize text-rose-600 outline-none ring-brand-300 transition focus:ring-2"
+                    onChange={(event) => setPriorityDraft(event.target.value as WorkflowRequest["priority"])}
+                    value={priorityDraft}
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                  </select>
+                  <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-3 h-3.5 w-3.5 text-rose-500" />
+                </label>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200/80 px-4 py-3.5">
+              <label className="inline-flex items-center gap-3 text-sm font-normal text-[#53617f]">
+                <input checked={addAuditNote} onChange={(event) => setAddAuditNote(event.target.checked)} type="checkbox" />
+                Internal audit note
+              </label>
+              <div className="flex flex-wrap gap-2">
+                <span className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[0.88rem] text-[#53617f]">
+                  Due: <span className="text-[#091333]">{formatChipDate(request.dueDate)}</span>
+                </span>
+                <Button
+                  className="client-inbox-secondary-button h-10 rounded-2xl px-7 text-sm font-medium"
+                  onClick={() =>
+                    onUpdateAssignment({
+                      assignedTo: assignedToDraft,
+                      dueDate: new Date(`${dueDateDraft}T17:00:00.000Z`).toISOString(),
+                      priority: priorityDraft,
+                      addAuditNote,
+                    })}
+                  variant="secondary"
+                >
+                  Save changes
+                </Button>
+              </div>
+            </div>
+          </>
+        ) : null}
+      </section>
     </section>
   );
 }
 
 export function AccountantFollowUpsPage() {
   const { user } = useAuth();
-  const navigate = useNavigate();
   const portal = usePortal();
+  const [searchParams] = useSearchParams();
 
   const scopedClients = useMemo(() => getScopedClients(user, portal.adminClients), [user, portal.adminClients]);
 
   const [selectedClientId, setSelectedClientId] = useState(scopedClients[0]?.id ?? "");
   const [selectedRequestId, setSelectedRequestId] = useState("");
-  const [selectedRequestIds, setSelectedRequestIds] = useState<string[]>([]);
   const [messageDraft, setMessageDraft] = useState("");
   const [sendAsInternal, setSendAsInternal] = useState(false);
   const [inboxNotice, setInboxNotice] = useState("");
   const [threadSearch, setThreadSearch] = useState("");
   const [threadFilter, setThreadFilter] = useState<ThreadFilter>("all");
-  const [threadSort, setThreadSort] = useState<ThreadSort>("needs_action");
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
-  const [newRequestSubject, setNewRequestSubject] = useState("");
-  const [newRequestDetails, setNewRequestDetails] = useState("");
-  const [newRequestDueDate, setNewRequestDueDate] = useState(defaultInboxDueDate());
+  const [requestTitle, setRequestTitle] = useState("");
+  const [requestDetails, setRequestDetails] = useState("");
+  const [requestDueDate, setRequestDueDate] = useState(defaultFollowUpDueDate());
+  const [requestPriority, setRequestPriority] = useState<WorkflowRequest["priority"]>("high");
+  const [requestFormError, setRequestFormError] = useState("");
 
   const selectedClient = useMemo(
     () => scopedClients.find((client) => client.id === selectedClientId) ?? scopedClients[0] ?? null,
@@ -437,12 +744,10 @@ export function AccountantFollowUpsPage() {
       const parsed = JSON.parse(raw) as {
         selectedClientId?: string;
         threadFilter?: ThreadFilter;
-        threadSort?: ThreadSort;
         threadSearch?: string;
       };
       if (parsed.selectedClientId) setSelectedClientId(parsed.selectedClientId);
       if (parsed.threadFilter) setThreadFilter(parsed.threadFilter);
-      if (parsed.threadSort) setThreadSort(parsed.threadSort);
       if (typeof parsed.threadSearch === "string") setThreadSearch(parsed.threadSearch);
     } catch {
       // no-op
@@ -450,11 +755,29 @@ export function AccountantFollowUpsPage() {
   }, []);
 
   useEffect(() => {
+    const clientFromQuery = searchParams.get("client");
+    if (!clientFromQuery) {
+      return;
+    }
+
+    const normalizedClientQuery = clientFromQuery.trim().toLowerCase();
+    const matchedClient = scopedClients.find(
+      (client) => client.id === clientFromQuery || client.clientName.trim().toLowerCase() === normalizedClientQuery,
+    );
+
+    if (!matchedClient || matchedClient.id === selectedClientId) {
+      return;
+    }
+
+    setSelectedClientId(matchedClient.id);
+  }, [scopedClients, searchParams, selectedClientId]);
+
+  useEffect(() => {
     window.localStorage.setItem(
       PREF_KEY,
-      JSON.stringify({ selectedClientId, threadFilter, threadSort, threadSearch }),
+      JSON.stringify({ selectedClientId, threadFilter, threadSearch }),
     );
-  }, [selectedClientId, threadFilter, threadSort, threadSearch]);
+  }, [selectedClientId, threadFilter, threadSearch]);
 
   const visibleRequests = useMemo(() => {
     const normalizedSearch = threadSearch.trim().toLowerCase();
@@ -469,31 +792,17 @@ export function AccountantFollowUpsPage() {
     });
 
     return [...filtered].sort((left, right) => {
-      if (threadSort === "newest") return lastActivity(right).localeCompare(lastActivity(left));
-      if (threadSort === "oldest") return lastActivity(left).localeCompare(lastActivity(right));
       const leftOpen = ["resolved", "closed"].includes(left.status) ? 1 : 0;
       const rightOpen = ["resolved", "closed"].includes(right.status) ? 1 : 0;
       if (leftOpen !== rightOpen) return leftOpen - rightOpen;
       return lastActivity(right).localeCompare(lastActivity(left));
     });
-  }, [scopedRequests, threadFilter, threadSearch, threadSort]);
+  }, [scopedRequests, threadFilter, threadSearch]);
 
   const activeRequest = useMemo(
     () => visibleRequests.find((request) => request.id === selectedRequestId) ?? visibleRequests[0] ?? null,
     [selectedRequestId, visibleRequests],
   );
-
-  const slaSummary = useMemo(() => {
-    const unresolved = visibleRequests.filter((request) => !["resolved", "closed"].includes(request.status));
-    const breached = unresolved.filter((request) => dueRisk(request).label.includes("breached")).length;
-    const dueSoon = unresolved.filter((request) => dueRisk(request).label === "Due soon").length;
-    return {
-      unresolved: unresolved.length,
-      breached,
-      dueSoon,
-      unread: unresolved.reduce((sum, request) => sum + trailingClientUnreadCount(request), 0),
-    };
-  }, [visibleRequests]);
 
   useEffect(() => {
     if (!visibleRequests.length) {
@@ -511,9 +820,9 @@ export function AccountantFollowUpsPage() {
     setInboxNotice(result.message);
   }
 
-  function handleSendMessage() {
+  function handleSendMessage(messageOverride?: string) {
     if (!activeRequest || !user) return;
-    const message = messageDraft.trim();
+    const message = (messageOverride ?? messageDraft).trim();
     if (!message) {
       setInboxNotice("Type a message before sending.");
       return;
@@ -534,31 +843,6 @@ export function AccountantFollowUpsPage() {
     setInboxNotice(result.message);
   }
 
-  function handleBulkResolve() {
-    if (!user || selectedRequestIds.length === 0) return;
-    let count = 0;
-    selectedRequestIds.forEach((requestId) => {
-      const result = portal.resolveRequest(requestId, user.fullName);
-      if (result.ok) count += 1;
-    });
-    setInboxNotice(`${count} request(s) resolved from bulk action.`);
-    setSelectedRequestIds([]);
-  }
-
-  function handleBulkNudge() {
-    if (!user || selectedRequestIds.length === 0) return;
-    selectedRequestIds.forEach((requestId) => {
-      void portal.addRequestComment(
-        requestId,
-        user.fullName,
-        user.role,
-        "Reminder sent from bulk triage: please action this request.",
-      );
-    });
-    setInboxNotice(`Reminder note posted on ${selectedRequestIds.length} request(s).`);
-    setSelectedRequestIds([]);
-  }
-
   function handleUpdateAssignment(payload: {
     assignedTo: string;
     dueDate: string;
@@ -577,7 +861,7 @@ export function AccountantFollowUpsPage() {
       payload.addAuditNote
         ? {
             addAuditNote: true,
-            auditNote: `Assignment controls updated: owner -> ${payload.assignedTo}; due -> ${formatDateLabel(
+            auditNote: `Assignment controls updated: client contact -> ${payload.assignedTo}; due -> ${formatDateLabel(
               payload.dueDate,
             )}; priority -> ${payload.priority}.`,
           }
@@ -588,10 +872,12 @@ export function AccountantFollowUpsPage() {
 
   function handleCreateRequest() {
     if (!user || !selectedClient || !selectedWorkspace) return;
-    const subject = newRequestSubject.trim();
-    const details = newRequestDetails.trim();
-    if (!subject || !details || !newRequestDueDate) {
-      setInboxNotice("Add subject, details, and due date before sending a new request.");
+
+    const title = requestTitle.trim();
+    const description = requestDetails.trim();
+
+    if (!title || !description || !requestDueDate) {
+      setRequestFormError("Add the document name, request details, and due date before sending.");
       return;
     }
 
@@ -600,143 +886,73 @@ export function AccountantFollowUpsPage() {
       clientId: selectedClient.id,
       clientName: selectedClient.clientName,
       monthLabel: activeRequest?.monthLabel ?? selectedWorkspace.monthPack.monthLabel,
-      title: subject,
-      description: details,
-      dueDate: new Date(newRequestDueDate).toISOString(),
+      title: `Document request: ${title}`,
+      description,
+      dueDate: new Date(`${requestDueDate}T17:00:00.000Z`).toISOString(),
+      priority: requestPriority,
       relatedDocumentId: activeRequest?.relatedDocumentId,
     });
 
     setInboxNotice(result.message);
-    if (result.ok) {
-      setIsRequestModalOpen(false);
-      setNewRequestSubject("");
-      setNewRequestDetails("");
-      setNewRequestDueDate(defaultInboxDueDate());
+    if (!result.ok) {
+      setRequestFormError(result.message);
+      return;
+    }
+
+    setRequestFormError("");
+    setIsRequestModalOpen(false);
+    setRequestTitle("");
+    setRequestDetails("");
+    setRequestDueDate(defaultFollowUpDueDate());
+    setRequestPriority("high");
+    if (result.createdRequestId) {
+      setSelectedRequestId(result.createdRequestId);
     }
   }
 
   if (!selectedClient || !selectedWorkspace) {
     return (
-      <div className={`${inboxPanelClass} rounded-lg p-6 text-sm text-[#53617f]`}>
+      <div className={`accountant-inbox-page ${inboxPanelClass} rounded-lg p-6 text-sm text-[#53617f]`}>
         No accessible clients found for this workspace.
       </div>
     );
   }
 
   return (
-    <div className="client-inbox-page mx-auto max-w-[1500px] space-y-4 pb-8">
-      <header className="flex flex-wrap items-start justify-between gap-4">
+    <div className="accountant-inbox-page mx-auto flex w-full max-w-[1680px] flex-col gap-4 pb-8 min-[1080px]:h-full min-[1080px]:min-h-0 min-[1080px]:overflow-hidden min-[1080px]:pb-0">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#315ca8]">Accountant workspace</p>
-          <h1 className="mt-2 text-[1.75rem] font-semibold tracking-tight text-[#091333]">Inbox</h1>
-          <p className="mt-2 max-w-2xl text-[0.95rem] leading-6 text-[#53617f]">Manage client communication and follow-up requests.</p>
+          <p className="text-[0.72rem] font-medium uppercase tracking-[0.12em] text-[#7b879e]">Client workflow</p>
+          <p className="text-[0.92rem] font-medium text-[#091333]">
+            Request documents from {selectedClient.clientName}
+          </p>
         </div>
-        <div className="flex flex-wrap justify-end gap-3">
-          <Button className="h-12 rounded-lg border-0 bg-[#062b73] px-6 text-white ring-0 hover:bg-[#06235d]" onClick={() => setIsRequestModalOpen(true)}>
-            <PlusCircle aria-hidden="true" className="h-4 w-4" />
-            New request
-          </Button>
-          <Button
-            className="h-12 rounded-lg px-6"
-            onClick={() =>
-              navigate(
-                activeRequest
-                  ? `/firm/documents?requestId=${encodeURIComponent(activeRequest.id)}&client=${encodeURIComponent(selectedClient.clientName)}`
-                  : `/firm/documents?client=${encodeURIComponent(selectedClient.clientName)}`,
-              )}
-            variant="secondary"
-          >
-            <FolderOpen aria-hidden="true" className="h-4 w-4" />
-            Open documents
-          </Button>
-        </div>
-      </header>
-
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <div className={`${inboxPanelClass} flex items-center gap-4 rounded-lg p-5`}>
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#eef3ff] text-[#062b73]">
-            <Mail aria-hidden="true" className="h-6 w-6" />
-          </span>
-          <div>
-            <p className="text-sm font-medium text-[#35466d]">Unresolved</p>
-            <p className="mt-1 text-2xl font-semibold text-[#062b73]">{slaSummary.unresolved}</p>
-          </div>
-        </div>
-        <div className={`${inboxPanelClass} flex items-center gap-4 rounded-lg p-5`}>
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-rose-50 text-rose-600">
-            <ShieldAlert aria-hidden="true" className="h-6 w-6" />
-          </span>
-          <div>
-            <p className="text-sm font-medium text-[#35466d]">SLA breached</p>
-            <p className="mt-1 text-2xl font-semibold text-rose-600">{slaSummary.breached}</p>
-          </div>
-        </div>
-        <div className={`${inboxPanelClass} flex items-center gap-4 rounded-lg p-5`}>
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-orange-500">
-            <Clock aria-hidden="true" className="h-6 w-6" />
-          </span>
-          <div>
-            <p className="text-sm font-medium text-[#35466d]">Due soon</p>
-            <p className="mt-1 text-2xl font-semibold text-orange-500">{slaSummary.dueSoon}</p>
-          </div>
-        </div>
-        <div className={`${inboxPanelClass} flex items-center gap-4 rounded-lg p-5`}>
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-50 text-emerald-600">
-            <MessageSquare aria-hidden="true" className="h-6 w-6" />
-          </span>
-          <div>
-            <p className="text-sm font-medium text-[#35466d]">Unread from clients</p>
-            <p className="mt-1 text-2xl font-semibold text-emerald-600">{slaSummary.unread}</p>
-          </div>
-        </div>
-      </section>
+        <Button
+          className="client-inbox-primary-button h-11 rounded-xl border-0 px-4 text-sm font-medium ring-0"
+          onClick={() => {
+            setRequestFormError("");
+            setIsRequestModalOpen(true);
+          }}
+        >
+          Request document
+        </Button>
+      </div>
 
       {inboxNotice ? (
-        <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-[#35466d]">{inboxNotice}</div>
+        <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-[#53617f] shadow-[0_8px_18px_rgba(4,24,52,0.05)]">
+          {inboxNotice}
+        </div>
       ) : null}
 
       {visibleRequests.length > 0 && activeRequest ? (
-        <div className="grid items-stretch gap-4 xl:grid-cols-[510px_minmax(0,1fr)]">
-          <div className="flex h-full flex-col gap-4">
-            <div className={`${inboxPanelClass} rounded-lg p-5`}>
-              <SelectField
-                id="inbox-client-select"
-                label="Client workspace"
-                onChange={(event) => {
-                  setSelectedClientId(event.target.value);
-                  setSelectedRequestId("");
-                  setSelectedRequestIds([]);
-                  setInboxNotice("");
-                }}
-                options={scopedClients.map((client) => ({ label: client.clientName, value: client.id }))}
-                value={selectedClient.id}
-              />
-            </div>
-            <ThreadListPane
-              filter={threadFilter}
-              onChangeFilter={setThreadFilter}
-              onChangeSearch={setThreadSearch}
-              onChangeSort={setThreadSort}
-              onSelectRequest={setSelectedRequestId}
-              onToggleSelect={(requestId) =>
-                setSelectedRequestIds((current) =>
-                  current.includes(requestId) ? current.filter((id) => id !== requestId) : [...current, requestId],
-                )}
-              requests={visibleRequests}
-              searchValue={threadSearch}
-              selectedRequestId={activeRequest.id}
-              selectedRequestIds={selectedRequestIds}
-              sort={threadSort}
-            />
-            <div className={`${inboxPanelClass} rounded-lg p-4`}>
-              <p className="mb-2 text-sm font-semibold text-[#091333]">Bulk triage</p>
-              <div className="flex flex-wrap gap-2">
-                <Button disabled={selectedRequestIds.length === 0} onClick={handleBulkResolve} variant="secondary">Bulk resolve</Button>
-                <Button disabled={selectedRequestIds.length === 0} onClick={handleBulkNudge} variant="secondary">Bulk nudge client</Button>
-                <span className="self-center text-xs text-[#53617f]">{selectedRequestIds.length} selected</span>
-              </div>
-            </div>
-          </div>
+        <div className="grid grid-cols-1 items-start gap-4 min-[1080px]:min-h-0 min-[1080px]:flex-1 min-[1080px]:items-stretch min-[1080px]:grid-cols-[minmax(280px,320px)_minmax(0,1fr)] min-[1400px]:grid-cols-[minmax(300px,350px)_minmax(0,1.52fr)] xl:gap-5">
+          <ThreadListPane
+            onChangeSearch={setThreadSearch}
+            onSelectRequest={setSelectedRequestId}
+            requests={visibleRequests}
+            searchValue={threadSearch}
+            selectedRequestId={activeRequest.id}
+          />
           <ConversationPane
             isInternal={sendAsInternal}
             messageDraft={messageDraft}
@@ -744,12 +960,8 @@ export function AccountantFollowUpsPage() {
             onChangeMessageDraft={setMessageDraft}
             onEscalate={() =>
               addLifecycleNote("[INTERNAL] Escalation requested: SLA risk or blocker identified. Please prioritize.")}
-            onOpenLinkedDocument={() =>
-              navigate(
-                activeRequest.relatedDocumentId
-                  ? `/firm/documents?recordId=${encodeURIComponent(activeRequest.relatedDocumentId)}`
-                  : `/firm/documents?requestId=${encodeURIComponent(activeRequest.id)}`,
-              )}
+            onForward={() =>
+              addLifecycleNote("[INTERNAL] Forward requested: share this thread with the appropriate firm contact.")}
             onReassign={() =>
               addLifecycleNote("[INTERNAL] Reassignment suggested: please review ownership and assign another accountant.")}
             onResolve={handleResolve}
@@ -769,12 +981,13 @@ export function AccountantFollowUpsPage() {
           </h2>
           <p className="mt-2 text-sm text-[#53617f]">
             {scopedRequests.length > 0
-              ? "Try clearing search or switching back to All."
+              ? "Try clearing search."
               : "Start a thread by creating a new request for this client."}
           </p>
           {scopedRequests.length > 0 ? (
             <div className="mt-4">
               <Button
+                className="client-inbox-secondary-button h-10 rounded-lg px-4 font-semibold"
                 onClick={() => {
                   setThreadSearch("");
                   setThreadFilter("all");
@@ -789,41 +1002,137 @@ export function AccountantFollowUpsPage() {
       )}
 
       <Modal
-        description="Create a follow-up request and keep it tied to the selected client thread workspace."
+        description="Create a new document request and send it into the client conversation inbox."
         isOpen={isRequestModalOpen}
         onClose={() => setIsRequestModalOpen(false)}
-        title="New client request"
+        title="Request document"
       >
-        <div className="space-y-4">
-          <TextField
-            id="firm-request-subject"
-            label="Subject"
-            onChange={(event) => setNewRequestSubject(event.target.value)}
-            placeholder="e.g. Upload missing bank statement"
-            value={newRequestSubject}
-          />
-          <TextAreaField
-            id="firm-request-details"
-            label="Details"
-            onChange={(event) => setNewRequestDetails(event.target.value)}
-            placeholder="Explain exactly what is required from the client."
-            value={newRequestDetails}
-          />
-          <TextField
-            id="firm-request-due-date"
-            label="Due date"
-            onChange={(event) => setNewRequestDueDate(event.target.value)}
-            type="date"
-            value={newRequestDueDate}
-          />
-          <div className="flex justify-end gap-3">
-            <Button onClick={() => setIsRequestModalOpen(false)} variant="secondary">Cancel</Button>
-            <Button
-              disabled={!newRequestSubject.trim() || !newRequestDetails.trim() || !newRequestDueDate}
-              onClick={handleCreateRequest}
-            >
-              Send request
-            </Button>
+        <div className="space-y-5">
+          <div className="overflow-hidden rounded-[26px] border border-slate-200 bg-white shadow-[0_16px_34px_rgba(4,24,52,0.05)]">
+            <div className="h-1.5 w-full bg-[linear-gradient(90deg,#22356f_0%,#5e7ed6_45%,#d8e4ff_100%)]" />
+            <div className="px-5 py-5">
+              <div className="flex flex-wrap items-start justify-between gap-5">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#7b879e]">Document request</p>
+                  <p className="mt-2 text-[1.02rem] font-semibold text-[#091333]">Ask the client for a specific document.</p>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-[#53617f]">
+                  This creates a new inbox thread for {selectedClient.clientName} and keeps the follow-up conversation in one place.
+                  </p>
+                </div>
+                <div className="min-w-[260px] rounded-2xl border border-slate-200/90 bg-[#f8fafc] px-4 py-4">
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-3 border-b border-slate-200/80 pb-3">
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#7b879e]">Client</p>
+                        <p className="mt-1 truncate text-sm font-medium text-[#091333]">{selectedClient.clientName}</p>
+                      </div>
+                      <div className="shrink-0 rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-[#415ea8] shadow-[inset_0_0_0_1px_rgba(198,210,232,0.9)]">
+                        Live thread
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#7b879e]">Destination</p>
+                        <p className="mt-1 text-sm font-medium text-[#091333]">Inbox conversation</p>
+                      </div>
+                      <div className="rounded-full bg-[#eef8f3] px-2.5 py-1 text-[11px] font-semibold text-[#2f7a57]">
+                        Client visible
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <section className="rounded-[26px] border border-slate-200/90 bg-white px-5 py-5 shadow-[0_16px_36px_rgba(4,24,52,0.06)]">
+            <div className="mb-5 flex items-start gap-3">
+              <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#f3f7ff] text-[#415ea8]">
+                <ShieldAlert className="h-4.5 w-4.5" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-[#091333]">Request details</p>
+                <p className="mt-1 text-xs leading-5 text-[#7b879e]">
+                  Be specific so the client knows exactly what to upload and how to send it back.
+                </p>
+              </div>
+            </div>
+            <div className="space-y-4">
+              <TextField
+                id="accountant-request-title"
+                label="Document needed"
+                onChange={(event) => setRequestTitle(event.target.value)}
+                placeholder="e.g. Signed annual financial statements"
+                value={requestTitle}
+              />
+              <TextAreaField
+                id="accountant-request-details"
+                label="Message to client"
+                onChange={(event) => setRequestDetails(event.target.value)}
+                placeholder="Explain what is missing, where the client should upload it, and any format requirements."
+                value={requestDetails}
+              />
+            </div>
+          </section>
+
+          <section className="rounded-[26px] border border-slate-200/90 bg-white px-5 py-5 shadow-[0_16px_36px_rgba(4,24,52,0.06)]">
+            <div className="mb-5 flex items-start gap-3">
+              <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#fff5df] text-[#a76b00]">
+                <CalendarDays className="h-4.5 w-4.5" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-[#091333]">Timing and priority</p>
+                <p className="mt-1 text-xs leading-5 text-[#7b879e]">
+                  Set when the client should respond and how urgent the request is.
+                </p>
+              </div>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <TextField
+                id="accountant-request-due-date"
+                label="Due date"
+                onChange={(event) => setRequestDueDate(event.target.value)}
+                type="date"
+                value={requestDueDate}
+              />
+              <SelectField
+                id="accountant-request-priority"
+                label="Priority"
+                onChange={(event) => setRequestPriority(event.target.value as WorkflowRequest["priority"])}
+                options={[
+                  { label: "Low", value: "low" },
+                  { label: "Medium", value: "medium" },
+                  { label: "High", value: "high" },
+                ]}
+                value={requestPriority}
+              />
+            </div>
+          </section>
+
+          {requestFormError ? (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              {requestFormError}
+            </div>
+          ) : null}
+
+          <div className="border-t border-slate-100 pt-3">
+            <p className="text-xs text-[#7b879e]">The client will receive this as a new conversation thread in their inbox.</p>
+            <div className="mt-3 flex flex-wrap justify-end gap-3">
+              <Button
+                className="client-inbox-secondary-button h-11 rounded-xl px-4 text-sm font-medium"
+                onClick={() => setIsRequestModalOpen(false)}
+                variant="secondary"
+              >
+                Cancel
+              </Button>
+              <Button
+                className="client-inbox-primary-button h-11 rounded-xl border-0 px-5 text-sm font-medium ring-0 disabled:opacity-100"
+                disabled={!requestTitle.trim() || !requestDetails.trim() || !requestDueDate}
+                onClick={handleCreateRequest}
+              >
+                Send request
+              </Button>
+            </div>
           </div>
         </div>
       </Modal>

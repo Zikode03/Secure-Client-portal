@@ -2,6 +2,7 @@
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { CalendarDays, FileText } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
@@ -18,9 +19,9 @@ const panelClass =
 const iconTileClass =
   "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#eef4fa] text-brand-700 ring-1 ring-[#d7e3ee]";
 const dashboardLinkClass =
-  "client-dashboard-link font-semibold transition";
+  "client-dashboard-link font-medium transition";
 const dashboardActionButtonClass =
-  "client-dashboard-action-button inline-flex items-center justify-center rounded-lg font-bold transition hover:-translate-y-0.5 active:translate-y-px focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2";
+  "client-dashboard-action-button inline-flex items-center justify-center rounded-lg font-medium transition hover:-translate-y-0.5 active:translate-y-px focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2";
 
 // Shared shape notes: these types keep UI and data contracts aligned.
 type QueueTab = "deadlines" | "reviews";
@@ -207,6 +208,15 @@ function isSameCalendarDay(dateValue: string, comparisonDate: Date) {
   );
 }
 
+function isTodayInPreviewMonth(day: number, monthDate: Date) {
+  const today = new Date();
+  return (
+    today.getFullYear() === monthDate.getFullYear() &&
+    today.getMonth() === monthDate.getMonth() &&
+    today.getDate() === day
+  );
+}
+
 function deadlineStatusLabel(dueDate: string) {
   const days = dayDifference(dueDate);
 
@@ -241,43 +251,6 @@ function deadlineToneClasses(tone: DeadlineItem["tone"]) {
     badge: "bg-brand-50 text-brand-600",
   };
 }
-function queuePriorityMeta(priority: WorkQueueItem["priority"]) {
-  if (priority === "high") {
-    return "bg-rose-50 text-rose-600 ring-rose-200";
-  }
-
-  if (priority === "medium") {
-    return "bg-amber-50 text-amber-600 ring-amber-200";
-  }
-
-  return "bg-brand-50 text-brand-600 ring-brand-200";
-}
-
-function queueToneClasses(tone: QueueTone) {
-  switch (tone) {
-    case "rose":
-      return {
-        border: "bg-rose-500",
-        icon: "bg-rose-50 text-rose-500 ring-rose-100",
-      };
-    case "orange":
-      return {
-        border: "bg-amber-500",
-        icon: "bg-amber-50 text-amber-500 ring-amber-100",
-      };
-    case "emerald":
-      return {
-        border: "bg-emerald-500",
-        icon: "bg-emerald-50 text-emerald-500 ring-emerald-100",
-      };
-    default:
-      return {
-        border: "bg-brand-500",
-        icon: "bg-brand-50 text-brand-600 ring-brand-100",
-      };
-  }
-}
-
 function notificationToneClasses(tone: NotificationItem["tone"]) {
   switch (tone) {
     case "danger":
@@ -454,52 +427,15 @@ function ChevronRightIcon() {
   );
 }
 
-function QueueIcon({ tone }: { tone: QueueTone }) {
-  const classes = queueToneClasses(tone);
-
+function QueueIcon({ tab, priority }: Pick<WorkQueueItem, "tab" | "priority">) {
+  const Icon = tab === "reviews" ? FileText : CalendarDays;
+  const iconClass =
+    priority === "high"
+      ? "bg-[#eef3fb] text-[#203a72] ring-[#d8e3f0]"
+      : "bg-[#f8fafd] text-[#4f5f80] ring-[#dbe4ef]";
   return (
-    <div className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ring-1", classes.icon)}>
-      {tone === "rose" ? (
-        <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
-          <path
-            d="M8 3.75h6l4.25 4.25v10.25a2 2 0 0 1-2 2H8A2.25 2.25 0 0 1 5.75 18V6A2.25 2.25 0 0 1 8 3.75Z"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="1.8"
-          />
-          <path
-            d="M13.75 3.75V8h4.25"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="1.8"
-          />
-        </svg>
-      ) : tone === "orange" ? (
-        <CalendarIcon />
-      ) : tone === "emerald" ? (
-        <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
-          <path
-            d="m7.5 12.5 2.75 2.75L16.5 9"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-          />
-          <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
-        </svg>
-      ) : (
-        <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
-          <path
-            d="M7.75 5.75h8.5a2 2 0 0 1 2 2v6.5a2 2 0 0 1-2 2H11l-3.75 3v-3H7.75a2 2 0 0 1-2-2v-6.5a2 2 0 0 1 2-2Z"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="1.8"
-          />
-        </svg>
-      )}
+    <div className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ring-1", iconClass)}>
+      <Icon aria-hidden="true" className="h-5 w-5" strokeWidth={1.9} />
     </div>
   );
 }
@@ -528,83 +464,141 @@ function ClientRiskProfileChart({ rows }: { rows: PortfolioRow[] }) {
     },
   ];
   const activeSegment = segments.find((segment) => segment.id === activeSegmentId) ?? null;
-  const activePercentage = activeSegment ? Math.round((activeSegment.count / totalClients) * 100) : null;
+  const dominantSegment =
+    [...segments].sort((left, right) => right.count - left.count)[0] ?? null;
+  const spotlightSegment = activeSegment ?? dominantSegment;
+  const spotlightPercentage = spotlightSegment ? Math.round((spotlightSegment.count / totalClients) * 100) : null;
+  const spotlightCenterLabel =
+    spotlightSegment?.id === "attention"
+      ? "Needs attention"
+      : spotlightSegment?.id === "high-risk"
+        ? "High risk"
+        : spotlightSegment?.id === "compliant"
+          ? "Compliant"
+          : "Clients";
   const radius = 50;
   const circumference = 2 * Math.PI * radius;
   let offset = 0;
 
   return (
-    <SurfaceCard className={cn(panelClass, "relative min-h-[334px] overflow-hidden p-0")}>
-      <div className="px-5 pt-5">
-        <h2 className="text-[1rem] font-semibold text-[#091333]">Client risk profile</h2>
-        <p className="mt-2 text-[0.82rem] font-medium text-[#53617f]">Distribution of client compliance status.</p>
+    <SurfaceCard className={cn(panelClass, "relative h-auto self-start overflow-hidden p-0")}>
+      <div className="border-b border-[#edf2f7] bg-[#fbfdff] px-5 py-4">
+        <h2 className="text-[1rem] font-medium text-[#091333]">Client risk profile</h2>
+        <p className="mt-1 text-[0.9rem] text-[#53617f]">Distribution of client compliance status.</p>
       </div>
-      <div className="flex justify-center px-5 pt-9">
-        <svg aria-label="Client risk profile chart" className="h-[170px] w-[170px]" role="img" viewBox="0 0 140 140">
-          <circle cx="70" cy="70" fill="none" r={radius} stroke="#e5edf5" strokeWidth="26" />
-          {segments.map((segment) => {
-            const length = (segment.count / totalClients) * circumference;
-            const dashOffset = -offset;
-            const percentage = Math.round((segment.count / totalClients) * 100);
-            const isActive = activeSegmentId === segment.id;
-            offset += length;
+      <div className="px-5 pb-5 pt-5">
+        <div className="rounded-2xl border border-[#e3ebf3] bg-[linear-gradient(180deg,#fbfdff_0%,#f6f9fc_100%)] p-5">
+          <div className="grid gap-6 xl:grid-cols-[248px_minmax(0,1fr)] xl:items-center">
+            <div className="relative mx-auto flex h-[244px] w-[244px] items-center justify-center">
+              <svg aria-label="Client risk profile chart" className="h-[208px] w-[208px]" role="img" viewBox="0 0 140 140">
+                <circle cx="70" cy="70" fill="none" r={radius} stroke="#e5edf5" strokeWidth="26" />
+                {segments.map((segment) => {
+                  const length = (segment.count / totalClients) * circumference;
+                  const dashOffset = -offset;
+                  const percentage = Math.round((segment.count / totalClients) * 100);
+                  const isActive = activeSegmentId === segment.id;
+                  offset += length;
 
-            return segment.count > 0 ? (
-              <g
-                className="cursor-pointer"
-                key={segment.id}
-                onMouseEnter={() => setActiveSegmentId(segment.id)}
-                onMouseLeave={() => setActiveSegmentId(null)}
-              >
-                <title>{`${segment.label}: ${segment.count} client${segment.count === 1 ? "" : "s"} (${percentage}%)`}</title>
-                <circle
-                  cx="70"
-                  cy="70"
-                  fill="none"
-                  opacity={activeSegmentId && !isActive ? 0.45 : 1}
-                  r={radius}
-                  stroke={segment.color}
-                  strokeDasharray={`${length} ${circumference - length}`}
-                  strokeDashoffset={dashOffset}
-                  strokeLinecap="butt"
-                  strokeWidth="26"
-                  transform="rotate(-90 70 70)"
-                />
-              </g>
-            ) : null;
-          })}
-          <circle cx="70" cy="70" fill="#ffffff" pointerEvents="none" r="33" />
-        </svg>
-      </div>
-      <div className="mx-auto mt-2 flex min-h-[38px] w-full items-center justify-center px-5">
-        <div
-          className={cn(
-            "flex min-h-[38px] w-fit items-center justify-center rounded-xl bg-[#eef4fa] px-4 text-center text-[0.76rem] font-bold text-[#091333] transition-opacity",
-            activeSegment ? "opacity-100" : "opacity-0",
-          )}
-        >
-          <span>
-            {activeSegment
-              ? `${activeSegment.label}: ${activeSegment.count} client${activeSegment.count === 1 ? "" : "s"} (${activePercentage}%)`
-              : " "}
-          </span>
+                  return segment.count > 0 ? (
+                    <g
+                      className="cursor-pointer"
+                      key={segment.id}
+                      onMouseEnter={() => setActiveSegmentId(segment.id)}
+                      onMouseLeave={() => setActiveSegmentId(null)}
+                    >
+                      <title>{`${segment.label}: ${segment.count} client${segment.count === 1 ? "" : "s"} (${percentage}%)`}</title>
+                      <circle
+                        cx="70"
+                        cy="70"
+                        fill="none"
+                        opacity={activeSegmentId && !isActive ? 0.45 : 1}
+                        r={radius}
+                        stroke={segment.color}
+                        strokeDasharray={`${length} ${circumference - length}`}
+                        strokeDashoffset={dashOffset}
+                        strokeLinecap="butt"
+                        strokeWidth="26"
+                        transform="rotate(-90 70 70)"
+                      />
+                    </g>
+                  ) : null;
+                })}
+                <circle cx="70" cy="70" fill="#ffffff" pointerEvents="none" r="33" />
+              </svg>
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                <div className="w-[104px] text-center">
+                  <p className="text-[0.72rem] uppercase tracking-[0.12em] text-[#7b89a4]">
+                    {spotlightSegment ? "Focus" : "No data"}
+                  </p>
+                  <p className="mt-1 text-[1.9rem] leading-none text-[#091333]">
+                    {spotlightSegment ? `${Math.round((spotlightSegment.count / totalClients) * 100)}%` : "0%"}
+                  </p>
+                  <p className="mt-1 text-[0.78rem] leading-4 text-[#6b7894]">
+                    {spotlightCenterLabel}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="min-w-0">
+              <div className="rounded-2xl border border-[#e3ebf3] bg-white px-4 py-4 shadow-[0_12px_24px_rgba(4,24,52,0.04)]">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#edf2f7] pb-3">
+                  <div>
+                    <p className="text-[0.78rem] uppercase tracking-[0.08em] text-[#7b89a4]">Current focus</p>
+                    <p className="mt-1 text-[1.02rem] text-[#091333]">
+                      {spotlightSegment ? spotlightSegment.label : "No active profile data"}
+                    </p>
+                  </div>
+                  {spotlightPercentage !== null ? (
+                    <span className="rounded-full bg-[#f5f8fc] px-3 py-1 text-[0.82rem] text-[#5c6c8e] ring-1 ring-inset ring-[#dce6f0]">
+                      {spotlightPercentage}% of portfolio
+                    </span>
+                  ) : null}
+                </div>
+
+                <p className="mt-3 text-[0.84rem] leading-6 text-[#6b7894]">
+                  Hover over the chart or use the rows below to inspect each client-status segment.
+                </p>
+
+                <div className="mt-4 rounded-2xl border border-[#edf2f7] bg-[#fbfdff]">
+                  {segments.map((segment, index) => {
+                    const percentage = Math.round((segment.count / totalClients) * 100);
+                    const isSelected = activeSegmentId === segment.id || (!activeSegmentId && spotlightSegment?.id === segment.id);
+
+                    return (
+                      <button
+                        className={cn(
+                          "flex w-full items-center justify-between gap-4 px-4 py-3.5 text-left transition hover:bg-[#f8fbff]",
+                          isSelected ? "bg-[#f8fbff]" : "",
+                          index < segments.length - 1 ? "border-b border-[#edf2f7]" : "",
+                        )}
+                        key={segment.id}
+                        onBlur={() => setActiveSegmentId(null)}
+                        onFocus={() => setActiveSegmentId(segment.id)}
+                        onMouseEnter={() => setActiveSegmentId(segment.id)}
+                        onMouseLeave={() => setActiveSegmentId(null)}
+                        type="button"
+                      >
+                        <div className="flex min-w-0 items-center gap-3">
+                          <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: segment.color }} />
+                          <div className="min-w-0">
+                            <span className="block truncate text-[0.96rem] text-[#091333]">{segment.label}</span>
+                            <span className="mt-0.5 block text-[0.82rem] text-[#6b7894]">
+                              {segment.count} client{segment.count === 1 ? "" : "s"}
+                            </span>
+                          </div>
+                        </div>
+                        <span className="shrink-0 text-[0.86rem] text-[#53617f]">{percentage}%</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+            </div>
+          </div>
         </div>
-      </div>
-      <div className="flex flex-wrap items-center justify-center gap-x-7 gap-y-3 px-5 pb-5 text-[0.82rem] font-semibold text-[#091333]">
-        {segments.map((segment) => (
-          <button
-            className="flex items-center gap-2 rounded-lg px-1 py-0.5 transition hover:bg-[#eef4fa]"
-            key={segment.id}
-            onBlur={() => setActiveSegmentId(null)}
-            onFocus={() => setActiveSegmentId(segment.id)}
-            onMouseEnter={() => setActiveSegmentId(segment.id)}
-            onMouseLeave={() => setActiveSegmentId(null)}
-            type="button"
-          >
-            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: segment.color }} />
-            <span>{segment.label}</span>
-          </button>
-        ))}
+
       </div>
     </SurfaceCard>
   );
@@ -637,7 +631,7 @@ function ComplianceHealthTrendChart({ rows }: { rows: PortfolioRow[] }) {
   return (
     <SurfaceCard className={cn(panelClass, "relative overflow-hidden p-0")}>
       <div className="px-5 pt-5">
-        <h2 className="text-[1rem] font-semibold text-[#091333]">Compliance health trend</h2>
+        <h2 className="text-[1rem] font-medium text-[#091333]">Compliance health trend</h2>
         <p className="mt-2 text-[0.82rem] font-medium text-[#53617f]">Monthly compliance performance across all clients.</p>
       </div>
       <div className="px-2 pb-4 pt-4 sm:px-5">
@@ -808,6 +802,10 @@ export function AccountantDashboardPage() {
         .includes(normalizedSearch);
     });
   }, [assignedClients, clientSearch, scopedClientById]);
+  const dashboardAssignedClients = useMemo(
+    () => visibleAssignedClients.slice(0, 3),
+    [visibleAssignedClients],
+  );
 
   const reviewQueueItems = useMemo(
     () => buildReviewQueueItems(scopedReviewQueue.slice(0, 5), () => navigate("/firm/review")),
@@ -834,6 +832,10 @@ export function AccountantDashboardPage() {
     }),
     [deadlineQueueItems.length, reviewQueueItems.length],
   );
+  const visibleWorkQueueItems = useMemo(
+    () => workQueueByTab[activeQueueTab].slice(0, 3),
+    [activeQueueTab, workQueueByTab],
+  );
 
   const sortedCalendarDeadlines = useMemo(
     () =>
@@ -846,6 +848,17 @@ export function AccountantDashboardPage() {
     () =>
       sortedCalendarDeadlines.filter((item) => isSameCalendarMonth(item.dueDate, calendarPreviewDate)),
     [calendarPreviewDate, sortedCalendarDeadlines],
+  );
+  const selectedCalendarDate = useMemo(
+    () =>
+      selectedCalendarDay === null
+        ? null
+        : new Date(
+            calendarPreviewDate.getFullYear(),
+            calendarPreviewDate.getMonth(),
+            selectedCalendarDay,
+          ),
+    [calendarPreviewDate, selectedCalendarDay],
   );
 
   const calendarPreviewDeadlines = useMemo(() => {
@@ -872,6 +885,11 @@ export function AccountantDashboardPage() {
       ),
     [monthCalendarDeadlines],
   );
+  const nextCalendarDeadline = monthCalendarDeadlines[0] ?? null;
+  const calendarSummaryText =
+    selectedCalendarDate !== null
+      ? `${calendarPreviewDeadlines.length} deadline${calendarPreviewDeadlines.length === 1 ? "" : "s"} on ${formatDateLabel(selectedCalendarDate.toISOString())}`
+      : `${monthCalendarDeadlines.length} deadline${monthCalendarDeadlines.length === 1 ? "" : "s"} in ${monthPreviewLabel(calendarPreviewDate.toISOString())}`;
 
   useEffect(() => {
     if (sortedCalendarDeadlines.length === 0) {
@@ -1046,11 +1064,11 @@ export function AccountantDashboardPage() {
         </div>
         <div className="relative grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
           <div className="space-y-3">
-            <span className="inline-flex rounded-full bg-white/12 px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-white/80 ring-1 ring-white/15">
+            <span className="inline-flex rounded-full bg-white/12 px-3 py-1 text-[0.7rem] font-medium uppercase tracking-[0.14em] text-white/80 ring-1 ring-white/15">
               Accountant Workspace
             </span>
             <div className="space-y-1.5">
-              <h1 className="text-[2.05rem] font-semibold tracking-tight text-white">
+              <h1 className="text-[2.05rem] font-medium tracking-tight text-white">
                 Welcome, {user?.name ?? "Accountant"}
               </h1>
               <p className="max-w-3xl text-[0.96rem] leading-7 text-white/78">
@@ -1080,7 +1098,7 @@ export function AccountantDashboardPage() {
               >
                 <BellIcon />
                 {unreadNotificationCount > 0 ? (
-                  <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1 text-[0.66rem] font-semibold text-white shadow-[0_6px_16px_rgba(244,63,94,0.28)]">
+                  <span className="absolute -right-1 -top-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1 text-[0.66rem] font-medium text-white shadow-[0_6px_16px_rgba(244,63,94,0.28)]">
                     {unreadNotificationCount > 9 ? "9+" : unreadNotificationCount}
                   </span>
                 ) : null}
@@ -1095,7 +1113,7 @@ export function AccountantDashboardPage() {
                 <div className="border-b border-slate-100 bg-[radial-gradient(circle_at_top_left,rgba(84,66,255,0.08),transparent_36%),linear-gradient(180deg,#ffffff_0%,#fbfbff_100%)] px-5 pb-4 pt-5">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <h2 className="text-[1rem] font-semibold text-slate-950">Notifications</h2>
+                      <h2 className="text-[1rem] font-medium text-slate-950">Notifications</h2>
                       <p className="mt-1 text-[0.82rem] text-slate-500">
                         {unreadNotificationCount} active item
                         {unreadNotificationCount === 1 ? "" : "s"} need your attention.
@@ -1120,10 +1138,10 @@ export function AccountantDashboardPage() {
                         className="rounded-[1rem] border border-white/80 bg-white/90 px-3 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.04)]"
                         key={item.id}
                       >
-                        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                        <p className="text-[0.68rem] font-medium uppercase tracking-[0.12em] text-slate-400">
                           {item.label}
                         </p>
-                        <p className={cn("mt-1 text-[1.25rem] font-semibold", item.tone)}>
+                        <p className={cn("mt-1 text-[1.25rem] font-medium", item.tone)}>
                           {item.value}
                         </p>
                       </div>
@@ -1160,7 +1178,7 @@ export function AccountantDashboardPage() {
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-start justify-between gap-3">
                                   <div className="min-w-0">
-                                    <p className="text-[0.92rem] font-semibold leading-6 text-slate-950">
+                                    <p className="text-[0.92rem] font-medium leading-6 text-slate-950">
                                       {item.title}
                                     </p>
                                     <p className="mt-1 text-[0.8rem] text-slate-500">
@@ -1171,7 +1189,7 @@ export function AccountantDashboardPage() {
                                     {unread ? (
                                       <span
                                         className={cn(
-                                          "inline-flex shrink-0 rounded-full px-2.5 py-1 text-[0.68rem] font-semibold ring-1 ring-inset",
+                                          "inline-flex shrink-0 rounded-full px-2.5 py-1 text-[0.68rem] font-medium ring-1 ring-inset",
                                           tone.badge,
                                         )}
                                       >
@@ -1228,10 +1246,10 @@ export function AccountantDashboardPage() {
                   <FocusGlyph tone={metric.tone} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[0.82rem] font-semibold text-[#091333]">{metric.label}</p>
+                  <p className="text-[0.82rem] font-medium text-[#091333]">{metric.label}</p>
                   <p
                     className={cn(
-                      "mt-2 text-[1.7rem] font-semibold tracking-tight",
+                      "mt-2 text-[1.7rem] font-medium tracking-tight",
                       metric.tone === "emerald" || metric.tone === "brand" ? "text-brand-700" : "text-[#091333]",
                     )}
                   >
@@ -1255,8 +1273,8 @@ export function AccountantDashboardPage() {
         <SurfaceCard className={cn(panelClass, "min-w-0 overflow-hidden p-0")}>
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e6edf4] bg-[#fbfdff] px-5 pb-4 pt-5">
             <div>
-              <h2 className="text-[1.05rem] font-semibold text-[#091333]">My assigned clients</h2>
-              <p className="mt-1 text-[0.76rem] font-medium text-[#53617f]">
+              <h2 className="text-[1.18rem] font-medium text-[#091333]">My assigned clients</h2>
+              <p className="mt-1 text-[0.96rem] text-[#53617f]">
                 Overview of your clients and pack progress.
               </p>
             </div>
@@ -1270,14 +1288,14 @@ export function AccountantDashboardPage() {
                   </svg>
                 </span>
                 <input
-                  className="h-9 w-full rounded-lg border border-[#dce6ef] bg-white pl-9 pr-3 text-[0.74rem] font-medium text-[#091333] outline-none transition placeholder:text-[#7d8aa3] focus:border-brand-400 focus:ring-4 focus:ring-brand-100 sm:w-[205px]"
+                  className="h-10 w-full rounded-lg border border-[#dce6ef] bg-white pl-9 pr-3 text-[0.9rem] text-[#091333] outline-none transition placeholder:text-[#7d8aa3] focus:border-brand-400 focus:ring-4 focus:ring-brand-100 sm:w-[240px]"
                   onChange={(event) => setClientSearch(event.target.value)}
                   placeholder="Search clients..."
                   value={clientSearch}
                 />
               </label>
               <Button
-                className={cn(dashboardActionButtonClass, "h-9 rounded-lg border-0 px-3 text-[0.74rem] ring-0")}
+                className={cn(dashboardActionButtonClass, "h-10 rounded-lg border-0 px-4 text-[0.92rem] ring-0")}
                 onClick={handleExportView}
               >
                 <svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
@@ -1291,7 +1309,7 @@ export function AccountantDashboardPage() {
 
           {assignedClients.length > 0 ? (
             <>
-              <div className="hidden grid-cols-[minmax(140px,1.45fr)_minmax(112px,0.95fr)_minmax(98px,0.78fr)_minmax(64px,0.48fr)_minmax(68px,0.5fr)] gap-3 border-b border-[#edf2f7] py-3 pl-4 pr-8 text-[0.58rem] font-bold uppercase tracking-[0.08em] text-[#73809a] lg:grid">
+              <div className="hidden grid-cols-[minmax(140px,1.45fr)_minmax(112px,0.95fr)_minmax(98px,0.78fr)_minmax(64px,0.48fr)_minmax(68px,0.5fr)] gap-3 border-b border-[#edf2f7] py-3 pl-4 pr-8 text-[0.78rem] uppercase tracking-[0.08em] text-[#73809a] lg:grid">
                 <div>Client</div>
                 <div>Pack progress</div>
                 <div>Due date</div>
@@ -1299,36 +1317,36 @@ export function AccountantDashboardPage() {
                 <div>Status</div>
               </div>
 
-              {visibleAssignedClients.length > 0 ? (
+              {dashboardAssignedClients.length > 0 ? (
               <div className="divide-y divide-[#edf2f7]">
-                {visibleAssignedClients.map((row, index) => {
+                {dashboardAssignedClients.map((row, index) => {
                   const due = rowDueMeta(row);
                   const risk = rowRiskMeta(row);
                   const status = rowStatusMeta(scopedClientById.get(row.clientId)?.isActive);
 
                   return (
                     <button
-                      className="w-full space-y-3 py-3 pl-4 pr-8 text-left transition lg:grid lg:grid-cols-[minmax(140px,1.45fr)_minmax(112px,0.95fr)_minmax(98px,0.78fr)_minmax(64px,0.48fr)_minmax(68px,0.5fr)] lg:items-center lg:gap-3 lg:space-y-0"
+                      className="w-full space-y-3 py-4 pl-4 pr-8 text-left transition lg:grid lg:grid-cols-[minmax(140px,1.45fr)_minmax(112px,0.95fr)_minmax(98px,0.78fr)_minmax(64px,0.48fr)_minmax(68px,0.5fr)] lg:items-center lg:gap-3 lg:space-y-0"
                       key={row.id}
                       onClick={() => openClientWorkspace(row)}
                       type="button"
                     >
                       <div className="flex min-w-0 items-center gap-3">
-                        <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[0.68rem] font-bold ring-1", rowAccentClass(index))}>
+                        <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-[0.92rem] font-medium ring-1", rowAccentClass(index))}>
                           {getInitials(row.clientName)}
                         </div>
                         <div className="min-w-0">
-                          <p className="truncate text-[0.74rem] font-bold leading-5 text-[#091333]">
+                          <p className="truncate text-[1rem] font-medium leading-6 text-[#091333]">
                             {row.clientName}
                           </p>
-                          <p className="truncate text-[0.63rem] font-semibold text-[#53617f]">
+                          <p className="truncate text-[0.9rem] text-[#53617f]">
                             {row.monthLabel} Pack
                           </p>
                         </div>
                       </div>
 
                       <div className="space-y-1.5">
-                        <div className="flex items-center justify-between text-[0.72rem] font-bold text-[#091333]">
+                        <div className="flex items-center justify-between text-[0.95rem] font-medium text-[#091333]">
                           <span>{row.progressPercent}%</span>
                         </div>
                         <div className="client-dashboard-progress-track h-1.5 overflow-hidden rounded-full">
@@ -1337,7 +1355,7 @@ export function AccountantDashboardPage() {
                             style={{ width: `${Math.min(Math.max(row.progressPercent, 0), 100)}%` }}
                           />
                         </div>
-                        <p className="truncate text-[0.62rem] font-medium text-[#53617f]">
+                        <p className="truncate text-[0.88rem] text-[#53617f]">
                           {row.missingCount} missing <span className="text-slate-300">|</span>{" "}
                           <span className={row.overdueCount > 0 ? "text-rose-600" : "text-slate-500"}>
                             {row.overdueCount} overdue
@@ -1346,17 +1364,17 @@ export function AccountantDashboardPage() {
                       </div>
 
                       <div className="space-y-0.5">
-                        <p className={cn("truncate text-[0.7rem] font-bold", due.textClass)}>{due.label}</p>
-                        <p className="truncate text-[0.62rem] font-medium text-[#53617f]">{due.detail}</p>
+                        <p className={cn("truncate text-[0.95rem] font-medium", due.textClass)}>{due.label}</p>
+                        <p className="truncate text-[0.84rem] text-[#53617f]">{due.detail}</p>
                       </div>
 
                       <div className="flex items-center justify-start">
-                        <span className={cn("inline-flex rounded-md px-2 py-1 text-[0.6rem] font-bold ring-1 ring-inset", risk.className)}>
+                        <span className={cn("inline-flex rounded-full px-2.5 py-1 text-[0.82rem] ring-1 ring-inset", risk.className)}>
                           {risk.label}
                         </span>
                       </div>
 
-                      <div className={cn("flex items-center gap-1.5 text-[0.62rem] font-bold", status.textClass)}>
+                      <div className={cn("flex items-center gap-2 text-[0.9rem]", status.textClass)}>
                         <span className={cn("h-1.5 w-1.5 rounded-full", status.dotClass)} />
                         <span>{status.label}</span>
                       </div>
@@ -1394,30 +1412,46 @@ export function AccountantDashboardPage() {
 
         <SurfaceCard className={cn(panelClass, "min-w-0 overflow-hidden p-0")}>
           <div className="space-y-4 border-b border-[#e6edf4] bg-[#fbfdff] px-5 pb-5 pt-5">
-            <div>
-              <h2 className="text-[1.2rem] font-semibold text-[#091333]">My work queue</h2>
-              <p className="mt-1 text-[0.86rem] text-[#53617f]">
-                Tasks that need your attention.
-              </p>
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                  <h2 className="text-[1.2rem] font-medium text-[#091333]">My work queue</h2>
+                  <button
+                    className="text-[0.9rem] text-[#203a72] transition hover:text-[#091333]"
+                    onClick={() =>
+                      navigate(activeQueueTab === "reviews" ? "/firm/review" : "/firm/compliance")
+                    }
+                    type="button"
+                  >
+                    View all tasks
+                  </button>
+                </div>
+                <p className="mt-1 text-[0.92rem] text-[#53617f]">
+                  Your next three tasks, in the order to tackle them.
+                </p>
+              </div>
+              <span className="inline-flex w-fit items-center rounded-full bg-[#f5f8fc] px-3 py-1 text-[0.82rem] text-[#5c6c8e] ring-1 ring-inset ring-[#dce6f0]">
+                Showing 3 tasks
+              </span>
             </div>
-            <div className="flex flex-wrap items-center gap-5">
+            <div className="flex flex-wrap items-center gap-3">
               {[
                 { id: "reviews" as const, label: "Reviews", count: queueCounts.reviews },
                 { id: "deadlines" as const, label: "Deadlines", count: queueCounts.deadlines },
               ].map((item) => (
                 <button
                   className={cn(
-                    "flex items-center gap-2 border-b-2 px-0.5 pb-2 text-sm transition",
+                    "inline-flex items-center gap-2 border-b-2 px-0.5 pb-2 text-[0.98rem] transition",
                     activeQueueTab === item.id
-                      ? "border-[#0b4f5f] client-dashboard-link"
-                      : "border-transparent client-dashboard-link",
+                      ? "border-[#203a72] text-[#203a72]"
+                      : "border-transparent text-[#6b7894] hover:text-[#203a72]",
                   )}
                   key={item.id}
                   onClick={() => setActiveQueueTab(item.id)}
                   type="button"
                 >
                   <span>{item.label}</span>
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[0.72rem] font-semibold text-slate-500">
+                  <span className="rounded-full bg-[#eff3f8] px-2 py-0.5 text-[0.78rem] text-[#6b7894]">
                     {item.count}
                   </span>
                 </button>
@@ -1425,61 +1459,55 @@ export function AccountantDashboardPage() {
             </div>
           </div>
 
-          {workQueueByTab[activeQueueTab].length > 0 ? (
+          {visibleWorkQueueItems.length > 0 ? (
             <>
-              <div className="divide-y divide-slate-100">
-                {workQueueByTab[activeQueueTab].map((item) => {
-                  const tone = queueToneClasses(item.tone);
+              <div className="px-5 py-3">
+                <div className="grid grid-cols-[minmax(0,1.7fr)_minmax(220px,1fr)_88px] items-center gap-4 border-b border-[#edf2f7] px-4 py-3 text-[0.78rem] uppercase tracking-[0.12em] text-[#7b89a4]">
+                  <span>Task</span>
+                  <span>Details</span>
+                  <span className="text-right">Action</span>
+                </div>
+                {visibleWorkQueueItems.map((item) => {
+                  const itemTypeLabel = item.tab === "reviews" ? "Review" : "Deadline";
+                  const priorityLabel =
+                    item.priority === "high"
+                      ? "High priority"
+                      : item.priority === "medium"
+                        ? "Medium priority"
+                        : "Low priority";
 
                   return (
                     <button
-                      className="relative flex w-full items-start gap-3 px-5 py-4 text-left transition hover:bg-slate-50 dark:hover:bg-[#132542]"
+                      className="group grid w-full grid-cols-[minmax(0,1.7fr)_minmax(220px,1fr)_88px] items-center gap-4 border-b border-[#edf2f7] px-4 py-4 text-left transition hover:bg-[#fbfdff]"
                       key={item.id}
                       onClick={item.onOpen}
                       type="button"
                     >
-                      <span className={cn("absolute left-0 top-5 h-10 w-1 rounded-r-full", tone.border)} />
-                      <QueueIcon tone={item.tone} />
-                      <div className="min-w-0 flex-1 space-y-1">
-                        <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <QueueIcon priority={item.priority} tab={item.tab} />
                           <div className="min-w-0">
-                            <p className="text-[0.96rem] font-semibold text-slate-950">
-                              {item.title}
-                            </p>
-                            <p className="mt-1 text-[0.82rem] text-slate-500">{item.subtitle}</p>
+                            <p className="truncate text-[1rem] text-[#091333]">{item.title}</p>
+                            <p className="mt-1 truncate text-[0.88rem] text-[#66748f]">{item.subtitle}</p>
                           </div>
-                          <span
-                            className={cn(
-                              "inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset",
-                              queuePriorityMeta(item.priority),
-                            )}
-                          >
-                            {item.priority[0].toUpperCase()}
-                            {item.priority.slice(1)}
-                          </span>
                         </div>
-                        <div className="flex items-center justify-between gap-3 pt-1">
-                          <p className="text-[0.8rem] text-slate-500">{item.meta}</p>
-                          <span className="text-slate-400">
-                            <ChevronRightIcon />
-                          </span>
-                        </div>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[0.88rem] text-[#66748f]">{item.meta}</p>
+                        <p className="mt-1 text-[0.78rem] uppercase tracking-[0.08em] text-[#8b97b0]">
+                          {itemTypeLabel} · {priorityLabel}
+                        </p>
+                      </div>
+                      <div className="flex w-[88px] items-center justify-end">
+                        <span className="text-[0.88rem] text-[#203a72] transition group-hover:text-[#091333]">
+                          Open
+                        </span>
                       </div>
                     </button>
                   );
                 })}
               </div>
 
-              <button
-                className={cn(dashboardLinkClass, "flex w-full items-center gap-2 px-5 py-4 text-left text-sm")}
-                onClick={() =>
-                  navigate(activeQueueTab === "reviews" ? "/firm/review" : "/firm/compliance")
-                }
-                type="button"
-              >
-                <span>View all tasks</span>
-                <ChevronRightIcon />
-              </button>
             </>
           ) : (
             <div className="px-5 py-8">
@@ -1494,25 +1522,55 @@ export function AccountantDashboardPage() {
 
       <section className="grid gap-5 lg:grid-cols-2 lg:items-start">
         <SurfaceCard className={cn(panelClass, "min-w-0 overflow-hidden p-0")}>
-          <div className="flex items-center justify-between gap-3 border-b border-[#edf2f7] bg-[#fbfdff] px-5 py-4">
+          <div className="flex flex-col gap-3 border-b border-[#edf2f7] bg-[#fbfdff] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-[1rem] font-semibold text-[#091333]">Compliance calendar</h2>
+              <h2 className="text-[1rem] font-medium text-[#091333]">Compliance calendar</h2>
+              <p className="mt-1 text-[0.86rem] text-[#6b7894]">{calendarSummaryText}</p>
             </div>
-            <button
-              className={cn(dashboardLinkClass, "inline-flex items-center gap-1.5 text-[0.72rem]")}
-              onClick={() => navigate("/firm/compliance/calendar")}
-              type="button"
-            >
-              <span>View full calendar</span>
-              <ChevronRightIcon />
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                className="inline-flex h-9 items-center rounded-full border border-[#dce6ef] px-3 text-[0.84rem] text-[#203a72] transition hover:bg-[#f8fbff]"
+                onClick={() => {
+                  setSelectedCalendarDay(null);
+                  setCalendarPreviewDate(new Date());
+                }}
+                type="button"
+              >
+                Today
+              </button>
+              <button
+                className="text-[0.84rem] text-[#203a72] transition hover:text-[#091333]"
+                onClick={() => navigate("/firm/compliance/calendar")}
+                type="button"
+              >
+                <span>View full calendar</span>
+              </button>
+            </div>
           </div>
 
-          <div className="min-h-[268px]">
-            <div className="min-w-0 p-5">
-              <div className="mb-4 flex items-center justify-between">
+          <div className="min-h-[268px] xl:grid xl:grid-cols-[minmax(390px,1.06fr)_minmax(285px,0.94fr)]">
+            <div className="min-w-0 border-b border-[#edf2f7] p-5 xl:border-b-0 xl:border-r">
+              <div className="mb-4 flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-[#f5f8fc] px-3 py-1 text-[0.78rem] text-[#5c6c8e] ring-1 ring-inset ring-[#dce6f0]">
+                  {monthCalendarDeadlines.length} deadline{monthCalendarDeadlines.length === 1 ? "" : "s"} this month
+                </span>
+                {nextCalendarDeadline ? (
+                  <button
+                    className="rounded-full bg-white px-3 py-1 text-[0.78rem] text-[#203a72] ring-1 ring-inset ring-[#dce6f0] transition hover:bg-[#f8fbff]"
+                    onClick={() => {
+                      const date = new Date(nextCalendarDeadline.dueDate);
+                      setCalendarPreviewDate(new Date(date.getFullYear(), date.getMonth(), 1));
+                      setSelectedCalendarDay(date.getDate());
+                    }}
+                    type="button"
+                  >
+                    Next due {formatDateLabel(nextCalendarDeadline.dueDate)}
+                  </button>
+                ) : null}
+              </div>
+              <div className="mb-5 flex items-center justify-between gap-3 rounded-2xl border border-[#edf2f7] bg-[#fbfdff] px-3 py-2">
                 <button
-                  className={cn(dashboardLinkClass)}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#dce6ef] text-[#203a72] transition hover:bg-[#f8fbff]"
                   onClick={() => {
                     setSelectedCalendarDay(null);
                     setCalendarPreviewDate((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1));
@@ -1524,9 +1582,11 @@ export function AccountantDashboardPage() {
                     <ChevronRightIcon />
                   </span>
                 </button>
-                <p className="text-[0.74rem] font-bold text-[#091333]">{monthPreviewLabel(calendarPreviewDate.toISOString())}</p>
+                <p className="flex-1 text-center text-[0.96rem] tracking-[0.04em] text-[#091333]">
+                  {monthPreviewLabel(calendarPreviewDate.toISOString())}
+                </p>
                 <button
-                  className={cn(dashboardLinkClass)}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[#dce6ef] text-[#203a72] transition hover:bg-[#f8fbff]"
                   onClick={() => {
                     setSelectedCalendarDay(null);
                     setCalendarPreviewDate((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1));
@@ -1537,31 +1597,31 @@ export function AccountantDashboardPage() {
                   <ChevronRightIcon />
                 </button>
               </div>
-              <div className="grid grid-cols-7 gap-1.5 text-center">
+              <div className="rounded-2xl border border-[#edf2f7] bg-white px-2 py-3">
+                <div className="grid grid-cols-7 gap-1.5 text-center sm:gap-2">
                 {weekDayShortLabels().map((label) => (
-                  <div className="py-1 text-[0.55rem] font-bold uppercase tracking-[0.08em] text-[#73809a]" key={label}>
+                  <div className="py-1 text-[0.62rem] uppercase tracking-[0.08em] text-[#73809a] sm:text-[0.66rem]" key={label}>
                     {label}
                   </div>
                 ))}
                 {compactMonthDays(calendarPreviewDate.toISOString()).map((cell, index) => (
-                  <div className="flex h-8 items-center justify-center" key={`${cell.day ?? "blank"}-${index}`}>
+                  <div className="flex h-9 items-center justify-center sm:h-10" key={`${cell.day ?? "blank"}-${index}`}>
                     {cell.day ? (
                       <button
                         aria-pressed={selectedCalendarDay === cell.day}
                         className={cn(
-                          "relative flex h-6 w-6 items-center justify-center rounded-full text-[0.62rem] font-bold transition",
+                          "relative flex h-8 w-8 items-center justify-center rounded-full text-[0.76rem] transition sm:h-9 sm:w-9 sm:text-[0.8rem]",
                           selectedCalendarDay === cell.day
-                            ? "bg-brand-700 text-white"
-                            : cell.isActive
+                            ? "bg-brand-700 text-white shadow-[0_10px_20px_rgba(10,47,102,0.18)]"
+                            : isTodayInPreviewMonth(cell.day, calendarPreviewDate)
                               ? "bg-[#091333] text-white"
                               : calendarEventDays.has(cell.day)
                                 ? "bg-amber-50 text-[#091333] ring-1 ring-amber-200"
                                 : "text-[#53617f]",
                           calendarEventDays.has(cell.day)
                             ? "cursor-pointer hover:bg-amber-100"
-                            : "cursor-default",
+                            : "cursor-pointer hover:bg-[#f4f7fb]",
                         )}
-                        disabled={!calendarEventDays.has(cell.day)}
                         onClick={() =>
                           setSelectedCalendarDay((current) => (current === cell.day ? null : cell.day))
                         }
@@ -1569,59 +1629,77 @@ export function AccountantDashboardPage() {
                       >
                         {cell.day}
                         {calendarEventDays.has(cell.day) ? (
-                          <span className="absolute -bottom-0.5 h-1 w-1 rounded-full bg-amber-500" />
+                          <span className="absolute -bottom-0.5 h-1.5 w-1.5 rounded-full bg-amber-500" />
                         ) : null}
                       </button>
                     ) : null}
                   </div>
                 ))}
+                </div>
               </div>
             </div>
 
-            <div className="min-w-0 space-y-2.5">
-              {selectedCalendarDay !== null ? (
-                <div className="flex items-center justify-between gap-3 rounded-xl bg-[#fbfdff] px-2 py-1.5">
-                  <p className="text-[0.64rem] font-semibold text-[#53617f]">
-                    Showing deadlines for {selectedCalendarDay} {monthPreviewLabel(calendarPreviewDate.toISOString())}
+            <div className="min-w-0 bg-[#fbfdff] p-5">
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[0.76rem] font-medium uppercase tracking-[0.12em] text-[#7b89a4]">
+                    {selectedCalendarDay === null ? "Agenda" : "Selected day"}
                   </p>
+                  <h3 className="mt-1 text-[1.04rem] font-medium text-[#091333]">
+                    {selectedCalendarDay === null
+                      ? monthPreviewLabel(calendarPreviewDate.toISOString())
+                      : formatDateLabel(selectedCalendarDate?.toISOString() ?? calendarPreviewDate.toISOString())}
+                  </h3>
+                </div>
+                {selectedCalendarDay !== null ? (
                   <button
-                    className={cn(dashboardLinkClass, "text-[0.64rem]")}
+                    className="text-[0.8rem] text-[#203a72] transition hover:text-[#091333]"
                     onClick={() => setSelectedCalendarDay(null)}
                     type="button"
                   >
                     Clear
                   </button>
-                </div>
-              ) : null}
-              {calendarPreviewDeadlines.length > 0 ? (
-                calendarPreviewDeadlines.map((item) => {
-                  const tone = deadlineToneClasses(item.tone);
+                ) : null}
+              </div>
 
-                  return (
-                    <button
-                      className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-xl px-2 py-1.5 text-left transition hover:bg-[#f7fbff]"
-                      key={item.id}
-                      onClick={() => navigate(`/firm/compliance/calendar?date=${encodeURIComponent(item.dueDate)}`)}
-                      type="button"
-                    >
-                      <div className="flex min-w-0 items-center gap-2">
-                        <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", tone.dot)} />
-                        <div className="min-w-0">
-                          <p className="truncate text-[0.7rem] font-bold text-[#091333]">{formatDateLabel(item.dueDate)}</p>
-                          <p className="truncate text-[0.66rem] font-semibold text-[#53617f]">{item.label}</p>
+              {calendarPreviewDeadlines.length > 0 ? (
+                <div className="space-y-3">
+                  {calendarPreviewDeadlines.slice(0, selectedCalendarDay === null ? 3 : 5).map((item) => {
+                    const tone = deadlineToneClasses(item.tone);
+
+                    return (
+                      <button
+                        className="w-full rounded-2xl border border-[#e6edf4] bg-white px-4 py-3 text-left transition hover:border-[#d8e3ef] hover:bg-[#f7fbff]"
+                        key={item.id}
+                        onClick={() => navigate(`/firm/compliance/calendar?date=${encodeURIComponent(item.dueDate)}`)}
+                        type="button"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className={cn("h-2 w-2 shrink-0 rounded-full", tone.dot)} />
+                              <p className="text-[0.84rem] text-[#091333]">{formatDateLabel(item.dueDate)}</p>
+                            </div>
+                            <p className="mt-2 text-[0.96rem] text-[#091333]">{item.label}</p>
+                            <p className="mt-1 text-[0.84rem] text-[#6b7894]">Owner: {item.owner}</p>
+                          </div>
+                          <span className={cn("shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-[0.7rem]", tone.badge)}>
+                            {deadlineStatusLabel(item.dueDate)}
+                          </span>
                         </div>
-                      </div>
-                      <span className={cn("whitespace-nowrap rounded-md px-2 py-1 text-[0.58rem] font-bold", tone.badge)}>
-                        {deadlineStatusLabel(item.dueDate)}
-                      </span>
-                    </button>
-                  );
-                })
+                      </button>
+                    );
+                  })}
+                </div>
               ) : (
-                <div className="rounded-xl border border-dashed border-[#dce6ef] bg-[#fbfdff] px-3 py-4 text-center">
-                  <p className="text-[0.7rem] font-bold text-[#091333]">No deadlines in this month</p>
-                  <p className="mt-1 text-[0.64rem] font-medium text-[#53617f]">
-                    Use the arrows to browse other months with compliance activity.
+                <div className="rounded-2xl border border-dashed border-[#dce6ef] bg-white px-4 py-6 text-center">
+                  <p className="text-[0.9rem] text-[#091333]">
+                    {selectedCalendarDay === null ? "No deadlines in this month" : "No deadlines on this day"}
+                  </p>
+                  <p className="mt-2 text-[0.82rem] text-[#53617f]">
+                    {selectedCalendarDay === null
+                      ? "Use the arrows or jump to the next due date to review upcoming work."
+                      : "Choose another highlighted date or clear the day filter."}
                   </p>
                 </div>
               )}

@@ -2,8 +2,6 @@ import { type MouseEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowUpDown,
   ChevronDown,
-  ChevronRight,
-  CheckCircle2,
   Copy,
   Paperclip,
   RefreshCw,
@@ -220,7 +218,6 @@ function ThreadListPane({
   sortDirection: SortDirection;
 }) {
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
-  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
   const filterMenuRef = useRef<HTMLDivElement | null>(null);
   const unreadTotal = requests.reduce((sum, request) => sum + unreadFromAccountantCount(request), 0);
   const visibleThreadCount = requests.length;
@@ -247,28 +244,24 @@ function ThreadListPane({
   }, [isFilterMenuOpen]);
 
   return (
-    <section className={`${inboxPanelClass} flex min-h-[720px] self-start flex-col overflow-hidden rounded-[14px] border border-slate-200 bg-white shadow-[0_18px_44px_rgba(2,8,23,0.08)]`}>
-      <div className="border-b border-slate-200 bg-white px-4 py-3 text-[#091333]">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3 text-[0.95rem] font-semibold">
-            <button
-              className="relative pb-2 text-[#091333]"
-              onClick={() => onChangeFilter("all")}
-              type="button"
-            >
-              Inbox
-              <span className="absolute inset-x-0 -bottom-0 h-0.5 rounded-full bg-[#00856f]" />
-            </button>
-            <span className="whitespace-nowrap rounded-full bg-[#eef4fa] px-3 py-1 text-[0.72rem] font-semibold text-[#41506f]">
-              {visibleThreadCount} thread{visibleThreadCount === 1 ? "" : "s"}
-            </span>
+    <section className={`${inboxPanelClass} flex h-full min-h-[660px] flex-col overflow-hidden rounded-[20px] border-0 bg-white/96 shadow-[0_18px_42px_rgba(15,23,42,0.07)] min-[1080px]:min-h-0`}>
+      <div className="border-b border-slate-100/80 bg-[linear-gradient(180deg,#f7f8fb_0%,#f1f2f5_100%)] px-4 py-3 sm:px-4 lg:px-4 lg:py-3.5">
+        <div className="mb-2 flex items-center justify-between gap-3 px-1">
+          <div>
+            <p className="text-[0.72rem] font-medium uppercase tracking-[0.12em] text-[#7b879e]">Threads</p>
           </div>
-          <div className="relative flex shrink-0 items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[#061b41]" ref={filterMenuRef}>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#cfe7de] bg-[#f5fbf8] px-2.5 py-1 text-[0.66rem] font-medium text-[#087d69]">
+              <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[#087d69] px-1 text-[0.56rem] font-semibold leading-none text-white">
+                {unreadTotal}
+              </span>
+              New from accountant
+            </span>
+            <div className="relative flex shrink-0 items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[#061b41]" ref={filterMenuRef}>
             <button
               aria-label="Refresh inbox"
               className="inline-flex h-8 w-8 items-center justify-center rounded-full transition hover:bg-white"
               onClick={() => {
-                setCollapsedSections({});
                 setIsFilterMenuOpen(false);
                 onRefreshInbox();
               }}
@@ -318,12 +311,10 @@ function ThreadListPane({
                 ))}
               </div>
             ) : null}
+            </div>
           </div>
         </div>
-      </div>
-
-      <div className="border-b border-slate-100 bg-white px-4 py-3">
-        <div className="flex h-11 items-center gap-3 rounded-xl border border-slate-200 bg-white px-3 shadow-[0_10px_22px_rgba(4,24,52,0.05)]">
+        <div className="mt-2 flex h-10 items-center gap-3 rounded-xl border border-slate-200/80 bg-white px-3 shadow-[0_8px_18px_rgba(15,23,42,0.05)]">
           <Search aria-hidden="true" className="h-4 w-4 text-slate-500" />
           <input
             className="h-full w-full bg-transparent text-sm text-[#091333] outline-none placeholder:text-[#7b879e]"
@@ -334,80 +325,69 @@ function ThreadListPane({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto bg-white">
-        {requests.map((request) => {
+      <div className="inbox-scroll-region min-h-0 flex-1 bg-white pb-3 pr-1">
+        {requests.map((request, index) => {
           const selected = request.id === selectedRequestId;
           const unread = unreadFromAccountantCount(request);
           const lastComment = request.comments[request.comments.length - 1];
           const preview = plainMessageText(lastComment?.message ?? request.description);
           const sectionLabel = inboxSectionLabel(lastActivity(request));
-          const previousRequest = requests[requests.indexOf(request) - 1];
+          const previousRequest = requests[index - 1];
           const previousSection = previousRequest ? inboxSectionLabel(lastActivity(previousRequest)) : "";
-          const showSection = requests.indexOf(request) === 0 || sectionLabel !== previousSection;
-          const isSectionCollapsed = Boolean(collapsedSections[sectionLabel]);
+          const showSection = index === 0 || sectionLabel !== previousSection;
           return (
             <div key={request.id}>
               {showSection ? (
-                <button
-                  aria-expanded={!isSectionCollapsed}
-                  className="flex h-14 w-full items-center gap-2 border-y border-slate-100 bg-[#f7fafc] px-5 text-left text-[0.95rem] font-semibold text-[#091333] transition hover:bg-[#eef4fa]"
-                  onClick={() =>
-                    setCollapsedSections((current) => ({
-                      ...current,
-                      [sectionLabel]: !current[sectionLabel],
-                    }))
-                  }
-                  type="button"
-                >
-                  {isSectionCollapsed ? (
-                    <ChevronRight aria-hidden="true" className="h-4 w-4 text-[#53617f]" />
-                  ) : (
-                    <ChevronDown aria-hidden="true" className="h-4 w-4 text-[#53617f]" />
-                  )}
+                <div className="flex h-9 w-full items-center gap-2 border-b border-slate-100 bg-[#f7f9fc] px-4 text-left text-[0.82rem] font-medium text-[#091333] sm:px-4 lg:px-4">
+                  <ChevronDown aria-hidden="true" className="h-4 w-4 text-[#35466d]" />
                   {sectionLabel}
-                </button>
+                </div>
               ) : null}
-              {isSectionCollapsed ? null : (
               <button
-                className={`relative grid w-full grid-cols-[auto_minmax(0,1fr)_auto] gap-3 border-b px-4 py-4 text-left transition ${
-                  selected
-                    ? "border-[#c8d6ee] bg-[#eef4fb] text-[#091333]"
-                    : "border-slate-100 bg-white text-[#091333] hover:bg-slate-50"
+                className={`relative grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 px-4 py-3 text-left transition sm:px-4 lg:px-4 lg:py-3.5 ${
+                  selected ? "bg-[#eef3fb] shadow-[inset_0_0_0_1px_rgba(127,155,203,0.14)]" : "hover:bg-slate-50/80"
                 }`}
                 onClick={() => onSelectRequest(request.id)}
                 type="button"
               >
-                {selected ? <span className="absolute inset-y-0 left-0 w-1 rounded-r-full bg-[#0a2f66]/60" /> : null}
-                <span className={`flex h-11 w-11 items-center justify-center rounded-full text-sm font-semibold shadow-sm ${
-                  selected ? "bg-[#061b41] text-white ring-2 ring-[#0a2f66]/10" : "bg-[#061b41] text-white"
-                }`}>
+                {selected ? <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-[#7f9bcb]" /> : null}
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0b2451] text-[0.88rem] font-medium text-white shadow-[0_8px_18px_rgba(11,36,81,0.18)]">
                   {initials(request.requestedBy)}
                 </span>
                 <div className="min-w-0 pt-0.5">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="line-clamp-1 min-w-0 text-[0.98rem] font-semibold leading-5 text-[#091333]">{request.requestedBy}</p>
-                    <p className={`shrink-0 text-[0.8rem] font-medium leading-4 ${selected ? "text-[#061b41]" : "text-[#53617f]"}`}>{formatShortThreadTime(lastActivity(request))}</p>
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="line-clamp-1 text-[0.92rem] font-medium leading-5 text-[#091333]">{request.requestedBy}</p>
+                    <p className="shrink-0 text-[0.78rem] font-medium text-[#091333]">{formatShortThreadTime(lastActivity(request))}</p>
                   </div>
-                  <p className="mt-0.5 line-clamp-1 text-[0.9rem] font-semibold leading-5 text-[#091333]">{request.title}</p>
-                  <p className={`mt-1 line-clamp-1 text-[0.82rem] font-medium leading-5 ${selected ? "text-[#41506f]" : "text-[#53617f]"}`}>{preview}</p>
+                  <p className="mt-0.5 line-clamp-1 text-[0.8rem] font-medium leading-5 text-[#091333]">{request.title}</p>
+                  <p className="mt-1 line-clamp-1 text-[0.78rem] font-medium leading-5 text-[#5f7090]">{preview}</p>
                 </div>
                 <div className="flex min-h-12 shrink-0 flex-col items-end justify-between gap-1 pt-0.5">
-                  <span className="block h-4" />
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[0.58rem] font-medium uppercase tracking-[0.08em] ${
+                      request.status === "awaiting_client"
+                        ? "bg-amber-50 text-amber-700"
+                        : request.status === "resolved" || request.status === "closed"
+                          ? "bg-emerald-50 text-emerald-700"
+                          : "bg-slate-100 text-slate-600"
+                    }`}
+                  >
+                    {request.status.replace(/_/g, " ")}
+                  </span>
                   {unread > 0 ? (
-                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#087d69] px-1.5 text-[0.62rem] font-bold leading-none text-white">
+                    <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-[#087d69] px-1.5 text-[0.58rem] font-semibold leading-none text-white">
                       {unread}
                     </span>
                   ) : null}
                 </div>
               </button>
-              )}
             </div>
           );
         })}
       </div>
-      <div className="flex min-h-[72px] items-center justify-between border-t border-slate-100 bg-white px-5 py-4 text-xs font-medium text-[#53617f]">
+      <div className="flex min-h-[64px] items-center justify-between border-t border-slate-100 bg-white px-4 py-3 text-xs font-medium text-[#53617f]">
         <span className="font-semibold text-[#091333]">Page {currentPage} of {totalPages}</span>
-        <div className="flex items-center gap-7">
+        <div className="flex items-center gap-5">
           <button
             className="inline-flex h-8 items-center justify-center rounded-md px-1 font-semibold text-[#061b41] transition hover:text-[#0a2f66] disabled:pointer-events-none disabled:text-[#9aa8ba] disabled:opacity-70"
             disabled={currentPage <= 1}
@@ -433,12 +413,10 @@ function ThreadListPane({
 function ConversationPane({
   request,
   onReply,
-  onResolve,
   onToggleStar,
 }: {
   request: WorkflowRequest;
   onReply: (requestId: string, message: string) => ActionResult;
-  onResolve: (requestId: string) => void;
   onToggleStar: (requestId: string) => void;
 }) {
   const [replyMessage, setReplyMessage] = useState("");
@@ -538,89 +516,92 @@ function ConversationPane({
   }
 
   return (
-    <section className={`${inboxPanelClass} flex min-h-[720px] self-start flex-col overflow-hidden rounded-[14px] border border-slate-200 bg-white shadow-[0_18px_44px_rgba(2,8,23,0.08)]`} onClick={() => setMessageContextMenu(null)}>
+    <section className={`${inboxPanelClass} flex h-full min-h-[720px] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white min-[1080px]:min-h-0`} onClick={() => setMessageContextMenu(null)}>
       <p className="sr-only">{requestTypeHelperText(request)}</p>
-      <div className="border-b border-slate-100 bg-white px-5 py-4 text-[#091333]">
-        <h2 className="line-clamp-1 text-[1.1rem] font-semibold">{request.title}</h2>
+      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 px-4 py-4 sm:px-5 lg:px-6">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <p className={`inline-flex rounded-full px-3 py-1 text-[0.62rem] font-medium ${priorityBadgeClass(request.priority)}`}>
+              {request.priority.toUpperCase()} PRIORITY
+            </p>
+            <p className="text-xs font-medium text-[#6f7d96]">
+              {formatDateLabel(lastActivity(request))}, {formatThreadTime(lastActivity(request))}
+            </p>
+            <span className="rounded-full bg-[#eef3fb] px-2.5 py-1 text-[0.66rem] font-medium text-[#315b9c]">
+              {request.comments.length} messages
+            </span>
+          </div>
+          <h2 className="mt-3 max-w-[760px] text-[1.12rem] font-medium leading-7 text-[#091333] sm:text-[1.2rem]">
+            {request.title}
+          </h2>
+          <div className="mt-2 space-y-1 text-sm text-[#6c7b94]">
+            <p>
+              Assigned accountant: <span className="text-[#4b5f7c]">{request.requestedBy}</span>
+            </p>
+            <p>{accountantEmail(request.requestedBy)}</p>
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-1 rounded-full border border-slate-200/80 bg-white px-2 py-1 shadow-[0_8px_20px_rgba(15,23,42,0.06)]">
+          <button
+            aria-label={request.isStarred ? "Unstar thread" : "Star thread"}
+            aria-pressed={request.isStarred}
+            className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition ${
+              request.isStarred ? "bg-amber-50 text-amber-500" : "text-[#061b41] hover:bg-slate-50"
+            }`}
+            onClick={() => onToggleStar(request.id)}
+            type="button"
+          >
+            <Star aria-hidden="true" className={`h-4 w-4 ${request.isStarred ? "fill-current" : ""}`} />
+          </button>
+          <button
+            aria-label="Reply to thread"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[#061b41] transition hover:bg-slate-50"
+            onClick={focusReplyInput}
+            type="button"
+          >
+            <Reply aria-hidden="true" className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
-      <div className="border-b border-slate-100 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] px-7 py-6">
-        <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
-          <div className="min-w-0">
-            <span className={`inline-flex rounded-full px-3 py-1 text-[0.7rem] font-semibold ${priorityBadgeClass(request.priority)}`}>
-              {request.priority.toUpperCase()} PRIORITY
-            </span>
-            <h2 className="mt-4 max-w-3xl text-[1.35rem] font-semibold leading-[1.32] tracking-[-0.01em] text-[#091333] md:text-[1.45rem]">
-              {request.title}
-            </h2>
-            <div className="mt-5 text-xs font-medium text-[#7b879e]">
-              <p>
-                Assigned accountant: <span className="font-semibold text-[#35466d]">{request.requestedBy} ({accountantEmail(request.requestedBy)})</span>
-              </p>
-            </div>
-          </div>
-          <div className="flex min-w-0 flex-col gap-4 lg:items-end">
-            <div className="flex w-fit items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-2 text-[#061b41] shadow-sm lg:self-end">
-              <button
-                aria-label={request.isStarred ? "Unstar thread" : "Star thread"}
-                aria-pressed={request.isStarred}
-                className={`inline-flex h-8 w-8 items-center justify-center rounded-full transition ${
-                  request.isStarred ? "bg-[#eef4fa] text-[#0a2f66]" : "text-[#061b41] hover:bg-slate-50 hover:text-[#0a2f66]"
-                }`}
-                onClick={() => onToggleStar(request.id)}
-                title={request.isStarred ? "Unstar thread" : "Star thread"}
-                type="button"
-              >
-                <Star aria-hidden="true" className={`h-4 w-4 ${request.isStarred ? "fill-current" : ""}`} />
-              </button>
-              <button
-                aria-label="Reply to thread"
-                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-[#0a2f66] transition hover:bg-[#eef4fa] hover:text-[#061b41]"
-                onClick={focusReplyInput}
-                title="Reply to thread"
-                type="button"
-              >
-                <Reply aria-hidden="true" className="h-4 w-4" />
-              </button>
-            </div>
-            <p className="text-sm font-semibold text-[#091333] lg:text-right">{formatDateLabel(lastActivity(request))}, {formatThreadTime(lastActivity(request))}</p>
-          </div>
+      <div className="border-b border-slate-100 bg-[#fbfcfe] px-4 py-3 sm:px-5 lg:px-6">
+        <div className="flex flex-wrap items-center gap-2 text-[0.72rem] font-medium text-[#6f7d96]">
+          <span className="rounded-full bg-white px-2.5 py-1 shadow-[0_4px_10px_rgba(15,23,42,0.04)]">Client and accountant conversation</span>
+          <span className="rounded-full bg-[#eef6f2] px-2.5 py-1 text-[#087d69]">Reply here to continue the thread</span>
         </div>
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col bg-white">
-          <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-7 py-8">
-            <div className="flex items-center gap-4 text-xs font-semibold text-[#53617f]">
-              <span className="h-px flex-1 bg-slate-200" />
-              Today
-              <span className="h-px flex-1 bg-slate-200" />
-            </div>
+          <div className="inbox-scroll-region min-h-[360px] flex-1 space-y-3 bg-[#fbfcfe] px-4 py-5 pb-6 pr-1 sm:px-5 lg:px-6">
+            <div className="sr-only">{requestTypeHelperText(request)}</div>
             {request.comments.map((comment, index) => {
               const attachment = decodeAttachment(comment.message);
               const text = plainMessageText(comment.message);
               const status = messageStatus(request, index);
               const isClient = comment.role === "client";
               return (
-                <div className={`flex items-start gap-3 ${isClient ? "justify-end" : ""}`} key={comment.id}>
-                  <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${isClient ? "order-2 bg-[#d9efe6] text-[#047857]" : "bg-[#061b41] text-white"}`}>
+                <div className={`flex items-end gap-3 ${isClient ? "justify-end" : ""}`} key={comment.id}>
+                  <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[0.82rem] font-medium ${isClient ? "order-2 bg-[#d9efe6] text-[#047857]" : "bg-[#061b41] text-white"}`}>
                     {initials(comment.author)}
                   </span>
-                  <article
-                    className={`w-full max-w-[720px] rounded-xl border px-6 py-5 shadow-[0_8px_18px_rgba(15,23,42,0.12)] ${
-                      isClient
-                        ? "border-emerald-100 bg-[#eaf7f0]"
-                        : "border-slate-200 bg-white"
-                    }`}
-                    onContextMenu={(event) => handleMessageContextMenu(event, comment.id)}
-                  >
-                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-sm font-semibold text-[#091333]">{comment.author}</p>
-                      <p className="text-xs text-[#53617f]">{formatThreadTime(comment.createdAt)}</p>
+                  <div className={`flex w-full max-w-[760px] flex-col ${isClient ? "items-end" : "items-start"}`}>
+                    <div className={`mb-1.5 flex w-full max-w-[760px] items-center gap-2 px-1 text-[0.72rem] font-medium ${isClient ? "justify-end text-[#5f7090]" : "justify-start text-[#6f7d96]"}`}>
+                      <span>{isClient ? "You" : "Accountant"}</span>
+                      <span className="text-[#b0b9cb]">•</span>
+                      <span>{comment.author}</span>
+                      <span className="text-[#b0b9cb]">•</span>
+                      <span>{formatDateLabel(comment.createdAt)}</span>
                     </div>
-                    {text ? <p className={`text-sm leading-6 ${isClient ? "text-[#1f513f]" : "text-[#1e2f5b]"}`}>{text}</p> : null}
+                    <article
+                      className={`w-full rounded-[22px] border px-4 py-3.5 shadow-[0_8px_18px_rgba(15,23,42,0.04)] sm:px-5 ${
+                        isClient ? "border-emerald-100 bg-[#eaf7f0]" : "border-slate-200 bg-white"
+                      }`}
+                      onContextMenu={(event) => handleMessageContextMenu(event, comment.id)}
+                    >
+                    {text ? <p className="text-[0.9rem] leading-6 text-[#1e2f5b]">{text}</p> : null}
                     {attachment ? (
                       <a
-                        className="client-dashboard-link mt-3 inline-flex items-center gap-2 rounded px-3 py-1.5 text-xs font-semibold"
+                        className="client-dashboard-link mt-3 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium"
                         download={attachment.name}
                         href={attachment.dataUrl}
                       >
@@ -630,6 +611,7 @@ function ConversationPane({
                     ) : null}
                     {status ? <p className="mt-2 text-right text-xs text-emerald-700">{status}</p> : null}
                   </article>
+                  </div>
                 </div>
               );
             })}
@@ -652,9 +634,15 @@ function ConversationPane({
             ) : null}
           </div>
 
-          <div className="min-h-[92px] space-y-3 border-t border-slate-100 bg-white px-7 py-[18px]">
+          <div className="space-y-3 bg-white px-4 py-4 sm:px-5 lg:px-6">
+            <div className="flex flex-wrap items-center gap-3">
+              <div>
+                <p className="text-[0.88rem] font-medium text-[#091333]">Reply to this conversation</p>
+                <p className="text-[0.78rem] text-[#6f7d96]">Send a message or attach a file for your accountant.</p>
+              </div>
+            </div>
             {attachedFile ? (
-              <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-[#53617f]">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-[#53617f]">
                 Attached: {attachedFile.name}
               </div>
             ) : null}
@@ -672,10 +660,10 @@ function ConversationPane({
                 ) : null}
               </div>
             ) : null}
-            <div className="flex flex-nowrap items-center gap-3">
-              <div className="flex h-14 min-w-[260px] flex-1 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 transition focus-within:ring-2 focus-within:ring-[#0a2f66]/20">
-                <label className="inline-flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-md text-[#061b41] transition hover:bg-[#0a2f66]/10">
-                  <Paperclip aria-hidden="true" className="h-5 w-5" />
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex h-[52px] min-w-[240px] flex-1 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 transition focus-within:ring-2 focus-within:ring-[#0a2f66]/20">
+                <label className="inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-md text-[#061b41] transition hover:bg-[#0a2f66]/10">
+                  <Paperclip aria-hidden="true" className="h-4.5 w-4.5" />
                   <span className="sr-only">Attach</span>
                   <input
                     className="hidden"
@@ -686,27 +674,22 @@ function ConversationPane({
                 <input
                   className="h-full min-w-0 flex-1 border-0 bg-transparent px-1 text-sm text-[#091333] outline-none placeholder:text-[#7b879e]"
                   onChange={(event) => setReplyMessage(event.target.value)}
-                  placeholder="Type your message..."
+                  placeholder="Reply to your accountant..."
                   ref={replyInputRef}
                   value={replyMessage}
                 />
               </div>
               <Button
                 aria-label="Send"
-                className="client-inbox-primary-button h-14 w-14 shrink-0 rounded-lg border-0 p-0 ring-0 disabled:opacity-100"
+                className="client-inbox-primary-button h-[52px] min-w-[116px] shrink-0 rounded-xl border-0 px-5 ring-0 disabled:opacity-100"
                 disabled={!replyMessage.trim() && !attachedFile}
                 onClick={handleSend}
                 title="Send"
               >
-                <Send aria-hidden="true" className="h-4 w-4" />
-              </Button>
-              <Button
-                aria-label="Resolve"
-                className="client-inbox-primary-button h-14 w-14 shrink-0 rounded-lg border-0 p-0 ring-0"
-                onClick={() => onResolve(request.id)}
-                title="Resolve"
-              >
-                <CheckCircle2 aria-hidden="true" className="h-4 w-4" />
+                <span className="inline-flex items-center gap-2">
+                  <Send aria-hidden="true" className="h-4 w-4" />
+                  Send
+                </span>
               </Button>
             </div>
           </div>
@@ -745,9 +728,6 @@ export function ClientRequestsPage() {
   } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
-  const [isDesktopInboxLayout, setIsDesktopInboxLayout] = useState(() =>
-    typeof window !== "undefined" ? window.innerWidth >= 1024 : true,
-  );
 
   const orderedRequests = useMemo(
     () =>
@@ -811,16 +791,6 @@ export function ClientRequestsPage() {
     }
   }, [currentPage, totalPages]);
 
-  useEffect(() => {
-    function handleResize() {
-      setIsDesktopInboxLayout(window.innerWidth >= 1024);
-    }
-
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
   function handleRefreshInbox() {
     setSearchValue("");
     setFilter("all");
@@ -867,7 +837,7 @@ export function ClientRequestsPage() {
   }
 
   return (
-    <div className="client-inbox-page mx-auto max-w-[1700px] px-6 space-y-5 pb-8">
+    <div className="client-inbox-page mx-auto flex h-auto w-full max-w-[1680px] flex-col gap-5 pb-8 min-[1080px]:h-full min-[1080px]:min-h-0 min-[1080px]:overflow-hidden min-[1080px]:pb-0">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div className="space-y-2">
           <p className="text-[0.78rem] font-semibold uppercase tracking-[0.18em] text-[#8190ab]">
@@ -900,12 +870,7 @@ export function ClientRequestsPage() {
       ) : null}
 
       {visibleRequests.length > 0 && activeRequest ? (
-        <div
-          className="client-inbox-layout grid items-start gap-4"
-          style={{
-            gridTemplateColumns: isDesktopInboxLayout ? "clamp(320px, 27vw, 380px) minmax(0, 1.75fr)" : "minmax(0, 1fr)",
-          }}
-        >
+        <div className="client-inbox-layout grid grid-cols-1 items-start gap-4 min-[1080px]:min-h-0 min-[1080px]:flex-1 min-[1080px]:items-stretch min-[1080px]:grid-cols-[minmax(280px,320px)_minmax(0,1fr)] min-[1400px]:grid-cols-[minmax(300px,350px)_minmax(0,1.52fr)]">
           <ThreadListPane
             currentPage={currentPage}
             filter={filter}
@@ -925,7 +890,6 @@ export function ClientRequestsPage() {
           <ConversationPane
             onReply={(requestId, message) =>
               replyToRequest(requestId, "client", user?.fullName ?? "Client", message)}
-            onResolve={resolveRequest}
             onToggleStar={toggleRequestStar}
             request={activeRequest}
           />
@@ -963,17 +927,54 @@ export function ClientRequestsPage() {
         title="Request a document"
       >
         <div className="space-y-5">
-          <div className="rounded-2xl border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] px-5 py-4">
-            <p className="text-sm font-semibold text-[#091333]">Tell your accountant what you need.</p>
-            <p className="mt-1 text-sm leading-6 text-[#53617f]">
-              Add the document name, a short explanation, and when you need it by.
-            </p>
+          <div className="overflow-hidden rounded-[26px] border border-slate-200 bg-white shadow-[0_16px_34px_rgba(4,24,52,0.05)]">
+            <div className="h-1.5 w-full bg-[linear-gradient(90deg,#0f7f56_0%,#49b57e_42%,#d7efe1_100%)]" />
+            <div className="px-5 py-5">
+              <div className="flex flex-wrap items-start justify-between gap-5">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#7b879e]">Client request</p>
+                  <p className="mt-2 text-[1.02rem] font-semibold text-[#091333]">Tell your accountant what you need.</p>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-[#53617f]">
+                    Add the document name, a short explanation, and when you need it by.
+                  </p>
+                </div>
+                <div className="min-w-[260px] rounded-2xl border border-slate-200/90 bg-[#f8fafc] px-4 py-4">
+                  <div className="space-y-3">
+                    <div className="flex items-start justify-between gap-3 border-b border-slate-200/80 pb-3">
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#7b879e]">Sent to</p>
+                        <p className="mt-1 truncate text-sm font-medium text-[#091333]">Your accountant</p>
+                      </div>
+                      <div className="shrink-0 rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-[#2f7a57] shadow-[inset_0_0_0_1px_rgba(201,224,212,0.95)]">
+                        Live thread
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#7b879e]">Destination</p>
+                        <p className="mt-1 text-sm font-medium text-[#091333]">Inbox conversation</p>
+                      </div>
+                      <div className="rounded-full bg-[#eef8f3] px-2.5 py-1 text-[11px] font-semibold text-[#2f7a57]">
+                        Accountant visible
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <section className="rounded-2xl border border-slate-200 bg-white px-5 py-5 shadow-[0_10px_24px_rgba(4,24,52,0.04)]">
-            <div className="mb-4">
+          <section className="rounded-[26px] border border-slate-200/90 bg-white px-5 py-5 shadow-[0_16px_36px_rgba(4,24,52,0.06)]">
+            <div className="mb-5 flex items-start gap-3">
+              <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#eef8f3] text-[#2f7a57]">
+                <Send className="h-4.5 w-4.5" />
+              </div>
+              <div>
               <p className="text-sm font-semibold text-[#091333]">Request details</p>
-              <p className="mt-1 text-xs text-[#7b879e]">Keep the request specific so the accountant knows exactly what to prepare.</p>
+                <p className="mt-1 text-xs leading-5 text-[#7b879e]">
+                  Keep the request specific so the accountant knows exactly what to prepare.
+                </p>
+              </div>
             </div>
             <div className="space-y-4">
               <TextField
@@ -993,10 +994,15 @@ export function ClientRequestsPage() {
             </div>
           </section>
 
-          <section className="rounded-2xl border border-slate-200 bg-white px-5 py-5 shadow-[0_10px_24px_rgba(4,24,52,0.04)]">
-            <div className="mb-4">
+          <section className="rounded-[26px] border border-slate-200/90 bg-white px-5 py-5 shadow-[0_16px_36px_rgba(4,24,52,0.06)]">
+            <div className="mb-5 flex items-start gap-3">
+              <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#f4f7ff] text-[#415ea8]">
+                <ArrowUpDown className="h-4.5 w-4.5" />
+              </div>
+              <div>
               <p className="text-sm font-semibold text-[#091333]">Timing and priority</p>
-              <p className="mt-1 text-xs text-[#7b879e]">Set the due date and urgency level for this request.</p>
+                <p className="mt-1 text-xs leading-5 text-[#7b879e]">Set the due date and urgency level for this request.</p>
+              </div>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <TextField
@@ -1051,17 +1057,20 @@ export function ClientRequestsPage() {
             </div>
           ) : null}
 
-          <div className="flex flex-wrap justify-end gap-3 border-t border-slate-100 pt-2">
-            <Button className="client-inbox-primary-button h-11 rounded-xl border-0 px-4 text-sm font-semibold ring-0" onClick={() => setIsRequestModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              className="client-inbox-primary-button h-11 rounded-xl border-0 px-5 text-sm font-semibold ring-0"
-              disabled={!requestTitle.trim() || !requestDetails.trim() || !requestDueDate}
-              onClick={handleCreateRequest}
-            >
-              Send request
-            </Button>
+          <div className="border-t border-slate-100 pt-3">
+            <p className="text-xs text-[#7b879e]">Your accountant will receive this as a new conversation thread in the inbox.</p>
+            <div className="mt-3 flex flex-wrap justify-end gap-3">
+              <Button className="client-inbox-secondary-button h-11 rounded-xl px-4 text-sm font-semibold" onClick={() => setIsRequestModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                className="client-inbox-primary-button h-11 rounded-xl border-0 px-5 text-sm font-semibold ring-0 disabled:opacity-100"
+                disabled={!requestTitle.trim() || !requestDetails.trim() || !requestDueDate}
+                onClick={handleCreateRequest}
+              >
+                Send request
+              </Button>
+            </div>
           </div>
         </div>
       </Modal>

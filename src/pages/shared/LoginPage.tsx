@@ -109,9 +109,28 @@ function IconCode() {
 
 function IconBank() {
   return (
-    <svg className="h-9 w-9" fill="none" viewBox="0 0 48 48">
-      <path d="M8 20h32M12 36h24M16 20v16M24 20v16M32 20v16M10 40h28" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />
-      <path d="m24 7 16 9H8l16-9Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />
+    <svg className="h-8 w-8" fill="none" viewBox="0 0 40 40">
+      <path
+        d="M20 5.5 30.5 9.8v8.1c0 7.1-4.2 12.1-10.5 14.6-6.3-2.5-10.5-7.5-10.5-14.6V9.8L20 5.5Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2.3"
+      />
+      <path
+        d="M16.4 18.4v-1.5a3.6 3.6 0 1 1 7.2 0v1.5m-8 8.2h8.8a1.6 1.6 0 0 0 1.6-1.6v-4.9a1.6 1.6 0 0 0-1.6-1.6h-8.8a1.6 1.6 0 0 0-1.6 1.6V25a1.6 1.6 0 0 0 1.6 1.6Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2.3"
+      />
+      <path
+        d="M20 21.7v2.8"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="2.3"
+      />
     </svg>
   );
 }
@@ -124,8 +143,9 @@ function BrandVisual() {
         className="h-full w-full object-cover"
         src="/login-document-workflow.png"
       />
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,8,18,0.05)_0%,rgba(2,8,18,0.18)_42%,rgba(2,8,18,0.78)_100%)]" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_28%,rgba(24,172,95,0.16),transparent_24%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,8,18,0.18)_0%,rgba(2,8,18,0.34)_38%,rgba(2,8,18,0.82)_100%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_28%,rgba(24,172,95,0.12),transparent_24%)]" />
+      <div className="absolute inset-y-0 right-0 w-24 bg-[linear-gradient(90deg,transparent_0%,rgba(7,20,33,0.35)_100%)]" />
     </div>
   );
 }
@@ -144,18 +164,18 @@ function InputField({
 }: InputFieldProps) {
   return (
     <label className="block">
-      <span className="mb-2 block text-[0.82rem] font-semibold text-[#07133d]">
+      <span className="mb-2 block text-[0.8rem] font-medium text-[#22314f]">
         {label}
       </span>
 
       <div className="relative">
-        <span className="absolute inset-y-0 left-5 flex items-center text-emerald-500">
+        <span className="absolute inset-y-0 left-4 flex items-center text-[#4d7a67]">
           {icon}
         </span>
 
         <input
           autoComplete={autoComplete}
-          className="h-12 w-full rounded-lg border border-slate-200 bg-white pl-12 pr-12 text-[0.9rem] font-medium text-[#07133d] shadow-[0_8px_18px_rgba(15,23,42,0.04)] outline-none placeholder:text-slate-400 focus:border-emerald-300 focus:ring-4 focus:ring-emerald-100"
+          className="h-10 w-full rounded-xl border border-[#d8e1ee] bg-[#fbfcfe] pl-10.5 pr-10.5 text-[0.88rem] text-[#07133d] shadow-none outline-none placeholder:text-slate-400 focus:border-[#9cb8a8] focus:bg-white focus:ring-4 focus:ring-[#edf4ef]"
           id={id}
           name={name}
           onChange={(event) => onChange(event.target.value)}
@@ -165,7 +185,7 @@ function InputField({
         />
 
         {endAdornment ? (
-          <span className="absolute inset-y-0 right-5 flex items-center text-slate-500">
+          <span className="absolute inset-y-0 right-4 flex items-center text-slate-500">
             {endAdornment}
           </span>
         ) : null}
@@ -183,7 +203,7 @@ export function LoginPage() {
   const [error, setError] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
-  const [showDeveloperAccess, setShowDeveloperAccess] = useState(true);
+  const [showDeveloperAccess, setShowDeveloperAccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -223,56 +243,58 @@ export function LoginPage() {
     clearAuthNotice();
   }
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#071421] text-[#07133d]">
+    <main className="relative h-screen overflow-hidden bg-[#071421] text-[#07133d]">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_28%_18%,rgba(22,163,116,0.26),transparent_28%),radial-gradient(circle_at_72%_78%,rgba(6,31,77,0.52),transparent_34%),linear-gradient(135deg,#071421_0%,#10233b_50%,#06111e_100%)]" />
       <div className="absolute inset-0 opacity-45 [background-image:radial-gradient(circle_at_20%_30%,rgba(255,255,255,0.24)_1px,transparent_1px),radial-gradient(circle_at_70%_20%,rgba(24,172,95,0.18)_1px,transparent_1px)] [background-size:80px_80px,110px_110px]" />
 
-      <section className="relative z-10 flex min-h-screen items-center justify-center px-5 py-8">
-        <div className="grid w-full max-w-[1120px] overflow-hidden rounded-[28px] bg-white shadow-[0_34px_90px_rgba(0,0,0,0.34)] lg:min-h-[660px] lg:grid-cols-[1.05fr_0.95fr]">
+      <section className="relative z-10 flex h-screen items-center justify-center px-4 py-4">
+        <div className="grid h-full max-h-[960px] w-full max-w-[1080px] overflow-hidden rounded-[24px] bg-white shadow-[0_24px_56px_rgba(0,0,0,0.26)] lg:max-h-[calc(100vh-2rem)] lg:grid-cols-[0.9fr_1.1fr]">
           <div className="relative hidden overflow-hidden rounded-l-[20px] lg:block">
             <BrandVisual />
 
-            <div className="absolute left-12 top-10 z-10 flex items-center gap-3 text-white">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-emerald-300 ring-1 ring-white/20">
+            <div className="absolute left-9 top-8 z-10 flex items-center gap-3 text-white">
+              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-emerald-300 ring-1 ring-white/20">
                 <IconShield />
               </span>
-              <span className="text-sm font-black uppercase tracking-[0.24em]">Accounting</span>
+              <span className="text-[0.8rem] font-medium uppercase tracking-[0.2em]">Secure Accounting</span>
             </div>
 
-            <div className="absolute bottom-14 left-12 right-12 z-10 text-white">
-              <div className="mb-6 h-1 w-20 rounded-full bg-emerald-300" />
-              <h1 className="max-w-[520px] text-[3rem] font-black uppercase leading-[1.03] tracking-[-0.02em] drop-shadow-[0_18px_28px_rgba(0,0,0,0.32)]">
-                Document Control
-                <br />
-                &amp; Compliance Portal
+            <div className="absolute bottom-9 left-9 right-9 z-10 text-white">
+              <div className="mb-4 h-px w-20 bg-emerald-300/60" />
+              <p className="text-[0.72rem] font-medium uppercase tracking-[0.18em] text-white/68">
+                Trusted Workspace
+              </p>
+              <h1 className="mt-3 max-w-[360px] text-[2rem] font-medium leading-[1.14] tracking-[-0.025em] drop-shadow-[0_14px_24px_rgba(0,0,0,0.24)]">
+                Document control and compliance oversight for modern accounting teams.
               </h1>
+              <p className="mt-3 max-w-[360px] text-[0.86rem] leading-6 text-white/68">
+                Track requests, filings, monthly packs, and client records in one controlled portal.
+              </p>
             </div>
           </div>
 
-          <div className="flex items-center justify-center px-7 py-10 sm:px-12">
-            <div className="w-full max-w-[360px]">
-              <div className="mb-9 text-center">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-50 text-emerald-600 shadow-[0_12px_28px_rgba(15,23,42,0.08)]">
-                  <IconBank />
-                </div>
-                <h2 className="mt-6 text-[1.72rem] font-black uppercase tracking-[-0.02em] text-[#07133d]">
-                  Welcome back!
-                </h2>
-                <p className="mt-2 text-[0.86rem] font-medium text-slate-500">
-                  Sign in to manage documents, compliance tasks, and monthly packs.
-                </p>
-                <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-left text-[0.78rem] leading-5 text-emerald-900">
-                  <p className="font-semibold">Access is created by your administrator.</p>
-                  <p className="mt-1 text-emerald-800/90">
-                    New clients and accountants receive a setup email first, then choose their own password before signing in.
-                  </p>
+          <div className="flex h-full items-center justify-center bg-[linear-gradient(180deg,#ffffff_0%,#fbfcfe_100%)] px-6 py-6 sm:px-9 lg:px-10">
+            <div className="w-full max-w-[400px]">
+              <div className="mb-5">
+                <div className="inline-flex items-center gap-3 rounded-2xl border border-[#e3ebf2] bg-white px-3.5 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[linear-gradient(180deg,#f4faf6_0%,#edf6f0_100%)] text-[#2d6c57] ring-1 ring-[#dbe9df]">
+                    <IconBank />
+                  </span>
+                  <div className="text-left">
+                    <p className="text-[0.92rem] font-medium tracking-[-0.01em] text-[#07133d]">
+                      Secure Client Portal
+                    </p>
+                    <p className="mt-0.5 text-[0.68rem] font-medium uppercase tracking-[0.1em] text-[#7b879d]">
+                      Protected client workspace
+                    </p>
+                  </div>
                 </div>
               </div>
 
-              <form className="space-y-4" onSubmit={handleSubmit}>
+              <form className="space-y-3 rounded-[20px] border border-[#e6edf5] bg-white px-4 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)] sm:px-5 sm:py-4" onSubmit={handleSubmit}>
                 {authNotice ? (
-                  <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-left text-[0.82rem] leading-6 text-sky-900">
-                    <div className="font-semibold">Session update</div>
+                  <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2.5 text-left text-[0.78rem] leading-5 text-sky-900">
+                    <div className="font-medium">Session update</div>
                     <div className="mt-1 font-medium">{authNotice}</div>
                   </div>
                 ) : null}
@@ -311,8 +333,8 @@ export function LoginPage() {
                   value={password}
                 />
 
-                <div className="flex items-center justify-between gap-4 text-[0.78rem] font-semibold">
-                  <label className="flex cursor-pointer items-center gap-2 text-[#07133d]">
+                <div className="flex items-center justify-between gap-4 text-[0.74rem]">
+                  <label className="flex cursor-pointer items-center gap-2 text-[#22314f]">
                     <span className="relative flex h-4 w-4 items-center justify-center rounded border border-slate-300 bg-white text-white">
                       <input
                         checked={rememberMe}
@@ -338,7 +360,7 @@ export function LoginPage() {
                   </label>
 
                   <Link
-                    className="text-[#0b4f5f] transition hover:text-emerald-700"
+                    className="font-medium text-[#315b7e] transition hover:text-emerald-700"
                     to="/forgot-password"
                   >
                     Reset password
@@ -346,15 +368,15 @@ export function LoginPage() {
                 </div>
 
                 {error ? (
-                  <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-[0.78rem] text-rose-700">
-                    <div className="font-semibold">Couldn&apos;t sign you in</div>
+                  <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-[0.74rem] text-rose-700">
+                    <div className="font-medium">Couldn&apos;t sign you in</div>
                     <div className="mt-1 font-medium">{error}</div>
                   </div>
                 ) : null}
 
                 <button
                   disabled={isSubmitting}
-                  className="flex h-12 w-full items-center justify-center gap-3 rounded-lg bg-[#074e5f] text-[0.9rem] font-bold text-white shadow-[0_12px_22px_rgba(7,78,95,0.22)] transition hover:bg-[#063f4d] active:translate-y-px"
+                  className="flex h-10 w-full items-center justify-center gap-3 rounded-xl bg-[#0a2540] text-[0.86rem] font-medium text-white shadow-[0_10px_18px_rgba(10,37,64,0.16)] transition hover:bg-[#0c2f52] active:translate-y-px"
                   type="submit"
                 >
                   <IconLock />
@@ -362,9 +384,9 @@ export function LoginPage() {
                 </button>
               </form>
 
-              <div className="mt-7 text-center">
+              <div className="mt-4 text-center">
                 <button
-                  className="inline-flex items-center gap-3 text-[0.82rem] font-semibold text-[#07133d] transition hover:text-emerald-700"
+                  className="inline-flex items-center gap-3 text-[0.76rem] font-medium text-[#22314f] transition hover:text-emerald-700"
                   onClick={() => setShowDeveloperAccess((current) => !current)}
                   type="button"
                 >
@@ -390,9 +412,9 @@ export function LoginPage() {
                 </button>
 
                 {showDeveloperAccess ? (
-                  <div className="mt-3 grid gap-2 text-left text-[0.72rem] font-semibold">
+                  <div className="mt-3 grid gap-2 text-left text-[0.72rem] font-medium">
                     <button
-                      className="rounded-lg bg-slate-50 px-3 py-2 text-slate-700 ring-1 ring-slate-200 transition hover:bg-brand-50"
+                      className="rounded-xl bg-slate-50 px-3 py-2 text-slate-700 ring-1 ring-slate-200 transition hover:bg-brand-50"
                       onClick={() =>
                         useMockAccount(
                           hasApiBaseUrl() ? "client@secureportal.local" : "client@example.com",
@@ -405,7 +427,7 @@ export function LoginPage() {
                       <span className="text-emerald-600">{hasApiBaseUrl() ? "Password123!" : "Client@2026"}</span>
                     </button>
                     <button
-                      className="rounded-lg bg-slate-50 px-3 py-2 text-slate-700 ring-1 ring-slate-200 transition hover:bg-brand-50"
+                      className="rounded-xl bg-slate-50 px-3 py-2 text-slate-700 ring-1 ring-slate-200 transition hover:bg-brand-50"
                       onClick={() =>
                         useMockAccount(
                           hasApiBaseUrl()
@@ -420,7 +442,7 @@ export function LoginPage() {
                       <span className="text-emerald-600">{hasApiBaseUrl() ? "Password123!" : "Accountant@2026"}</span>
                     </button>
                     <button
-                      className="rounded-lg bg-slate-50 px-3 py-2 text-slate-700 ring-1 ring-slate-200 transition hover:bg-brand-50"
+                      className="rounded-xl bg-slate-50 px-3 py-2 text-slate-700 ring-1 ring-slate-200 transition hover:bg-brand-50"
                       onClick={() =>
                         useMockAccount(
                           hasApiBaseUrl() ? "admin@secureportal.local" : "admin@example.com",
