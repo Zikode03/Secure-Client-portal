@@ -132,12 +132,6 @@ function buildMockPreviewDataUrl(lines: string[], accent: string, surface: strin
 }
 
 function buildMockDocumentPreview(document: Pick<DocumentRecord, "clientName" | "documentType" | "monthLabel" | "fileName" | "amountLabel" | "uploadedBy">) {
-  const shared = [
-    document.documentType,
-    document.clientName,
-    document.monthLabel,
-  ];
-
   if (document.documentType === "Bank Statement") {
     return buildMockPreviewDataUrl(
       [
@@ -1509,14 +1503,25 @@ export function PortalProvider({ children }: { children: ReactNode }) {
             .filter((user) => user.role === "accountant")
             .map((user) => {
               const existing = currentByEmail.get(user.email.toLowerCase());
+              const assignedClientCount = nextAdminClients.filter(
+                (client) =>
+                  client.assignedAccountantUserId === user.id ||
+                  client.backupAccountantUserId === user.id,
+              ).length;
               return existing
-                ? { ...existing, id: user.id, name: user.name, email: user.email }
+                ? {
+                    ...existing,
+                    id: user.id,
+                    name: user.name,
+                    email: user.email,
+                    assignedClientCount,
+                  }
                 : {
                     id: user.id,
                     name: user.name,
                     email: user.email,
                     title: "Accountant",
-                    assignedClientCount: 0,
+                    assignedClientCount,
                     openReviews: 0,
                     status: "capacity_available" as const,
                   };

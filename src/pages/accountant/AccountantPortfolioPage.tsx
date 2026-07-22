@@ -130,7 +130,7 @@ export function AccountantPortfolioPage() {
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [savedFilter, setSavedFilter] = useState<SavedFilter>("all");
   const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
-  const actionMenuRef = useRef<HTMLDivElement | null>(null);
+  const actionMenuRef = useRef<HTMLTableCellElement | null>(null);
 
   const accountById = useMemo(() => new Map(portal.adminClients.map((client) => [client.id, client])), [portal.adminClients]);
   const scopedClients = useMemo(() => getScopedClients(user, portal.adminClients), [portal.adminClients, user]);

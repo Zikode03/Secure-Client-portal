@@ -2,7 +2,7 @@
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
 import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   AlertTriangle,
   CloudUpload,
@@ -25,13 +25,19 @@ import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
 import { useDisclosure } from "../../hooks/useDisclosure";
 import { useClientWorkflow } from "../../hooks/useClientWorkflow";
+import { ApiError, apiGetBlob, apiGetJson, apiPostForm, apiPostJson, hasApiBaseUrl } from "../../services/apiClient";
+import { recalculatePack } from "../../services/workflowEngine";
 import type {
+  DocumentRecord,
   ExpiringDocumentItem,
+  InvoiceRecord,
   LatestRecordItem,
   MonthlyDocumentSlot,
   MonthlyPack,
   SmartAlertItem,
   Tone,
+  UploadSubmission,
+  WorkflowRequest,
 } from "../../types/portal";
 import { cn } from "../../utils/cn";
 import { formatDateLabel, formatStatusLabel } from "../../utils/formatters";
@@ -63,6 +69,326 @@ const dashboardLinkClass =
 
 const dashboardActionButtonClass =
   "client-dashboard-action-button inline-flex items-center justify-center rounded-lg font-bold transition hover:-translate-y-0.5 active:translate-y-px focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2";
+
+interface BackendMonthlyPackRecord {
+  id: string;
+  clientId: string;
+  year: number;
+  month: number;
+  status: string;
+  createdAtUtc: string;
+  updatedAtUtc: string;
+}
+
+interface BackendDocumentSlotRecord {
+  id: string;
+  monthlyPackId: string;
+  clientId: string;
+  category: string;
+  label: string;
+  isRequired: boolean;
+  status: string;
+  canCurrentlyBeSubmitted: boolean;
+  currentDocumentId?: string | null;
+  dueDateUtc?: string | null;
+  submittedAtUtc?: string | null;
+  rejectionReason?: string | null;
+}
+
+interface BackendDocumentRecord {
+  id: string;
+  clientId: string;
+  monthlyPackId: string;
+  name: string;
+  category: string;
+  documentSlotId?: string | null;
+  status: string;
+  fileType: string;
+  sizeBytes: number;
+  currentVersionNumber: number;
+  uploadedAtUtc: string;
+  updatedAtUtc: string;
+}
+
+interface BackendRequestRecord {
+  id: string;
+  clientId: string;
+  requestType: string;
+  relatedDocumentId?: string | null;
+  title: string;
+  description: string;
+  priority: string;
+  status: string;
+  dueDateUtc?: string | null;
+  requestedByUserId: string;
+  requestedAtUtc: string;
+  updatedAtUtc: string;
+}
+
+interface BackendNotificationRecord {
+  id: string;
+  userId: string;
+  clientId?: string | null;
+  type: string;
+  title: string;
+  message: string;
+  linkUrl?: string | null;
+  isRead: boolean;
+  createdAtUtc: string;
+}
+
+interface BackendComplianceAlertRecord {
+  complianceItemId: string;
+  clientId: string;
+  name: string;
+  categoryName?: string | null;
+  status: string;
+  riskLevel: string;
+  expiryDateUtc?: string | null;
+  dueDateUtc?: string | null;
+  ownerName?: string | null;
+  alertLevel?: string | null;
+  message: string;
+}
+
+interface BackendComplianceSummaryClientRecord {
+  clientId: string;
+  total: number;
+  valid: number;
+  expiringSoon: number;
+  expired: number;
+  missing: number;
+  pending: number;
+  rejected: number;
+  criticalRisk: number;
+  highRisk: number;
+  complianceScore: number;
+}
+
+interface BackendComplianceSummaryResponse {
+  generatedAtUtc: string;
+  clients: BackendComplianceSummaryClientRecord[];
+  totals: {
+    totalItems: number;
+    valid: number;
+    expiringSoon: number;
+    expired: number;
+    missing: number;
+    criticalRisk: number;
+    highRisk: number;
+  };
+}
+
+interface LiveClientDashboardData {
+  monthPack: MonthlyPack;
+  documents: DocumentRecord[];
+  invoices: InvoiceRecord[];
+  requests: WorkflowRequest[];
+  latestOverallDocuments: LatestRecordItem[];
+  expiringDocuments: ExpiringDocumentItem[];
+  smartAlerts: SmartAlertItem[];
+  complianceScore: number;
+  expiredComplianceCount: number;
+  expiringComplianceCount: number;
+}
+
+const monthNames = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+function monthLabelFromParts(year: number, month: number) {
+  return `${monthNames[Math.max(0, month - 1)] ?? "Month"} ${year}`;
+}
+
+function buildDefaultDueDate(year: number, month: number) {
+  const dueMonth = month === 12 ? 1 : month + 1;
+  const dueYear = month === 12 ? year + 1 : year;
+  return new Date(Date.UTC(dueYear, dueMonth - 1, 6)).toISOString();
+}
+
+function normaliseDocumentType(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function isInvoiceCategory(value: string) {
+  return normaliseDocumentType(value).includes("invoice");
+}
+
+function acceptedFilesForSlot(category: string, label: string) {
+  const normalized = `${normaliseDocumentType(category)} ${normaliseDocumentType(label)}`;
+
+  if (normalized.includes("bank statement")) {
+    return ["PDF", "CSV", "XLSX"];
+  }
+
+  if (normalized.includes("invoice")) {
+    return ["PDF", "ZIP", "CSV", "XLSX"];
+  }
+
+  if (normalized.includes("signed")) {
+    return ["PDF"];
+  }
+
+  return ["PDF", "PNG", "JPG", "DOCX", "XLSX"];
+}
+
+function supportsExpiryDate(category: string, label: string) {
+  return /(tax|certificate|contract|id|address|coida|csd|insurance|lease|vat|paye|uif|sdl)/i.test(
+    `${category} ${label}`,
+  );
+}
+
+function slotProgress(status: MonthlyDocumentSlot["status"]) {
+  switch (status) {
+    case "draft":
+      return 65;
+    case "uploaded":
+      return 85;
+    case "under_review":
+      return 90;
+    case "accepted":
+    case "filed":
+      return 100;
+    case "rejected":
+      return 35;
+    default:
+      return 0;
+  }
+}
+
+function mapBackendSlotStatus(
+  status: string,
+  isRequired: boolean,
+): MonthlyDocumentSlot["status"] {
+  const normalized = status.trim().toLowerCase();
+
+  switch (normalized) {
+    case "draft":
+      return "draft";
+    case "submitted":
+      return "uploaded";
+    case "under_review":
+      return "under_review";
+    case "accepted":
+      return "accepted";
+    case "rejected":
+    case "reupload_required":
+      return "rejected";
+    case "not_applicable":
+      return isRequired ? "accepted" : "filed";
+    default:
+      return "missing";
+  }
+}
+
+function mapBackendPackSubmissionStatus(
+  status: string,
+): MonthlyPack["submissionStatus"] {
+  const normalized = status.trim().toLowerCase();
+
+  switch (normalized) {
+    case "under_review":
+      return "under_accountant_review";
+    case "complete":
+    case "closed":
+      return "complete";
+    default:
+      return "open";
+  }
+}
+
+function mapBackendDocumentStatus(status: string): DocumentRecord["status"] {
+  const normalized = status.trim().toLowerCase();
+
+  switch (normalized) {
+    case "under_review":
+      return "under_review";
+    case "accepted":
+      return "accepted";
+    case "rejected":
+      return "rejected";
+    case "filed":
+      return "filed";
+    default:
+      return "uploaded";
+  }
+}
+
+function formatSizeLabel(sizeBytes: number) {
+  if (sizeBytes >= 1_000_000) {
+    return `${(sizeBytes / 1_000_000).toFixed(1)} MB`;
+  }
+
+  if (sizeBytes >= 1_000) {
+    return `${Math.round(sizeBytes / 1_000)} KB`;
+  }
+
+  return `${sizeBytes} B`;
+}
+
+function normalizeClientRequestStatus(
+  status: string | undefined,
+  requestedByUserId: string,
+  currentUserId: string,
+): WorkflowRequest["status"] {
+  const normalized = status?.trim().toLowerCase();
+
+  if (normalized === "resolved") {
+    return "resolved";
+  }
+
+  if (normalized === "closed") {
+    return "closed";
+  }
+
+  if (normalized === "awaiting_client" || normalized === "waiting_on_client" || normalized === "client_replied") {
+    return "awaiting_client";
+  }
+
+  if (normalized === "awaiting_accountant" || normalized === "waiting_on_accountant") {
+    return "awaiting_accountant";
+  }
+
+  if (normalized === "overdue") {
+    return requestedByUserId === currentUserId ? "awaiting_accountant" : "awaiting_client";
+  }
+
+  return requestedByUserId === currentUserId ? "awaiting_accountant" : "awaiting_client";
+}
+
+function toRequestPriority(priority?: string): WorkflowRequest["priority"] {
+  if (priority === "high" || priority === "medium" || priority === "low") {
+    return priority;
+  }
+
+  return "medium";
+}
+
+function mapComplianceTone(status: string, riskLevel: string): Tone {
+  const normalizedStatus = status.trim().toLowerCase();
+  const normalizedRisk = riskLevel.trim().toLowerCase();
+
+  if (normalizedStatus === "expired" || normalizedStatus === "rejected" || normalizedRisk === "critical") {
+    return "danger";
+  }
+
+  if (normalizedStatus === "expiring_soon" || normalizedStatus === "missing" || normalizedRisk === "high") {
+    return "warning";
+  }
+
+  return "info";
+}
 
 function ChevronRightIcon() {
   return (
@@ -468,8 +794,17 @@ export function ClientDashboardPage() {
   const navigate = useNavigate();
   const uploadModal = useDisclosure(false);
   const [selectedSlot, setSelectedSlot] = useState<MonthlyDocumentSlot | null>(null);
-// Local UI state: keeps track of what the user is seeing or editing right now.
   const [optionsOpen, setOptionsOpen] = useState(false);
+  const [liveDashboardData, setLiveDashboardData] = useState<LiveClientDashboardData | null>(null);
+  const [dashboardNotice, setDashboardNotice] = useState<{
+    tone: Tone;
+    title: string;
+    message: string;
+  } | null>(null);
+  const [livePackId, setLivePackId] = useState("");
+  const [liveSlotMetaById, setLiveSlotMetaById] = useState<
+    Record<string, { currentDocumentId?: string; canCurrentlyBeSubmitted: boolean }>
+  >({});
   const {
     documents,
     dismissFeedbackNotice,
@@ -489,10 +824,293 @@ export function ClientDashboardPage() {
     clientName: user?.company,
     uploadedBy: user?.fullName ?? user?.name,
   });
+  const backendClientId = user?.clientIds[0] ?? "";
+  const backendMode = hasApiBaseUrl() && Boolean(backendClientId);
+
+  async function triggerBackendDownload(documentId: string, fileName: string) {
+    const { blob } = await apiGetBlob(`/api/documents/${encodeURIComponent(documentId)}/download`);
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    link.click();
+    window.URL.revokeObjectURL(url);
+  }
+
+  async function loadBackendDashboard() {
+    if (!backendMode) {
+      return;
+    }
+
+    try {
+      const [packs, allDocuments, requestsData, notifications, alerts, summary] = await Promise.all([
+        apiGetJson<BackendMonthlyPackRecord[]>(
+          `/api/monthly-packs?clientId=${encodeURIComponent(backendClientId)}`,
+        ),
+        apiGetJson<BackendDocumentRecord[]>("/api/documents"),
+        apiGetJson<BackendRequestRecord[]>("/api/requests"),
+        apiGetJson<BackendNotificationRecord[]>("/api/notifications"),
+        apiGetJson<BackendComplianceAlertRecord[]>(
+          `/api/compliance/alerts?clientId=${encodeURIComponent(backendClientId)}`,
+        ),
+        apiGetJson<BackendComplianceSummaryResponse>(
+          `/api/compliance/reports/summary?clientId=${encodeURIComponent(backendClientId)}`,
+        ),
+      ]);
+
+      const currentPack = packs[0];
+      if (!currentPack) {
+        setLiveDashboardData(null);
+        setLivePackId("");
+        setLiveSlotMetaById({});
+        return;
+      }
+
+      const slots = await apiGetJson<BackendDocumentSlotRecord[]>(
+        `/api/document-slots/${encodeURIComponent(currentPack.id)}`,
+      );
+
+      const packById = new Map(
+        packs.map((pack) => [pack.id, pack] satisfies [string, BackendMonthlyPackRecord]),
+      );
+      const businessName = user?.company ?? "Client";
+      const currentUserName = user?.fullName ?? user?.name ?? "Client user";
+      const clientDocuments = allDocuments.filter((document) => document.clientId === backendClientId);
+
+      const mappedSlots = slots.map<MonthlyDocumentSlot>((slot) => {
+        const pack = packById.get(slot.monthlyPackId) ?? currentPack;
+        const mappedStatus = mapBackendSlotStatus(slot.status, slot.isRequired);
+
+        return {
+          id: slot.id,
+          documentType: slot.label,
+          description: `${slot.label} for ${monthLabelFromParts(pack.year, pack.month)}.`,
+          status: mappedStatus,
+          month: monthNames[Math.max(0, pack.month - 1)] ?? "Month",
+          year: pack.year,
+          acceptedFiles: acceptedFilesForSlot(slot.category, slot.label),
+          progress: slotProgress(mappedStatus),
+          autoName: `${businessName.replace(/\s+/g, "")}_${slot.label.replace(/\s+/g, "")}_${monthNames[Math.max(0, pack.month - 1)]}_${pack.year}.pdf`,
+          isRequired: slot.isRequired,
+          assignedOwner: "Client",
+          dueDate: slot.dueDateUtc ?? buildDefaultDueDate(pack.year, pack.month),
+          supportsExpiryDate: supportsExpiryDate(slot.category, slot.label),
+          lastSubmission: slot.submittedAtUtc ?? undefined,
+          rejectionReason: slot.rejectionReason ?? undefined,
+        };
+      });
+
+      const mappedPack = recalculatePack({
+        monthLabel: monthLabelFromParts(currentPack.year, currentPack.month),
+        dueDate:
+          mappedSlots
+            .map((slot) => slot.dueDate)
+            .filter((value): value is string => Boolean(value))
+            .sort()[0] ?? buildDefaultDueDate(currentPack.year, currentPack.month),
+        deadlineStatus: "on_track",
+        progressPercent: 0,
+        completedCount: 0,
+        totalCount: 0,
+        canComplete: false,
+        completionMessage: "",
+        submissionStatus: mapBackendPackSubmissionStatus(currentPack.status),
+        submittedAt: (() => {
+          const submissions = mappedSlots
+            .map((slot) => slot.lastSubmission)
+            .filter((value): value is string => Boolean(value))
+            .sort();
+          return submissions.length > 0 ? submissions[submissions.length - 1] : undefined;
+        })(),
+        slots: mappedSlots,
+      });
+
+      const mappedDocuments = clientDocuments.map<DocumentRecord>((document) => {
+        const pack = packById.get(document.monthlyPackId);
+        return {
+          id: document.id,
+          clientId: document.clientId,
+          clientName: businessName,
+          documentType: document.category,
+          fileName: document.name,
+          monthLabel: pack
+            ? monthLabelFromParts(pack.year, pack.month)
+            : formatDateLabel(document.uploadedAtUtc),
+          description: `${document.category} uploaded to the monthly pack.`,
+          status: mapBackendDocumentStatus(document.status),
+          uploadedBy: currentUserName,
+          uploadedAt: document.uploadedAtUtc,
+          reviewedBy: undefined,
+          reviewedAt: undefined,
+          sizeLabel: formatSizeLabel(document.sizeBytes),
+          keywordTags: [document.category],
+          rejectionReason: undefined,
+          comments: [],
+          auditTrail: [],
+          fileMimeType: document.fileType,
+        };
+      });
+
+      const mappedInvoices = clientDocuments
+        .filter((document) => isInvoiceCategory(document.category))
+        .map<InvoiceRecord>((document) => {
+          const pack = packById.get(document.monthlyPackId);
+          return {
+            id: document.id,
+            clientId: document.clientId,
+            clientName: businessName,
+            invoiceNumber: document.name.replace(/\.[^.]+$/, ""),
+            fileName: document.name,
+            monthLabel: pack
+              ? monthLabelFromParts(pack.year, pack.month)
+              : formatDateLabel(document.uploadedAtUtc),
+            description: `${document.category} uploaded to the monthly pack.`,
+            amountLabel: "R 0.00",
+            uploadedAt: document.uploadedAtUtc,
+            status: "uploaded",
+            keywordTags: [document.category],
+            fileMimeType: document.fileType,
+          };
+        });
+
+      const mappedRequests = requestsData
+        .filter((request) => request.clientId === backendClientId)
+        .map<WorkflowRequest>((request) => ({
+          id: request.id,
+          clientId: request.clientId,
+          clientName: businessName,
+          title: request.title,
+          description: request.description,
+          monthLabel: formatDateLabel(request.dueDateUtc ?? request.requestedAtUtc),
+          status: normalizeClientRequestStatus(request.status, request.requestedByUserId, user?.id ?? ""),
+          priority: toRequestPriority(request.priority),
+          relatedDocumentId: request.relatedDocumentId ?? undefined,
+          requestedBy: request.requestedByUserId === user?.id ? currentUserName : "Assigned accountant",
+          requestedByRole: request.requestedByUserId === user?.id ? "client" : "accountant",
+          assignedTo: "Assigned accountant",
+          dueDate: request.dueDateUtc ?? request.updatedAtUtc,
+          createdAt: request.requestedAtUtc,
+          comments: [],
+          auditTrail: [],
+        }));
+
+      const latestRecords = [...mappedDocuments]
+        .sort((left, right) => right.uploadedAt.localeCompare(left.uploadedAt))
+        .slice(0, 5)
+        .map<LatestRecordItem>((document) => ({
+          id: document.id,
+          name: document.fileName,
+          type: document.documentType,
+          date: document.uploadedAt,
+          status: document.status,
+          kind: isInvoiceCategory(document.documentType) ? "invoice" : "document",
+        }));
+
+      const expiringDocuments = alerts
+        .filter((alert) => alert.status === "expired" || alert.status === "expiring_soon")
+        .slice(0, 4)
+        .map<ExpiringDocumentItem>((alert) => {
+          const expiryDate = alert.expiryDateUtc ?? alert.dueDateUtc ?? new Date().toISOString();
+          const daysRemaining = Math.ceil(
+            (new Date(expiryDate).getTime() - Date.now()) / 86_400_000,
+          );
+
+          return {
+            id: alert.complianceItemId,
+            fileName: alert.name,
+            documentType: alert.categoryName ?? alert.name,
+            expiresOn: expiryDate,
+            owner: alert.ownerName ?? "Client",
+            tone: mapComplianceTone(alert.status, alert.riskLevel),
+            daysRemaining,
+            status: alert.status === "expired" ? "expired" : "expiring_soon",
+            alertMessage: alert.message,
+          };
+        });
+
+      const smartAlerts = alerts
+        .slice(0, 4)
+        .map<SmartAlertItem>((alert) => ({
+          id: alert.complianceItemId,
+          title: alert.name,
+          message: alert.message,
+          tone: mapComplianceTone(alert.status, alert.riskLevel),
+          category:
+            alert.status === "missing"
+              ? "completeness"
+              : alert.riskLevel === "critical" || alert.riskLevel === "high"
+                ? "anomaly"
+                : "reconciliation",
+        }));
+
+      const clientSummary = summary.clients.find((item) => item.clientId === backendClientId);
+      const missingDocumentNotifications = notifications.filter((item) =>
+        item.type.trim().toLowerCase().includes("missing"),
+      );
+
+      setLivePackId(currentPack.id);
+      setLiveSlotMetaById(
+        Object.fromEntries(
+          slots.map((slot) => [
+            slot.id,
+            {
+              currentDocumentId: slot.currentDocumentId ?? undefined,
+              canCurrentlyBeSubmitted: slot.canCurrentlyBeSubmitted,
+            },
+          ]),
+        ),
+      );
+      setLiveDashboardData({
+        monthPack: mappedPack,
+        documents: mappedDocuments,
+        invoices: mappedInvoices,
+        requests: mappedRequests,
+        latestOverallDocuments: latestRecords,
+        expiringDocuments,
+        smartAlerts:
+          smartAlerts.length > 0
+            ? smartAlerts
+            : missingDocumentNotifications.slice(0, 2).map((notification) => ({
+                id: notification.id,
+                title: notification.title,
+                message: notification.message,
+                tone: "warning",
+                category: "completeness",
+              })),
+        complianceScore: clientSummary?.complianceScore ?? 0,
+        expiredComplianceCount: clientSummary?.expired ?? 0,
+        expiringComplianceCount: clientSummary?.expiringSoon ?? 0,
+      });
+      setDashboardNotice(null);
+    } catch (error) {
+      setDashboardNotice({
+        tone: "warning",
+        title: "Live dashboard unavailable",
+        message:
+          error instanceof ApiError
+            ? error.message
+            : "The dashboard could not load the live backend data, so the seeded workspace view is still shown.",
+      });
+    }
+  }
+
+  useEffect(() => {
+    void loadBackendDashboard();
+  }, [backendClientId, backendMode, user?.id, user?.fullName, user?.company]);
+
+  const effectiveDocuments = backendMode && liveDashboardData ? liveDashboardData.documents : documents;
+  const effectiveInvoices = backendMode && liveDashboardData ? liveDashboardData.invoices : invoices;
+  const effectiveMonthPack = backendMode && liveDashboardData ? liveDashboardData.monthPack : monthPack;
+  const effectiveRequests = backendMode && liveDashboardData ? liveDashboardData.requests : requests;
+  const effectiveLatestOverallDocuments =
+    backendMode && liveDashboardData ? liveDashboardData.latestOverallDocuments : latestOverallDocuments;
+  const effectiveExpiringDocuments =
+    backendMode && liveDashboardData ? liveDashboardData.expiringDocuments : expiringDocuments;
+  const effectiveSmartAlerts =
+    backendMode && liveDashboardData ? liveDashboardData.smartAlerts : smartAlerts;
 
   const requiredSlots = useMemo(
-    () => monthPack.slots.filter((slot) => slot.isRequired),
-    [monthPack.slots],
+    () => effectiveMonthPack.slots.filter((slot) => slot.isRequired),
+    [effectiveMonthPack.slots],
   );
 
   const blockingSlots = useMemo(
@@ -510,14 +1128,17 @@ export function ClientDashboardPage() {
     [blockingSlots],
   );
 
-  const highlightedSlot = useMemo(() => getHighlightedSlot(monthPack), [monthPack]);
+  const highlightedEffectiveSlot = useMemo(
+    () => getHighlightedSlot(effectiveMonthPack),
+    [effectiveMonthPack],
+  );
   const existingSlotFileNames = useMemo(() => {
     if (!selectedSlot) {
       return [];
     }
 
     const targetMonthLabel = `${selectedSlot.month} ${selectedSlot.year}`;
-    const documentFileNames = documents
+    const documentFileNames = effectiveDocuments
       .filter(
         (document) =>
           document.documentType === selectedSlot.documentType &&
@@ -526,28 +1147,28 @@ export function ClientDashboardPage() {
       .map((document) => document.fileName);
     const invoiceFileNames =
       selectedSlot.documentType.toLowerCase().includes("invoice")
-        ? invoices
+        ? effectiveInvoices
             .filter((invoice) => invoice.monthLabel === targetMonthLabel)
             .map((invoice) => invoice.fileName)
         : [];
 
     return [...documentFileNames, ...invoiceFileNames];
-  }, [documents, invoices, selectedSlot]);
-  const expiringPreview = useMemo(() => expiringDocuments.slice(0, 2), [expiringDocuments]);
-  const alertsPreview = useMemo(() => smartAlerts.slice(0, 2), [smartAlerts]);
+  }, [effectiveDocuments, effectiveInvoices, selectedSlot]);
+  const expiringPreview = useMemo(() => effectiveExpiringDocuments.slice(0, 2), [effectiveExpiringDocuments]);
+  const alertsPreview = useMemo(() => effectiveSmartAlerts.slice(0, 2), [effectiveSmartAlerts]);
   const latestRecordsPreview = useMemo(
-    () => latestOverallDocuments.slice(0, 5),
-    [latestOverallDocuments],
+    () => effectiveLatestOverallDocuments.slice(0, 5),
+    [effectiveLatestOverallDocuments],
   );
   const nextActions = useMemo<NextActionItem[]>(() => {
     const items: NextActionItem[] = [];
     const rejectedSlot = blockingSlots.find((slot) => slot.status === "rejected");
     const missingSlot = blockingSlots.find((slot) => slot.status === "missing");
     const signatureSlot = blockingSlots.find((slot) => slot.status === "pending_signature");
-    const openFollowUps = requests
+    const openFollowUps = effectiveRequests
       .filter((request) => request.status !== "resolved" && request.status !== "closed")
       .slice(0, 2);
-    const expiringDocument = expiringDocuments[0];
+    const expiringDocument = effectiveExpiringDocuments[0];
 
     if (rejectedSlot) {
       items.push({
@@ -595,14 +1216,24 @@ export function ClientDashboardPage() {
       });
     }
 
-    if (monthPack.canComplete && monthPack.submissionStatus !== "under_accountant_review") {
+    if (
+      effectiveMonthPack.canComplete &&
+      effectiveMonthPack.submissionStatus !== "under_accountant_review"
+    ) {
       items.push({
         id: "submit-month",
         title: "Submit this month",
         detail: "All required documents are ready for accountant review.",
         ctaLabel: "Submit",
         tone: "success",
-        onAction: submitMonth,
+        onAction: () => {
+          if (backendMode) {
+            void handleLiveSubmit();
+            return;
+          }
+
+          submitMonth();
+        },
       });
     }
 
@@ -618,21 +1249,30 @@ export function ClientDashboardPage() {
     }
 
     return items.slice(0, 5);
-  }, [blockingSlots, expiringDocuments, monthPack.canComplete, monthPack.submissionStatus, navigate, requests, submitMonth]);
+  }, [blockingSlots, effectiveExpiringDocuments, effectiveMonthPack.canComplete, effectiveMonthPack.submissionStatus, navigate, effectiveRequests, submitMonth]);
 
   const openRequestsCount = useMemo(
-    () => requests.filter((request) => request.status !== "resolved" && request.status !== "closed").length,
-    [requests],
+    () => effectiveRequests.filter((request) => request.status !== "resolved" && request.status !== "closed").length,
+    [effectiveRequests],
   );
 
   const waitingOnClientCount = useMemo(
-    () => requests.filter((request) => request.status === "awaiting_client").length,
-    [requests],
+    () => effectiveRequests.filter((request) => request.status === "awaiting_client").length,
+    [effectiveRequests],
   );
 
-  const complianceHealth = portal.clientComplianceCentre.overallScore;
-  const expiredComplianceCount = portal.clientComplianceCentre.expiredDocuments.length;
-  const expiringComplianceCount = portal.clientComplianceCentre.expiringDocuments.length;
+  const complianceHealth =
+    backendMode && liveDashboardData
+      ? liveDashboardData.complianceScore
+      : portal.clientComplianceCentre.overallScore;
+  const expiredComplianceCount =
+    backendMode && liveDashboardData
+      ? liveDashboardData.expiredComplianceCount
+      : portal.clientComplianceCentre.expiredDocuments.length;
+  const expiringComplianceCount =
+    backendMode && liveDashboardData
+      ? liveDashboardData.expiringComplianceCount
+      : portal.clientComplianceCentre.expiringDocuments.length;
 
   function handleOpenUpload(slot: MonthlyDocumentSlot | null) {
     if (!slot) {
@@ -642,6 +1282,78 @@ export function ClientDashboardPage() {
 
     setSelectedSlot(slot);
     uploadModal.open();
+  }
+
+  async function handleLiveUpload(submission: UploadSubmission) {
+    if (!livePackId || !submission.file || !backendClientId) {
+      showFeedbackNotice(
+        "danger",
+        "Upload failed",
+        "The live monthly pack context is missing. Refresh the page and try again.",
+      );
+      return;
+    }
+
+    const targetSlotMeta = liveSlotMetaById[submission.slotId];
+    const form = new FormData();
+    form.append("ClientId", backendClientId);
+    form.append("MonthlyPackId", livePackId);
+    form.append("DocumentSlotId", submission.slotId);
+    form.append("DocumentType", submission.documentType);
+    if (targetSlotMeta?.currentDocumentId) {
+      form.append("DocumentId", targetSlotMeta.currentDocumentId);
+    }
+    form.append("File", submission.file, submission.fileName);
+
+    try {
+      await apiPostForm("/api/documents/upload", form);
+      await loadBackendDashboard();
+      showFeedbackNotice(
+        "success",
+        targetSlotMeta?.currentDocumentId ? "New version uploaded" : "Upload saved",
+        `${submission.documentType} was uploaded into the live monthly pack.`,
+      );
+    } catch (error) {
+      showFeedbackNotice(
+        "danger",
+        "Upload failed",
+        error instanceof ApiError
+          ? error.message
+          : "The document could not be uploaded to the backend.",
+      );
+    }
+  }
+
+  async function handleLiveSubmit() {
+    const backendSubmittableSlot =
+      effectiveMonthPack.slots.find((slot) => liveSlotMetaById[slot.id]?.canCurrentlyBeSubmitted) ?? null;
+
+    if (!backendSubmittableSlot) {
+      showFeedbackNotice(
+        "warning",
+        "Nothing ready to submit",
+        "Upload a file into a checklist slot before sending it for accountant review.",
+      );
+      return;
+    }
+
+    try {
+      await apiPostJson(`/api/document-slots/${encodeURIComponent(backendSubmittableSlot.id)}/submit`, {});
+      await loadBackendDashboard();
+      showFeedbackNotice(
+        "success",
+        "Slot submitted",
+        `${backendSubmittableSlot.documentType} was submitted for accountant review.`,
+      );
+    } catch (error) {
+      showFeedbackNotice(
+        "danger",
+        "Submission failed",
+        error instanceof ApiError
+          ? error.message
+          : "The selected slot could not be submitted for review.",
+      );
+    }
   }
 
   function handleOpenWorkspace() {
@@ -662,23 +1374,33 @@ export function ClientDashboardPage() {
               Welcome back, {user?.name?.split(" ")[0] ?? "John"}
             </h1>
             <p className="max-w-2xl text-[0.95rem] leading-6 text-white/78">
-              Your monthly document pack is {monthPack.progressPercent}% complete. Resolve blockers, upload missing files, and submit the month for accountant review.
+              Your monthly document pack is {effectiveMonthPack.progressPercent}% complete. Resolve blockers, upload missing files, and submit the month for accountant review.
             </p>
           </div>
 
           <div className="relative flex flex-wrap items-center gap-2.5 sm:flex-nowrap lg:justify-end">
           <Button
             className="client-dashboard-action-button h-10 rounded-lg border-0 px-4 text-sm font-bold ring-0 hover:-translate-y-0.5 active:translate-y-px"
-            disabled={monthPack.submissionStatus === "under_accountant_review"}
-            onClick={() => handleOpenUpload(highlightedSlot)}
+            disabled={effectiveMonthPack.submissionStatus === "under_accountant_review"}
+            onClick={() => handleOpenUpload(highlightedEffectiveSlot)}
           >
             <CloudUpload aria-hidden="true" className="h-4 w-4" />
             <span>Upload missing</span>
           </Button>
           <Button
             className="h-10 rounded-xl bg-[#8ccf45] px-4 text-sm text-[#062044] shadow-[0_14px_28px_rgba(9,34,66,0.22)] hover:bg-[#9ad955]"
-            disabled={!monthPack.canComplete || monthPack.submissionStatus === "under_accountant_review"}
-            onClick={submitMonth}
+            disabled={
+              !effectiveMonthPack.canComplete ||
+              effectiveMonthPack.submissionStatus === "under_accountant_review"
+            }
+            onClick={() => {
+              if (backendMode) {
+                void handleLiveSubmit();
+                return;
+              }
+
+              submitMonth();
+            }}
           >
             <Send aria-hidden="true" className="h-4 w-4" />
             <span>Submit month</span>
@@ -739,6 +1461,15 @@ export function ClientDashboardPage() {
         />
       ) : null}
 
+      {dashboardNotice ? (
+        <FeedbackBanner
+          message={dashboardNotice.message}
+          onDismiss={() => setDashboardNotice(null)}
+          title={dashboardNotice.title}
+          tone={dashboardNotice.tone}
+        />
+      ) : null}
+
       <div className="grid items-stretch gap-5 md:grid-cols-2">
         <MetricTile
           accent
@@ -764,16 +1495,16 @@ export function ClientDashboardPage() {
         />
         <MetricTile
           accent
-          helper={`${monthPack.progressPercent}% complete`}
+          helper={`${effectiveMonthPack.progressPercent}% complete`}
           icon={<FolderOpen aria-hidden="true" className="h-6 w-6" strokeWidth={1.8} />}
           label="Pack Progress"
-          progress={monthPack.progressPercent}
-          value={`${monthPack.completedCount} / ${monthPack.totalCount}`}
+          progress={effectiveMonthPack.progressPercent}
+          value={`${effectiveMonthPack.completedCount} / ${effectiveMonthPack.totalCount}`}
         />
       </div>
 
       <section className="grid items-stretch gap-5">
-        <MonthlyPackPreviewCard onOpenPack={handleOpenWorkspace} pack={monthPack} />
+        <MonthlyPackPreviewCard onOpenPack={handleOpenWorkspace} pack={effectiveMonthPack} />
         <NextActionsCard items={nextActions} />
       </section>
 
@@ -873,7 +1604,14 @@ export function ClientDashboardPage() {
                           <button
                             aria-label={`${readyStatuses.has(item.status as MonthlyDocumentSlot["status"]) ? "Download" : "Open"} ${item.name}`}
                             className={cn(dashboardActionButtonClass, "h-8 px-3 text-[0.78rem]")}
-                            onClick={() => triggerDownload(item.name)}
+                            onClick={() => {
+                              if (backendMode) {
+                                void triggerBackendDownload(item.id, item.name);
+                                return;
+                              }
+
+                              triggerDownload(item.name);
+                            }}
                             type="button"
                           >
                             {readyStatuses.has(item.status as MonthlyDocumentSlot["status"]) ? (
@@ -905,7 +1643,14 @@ export function ClientDashboardPage() {
         existingFileNames={existingSlotFileNames}
         isOpen={uploadModal.isOpen}
         onClose={uploadModal.close}
-        onUploaded={uploadToSlot}
+        onUploaded={(submission) => {
+          if (backendMode) {
+            void handleLiveUpload(submission);
+            return;
+          }
+
+          uploadToSlot(submission);
+        }}
         selectedSlot={selectedSlot}
       />
     </div>

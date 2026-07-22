@@ -19,8 +19,10 @@ import { SelectField } from "../../components/ui/SelectField";
 import { TextAreaField } from "../../components/ui/TextAreaField";
 import { TextField } from "../../components/ui/TextField";
 import { useClientWorkflow } from "../../hooks/useClientWorkflow";
+import { ApiError, apiGetJson, apiPostForm, apiPostJson, hasApiBaseUrl } from "../../services/apiClient";
 import type { WorkflowRequest } from "../../types/portal";
 import { formatDateLabel } from "../../utils/formatters";
+import { toBackendRequestType, toFrontendRequestType } from "../../utils/requestTypeMapping";
 
 type ThreadFilter = "all" | "unread" | "resolved" | "unresolved";
 type SortDirection = "desc" | "asc";
@@ -43,6 +45,42 @@ interface ActionResult {
   message: string;
 }
 
+interface BackendRequestRecord {
+  id: string;
+  clientId: string;
+  requestType: string;
+  relatedDocumentId?: string | null;
+  title: string;
+  description: string;
+  priority: string;
+  status: string;
+  dueDateUtc?: string | null;
+  requestedByUserId: string;
+  requestedAtUtc: string;
+  updatedAtUtc: string;
+}
+
+interface BackendRequestComment {
+  id: string;
+  requestId: string;
+  clientId: string;
+  authorUserId: string;
+  authorRole: string;
+  message: string;
+  createdAtUtc: string;
+}
+
+interface BackendRequestWorkspace {
+  request: BackendRequestRecord;
+  comments: BackendRequestComment[];
+}
+
+interface BackendAssignmentRecord {
+  clientId: string;
+  accountantName?: string;
+  isPrimary: boolean;
+}
+
 interface MessageContextMenuState {
   commentId: string;
   x: number;
@@ -53,6 +91,14 @@ function encodeAttachment(attachment: ParsedAttachment) {
   return `${ATTACHMENT_PREFIX}${encodeURIComponent(
     JSON.stringify(attachment),
   )}${ATTACHMENT_SUFFIX}`;
+}
+
+async function dataUrlToFile(attachment: ParsedAttachment) {
+  const response = await fetch(attachment.dataUrl);
+  const blob = await response.blob();
+  return new File([blob], attachment.name, {
+    type: attachment.mimeType || blob.type || "application/octet-stream",
+  });
 }
 
 function decodeAttachment(message: string): ParsedAttachment | null {
@@ -186,6 +232,92 @@ function accountantEmail(name: string) {
   return `${localPart || "accountant"}@apex.co.za`;
 }
 
+function toRequestPriority(priority?: string): WorkflowRequest["priority"] {
+  if (priority === "high" || priority === "medium" || priority === "low") {
+    return priority;
+  }
+
+  return "medium";
+}
+
+function formatMonthLabel(value?: string | null) {
+  const date = value ? new Date(value) : new Date();
+  if (Number.isNaN(date.getTime())) {
+    return formatDateLabel(new Date().toISOString());
+  }
+
+  return new Intl.DateTimeFormat("en-ZA", {
+    month: "long",
+    year: "numeric",
+  }).format(date);
+}
+
+function normalizeClientRequestStatus(
+  status: string | undefined,
+  requestedByUserId: string,
+  currentUserId: string,
+): WorkflowRequest["status"] {
+  const normalized = status?.trim().toLowerCase();
+
+  if (normalized === "resolved") {
+    return "resolved";
+  }
+
+  if (normalized === "closed") {
+    return "closed";
+  }
+
+  if (normalized === "awaiting_client" || normalized === "waiting_on_client" || normalized === "client_replied") {
+    return "awaiting_client";
+  }
+
+  if (normalized === "awaiting_accountant" || normalized === "waiting_on_accountant") {
+    return "awaiting_accountant";
+  }
+
+  if (normalized === "overdue") {
+    return requestedByUserId === currentUserId ? "awaiting_accountant" : "awaiting_client";
+  }
+
+  return requestedByUserId === currentUserId ? "awaiting_accountant" : "awaiting_client";
+}
+
+function mapBackendClientRequest(
+  workspace: BackendRequestWorkspace,
+  currentUserId: string,
+  currentUserName: string,
+  clientName: string,
+  accountantName: string,
+): WorkflowRequest {
+  const requestedByRole = workspace.request.requestedByUserId === currentUserId ? "client" : "accountant";
+
+  return {
+    id: workspace.request.id,
+    clientId: workspace.request.clientId,
+    clientName,
+    title: workspace.request.title,
+    description: workspace.request.description,
+    monthLabel: formatMonthLabel(workspace.request.dueDateUtc ?? workspace.request.requestedAtUtc),
+    status: normalizeClientRequestStatus(workspace.request.status, workspace.request.requestedByUserId, currentUserId),
+    priority: toRequestPriority(workspace.request.priority),
+    relatedDocumentId: workspace.request.relatedDocumentId ?? undefined,
+    requestedBy: requestedByRole === "client" ? currentUserName : accountantName,
+    requestedByRole,
+    assignedTo: accountantName,
+    dueDate: workspace.request.dueDateUtc ?? workspace.request.updatedAtUtc,
+    createdAt: workspace.request.requestedAtUtc,
+    requestType: toFrontendRequestType(workspace.request.requestType),
+    comments: workspace.comments.map((comment) => ({
+      id: comment.id,
+      author: comment.authorRole === "client" ? currentUserName : accountantName,
+      role: comment.authorRole === "client" ? "client" : "accountant",
+      message: comment.message,
+      createdAt: comment.createdAtUtc,
+    })),
+    auditTrail: [],
+  };
+}
+
 function ThreadListPane({
   requests,
   selectedRequestId,
@@ -220,7 +352,6 @@ function ThreadListPane({
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
   const filterMenuRef = useRef<HTMLDivElement | null>(null);
   const unreadTotal = requests.reduce((sum, request) => sum + unreadFromAccountantCount(request), 0);
-  const visibleThreadCount = requests.length;
   const filterOptions: Array<{ label: string; value: ThreadFilter; count?: number }> = [
     { label: "Inbox", value: "all" },
     { label: "Unread", value: "unread", count: unreadTotal },
@@ -705,10 +836,11 @@ export function ClientRequestsPage() {
     dismissFeedbackNotice,
     feedbackNotice,
     replyToRequest,
-    requests,
-    resolveRequest,
+    requests: mockRequests,
+    showFeedbackNotice,
     toggleRequestStar,
   } = useClientWorkflow();
+  const backendMode = hasApiBaseUrl();
 
   const [selectedRequestId, setSelectedRequestId] = useState("");
   const [searchValue, setSearchValue] = useState("");
@@ -728,6 +860,66 @@ export function ClientRequestsPage() {
   } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const [backendRequests, setBackendRequests] = useState<WorkflowRequest[]>([]);
+  const [backendLoading, setBackendLoading] = useState(false);
+
+  const requests = backendMode ? backendRequests : mockRequests;
+
+  async function loadBackendRequests() {
+    if (!backendMode || !user) {
+      return;
+    }
+
+    setBackendLoading(true);
+
+    try {
+      const clientId = user.clientIds[0];
+      const [items, assignments] = await Promise.all([
+        apiGetJson<BackendRequestRecord[]>("/api/requests"),
+        clientId
+          ? apiGetJson<BackendAssignmentRecord[]>(
+              `/api/assignments?clientId=${encodeURIComponent(clientId)}`,
+            ).catch(() => [])
+          : Promise.resolve([] as BackendAssignmentRecord[]),
+      ]);
+
+      const accountantName =
+        assignments.find((assignment) => assignment.isPrimary)?.accountantName?.trim() ||
+        assignments[0]?.accountantName?.trim() ||
+        "Assigned accountant";
+      const workspaces = await Promise.all(
+        items.map((item) =>
+          apiGetJson<BackendRequestWorkspace>(`/api/requests/${encodeURIComponent(item.id)}/workspace`),
+        ),
+      );
+
+      setBackendRequests(
+        workspaces.map((workspace) =>
+          mapBackendClientRequest(
+            workspace,
+            user.id,
+            user.fullName,
+            user.company || "Client account",
+            accountantName,
+          ),
+        ),
+      );
+    } catch (error) {
+      const message =
+        error instanceof ApiError ? error.message : "The live request inbox could not be loaded right now.";
+      showFeedbackNotice("danger", "Inbox unavailable", message);
+    } finally {
+      setBackendLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!backendMode) {
+      return;
+    }
+
+    void loadBackendRequests();
+  }, [backendMode, user?.id]);
 
   const orderedRequests = useMemo(
     () =>
@@ -796,6 +988,9 @@ export function ClientRequestsPage() {
     setFilter("all");
     setCurrentPage(1);
     setSortDirection("desc");
+    if (backendMode) {
+      void loadBackendRequests();
+    }
   }
 
   function handleSelectInboxRequest(requestId: string) {
@@ -821,6 +1016,54 @@ export function ClientRequestsPage() {
       priority: requestPriority,
       monthLabel,
     };
+
+    if (backendMode) {
+      const clientId = user.clientIds[0];
+      if (!clientId) {
+        setRequestFormError("Your client account is missing a client link.");
+        return;
+      }
+
+      void (async () => {
+        try {
+          await apiPostJson<BackendRequestRecord, {
+            clientId: string;
+            requestType: string;
+            title: string;
+            description: string;
+            priority: string;
+            dueDateUtc: string;
+            relatedDocumentId: string | null;
+          }>("/api/requests", {
+            clientId,
+            requestType: toBackendRequestType("clarification_request"),
+            title: payload.title,
+            description: payload.description,
+            priority: payload.priority,
+            dueDateUtc: payload.dueDate,
+            relatedDocumentId: activeRequest?.relatedDocumentId ?? null,
+          });
+
+          showFeedbackNotice("success", "Request sent", "Your accountant will see the new request thread.");
+          setRequestFormError("");
+          setLastFailedRequestPayload(null);
+          setIsRequestModalOpen(false);
+          setRequestTitle("");
+          setRequestDetails("");
+          setRequestPriority("medium");
+          setRequestDueDate("");
+          await loadBackendRequests();
+        } catch (error) {
+          const message =
+            error instanceof ApiError ? error.message : "The request could not be created right now.";
+          setRequestFormError(message);
+          setLastFailedRequestPayload(payload);
+        }
+      })();
+
+      return;
+    }
+
     const result = createClientRequest(payload, user);
     if (!result.ok) {
       setRequestFormError(result.message);
@@ -888,19 +1131,67 @@ export function ClientRequestsPage() {
             totalPages={totalPages}
           />
           <ConversationPane
-            onReply={(requestId, message) =>
-              replyToRequest(requestId, "client", user?.fullName ?? "Client", message)}
-            onToggleStar={toggleRequestStar}
+            onReply={(requestId, message) => {
+              if (!backendMode) {
+                return replyToRequest(requestId, "client", user?.fullName ?? "Client", message);
+              }
+
+              const attachment = decodeAttachment(message);
+              const plainText = plainMessageText(message);
+
+              void (async () => {
+                try {
+                  if (attachment) {
+                    const file = await dataUrlToFile(attachment);
+                    const formData = new FormData();
+                    formData.append("file", file);
+                    if (plainText) {
+                      formData.append("message", plainText);
+                    }
+                    await apiPostForm(`/api/requests/${encodeURIComponent(requestId)}/upload`, formData);
+                  } else {
+                    await apiPostJson(`/api/requests/${encodeURIComponent(requestId)}/comments`, {
+                      message: plainText,
+                    });
+                  }
+
+                  showFeedbackNotice("success", "Reply added", "The request conversation has been updated.");
+                  await loadBackendRequests();
+                } catch (error) {
+                  const replyMessage =
+                    error instanceof ApiError ? error.message : "The reply could not be sent right now.";
+                  showFeedbackNotice("danger", "Reply blocked", replyMessage);
+                }
+              })();
+
+              return { ok: true, message: "Sending..." };
+            }}
+            onToggleStar={(requestId) => {
+              if (!backendMode) {
+                toggleRequestStar(requestId);
+                return;
+              }
+
+              setBackendRequests((current) =>
+                current.map((request) =>
+                  request.id === requestId
+                    ? { ...request, isStarred: !request.isStarred }
+                    : request,
+                ),
+              );
+            }}
             request={activeRequest}
           />
         </div>
       ) : (
         <section className={`${inboxPanelClass} px-6 py-10 text-center`}>
           <h2 className="text-xl font-semibold text-[#091333]">
-            {requests.length > 0 ? "No threads match your filters" : "No threads yet"}
+            {backendLoading ? "Loading threads" : requests.length > 0 ? "No threads match your filters" : "No threads yet"}
           </h2>
           <p className="mt-2 text-sm text-[#53617f]">
-            {requests.length > 0
+            {backendLoading
+              ? "The live request inbox is being loaded."
+              : requests.length > 0
               ? "Try clearing search or switching back to Inbox."
               : "Your accountant will start threads here when action is needed."}
           </p>
@@ -1034,6 +1325,10 @@ export function ClientRequestsPage() {
                   className="ml-2 rounded-md border border-rose-300 px-2 py-1 text-xs font-semibold"
                   onClick={() => {
                     if (!user) {
+                      return;
+                    }
+                    if (backendMode) {
+                      handleCreateRequest();
                       return;
                     }
                     const retry = createClientRequest(lastFailedRequestPayload, user);

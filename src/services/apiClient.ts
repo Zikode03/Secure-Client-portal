@@ -144,6 +144,26 @@ export async function apiGetJson<T>(path: string, init?: RequestInit): Promise<T
   return readJsonResponse<T>(response);
 }
 
+export async function apiGetBlob(
+  path: string,
+  init?: RequestInit,
+): Promise<{ blob: Blob; contentType: string }> {
+  const response = await fetch(buildUrl(path), {
+    ...init,
+    method: "GET",
+    headers: buildHeaders(init),
+  });
+
+  if (!response.ok) {
+    await throwApiError(response, path);
+  }
+
+  return {
+    blob: await response.blob(),
+    contentType: response.headers.get("Content-Type")?.trim() || "application/octet-stream",
+  };
+}
+
 export async function apiPutJson<TResponse, TBody>(
   path: string,
   body: TBody,
@@ -183,6 +203,52 @@ export async function apiPostJson<TResponse, TBody>(
     method: "POST",
     headers,
     body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    await throwApiError(response, path);
+  }
+
+  return readJsonResponse<TResponse>(response);
+}
+
+export async function apiPatchJson<TResponse, TBody>(
+  path: string,
+  body: TBody,
+  init?: RequestInit,
+): Promise<TResponse> {
+  const headers = buildHeaders(init);
+  if (!headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  const response = await fetch(buildUrl(path), {
+    ...init,
+    method: "PATCH",
+    headers,
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    await throwApiError(response, path);
+  }
+
+  return readJsonResponse<TResponse>(response);
+}
+
+export async function apiPostForm<TResponse>(
+  path: string,
+  body: FormData,
+  init?: RequestInit,
+): Promise<TResponse> {
+  const headers = buildHeaders(init);
+  headers.delete("Content-Type");
+
+  const response = await fetch(buildUrl(path), {
+    ...init,
+    method: "POST",
+    headers,
+    body,
   });
 
   if (!response.ok) {

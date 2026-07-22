@@ -11,9 +11,11 @@ import { EmptyState } from "../../components/ui/EmptyState";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
 import { useDisclosure } from "../../hooks/useDisclosure";
+import { ApiError, apiGetBlob, apiGetJson, apiPostForm, apiPostJson, hasApiBaseUrl } from "../../services/apiClient";
 import { buildReviewDocumentFromInvoice } from "../../services/workflowEngine";
 import type {
   DocumentRecord,
+  DocumentComment,
   MonthlyDocumentSlot,
   Tone,
   UnifiedSearchFilters,
@@ -32,6 +34,174 @@ const pageSize = 8;
 // Shared shape notes: these types keep UI and data contracts aligned.
 type DocumentWorkspaceTab = "overview" | "comments" | "audit" | "related";
 type SortDirection = "newest" | "oldest";
+
+interface BackendDocumentRecord {
+  id: string;
+  clientId: string;
+  monthlyPackId: string;
+  name: string;
+  category: string;
+  documentSlotId?: string | null;
+  status: string;
+  fileType: string;
+  sizeBytes: number;
+  storageKey?: string | null;
+  uploadedByUserId: string;
+  currentVersionNumber: number;
+  uploadedAtUtc: string;
+  updatedAtUtc: string;
+}
+
+interface BackendDocumentComment {
+  id: string;
+  documentId: string;
+  authorUserId: string;
+  authorRole: string;
+  message: string;
+  createdAtUtc: string;
+}
+
+interface BackendMonthlyPackResponse {
+  id: string;
+  clientId: string;
+  year: number;
+  month: number;
+  status: string;
+  createdAtUtc: string;
+  updatedAtUtc: string;
+}
+
+interface BackendDocumentSlotResponse {
+  id: string;
+  monthlyPackId: string;
+  clientId: string;
+  category: string;
+  label: string;
+  isRequired: boolean;
+  status: string;
+  canCurrentlyBeSubmitted: boolean;
+  currentDocumentId?: string | null;
+  dueDateUtc?: string | null;
+  submittedAtUtc?: string | null;
+  submittedByUserId?: string | null;
+  reviewStatus?: string | null;
+  rejectionReason?: string | null;
+  createdAtUtc: string;
+  updatedAtUtc: string;
+}
+
+const monthNames = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+function monthLabelFromParts(year: number, month: number) {
+  return `${monthNames[Math.max(0, month - 1)] ?? "Month"} ${year}`;
+}
+
+function formatSizeLabel(sizeBytes: number) {
+  if (sizeBytes >= 1_000_000) {
+    return `${(sizeBytes / 1_000_000).toFixed(1)} MB`;
+  }
+
+  if (sizeBytes >= 1_000) {
+    return `${Math.max(1, Math.round(sizeBytes / 1_000))} KB`;
+  }
+
+  return `${sizeBytes} B`;
+}
+
+function mapBackendDocumentStatus(
+  status: string,
+): DocumentRecord["status"] {
+  switch (status.trim().toLowerCase()) {
+    case "under_review":
+      return "under_review";
+    case "accepted":
+      return "accepted";
+    case "rejected":
+      return "rejected";
+    case "filed":
+      return "filed";
+    default:
+      return "uploaded";
+  }
+}
+
+function inferSearchResultType(category: string): UnifiedSearchResult["resultType"] {
+  const normalized = category.toLowerCase();
+
+  if (normalized.includes("invoice")) {
+    return "invoice";
+  }
+
+  if (normalized.includes("bank")) {
+    return "bank_statement";
+  }
+
+  if (normalized.includes("signed")) {
+    return "signed_document";
+  }
+
+  if (normalized.includes("compliance")) {
+    return "compliance_document";
+  }
+
+  return "document";
+}
+
+function mapBackendComment(
+  comment: BackendDocumentComment,
+  currentUserFullName?: string,
+): DocumentComment {
+  const role = comment.authorRole?.trim().toLowerCase() === "client" ? "client" : "accountant";
+  const defaultName = role === "client" ? "Client user" : "Accountant reviewer";
+
+  return {
+    id: comment.id,
+    author:
+      role === "client" && currentUserFullName
+        ? currentUserFullName
+        : defaultName,
+    role,
+    message: comment.message,
+    createdAt: comment.createdAtUtc,
+  };
+}
+
+function mapBackendSlotStatus(
+  slot: BackendDocumentSlotResponse,
+): MonthlyDocumentSlot["status"] {
+  const normalized = slot.status.trim().toLowerCase();
+
+  switch (normalized) {
+    case "draft":
+      return "draft";
+    case "submitted":
+      return "uploaded";
+    case "under_review":
+      return "under_review";
+    case "accepted":
+      return "accepted";
+    case "rejected":
+    case "reupload_required":
+      return "rejected";
+    case "not_applicable":
+      return slot.isRequired ? "accepted" : "filed";
+    default:
+      return "missing";
+  }
+}
 
 // Component flow: gather data first, then render a focused UI state.
 function SearchIcon() {
@@ -369,6 +539,7 @@ export function ClientDocumentsPage() {
   const { user } = useAuth();
   const portal = usePortal();
   const uploadModal = useDisclosure(false);
+  const backendMode = hasApiBaseUrl() && Boolean(user?.clientIds[0]);
   const [filters, setFilters] = useState<UnifiedSearchFilters>(() => createDefaultFilters());
 // Local UI state: keeps track of what the user is seeing or editing right now.
   const [selectedResultId, setSelectedResultId] = useState("");
@@ -388,13 +559,183 @@ export function ClientDocumentsPage() {
   const [previewZoom, setPreviewZoom] = useState(100);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
+  const [liveDocumentsBase, setLiveDocumentsBase] = useState<DocumentRecord[] | null>(null);
+  const [liveCommentsByDocumentId, setLiveCommentsByDocumentId] = useState<Record<string, DocumentComment[]>>({});
+  const [liveSlots, setLiveSlots] = useState<MonthlyDocumentSlot[] | null>(null);
+  const [liveSlotDocumentIds, setLiveSlotDocumentIds] = useState<Record<string, string | undefined>>({});
+  const [liveFileUrlsByDocumentId, setLiveFileUrlsByDocumentId] = useState<
+    Record<string, { url: string; mimeType: string }>
+  >({});
+
+  useEffect(() => {
+    return () => {
+      Object.values(liveFileUrlsByDocumentId).forEach((file) => {
+        if (file.url.startsWith("blob:")) {
+          URL.revokeObjectURL(file.url);
+        }
+      });
+    };
+  }, [liveFileUrlsByDocumentId]);
+
+  useEffect(() => {
+    if (!backendMode || !user?.clientIds[0]) {
+      return;
+    }
+
+    let isActive = true;
+    const clientId = user.clientIds[0];
+    const businessName = user.company || "Client";
+    const uploaderName = user.fullName || "Client user";
+
+    async function loadLiveDocumentWorkspace() {
+      try {
+        const [documents, packs] = await Promise.all([
+          apiGetJson<BackendDocumentRecord[]>("/api/documents"),
+          apiGetJson<BackendMonthlyPackResponse[]>(
+            `/api/monthly-packs?clientId=${encodeURIComponent(clientId)}`,
+          ),
+        ]);
+
+        const packById = new Map(
+          packs.map((pack) => [pack.id, pack] satisfies [string, BackendMonthlyPackResponse]),
+        );
+        const currentPack = packs[0];
+
+        let slots: BackendDocumentSlotResponse[] = [];
+        if (currentPack) {
+          slots = await apiGetJson<BackendDocumentSlotResponse[]>(
+            `/api/document-slots/${encodeURIComponent(currentPack.id)}`,
+          );
+        }
+
+        const mappedDocuments = documents
+          .filter((document) => document.clientId === clientId)
+          .map<DocumentRecord>((document) => {
+            const pack = packById.get(document.monthlyPackId);
+            return {
+              id: document.id,
+              clientId: document.clientId,
+              clientName: businessName,
+              documentType: document.category,
+              fileName: document.name,
+              monthLabel: pack
+                ? monthLabelFromParts(pack.year, pack.month)
+                : formatDateLabel(document.uploadedAtUtc),
+              description: `${document.category} uploaded in the secure document workflow.`,
+              status: mapBackendDocumentStatus(document.status),
+              uploadedBy: uploaderName,
+              uploadedAt: document.uploadedAtUtc,
+              reviewedBy: undefined,
+              reviewedAt: undefined,
+              sizeLabel: formatSizeLabel(document.sizeBytes),
+              keywordTags: [document.category, document.name],
+              supplierName: undefined,
+              amountLabel: undefined,
+              comments: [],
+              auditTrail: [],
+              fileMimeType: document.fileType,
+            };
+          });
+
+        const mappedSlots = slots.map<MonthlyDocumentSlot>((slot) => {
+          const pack = packById.get(slot.monthlyPackId) ?? currentPack;
+          return {
+            id: slot.id,
+            documentType: slot.label,
+            description: `${slot.label} for ${pack ? monthLabelFromParts(pack.year, pack.month) : "current period"}.`,
+            status: mapBackendSlotStatus(slot),
+            month: pack ? monthNames[Math.max(0, pack.month - 1)] ?? "Month" : "Month",
+            year: pack?.year ?? new Date().getUTCFullYear(),
+            acceptedFiles: ["PDF", "PNG", "JPG", "DOCX", "XLSX"],
+            progress: slot.canCurrentlyBeSubmitted ? 70 : slot.status === "accepted" ? 100 : 0,
+            autoName: slot.label.replace(/\s+/g, "_"),
+            isRequired: slot.isRequired,
+            dueDate: slot.dueDateUtc ?? undefined,
+            lastSubmission: slot.submittedAtUtc ?? undefined,
+            rejectionReason: slot.rejectionReason ?? undefined,
+          };
+        });
+
+        if (!isActive) {
+          return;
+        }
+
+        setLiveDocumentsBase(mappedDocuments);
+        setLiveSlots(mappedSlots);
+        setLiveSlotDocumentIds(
+          Object.fromEntries(
+            slots.map((slot) => [slot.id, slot.currentDocumentId ?? undefined]),
+          ),
+        );
+      } catch (error) {
+        if (!isActive) {
+          return;
+        }
+
+        setFeedbackNotice({
+          tone: "danger",
+          title: "Document sync failed",
+          message:
+            error instanceof ApiError
+              ? error.message
+              : "Could not load live documents from the backend.",
+        });
+      }
+    }
+
+    void loadLiveDocumentWorkspace();
+
+    return () => {
+      isActive = false;
+    };
+  }, [backendMode, user?.clientIds, user?.company, user?.fullName]);
+
+  const liveDocuments = useMemo(() => {
+    if (!liveDocumentsBase) {
+      return null;
+    }
+
+    return liveDocumentsBase.map((document) => ({
+      ...document,
+      comments: liveCommentsByDocumentId[document.id] ?? document.comments,
+      fileDataUrl: liveFileUrlsByDocumentId[document.id]?.url,
+      fileMimeType:
+        liveFileUrlsByDocumentId[document.id]?.mimeType ?? document.fileMimeType,
+    }));
+  }, [liveCommentsByDocumentId, liveDocumentsBase, liveFileUrlsByDocumentId]);
+
+  const searchableResultsSource = useMemo(() => {
+    if (!backendMode || !liveDocuments) {
+      return null;
+    }
+
+    return liveDocuments.map<UnifiedSearchResult>((document) => ({
+      id: document.id,
+      resultType: inferSearchResultType(document.documentType),
+      title: document.fileName,
+      clientId: document.clientId,
+      clientName: document.clientName,
+      monthLabel: document.monthLabel,
+      typeLabel: document.documentType,
+      status: document.status,
+      date: document.uploadedAt,
+      uploadedBy: document.uploadedBy,
+      reviewedBy: document.reviewedBy,
+      expiryDate: document.expiryDate,
+      isRequired:
+        liveSlots?.find((slot) => slot.documentType === document.documentType)?.isRequired ?? false,
+      commentCount: (liveCommentsByDocumentId[document.id] ?? []).length,
+      keywordText: `${document.fileName} ${document.documentType} ${document.monthLabel}`.toLowerCase(),
+    }));
+  }, [backendMode, liveCommentsByDocumentId, liveDocuments, liveSlots]);
 
   const searchableResults = useMemo(
     () =>
+      searchableResultsSource ??
       portal.clientWorkflow.unifiedSearchResults.filter(
         (result) => result.resultType !== "request" && result.resultType !== "monthly_pack_item",
       ),
-    [portal.clientWorkflow.unifiedSearchResults],
+    [portal.clientWorkflow.unifiedSearchResults, searchableResultsSource],
   );
 
   const filteredResults = useMemo(
@@ -429,6 +770,10 @@ export function ClientDocumentsPage() {
       return null;
     }
 
+    if (backendMode && liveDocuments) {
+      return liveDocuments.find((document) => document.id === selectedResult.id) ?? null;
+    }
+
     if (selectedResult.resultType === "invoice") {
       const exactInvoice = portal.clientWorkflow.invoices.find(
         (invoice) => invoice.id === selectedResult.id,
@@ -458,11 +803,15 @@ export function ClientDocumentsPage() {
         return document.monthLabel === selectedResult.monthLabel && (fileNameMatch || typeMatch);
       }) ?? null
     );
-  }, [portal, selectedResult]);
+  }, [backendMode, liveDocuments, portal, selectedResult]);
 
   const selectedSlotForAction = useMemo(
-    () => inferSlotFromResult(selectedResult, portal.clientWorkflow.monthPack.slots),
-    [portal.clientWorkflow.monthPack.slots, selectedResult],
+    () =>
+      inferSlotFromResult(
+        selectedResult,
+        backendMode && liveSlots ? liveSlots : portal.clientWorkflow.monthPack.slots,
+      ),
+    [backendMode, liveSlots, portal.clientWorkflow.monthPack.slots, selectedResult],
   );
   const existingSlotFileNames = useMemo(() => {
     if (!selectedSlot) {
@@ -470,7 +819,7 @@ export function ClientDocumentsPage() {
     }
 
     const targetMonthLabel = `${selectedSlot.month} ${selectedSlot.year}`;
-    const documentFileNames = portal.clientWorkflow.documents
+    const documentFileNames = (backendMode && liveDocuments ? liveDocuments : portal.clientWorkflow.documents)
       .filter(
         (document) =>
           document.documentType === selectedSlot.documentType &&
@@ -485,7 +834,7 @@ export function ClientDocumentsPage() {
         : [];
 
     return [...documentFileNames, ...invoiceFileNames];
-  }, [portal.clientWorkflow.documents, portal.clientWorkflow.invoices, selectedSlot]);
+  }, [backendMode, liveDocuments, portal.clientWorkflow.documents, portal.clientWorkflow.invoices, selectedSlot]);
 
   const selectedComments = useMemo(() => {
     if (!selectedResult) {
@@ -494,6 +843,85 @@ export function ClientDocumentsPage() {
 
     return selectedDocument?.comments ?? [];
   }, [selectedDocument, selectedResult]);
+
+  useEffect(() => {
+    if (!backendMode || !selectedDocument) {
+      return;
+    }
+
+    const documentId = selectedDocument.id;
+    if (liveCommentsByDocumentId[selectedDocument.id]) {
+      return;
+    }
+
+    let isActive = true;
+
+    async function loadComments() {
+      try {
+        const comments = await apiGetJson<BackendDocumentComment[]>(
+          `/api/documents/${encodeURIComponent(documentId)}/comments`,
+        );
+        if (!isActive) {
+          return;
+        }
+
+        setLiveCommentsByDocumentId((current) => ({
+          ...current,
+          [documentId]: comments.map((comment) =>
+            mapBackendComment(comment, user?.fullName),
+          ),
+        }));
+      } catch {
+        // Keep the page usable even if comments are unavailable for one record.
+      }
+    }
+
+    void loadComments();
+
+    return () => {
+      isActive = false;
+    };
+  }, [backendMode, liveCommentsByDocumentId, selectedDocument, user?.fullName]);
+
+  useEffect(() => {
+    if (!backendMode || !selectedDocument || selectedDocument.fileDataUrl) {
+      return;
+    }
+
+    let isActive = true;
+    const documentId = selectedDocument.id;
+
+    async function loadPreviewFile() {
+      try {
+        const { blob, contentType } = await apiGetBlob(
+          `/api/documents/${encodeURIComponent(documentId)}/download`,
+        );
+        if (!isActive) {
+          return;
+        }
+
+        const url = URL.createObjectURL(blob);
+        setLiveFileUrlsByDocumentId((current) => {
+          const previous = current[documentId];
+          if (previous?.url?.startsWith("blob:")) {
+            URL.revokeObjectURL(previous.url);
+          }
+          return {
+            ...current,
+            [documentId]: { url, mimeType: contentType },
+          };
+        });
+      } catch {
+        // Synthetic preview remains available as fallback.
+      }
+    }
+
+    void loadPreviewFile();
+
+    return () => {
+      isActive = false;
+    };
+  }, [backendMode, selectedDocument]);
 
   const selectedRelatedResults = useMemo(() => {
     if (!selectedResult) {
@@ -629,6 +1057,14 @@ export function ClientDocumentsPage() {
       return;
     }
 
+    if (backendMode && selectedDocument?.fileDataUrl) {
+      const link = document.createElement("a");
+      link.href = selectedDocument.fileDataUrl;
+      link.download = selectedDocument.fileName;
+      link.click();
+      return;
+    }
+
     const content = [
       `Title: ${selectedResult.title}`,
       `Type: ${selectedResult.typeLabel}`,
@@ -665,6 +1101,77 @@ export function ClientDocumentsPage() {
   }
 
   function handleUploadToSlot(submission: Parameters<typeof portal.uploadToSlot>[0]) {
+    if (backendMode) {
+      if (!selectedSlot || !submission.file || !user?.clientIds[0]) {
+        setFeedbackNotice({
+          tone: "danger",
+          title: "Upload failed",
+          message: "The live upload slot is missing. Open the current monthly pack checklist and try again.",
+        });
+        return;
+      }
+
+      const form = new FormData();
+      form.append("ClientId", user.clientIds[0]);
+      const documentId = liveSlotDocumentIds[selectedSlot.id];
+      if (documentId) {
+        form.append("DocumentId", documentId);
+      }
+      form.append("DocumentSlotId", selectedSlot.id);
+      form.append("DocumentType", submission.documentType);
+      form.append("File", submission.file, submission.fileName);
+
+      void apiPostForm<{
+        id: string;
+        clientId: string;
+        monthlyPackId: string;
+        documentSlotId: string;
+      }>("/api/documents/upload", form)
+        .then(async () => {
+          const refreshedDocuments = await apiGetJson<BackendDocumentRecord[]>("/api/documents");
+          setLiveDocumentsBase(
+            refreshedDocuments
+              .filter((document) => document.clientId === user.clientIds[0])
+              .map<DocumentRecord>((document) => ({
+                id: document.id,
+                clientId: document.clientId,
+                clientName: user.company || "Client",
+                documentType: document.category,
+                fileName: document.name,
+                monthLabel: selectedSlot ? `${selectedSlot.month} ${selectedSlot.year}` : formatDateLabel(document.uploadedAtUtc),
+                description: `${document.category} uploaded in the secure document workflow.`,
+                status: mapBackendDocumentStatus(document.status),
+                uploadedBy: user.fullName || "Client user",
+                uploadedAt: document.uploadedAtUtc,
+                reviewedBy: undefined,
+                reviewedAt: undefined,
+                sizeLabel: formatSizeLabel(document.sizeBytes),
+                keywordTags: [document.category, document.name],
+                comments: [],
+                auditTrail: [],
+                fileMimeType: document.fileType,
+              })),
+          );
+          setFeedbackNotice({
+            tone: "success",
+            title: "Document uploaded",
+            message: `${submission.documentType} was uploaded into the live document workflow.`,
+          });
+        })
+        .catch((error: unknown) => {
+          setFeedbackNotice({
+            tone: "danger",
+            title: "Upload failed",
+            message:
+              error instanceof ApiError
+                ? error.message
+                : "The document could not be uploaded to the backend.",
+          });
+        });
+
+      return;
+    }
+
     const result = portal.uploadToSlot(submission, {
       name: user?.name ?? "Client user",
       fullName: user?.fullName ?? "Client user",
@@ -694,12 +1201,36 @@ export function ClientDocumentsPage() {
       return;
     }
 
-    const result = portal.addDocumentComment(
-      selectedDocument.id,
-      user.fullName,
-      user.role,
-      trimmed,
-    );
+    if (backendMode) {
+      void apiPostJson<BackendDocumentComment, { message: string }>(
+        `/api/documents/${encodeURIComponent(selectedDocument.id)}/comments`,
+        { message: trimmed },
+      )
+        .then((comment) => {
+          setLiveCommentsByDocumentId((current) => ({
+            ...current,
+            [selectedDocument.id]: [
+              ...(current[selectedDocument.id] ?? []),
+              mapBackendComment(comment, user.fullName),
+            ],
+          }));
+          setFeedbackNotice({
+            tone: "success",
+            title: "Comment sent",
+            message: "Your comment was saved to the live document thread.",
+          });
+          setCommentDraft("");
+          setCommentError("");
+        })
+        .catch((error: unknown) => {
+          setCommentError(
+            error instanceof ApiError ? error.message : "Comment could not be saved.",
+          );
+        });
+      return;
+    }
+
+    const result = portal.addDocumentComment(selectedDocument.id, user.fullName, user.role, trimmed);
 
     if (!result.ok) {
       setCommentError(result.message);

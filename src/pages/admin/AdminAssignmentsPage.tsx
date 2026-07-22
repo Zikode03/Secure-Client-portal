@@ -1,23 +1,187 @@
 // Friendly guide: this module (AdminAssignmentsPage) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePortal } from "../../app/portal";
 import { Button } from "../../components/ui/Button";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { SelectField } from "../../components/ui/SelectField";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
+import { ApiError, apiGetJson, apiPostJson, hasApiBaseUrl } from "../../services/apiClient";
+import type { FirmClientAccount, ManagedAccountant } from "../../types/portal";
+
+interface BackendClientRecord {
+  id: string;
+  name: string;
+  entityType: string;
+  status: string;
+  complianceHealth: number;
+  assignedAccountantId: string;
+  primaryContact: string;
+  email: string;
+  createdAtUtc: string;
+  updatedAtUtc: string;
+}
+
+interface BackendAssignmentRecord {
+  id: string;
+  clientId: string;
+  clientName?: string | null;
+  accountantUserId: string;
+  accountantName?: string | null;
+  isPrimary: boolean;
+  createdAtUtc: string;
+}
+
+interface BackendAdminUserRecord {
+  id: string;
+  fullName: string;
+  email: string;
+  role: string;
+  profileJson?: string | null;
+  securityJson?: string | null;
+  securityStatus?: string | null;
+}
+
+function normalizeAccountantStatus(status?: string | null): ManagedAccountant["status"] {
+  switch ((status ?? "").trim().toLowerCase()) {
+    case "invited":
+      return "capacity_available";
+    case "disabled":
+    case "locked":
+      return "busy";
+    default:
+      return "active";
+  }
+}
+
+function mapLiveAccountants(
+  users: BackendAdminUserRecord[],
+  assignments: BackendAssignmentRecord[],
+): ManagedAccountant[] {
+  return users
+    .filter((user) => user.role.trim().toLowerCase() === "accountant")
+    .map((user) => {
+      const assignedClientCount = assignments.filter(
+        (assignment) => assignment.accountantUserId === user.id,
+      ).length;
+
+      return {
+        id: user.id,
+        name: user.fullName,
+        email: user.email,
+        title: "Accountant",
+        assignedClientCount,
+        openReviews: 0,
+        status: normalizeAccountantStatus(user.securityStatus),
+      };
+    })
+    .sort((left, right) => left.name.localeCompare(right.name));
+}
+
+function mapLiveClients(
+  clients: BackendClientRecord[],
+  assignments: BackendAssignmentRecord[],
+  accountants: ManagedAccountant[],
+): FirmClientAccount[] {
+  return clients.map((client) => {
+    const clientAssignments = assignments.filter((assignment) => assignment.clientId === client.id);
+    const primaryAssignment = clientAssignments.find((assignment) => assignment.isPrimary) ?? null;
+    const backupAssignment = clientAssignments.find((assignment) => !assignment.isPrimary) ?? null;
+
+    return {
+      id: client.id,
+      clientName: client.name,
+      industry: client.entityType,
+      assignedAccountant:
+        primaryAssignment?.accountantName ??
+        accountants.find((accountant) => accountant.id === client.assignedAccountantId)?.name ??
+        "Unassigned",
+      assignedAccountantUserId:
+        primaryAssignment?.accountantUserId ?? (client.assignedAccountantId || undefined),
+      backupAccountant: backupAssignment?.accountantName ?? undefined,
+      backupAccountantUserId: backupAssignment?.accountantUserId ?? undefined,
+      requiredPack: "Current month pack",
+      completionRate: client.complianceHealth,
+      deadlinePolicy: "Monthly",
+      status: client.status === "active" ? "on_track" : client.status === "inactive" ? "attention" : "overdue",
+      isActive: client.status === "active",
+    };
+  });
+}
 
 // Component flow: gather data first, then render a focused UI state.
 export function AdminAssignmentsPage() {
   const navigate = useNavigate();
   const portal = usePortal();
+  const backendMode = hasApiBaseUrl();
 // Local UI state: keeps track of what the user is seeing or editing right now.
   const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [liveClients, setLiveClients] = useState<FirmClientAccount[] | null>(null);
+  const [liveAccountants, setLiveAccountants] = useState<ManagedAccountant[] | null>(null);
+  const [liveAssignments, setLiveAssignments] = useState<BackendAssignmentRecord[] | null>(null);
   const [handoverByClientId, setHandoverByClientId] = useState<
     Record<string, { reason: string; message: string; effectiveDate: string }>
   >({});
+
+  useEffect(() => {
+    if (!backendMode) {
+      return;
+    }
+
+    let isMounted = true;
+
+    async function loadLiveAssignments() {
+      try {
+        const [clients, assignments, users] = await Promise.all([
+          apiGetJson<BackendClientRecord[]>("/api/clients"),
+          apiGetJson<BackendAssignmentRecord[]>("/api/assignments"),
+          apiGetJson<BackendAdminUserRecord[]>("/api/admin/users"),
+        ]);
+
+        if (!isMounted) {
+          return;
+        }
+
+        const mappedAccountants = mapLiveAccountants(users, assignments);
+        setLiveAssignments(assignments);
+        setLiveAccountants(mappedAccountants);
+        setLiveClients(mapLiveClients(clients, assignments, mappedAccountants));
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        setFeedbackMessage(
+          error instanceof ApiError
+            ? error.message
+            : "The live assignments view could not be loaded, so the seeded workspace is still shown.",
+        );
+      }
+    }
+
+    void loadLiveAssignments();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [backendMode]);
+
+  const clients = backendMode && liveClients ? liveClients : portal.adminClients;
+  const accountants = backendMode && liveAccountants ? liveAccountants : portal.managedAccountants;
+  const assignments = liveAssignments ?? [];
+
+  const accountantOptions = useMemo(
+    () =>
+      accountants
+        .map((accountant) => ({
+          label: accountant.name,
+          value: accountant.id,
+        }))
+        .concat([{ label: "Unassigned", value: "" }]),
+    [accountants],
+  );
 
   function getHandover(clientId: string) {
     return (
@@ -44,6 +208,68 @@ export function AdminAssignmentsPage() {
     }));
   }
 
+  async function reloadLiveAssignments() {
+    const [clientsData, assignmentsData, users] = await Promise.all([
+      apiGetJson<BackendClientRecord[]>("/api/clients"),
+      apiGetJson<BackendAssignmentRecord[]>("/api/assignments"),
+      apiGetJson<BackendAdminUserRecord[]>("/api/admin/users"),
+    ]);
+
+    const mappedAccountants = mapLiveAccountants(users, assignmentsData);
+    setLiveAssignments(assignmentsData);
+    setLiveAccountants(mappedAccountants);
+    setLiveClients(mapLiveClients(clientsData, assignmentsData, mappedAccountants));
+  }
+
+  async function handlePrimaryAssignmentChange(client: FirmClientAccount, accountantUserId: string) {
+    const handover = getHandover(client.id);
+    if (!handover.reason.trim() || !handover.message.trim() || !handover.effectiveDate) {
+      setFeedbackMessage("Provide assignment reason, handover message, and effective date before assigning.");
+      return;
+    }
+
+    if (!accountantUserId) {
+      setFeedbackMessage("Unassigning a client is not available in the live backend yet.");
+      return;
+    }
+
+    const currentPrimary =
+      assignments.find((assignment) => assignment.clientId === client.id && assignment.isPrimary) ?? null;
+    const existingTarget =
+      assignments.find(
+        (assignment) =>
+          assignment.clientId === client.id && assignment.accountantUserId === accountantUserId,
+      ) ?? null;
+
+    try {
+      if (currentPrimary && currentPrimary.accountantUserId !== accountantUserId) {
+        await apiPostJson("/api/assignments/reassign", {
+          clientId: client.id,
+          fromAccountantUserId: currentPrimary.accountantUserId,
+          toAccountantUserId: accountantUserId,
+          makePrimary: true,
+        });
+      } else if (existingTarget && !existingTarget.isPrimary) {
+        await apiPostJson(`/api/assignments/${encodeURIComponent(existingTarget.id)}/make-primary`, {});
+      } else if (!currentPrimary) {
+        await apiPostJson("/api/assignments", {
+          accountantUserId,
+          clientId: client.id,
+          isPrimary: true,
+        });
+      }
+
+      await reloadLiveAssignments();
+      setFeedbackMessage(
+        `Primary accountant updated for ${client.clientName}. Handover effective ${handover.effectiveDate}.`,
+      );
+    } catch (error) {
+      setFeedbackMessage(
+        error instanceof ApiError ? error.message : "Could not update the client assignment.",
+      );
+    }
+  }
+
 // Render output: this is the visual state users interact with.
   return (
     <div className="space-y-6">
@@ -60,7 +286,7 @@ export function AdminAssignmentsPage() {
       ) : null}
 
       <SurfaceCard className="space-y-4">
-        {portal.adminClients.map((client) => (
+        {clients.map((client) => (
           <div className="grid gap-4 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4 md:grid-cols-[1fr_220px_220px_auto]" key={client.id}>
             <div>
               <p className="text-sm font-semibold text-slate-950">{client.clientName}</p>
@@ -76,7 +302,13 @@ export function AdminAssignmentsPage() {
             </div>
             <SelectField
               label="Primary accountant"
+              hint={backendMode ? "Saved to the live backend assignment service." : undefined}
               onChange={(event) => {
+                if (backendMode) {
+                  void handlePrimaryAssignmentChange(client, event.target.value);
+                  return;
+                }
+
                 const selectedAccountant = portal.managedAccountants.find(
                   (accountant) => accountant.id === event.target.value,
                 );
@@ -98,21 +330,25 @@ export function AdminAssignmentsPage() {
                 );
                 setFeedbackMessage(result.message);
               }}
-              options={portal.managedAccountants.map((accountant) => ({
-                label: accountant.name,
-                value: accountant.id,
-              })).concat([{ label: "Unassigned", value: "" }])}
+              options={accountantOptions}
               value={
                 client.assignedAccountantUserId ??
-                portal.managedAccountants.find(
+                accountants.find(
                   (accountant) => accountant.name === client.assignedAccountant,
                 )?.id ??
                 ""
               }
             />
             <SelectField
+              disabled={backendMode}
+              hint={backendMode ? "Backup accountant assignment is still using seeded demo behavior." : undefined}
               label="Backup accountant"
               onChange={(event) => {
+                if (backendMode) {
+                  setFeedbackMessage("Backup accountant updates are not exposed by the live backend yet.");
+                  return;
+                }
+
                 const selectedAccountant = portal.managedAccountants.find(
                   (accountant) => accountant.id === event.target.value,
                 );

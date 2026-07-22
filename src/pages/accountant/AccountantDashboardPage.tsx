@@ -9,6 +9,8 @@ import { usePortal } from "../../app/portal";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
+import { ApiError, apiGetJson, hasApiBaseUrl } from "../../services/apiClient";
+import { portalServiceApi } from "../../services/portalApi";
 import type { DeadlineItem, NotificationItem, PortfolioRow, ReviewQueueItem } from "../../types/portal";
 import { cn } from "../../utils/cn";
 import { formatDateLabel } from "../../utils/formatters";
@@ -36,6 +38,63 @@ interface WorkQueueItem {
   tone: QueueTone;
   tab: QueueTab;
   onOpen: () => void;
+}
+
+interface BackendMonthlyPackRecord {
+  id: string;
+  clientId: string;
+  year: number;
+  month: number;
+  status: string;
+  createdAtUtc: string;
+  updatedAtUtc: string;
+}
+
+interface BackendDocumentSlotRecord {
+  id: string;
+  monthlyPackId: string;
+  clientId: string;
+  category: string;
+  label: string;
+  isRequired: boolean;
+  status: string;
+  canCurrentlyBeSubmitted: boolean;
+  currentDocumentId?: string | null;
+  dueDateUtc?: string | null;
+  submittedAtUtc?: string | null;
+  reviewStatus?: string | null;
+  rejectionReason?: string | null;
+  createdAtUtc: string;
+  updatedAtUtc: string;
+}
+
+interface BackendReviewQueueRecord {
+  documentId: string;
+  clientId: string;
+  clientName: string;
+  monthlyPackId: string;
+  year: number;
+  month: number;
+  documentName: string;
+  documentCategory: string;
+  documentStatus: string;
+  reviewPriority: string;
+  reviewAgeDays: number;
+  uploadedAtUtc: string;
+  submittedAtUtc?: string | null;
+}
+
+interface BackendNotificationRecord {
+  id: string;
+  userId: string;
+  clientId?: string | null;
+  type: string;
+  title: string;
+  message: string;
+  linkUrl?: string | null;
+  isRead: boolean;
+  createdAtUtc: string;
+  readAtUtc?: string | null;
 }
 
 // Component flow: gather data first, then render a focused UI state.
@@ -197,6 +256,113 @@ function isSameCalendarMonth(dateValue: string, monthDate: Date) {
 function firstDayOfMonth(dateValue: string) {
   const date = new Date(dateValue);
   return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function formatMonthLabel(year: number, month: number) {
+  return new Intl.DateTimeFormat("en-ZA", { month: "long", year: "numeric" }).format(
+    new Date(year, month - 1, 1),
+  );
+}
+
+function buildPackDueDate(pack: BackendMonthlyPackRecord, slots: BackendDocumentSlotRecord[]) {
+  const dueDates = slots
+    .map((slot) => slot.dueDateUtc)
+    .filter((value): value is string => Boolean(value))
+    .sort((left, right) => left.localeCompare(right));
+
+  if (dueDates.length > 0) {
+    return dueDates[0];
+  }
+
+  const safeDay = Math.min(28, new Date(pack.year, pack.month, 0).getDate());
+  return new Date(Date.UTC(pack.year, pack.month - 1, safeDay)).toISOString();
+}
+
+function mapBackendSlotStatus(status: string): "missing" | "draft" | "uploaded" | "partial" | "pending" | "pending_signature" | "under_review" | "accepted" | "rejected" | "filed" {
+  const normalized = status.trim().toLowerCase();
+
+  if (normalized === "not_started") return "missing";
+  if (normalized === "draft") return "draft";
+  if (normalized === "partial") return "partial";
+  if (normalized === "pending") return "pending";
+  if (normalized === "pending_signature") return "pending_signature";
+  if (normalized === "submitted" || normalized === "uploaded") return "uploaded";
+  if (normalized === "under_review") return "under_review";
+  if (normalized === "accepted") return "accepted";
+  if (normalized === "reupload_required" || normalized === "rejected") return "rejected";
+  return "filed";
+}
+
+function mapNotificationType(type: string, linkUrl?: string | null): NotificationItem["kind"] {
+  const normalized = type.trim().toLowerCase();
+
+  if (normalized.includes("compliance")) return "expiring_documents";
+  if (normalized.includes("rejected") || normalized.includes("reupload")) return "rejected_documents";
+  if (normalized.includes("deadline")) return "deadline_reminder";
+  if (normalized.startsWith("request.") && linkUrl?.startsWith("/requests/")) return "missing_documents";
+  return "missing_documents";
+}
+
+function mapNotificationTone(kind: NotificationItem["kind"]): NotificationItem["tone"] {
+  if (kind === "rejected_documents") return "danger";
+  if (kind === "expiring_documents" || kind === "deadline_reminder") return "warning";
+  return "info";
+}
+
+function mapBackendNotification(notification: BackendNotificationRecord): NotificationItem {
+  const kind = mapNotificationType(notification.type, notification.linkUrl);
+  const tone = mapNotificationTone(kind);
+
+  return {
+    id: notification.id,
+    kind,
+    title: notification.title,
+    message: notification.message,
+    createdAt: notification.createdAtUtc,
+    tone,
+    actionLabel:
+      kind === "expiring_documents"
+        ? "Open compliance centre"
+        : kind === "rejected_documents"
+          ? "Open review queue"
+          : "Open request inbox",
+    actionHref:
+      notification.linkUrl?.startsWith("/requests/")
+        ? "/firm/inbox"
+        : notification.linkUrl?.startsWith("/documents/")
+          ? "/firm/review"
+          : notification.linkUrl?.startsWith("/compliance")
+            ? "/firm/compliance"
+            : "/firm/notifications",
+    linkedRecordLabel: notification.title,
+    linkedWorkspace:
+      kind === "expiring_documents"
+        ? "compliance"
+        : kind === "rejected_documents"
+          ? "documents"
+          : "requests",
+    state: notification.isRead ? "reviewed" : "unread",
+    activity: notification.readAtUtc
+      ? [
+          {
+            id: `${notification.id}-read`,
+            title: "Notification reviewed",
+            detail: "This notification has been read.",
+            timestamp: notification.readAtUtc,
+            tone: "info",
+          },
+        ]
+      : [],
+  };
+}
+
+function parseDeadlineFromMessage(message: string) {
+  const dueMatch = message.match(/(\d{4}-\d{2}-\d{2})/);
+  if (!dueMatch) {
+    return null;
+  }
+
+  return new Date(`${dueMatch[1]}T00:00:00.000Z`).toISOString();
 }
 
 function isSameCalendarDay(dateValue: string, comparisonDate: Date) {
@@ -728,7 +894,12 @@ function buildDeadlineQueueItems(
 export function AccountantDashboardPage() {
   const { user } = useAuth();
   const portal = usePortal();
-  const data = portal.accountantDashboard;
+  const backendMode = hasApiBaseUrl();
+  const [liveDashboardData, setLiveDashboardData] = useState<typeof portal.accountantDashboard | null>(null);
+  const [liveClients, setLiveClients] = useState(portal.adminClients);
+  const [dashboardNotice, setDashboardNotice] = useState<string>("");
+  const data = backendMode && liveDashboardData ? liveDashboardData : portal.accountantDashboard;
+  const clientAccounts = backendMode && liveClients.length > 0 ? liveClients : portal.adminClients;
   const navigate = useNavigate();
   const [activeQueueTab, setActiveQueueTab] = useState<QueueTab>("reviews");
 // Local UI state: keeps track of what the user is seeing or editing right now.
@@ -738,7 +909,171 @@ export function AccountantDashboardPage() {
   const [selectedCalendarDay, setSelectedCalendarDay] = useState<number | null>(null);
   const notificationPanelRef = useRef<HTMLDivElement | null>(null);
 
-  const scopedClients = useMemo(() => getScopedClients(user, portal.adminClients), [portal.adminClients, user]);
+  useEffect(() => {
+    if (!backendMode) {
+      return;
+    }
+
+    void (async () => {
+      try {
+        const [clients, packs, reviewQueue, notifications] = await Promise.all([
+          portalServiceApi.getAdminClients(),
+          apiGetJson<BackendMonthlyPackRecord[]>("/api/monthly-packs"),
+          apiGetJson<BackendReviewQueueRecord[]>("/api/review-queue"),
+          apiGetJson<BackendNotificationRecord[]>("/api/notifications"),
+        ]);
+
+        const slotResponses = await Promise.all(
+          packs.map(async (pack) => ({
+            monthlyPackId: pack.id,
+            slots: await apiGetJson<BackendDocumentSlotRecord[]>(
+              `/api/document-slots/${encodeURIComponent(pack.id)}`,
+            ),
+          })),
+        );
+
+        const slotsByPackId = new Map(
+          slotResponses.map((entry) => [entry.monthlyPackId, entry.slots]),
+        );
+
+        const latestPackByClientId = new Map<string, BackendMonthlyPackRecord>();
+        packs.forEach((pack) => {
+          const current = latestPackByClientId.get(pack.clientId);
+          const currentKey = current ? current.year * 100 + current.month : 0;
+          const nextKey = pack.year * 100 + pack.month;
+          if (!current || nextKey > currentKey) {
+            latestPackByClientId.set(pack.clientId, pack);
+          }
+        });
+
+        const portfolio = clients.map((client) => {
+          const latestPack = latestPackByClientId.get(client.id);
+          const slots = latestPack ? slotsByPackId.get(latestPack.id) ?? [] : [];
+          const totalSlots = slots.length;
+          const completedSlots = slots.filter((slot) => {
+            const mappedStatus = mapBackendSlotStatus(slot.status);
+            return mappedStatus === "accepted" || mappedStatus === "under_review" || mappedStatus === "uploaded" || mappedStatus === "filed";
+          }).length;
+          const requiredBlockingSlots = slots.filter((slot) => {
+            if (!slot.isRequired) {
+              return false;
+            }
+
+            const mappedStatus = mapBackendSlotStatus(slot.status);
+            return mappedStatus === "missing" || mappedStatus === "draft" || mappedStatus === "partial" || mappedStatus === "pending" || mappedStatus === "pending_signature" || mappedStatus === "rejected";
+          });
+          const dueDate = latestPack ? buildPackDueDate(latestPack, slots) : new Date().toISOString();
+          const overdueCount = requiredBlockingSlots.filter((slot) => {
+            const slotDueDate = slot.dueDateUtc ?? dueDate;
+            return new Date(slotDueDate).getTime() < Date.now();
+          }).length;
+
+          return {
+            id: `${client.id}-${latestPack?.id ?? "current"}`,
+            clientId: client.id,
+            clientName: client.clientName,
+            monthLabel: latestPack ? formatMonthLabel(latestPack.year, latestPack.month) : formatMonthLabel(new Date().getFullYear(), new Date().getMonth() + 1),
+            progressPercent: totalSlots > 0 ? Math.round((completedSlots / totalSlots) * 100) : client.completionRate,
+            status: client.status,
+            assignedAccountant: client.assignedAccountant,
+            missingCount: requiredBlockingSlots.length,
+            overdueCount,
+            deadline: dueDate,
+          } satisfies PortfolioRow;
+        });
+
+        const missingDocuments = slotResponses.flatMap((entry) =>
+          entry.slots
+            .filter((slot) => slot.isRequired)
+            .map((slot) => {
+              const mappedStatus = mapBackendSlotStatus(slot.status);
+              return {
+                id: slot.id,
+                documentType: slot.label || slot.category,
+                monthLabel: portfolio.find((row) => row.clientId === slot.clientId)?.monthLabel ?? formatMonthLabel(new Date().getFullYear(), new Date().getMonth() + 1),
+                description: `${slot.label || slot.category} is still outstanding for this monthly pack.`,
+                isRequired: slot.isRequired,
+                status: mappedStatus,
+                clientName: clients.find((client) => client.id === slot.clientId)?.clientName,
+                dueDate: slot.dueDateUtc ?? undefined,
+                lastSubmission: slot.submittedAtUtc ?? undefined,
+                rejectionReason: slot.rejectionReason ?? undefined,
+              };
+            })
+            .filter((slot) => slot.status === "missing" || slot.status === "draft" || slot.status === "partial" || slot.status === "pending" || slot.status === "pending_signature"),
+        );
+
+        const rejectedDocuments = slotResponses.flatMap((entry) =>
+          entry.slots
+            .filter((slot) => slot.isRequired && mapBackendSlotStatus(slot.status) === "rejected")
+            .map((slot) => ({
+              id: slot.id,
+              name: slot.label || slot.category,
+              type: slot.category,
+              reason: slot.rejectionReason || "A corrected file is required before review can continue.",
+              date: slot.updatedAtUtc,
+              clientName: clients.find((client) => client.id === slot.clientId)?.clientName,
+              status: "rejected" as const,
+            })),
+        );
+
+        const mappedReviewQueue = reviewQueue.map((item) => ({
+          id: item.documentId,
+          clientName: item.clientName,
+          documentType: item.documentCategory,
+          monthLabel: formatMonthLabel(item.year, item.month),
+          submittedAt: item.submittedAtUtc ?? item.uploadedAtUtc,
+          status: item.documentStatus === "under_review" ? "under_review" : "uploaded",
+          assignedAccountant:
+            clients.find((client) => client.id === item.clientId)?.assignedAccountant ??
+            user?.fullName ??
+            "Assigned accountant",
+        } satisfies ReviewQueueItem));
+
+        const mappedNotifications = notifications.map(mapBackendNotification);
+        const deadlines = notifications
+          .map((notification) => {
+            const dueDate = parseDeadlineFromMessage(notification.message);
+            if (!dueDate) {
+              return null;
+            }
+
+            const kind = mapNotificationType(notification.type, notification.linkUrl);
+            return {
+              id: notification.id,
+              label: notification.title,
+              dueDate,
+              owner: user?.fullName ?? "Assigned accountant",
+              tone: mapNotificationTone(kind),
+            } satisfies DeadlineItem;
+          })
+          .filter((item): item is DeadlineItem => item !== null)
+          .sort((left, right) => left.dueDate.localeCompare(right.dueDate));
+
+        setLiveClients(clients);
+        setLiveDashboardData({
+          ...portal.accountantDashboard,
+          portfolio,
+          reviewQueue: mappedReviewQueue,
+          deadlines,
+          notifications: mappedNotifications,
+          missingDocuments,
+          rejectedDocuments,
+          smartAlerts: [],
+          latestOverallDocuments: [],
+        });
+        setDashboardNotice("");
+      } catch (error) {
+        setDashboardNotice(
+          error instanceof ApiError
+            ? error.message
+            : "The live dashboard could not be loaded, so the fallback workspace view is still being shown.",
+        );
+      }
+    })();
+  }, [backendMode, portal.accountantDashboard, portal.adminClients, user?.fullName]);
+
+  const scopedClients = useMemo(() => getScopedClients(user, clientAccounts), [clientAccounts, user]);
   const scopedClientIds = useMemo(
     () => new Set(scopedClients.map((client) => client.id)),
     [scopedClients],
@@ -756,8 +1091,8 @@ export function AccountantDashboardPage() {
     [data.portfolio, scopedClientIds],
   );
   const scopedReviewQueue = useMemo(
-    () => getScopedReviewQueue(user, data.reviewQueue, portal.adminClients),
-    [data.reviewQueue, portal.adminClients, user],
+    () => getScopedReviewQueue(user, data.reviewQueue, clientAccounts),
+    [clientAccounts, data.reviewQueue, user],
   );
   const scopedDeadlines = useMemo(
     () => data.deadlines.filter((item) => item.owner === user?.fullName),
@@ -1057,6 +1392,12 @@ export function AccountantDashboardPage() {
 
   return (
     <div className="mx-auto max-w-[1280px] space-y-6">
+      {dashboardNotice ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          {dashboardNotice}
+        </div>
+      ) : null}
+
       <section className="relative overflow-visible rounded-2xl border border-[#dce6ef] bg-[linear-gradient(135deg,#062044_0%,#0a2f66_54%,#1d8b66_100%)] p-5 text-white shadow-[0_24px_60px_rgba(4,24,52,0.18)] md:p-6">
         <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl">
           <div className="absolute -left-16 top-4 h-44 w-44 rounded-full bg-white/10 blur-3xl" />

@@ -401,6 +401,7 @@ export interface UploadSubmission {
   year: number;
   description: string;
   expiryDate?: string;
+  file?: File;
   fileDataUrl?: string;
   fileMimeType?: string;
 }

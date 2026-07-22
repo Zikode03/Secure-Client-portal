@@ -23,9 +23,12 @@ import { Modal } from "../../components/ui/Modal";
 import { SelectField } from "../../components/ui/SelectField";
 import { TextAreaField } from "../../components/ui/TextAreaField";
 import { TextField } from "../../components/ui/TextField";
-import type { WorkflowRequest } from "../../types/portal";
+import { ApiError, apiGetJson, apiPatchJson, apiPostForm, apiPostJson, apiPutJson, hasApiBaseUrl } from "../../services/apiClient";
+import { portalServiceApi } from "../../services/portalApi";
+import type { FirmClientAccount, WorkflowRequest } from "../../types/portal";
 import { formatDateLabel } from "../../utils/formatters";
 import { getScopedClients, getScopedRequests } from "../../utils/permissions";
+import { toBackendRequestType, toFrontendRequestType } from "../../utils/requestTypeMapping";
 
 type ThreadFilter = "all" | "unread" | "resolved" | "unresolved";
 const ATTACHMENT_PREFIX = "[[attachment:";
@@ -42,10 +45,49 @@ interface ParsedAttachment {
   dataUrl: string;
 }
 
+interface BackendRequestRecord {
+  id: string;
+  clientId: string;
+  requestType: string;
+  relatedDocumentId?: string | null;
+  title: string;
+  description: string;
+  priority: string;
+  status: string;
+  dueDateUtc?: string | null;
+  requestedByUserId: string;
+  requestedAtUtc: string;
+  updatedAtUtc: string;
+}
+
+interface BackendRequestComment {
+  id: string;
+  requestId: string;
+  clientId: string;
+  authorUserId: string;
+  authorRole: string;
+  isInternal: boolean;
+  message: string;
+  createdAtUtc: string;
+}
+
+interface BackendRequestWorkspace {
+  request: BackendRequestRecord;
+  comments: BackendRequestComment[];
+}
+
 function defaultFollowUpDueDate() {
   const date = new Date();
   date.setDate(date.getDate() + 7);
   return date.toISOString().slice(0, 10);
+}
+
+async function dataUrlToFile(attachment: ParsedAttachment) {
+  const response = await fetch(attachment.dataUrl);
+  const blob = await response.blob();
+  return new File([blob], attachment.name, {
+    type: attachment.mimeType || blob.type || "application/octet-stream",
+  });
 }
 
 function encodeAttachment(attachment: ParsedAttachment) {
@@ -132,6 +174,79 @@ function formatChipDate(value: string) {
     month: "short",
     year: "numeric",
   }).format(new Date(value));
+}
+
+function toRequestPriority(priority?: string): WorkflowRequest["priority"] {
+  if (priority === "high" || priority === "medium" || priority === "low") {
+    return priority;
+  }
+
+  return "medium";
+}
+
+function normalizeAccountantRequestStatus(status?: string): WorkflowRequest["status"] {
+  const normalized = status?.trim().toLowerCase();
+
+  if (normalized === "resolved") {
+    return "resolved";
+  }
+
+  if (normalized === "closed") {
+    return "closed";
+  }
+
+  if (normalized === "awaiting_client" || normalized === "waiting_on_client" || normalized === "overdue") {
+    return "awaiting_client";
+  }
+
+  return "awaiting_accountant";
+}
+
+function formatMonthLabel(value?: string | null) {
+  const date = value ? new Date(value) : new Date();
+  if (Number.isNaN(date.getTime())) {
+    return formatDateLabel(new Date().toISOString());
+  }
+
+  return new Intl.DateTimeFormat("en-ZA", {
+    month: "long",
+    year: "numeric",
+  }).format(date);
+}
+
+function mapBackendAccountantRequest(
+  workspace: BackendRequestWorkspace,
+  accountantName: string,
+  clientName: string,
+  accountantUserId: string,
+): WorkflowRequest {
+  const requestedByRole = workspace.request.requestedByUserId === accountantUserId ? "accountant" : "client";
+
+  return {
+    id: workspace.request.id,
+    clientId: workspace.request.clientId,
+    clientName,
+    title: workspace.request.title,
+    description: workspace.request.description,
+    monthLabel: formatMonthLabel(workspace.request.dueDateUtc ?? workspace.request.requestedAtUtc),
+    status: normalizeAccountantRequestStatus(workspace.request.status),
+    priority: toRequestPriority(workspace.request.priority),
+    relatedDocumentId: workspace.request.relatedDocumentId ?? undefined,
+    requestedBy: requestedByRole === "accountant" ? accountantName : clientName,
+    requestedByRole,
+    assignedTo: clientName,
+    dueDate: workspace.request.dueDateUtc ?? workspace.request.updatedAtUtc,
+    createdAt: workspace.request.requestedAtUtc,
+    requestType: toFrontendRequestType(workspace.request.requestType),
+    comments: workspace.comments.map((comment) => ({
+      id: comment.id,
+      author: comment.authorRole === "client" ? clientName : accountantName,
+      role: comment.authorRole === "client" ? "client" : "accountant",
+      message: comment.isInternal ? `[INTERNAL] ${comment.message}` : comment.message,
+      createdAt: comment.createdAtUtc,
+    })),
+    auditTrail: [],
+  };
 }
 
 function dueControlStatus(value: string) {
@@ -705,8 +820,15 @@ export function AccountantFollowUpsPage() {
   const { user } = useAuth();
   const portal = usePortal();
   const [searchParams] = useSearchParams();
+  const backendMode = hasApiBaseUrl();
+  const [liveClients, setLiveClients] = useState<FirmClientAccount[]>([]);
+  const [liveRequests, setLiveRequests] = useState<WorkflowRequest[]>([]);
+  const [liveLoading, setLiveLoading] = useState(false);
 
-  const scopedClients = useMemo(() => getScopedClients(user, portal.adminClients), [user, portal.adminClients]);
+  const scopedClients = useMemo(
+    () => (backendMode ? liveClients : getScopedClients(user, portal.adminClients)),
+    [backendMode, liveClients, portal.adminClients, user],
+  );
 
   const [selectedClientId, setSelectedClientId] = useState(scopedClients[0]?.id ?? "");
   const [selectedRequestId, setSelectedRequestId] = useState("");
@@ -728,14 +850,69 @@ export function AccountantFollowUpsPage() {
   );
 
   const selectedWorkspace = useMemo(() => {
+    if (backendMode) return null;
     if (!selectedClient) return null;
     return portal.getClientWorkspace(selectedClient.id);
-  }, [portal, selectedClient]);
+  }, [backendMode, portal, selectedClient]);
 
   const scopedRequests = useMemo(() => {
+    if (backendMode) {
+      return selectedClient ? liveRequests.filter((request) => request.clientId === selectedClient.id) : liveRequests;
+    }
+
     if (!selectedWorkspace) return [] as WorkflowRequest[];
     return getScopedRequests(user, selectedWorkspace.requests, portal.adminClients);
-  }, [portal.adminClients, selectedWorkspace, user]);
+  }, [backendMode, liveRequests, portal.adminClients, selectedClient, selectedWorkspace, user]);
+
+  async function loadLiveInbox() {
+    if (!backendMode || !user) {
+      return;
+    }
+
+    setLiveLoading(true);
+
+    try {
+      const [clients, requests] = await Promise.all([
+        portalServiceApi.getAdminClients(),
+        apiGetJson<BackendRequestRecord[]>("/api/requests"),
+      ]);
+
+      const workspaces = await Promise.all(
+        requests.map((request) =>
+          apiGetJson<BackendRequestWorkspace>(`/api/requests/${encodeURIComponent(request.id)}/workspace`),
+        ),
+      );
+
+      const clientsById = new Map(clients.map((client) => [client.id, client]));
+
+      setLiveClients(clients);
+      setLiveRequests(
+        workspaces.map((workspace) => {
+          const client = clientsById.get(workspace.request.clientId);
+          return mapBackendAccountantRequest(
+            workspace,
+            user.fullName,
+            client?.clientName ?? "Client",
+            user.id,
+          );
+        }),
+      );
+    } catch (error) {
+      const message =
+        error instanceof ApiError ? error.message : "The live follow-up inbox could not be loaded right now.";
+      setInboxNotice(message);
+    } finally {
+      setLiveLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!backendMode) {
+      return;
+    }
+
+    void loadLiveInbox();
+  }, [backendMode, user?.id]);
 
   useEffect(() => {
     const raw = window.localStorage.getItem(PREF_KEY);
@@ -771,6 +948,12 @@ export function AccountantFollowUpsPage() {
 
     setSelectedClientId(matchedClient.id);
   }, [scopedClients, searchParams, selectedClientId]);
+
+  useEffect(() => {
+    if (!selectedClientId && scopedClients[0]?.id) {
+      setSelectedClientId(scopedClients[0].id);
+    }
+  }, [scopedClients, selectedClientId]);
 
   useEffect(() => {
     window.localStorage.setItem(
@@ -816,8 +999,35 @@ export function AccountantFollowUpsPage() {
 
   function addLifecycleNote(note: string) {
     if (!activeRequest || !user) return;
+
+    if (backendMode) {
+      setMessageDraft(note.replace(/^\[INTERNAL\]\s*/, ""));
+      setSendAsInternal(true);
+      setInboxNotice("Internal note mode enabled.");
+      return;
+    }
+
     const result = portal.addRequestComment(activeRequest.id, user.fullName, user.role, note);
     setInboxNotice(result.message);
+  }
+
+  function postInternalWorkflowNote(note: string, successMessage: string, failureMessage: string) {
+    if (!activeRequest) {
+      return;
+    }
+
+    void (async () => {
+      try {
+        await apiPostJson(`/api/requests/${encodeURIComponent(activeRequest.id)}/comments`, {
+          message: note,
+          isInternal: true,
+        });
+        setInboxNotice(successMessage);
+        await loadLiveInbox();
+      } catch (error) {
+        setInboxNotice(error instanceof ApiError ? error.message : failureMessage);
+      }
+    })();
   }
 
   function handleSendMessage(messageOverride?: string) {
@@ -825,6 +1035,39 @@ export function AccountantFollowUpsPage() {
     const message = (messageOverride ?? messageDraft).trim();
     if (!message) {
       setInboxNotice("Type a message before sending.");
+      return;
+    }
+
+    if (backendMode) {
+      const attachment = decodeAttachment(message);
+      const plainText = plainMessageText(message);
+
+      void (async () => {
+        try {
+          if (attachment) {
+            const file = await dataUrlToFile(attachment);
+            const formData = new FormData();
+            formData.append("file", file);
+            if (plainText) {
+              formData.append("message", plainText);
+            }
+            await apiPostForm(`/api/requests/${encodeURIComponent(activeRequest.id)}/upload`, formData);
+          } else {
+            await apiPostJson(`/api/requests/${encodeURIComponent(activeRequest.id)}/comments`, {
+              message: plainText,
+              isInternal: sendAsInternal,
+            });
+          }
+
+          setInboxNotice("Reply sent.");
+          setMessageDraft("");
+          setSendAsInternal(false);
+          await loadLiveInbox();
+        } catch (error) {
+          setInboxNotice(error instanceof ApiError ? error.message : "The reply could not be sent right now.");
+        }
+      })();
+
       return;
     }
 
@@ -839,6 +1082,23 @@ export function AccountantFollowUpsPage() {
 
   function handleResolve() {
     if (!activeRequest || !user) return;
+
+    if (backendMode) {
+      void (async () => {
+        try {
+          await apiPostJson(`/api/requests/${encodeURIComponent(activeRequest.id)}/resolve`, {
+            resolutionNote: "Resolved by accountant.",
+          });
+          setInboxNotice("Request resolved.");
+          await loadLiveInbox();
+        } catch (error) {
+          setInboxNotice(error instanceof ApiError ? error.message : "The request could not be resolved.");
+        }
+      })();
+
+      return;
+    }
+
     const result = portal.resolveRequest(activeRequest.id, user.fullName);
     setInboxNotice(result.message);
   }
@@ -850,6 +1110,29 @@ export function AccountantFollowUpsPage() {
     addAuditNote: boolean;
   }) {
     if (!activeRequest || !user) return;
+
+    if (backendMode) {
+      void (async () => {
+        try {
+          await apiPutJson(`/api/requests/${encodeURIComponent(activeRequest.id)}`, {
+            requestType: toBackendRequestType(activeRequest.requestType ?? "missing_document_request"),
+            title: activeRequest.title,
+            description: activeRequest.description,
+            priority: payload.priority,
+            dueDateUtc: payload.dueDate,
+            relatedDocumentId: activeRequest.relatedDocumentId ?? null,
+            status: activeRequest.status,
+          });
+          setInboxNotice("Request controls updated.");
+          await loadLiveInbox();
+        } catch (error) {
+          setInboxNotice(error instanceof ApiError ? error.message : "The request could not be updated.");
+        }
+      })();
+
+      return;
+    }
+
     const result = portal.updateRequestControls(
       activeRequest.id,
       {
@@ -871,7 +1154,7 @@ export function AccountantFollowUpsPage() {
   }
 
   function handleCreateRequest() {
-    if (!user || !selectedClient || !selectedWorkspace) return;
+    if (!user || !selectedClient) return;
 
     const title = requestTitle.trim();
     const description = requestDetails.trim();
@@ -881,11 +1164,49 @@ export function AccountantFollowUpsPage() {
       return;
     }
 
+    if (backendMode) {
+      void (async () => {
+        try {
+          const created = await apiPostJson<BackendRequestRecord, {
+            clientId: string;
+            requestType: string;
+            title: string;
+            description: string;
+            priority: string;
+            dueDateUtc: string;
+            relatedDocumentId: string | null;
+          }>("/api/requests", {
+            clientId: selectedClient.id,
+            requestType: toBackendRequestType("missing_document_request"),
+            title: `Document request: ${title}`,
+            description,
+            priority: requestPriority,
+            dueDateUtc: new Date(`${requestDueDate}T17:00:00.000Z`).toISOString(),
+            relatedDocumentId: activeRequest?.relatedDocumentId ?? null,
+          });
+
+          setInboxNotice("Client request created.");
+          setRequestFormError("");
+          setIsRequestModalOpen(false);
+          setRequestTitle("");
+          setRequestDetails("");
+          setRequestDueDate(defaultFollowUpDueDate());
+          setRequestPriority("high");
+          await loadLiveInbox();
+          setSelectedRequestId(created.id);
+        } catch (error) {
+          setRequestFormError(error instanceof ApiError ? error.message : "The request could not be created.");
+        }
+      })();
+
+      return;
+    }
+
     const result = portal.createFollowUpRequest({
       actor: user,
       clientId: selectedClient.id,
       clientName: selectedClient.clientName,
-      monthLabel: activeRequest?.monthLabel ?? selectedWorkspace.monthPack.monthLabel,
+      monthLabel: activeRequest?.monthLabel ?? selectedWorkspace?.monthPack.monthLabel ?? formatMonthLabel(new Date().toISOString()),
       title: `Document request: ${title}`,
       description,
       dueDate: new Date(`${requestDueDate}T17:00:00.000Z`).toISOString(),
@@ -910,7 +1231,23 @@ export function AccountantFollowUpsPage() {
     }
   }
 
-  if (!selectedClient || !selectedWorkspace) {
+  if (!selectedClient || (!backendMode && !selectedWorkspace)) {
+    if (backendMode && liveLoading) {
+      return (
+        <div className={`accountant-inbox-page ${inboxPanelClass} rounded-lg p-6 text-sm text-[#53617f]`}>
+          Loading live client requests...
+        </div>
+      );
+    }
+
+    if (backendMode && !selectedClient) {
+      return (
+        <div className={`accountant-inbox-page ${inboxPanelClass} rounded-lg p-6 text-sm text-[#53617f]`}>
+          No accessible clients found for this workspace.
+        </div>
+      );
+    }
+
     return (
       <div className={`accountant-inbox-page ${inboxPanelClass} rounded-lg p-6 text-sm text-[#53617f]`}>
         No accessible clients found for this workspace.
@@ -959,17 +1296,86 @@ export function AccountantFollowUpsPage() {
             onChangeInternal={setSendAsInternal}
             onChangeMessageDraft={setMessageDraft}
             onEscalate={() =>
-              addLifecycleNote("[INTERNAL] Escalation requested: SLA risk or blocker identified. Please prioritize.")}
+              backendMode
+                ? activeRequest
+                  ? void (async () => {
+                      try {
+                        await apiPostJson(`/api/requests/${encodeURIComponent(activeRequest.id)}/escalate`, {
+                          reason: "SLA risk or blocker identified. Please prioritize.",
+                          escalateToRole: "admin",
+                        });
+                        setInboxNotice("Request escalated to admin.");
+                        await loadLiveInbox();
+                      } catch (error) {
+                        setInboxNotice(error instanceof ApiError ? error.message : "The request could not be escalated.");
+                      }
+                    })()
+                  : undefined
+                : addLifecycleNote("[INTERNAL] Escalation requested: SLA risk or blocker identified. Please prioritize.")}
             onForward={() =>
-              addLifecycleNote("[INTERNAL] Forward requested: share this thread with the appropriate firm contact.")}
+              backendMode
+                ? activeRequest
+                  ? postInternalWorkflowNote(
+                      "Forward requested: share this thread with the appropriate firm contact.",
+                      "Internal forwarding note added.",
+                      "The forwarding note could not be added.",
+                    )
+                  : undefined
+                : addLifecycleNote("[INTERNAL] Forward requested: share this thread with the appropriate firm contact.")}
             onReassign={() =>
-              addLifecycleNote("[INTERNAL] Reassignment suggested: please review ownership and assign another accountant.")}
+              backendMode
+                ? postInternalWorkflowNote(
+                    "Reassignment suggested: please review ownership and assign another accountant.",
+                    "Internal reassignment note added.",
+                    "The reassignment note could not be added.",
+                  )
+                : addLifecycleNote("[INTERNAL] Reassignment suggested: please review ownership and assign another accountant.")}
             onResolve={handleResolve}
             onSendMessage={handleSendMessage}
-            onSetAwaitingClient={() =>
-              addLifecycleNote("Request set to awaiting client. Waiting for client response or upload.")}
-            onSetClosed={() => addLifecycleNote("Request set to closed. No further action required unless reopened.")}
-            onSetOpen={() => addLifecycleNote("Request reopened for active follow-up.")}
+            onSetAwaitingClient={() => {
+              if (backendMode && activeRequest) {
+                void (async () => {
+                  try {
+                    await apiPatchJson(`/api/requests/${encodeURIComponent(activeRequest.id)}/status`, {
+                      status: "awaiting_client",
+                    });
+                    setInboxNotice("Request set to awaiting client.");
+                    await loadLiveInbox();
+                  } catch (error) {
+                    setInboxNotice(error instanceof ApiError ? error.message : "The request status could not be updated.");
+                  }
+                })();
+                return;
+              }
+
+              addLifecycleNote("Request set to awaiting client. Waiting for client response or upload.");
+            }}
+            onSetClosed={() => {
+              if (backendMode) {
+                handleResolve();
+                return;
+              }
+
+              addLifecycleNote("Request set to closed. No further action required unless reopened.");
+            }}
+            onSetOpen={() => {
+              if (backendMode && activeRequest) {
+                void (async () => {
+                  try {
+                    await apiPatchJson(`/api/requests/${encodeURIComponent(activeRequest.id)}/status`, {
+                      status: "open",
+                    });
+                    setInboxNotice("Request reopened for active follow-up.");
+                    await loadLiveInbox();
+                  } catch (error) {
+                    setInboxNotice(error instanceof ApiError ? error.message : "The request status could not be updated.");
+                  }
+                })();
+                return;
+              }
+
+              addLifecycleNote("Request reopened for active follow-up.");
+            }}
             onUpdateAssignment={handleUpdateAssignment}
             request={activeRequest}
           />

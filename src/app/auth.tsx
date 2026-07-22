@@ -325,7 +325,7 @@ export function defaultPathForRole(role: Role) {
     case "accountant":
       return "/firm/dashboard";
     case "admin":
-      return "/admin/dashboard";
+      return "/firm/dashboard";
     default:
       return "/client/dashboard";
   }

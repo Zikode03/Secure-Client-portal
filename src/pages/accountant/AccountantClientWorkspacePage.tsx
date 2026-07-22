@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
+import { ApiError, apiGetJson, apiPostJson, hasApiBaseUrl } from "../../services/apiClient";
 import { buildReviewDocumentFromInvoice } from "../../services/workflowEngine";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { AuditTrail } from "../../components/workflow/AuditTrail";
@@ -16,9 +17,11 @@ import { Modal } from "../../components/ui/Modal";
 import { ProgressBar } from "../../components/ui/ProgressBar";
 import { StatusBadge } from "../../components/ui/StatusBadge";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
-import type { ComplianceDocumentRecord, DocumentRecord } from "../../types/portal";
+import type { ComplianceDocumentRecord, DocumentComment, DocumentRecord, WorkflowRequest } from "../../types/portal";
 import { cn } from "../../utils/cn";
+import { buildComplianceRequestDetails } from "../../utils/compliance";
 import { formatDateLabel, formatStatusLabel } from "../../utils/formatters";
+import { toBackendRequestType, toFrontendRequestType } from "../../utils/requestTypeMapping";
 
 const workspaceTabs = [
   { id: "packs", label: "Monthly Packs" },
@@ -39,6 +42,63 @@ const navySecondaryButtonClass =
 // Shared shape notes: these types keep UI and data contracts aligned.
 type WorkspaceTab = (typeof workspaceTabs)[number]["id"];
 type WorkspaceDocumentDecision = "under_review" | "accepted" | "rejected" | "request_reupload";
+
+interface BackendDocumentRecord {
+  id: string;
+  clientId: string;
+  monthlyPackId: string;
+  name: string;
+  category: string;
+  documentSlotId?: string | null;
+  status: string;
+  fileType: string;
+  sizeBytes: number;
+  storageKey?: string | null;
+  uploadedByUserId: string;
+  currentVersionNumber: number;
+  uploadedAtUtc: string;
+  updatedAtUtc: string;
+}
+
+interface BackendRequestRecord {
+  id: string;
+  clientId: string;
+  requestType: string;
+  relatedDocumentId?: string | null;
+  title: string;
+  description: string;
+  priority: string;
+  status: string;
+  dueDateUtc?: string | null;
+  requestedByUserId: string;
+  requestedAtUtc: string;
+  updatedAtUtc: string;
+}
+
+interface BackendRequestComment {
+  id: string;
+  requestId: string;
+  clientId: string;
+  authorUserId: string;
+  authorRole: string;
+  isInternal?: boolean;
+  message: string;
+  createdAtUtc: string;
+}
+
+interface BackendRequestWorkspace {
+  request: BackendRequestRecord;
+  comments: BackendRequestComment[];
+}
+
+interface BackendDocumentComment {
+  id: string;
+  documentId: string;
+  authorUserId: string;
+  authorRole: string;
+  message: string;
+  createdAtUtc: string;
+}
 
 const complianceTabs = [
   { id: "overview", label: "Overview" },
@@ -97,11 +157,39 @@ function statusPillClass(status: string) {
   return "bg-slate-50 text-slate-600 ring-slate-200";
 }
 
+function mapLiveDocumentStatus(status: string): DocumentRecord["status"] {
+  switch (status.trim().toLowerCase()) {
+    case "under_review":
+      return "under_review";
+    case "accepted":
+      return "accepted";
+    case "rejected":
+      return "rejected";
+    case "filed":
+      return "filed";
+    default:
+      return "uploaded";
+  }
+}
+
+function formatSizeLabel(sizeBytes: number) {
+  if (sizeBytes >= 1_000_000) {
+    return `${(sizeBytes / 1_000_000).toFixed(1)} MB`;
+  }
+
+  if (sizeBytes >= 1_000) {
+    return `${Math.max(1, Math.round(sizeBytes / 1_000))} KB`;
+  }
+
+  return `${sizeBytes} B`;
+}
+
 // Component flow: gather data first, then render a focused UI state.
 export function AccountantClientWorkspacePage() {
   const { clientId = "firm-client-1" } = useParams();
   const { user } = useAuth();
   const portal = usePortal();
+  const backendMode = hasApiBaseUrl();
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -119,13 +207,23 @@ export function AccountantClientWorkspacePage() {
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [decisionReason, setDecisionReason] = useState("");
   const [decisionMessage, setDecisionMessage] = useState("");
+  const [liveDocuments, setLiveDocuments] = useState<DocumentRecord[]>([]);
+  const [liveCommentsByDocumentId, setLiveCommentsByDocumentId] = useState<Record<string, DocumentComment[]>>({});
+  const [liveRequests, setLiveRequests] = useState<WorkflowRequest[]>([]);
   const workspace = portal.getClientWorkspace(clientId);
+  const workspaceDocumentsSource = backendMode && liveDocuments.length > 0
+    ? liveDocuments
+    : workspace.documents;
   const acceptedDocuments = useMemo(
-    () => workspace.documents.filter((document) => document.status === "accepted"),
-    [workspace.documents],
+    () => workspaceDocumentsSource.filter((document) => document.status === "accepted"),
+    [workspaceDocumentsSource],
   );
 
   const workspaceViewDocuments = useMemo<DocumentRecord[]>(() => {
+    if (backendMode) {
+      return workspaceDocumentsSource;
+    }
+
     const monthLabel = workspace.monthPack.monthLabel;
     const invoiceDocuments = workspace.invoices
       .filter((invoice) => invoice.monthLabel === monthLabel)
@@ -136,15 +234,16 @@ export function AccountantClientWorkspacePage() {
       byId.set(document.id, document);
     }
     return [...byId.values()];
-  }, [workspace.documents, workspace.invoices, workspace.monthPack.monthLabel]);
+  }, [backendMode, workspace.documents, workspace.invoices, workspace.monthPack.monthLabel, workspaceDocumentsSource]);
 
   const selectedDocument =
     workspaceViewDocuments.find((document) => document.id === selectedDocumentId) ??
     workspaceViewDocuments[0] ??
     null;
+  const requestQueue = backendMode ? liveRequests : workspace.requests;
   const selectedRequest =
-    workspace.requests.find((request) => request.id === selectedRequestId) ??
-    workspace.requests[0] ??
+    requestQueue.find((request) => request.id === selectedRequestId) ??
+    requestQueue[0] ??
     null;
   const combinedAudit = useMemo(
     () =>
@@ -261,6 +360,164 @@ export function AccountantClientWorkspacePage() {
     setDecisionReason(selectedDocument?.rejectionReason ?? "");
   }, [isDocumentModalOpen, selectedDocument?.id, selectedDocument?.rejectionReason]);
 
+  useEffect(() => {
+    if (!backendMode || !user) {
+      return;
+    }
+
+    void loadLiveRequests();
+  }, [backendMode, user?.id, workspace.client.id]);
+
+  useEffect(() => {
+    if (!backendMode || !user) {
+      return;
+    }
+
+    void loadLiveDocuments();
+  }, [backendMode, user?.id, workspace.client.id]);
+
+  useEffect(() => {
+    if (!backendMode || !selectedDocument) {
+      return;
+    }
+
+    if (liveCommentsByDocumentId[selectedDocument.id]) {
+      return;
+    }
+
+    void loadLiveDocumentComments(selectedDocument.id);
+  }, [backendMode, selectedDocument?.id]);
+
+  function mapLiveRequest(workspaceRequest: BackendRequestWorkspace): WorkflowRequest {
+    const clientName = workspace.client.clientName;
+    const accountantName = workspace.client.assignedAccountant;
+    const requestedByRole =
+      workspaceRequest.request.requestedByUserId === user?.id ? "accountant" : "client";
+
+    return {
+      id: workspaceRequest.request.id,
+      clientId: workspaceRequest.request.clientId,
+      clientName,
+      title: workspaceRequest.request.title,
+      description: workspaceRequest.request.description,
+      monthLabel: formatDateLabel(
+        workspaceRequest.request.dueDateUtc ?? workspaceRequest.request.requestedAtUtc,
+      ),
+      status:
+        workspaceRequest.request.status === "resolved"
+          ? "resolved"
+          : workspaceRequest.request.status === "closed"
+            ? "closed"
+            : workspaceRequest.request.status === "waiting_on_client" ||
+                workspaceRequest.request.status === "awaiting_client" ||
+                workspaceRequest.request.status === "overdue"
+              ? "awaiting_client"
+              : "awaiting_accountant",
+      priority:
+        workspaceRequest.request.priority === "high" ||
+        workspaceRequest.request.priority === "medium" ||
+        workspaceRequest.request.priority === "low"
+          ? workspaceRequest.request.priority
+          : "medium",
+      relatedDocumentId: workspaceRequest.request.relatedDocumentId ?? undefined,
+      requestedBy: requestedByRole === "accountant" ? accountantName : clientName,
+      requestedByRole,
+      assignedTo: clientName,
+      dueDate: workspaceRequest.request.dueDateUtc ?? workspaceRequest.request.updatedAtUtc,
+      createdAt: workspaceRequest.request.requestedAtUtc,
+      requestType: toFrontendRequestType(workspaceRequest.request.requestType),
+      comments: workspaceRequest.comments.map<DocumentComment>((comment) => ({
+        id: comment.id,
+        author: comment.authorRole === "client" ? clientName : accountantName,
+        role: comment.authorRole === "client" ? "client" : "accountant",
+        message: comment.isInternal ? `[INTERNAL] ${comment.message}` : comment.message,
+        createdAt: comment.createdAtUtc,
+      })),
+      auditTrail: [],
+    };
+  }
+
+  async function loadLiveRequests() {
+    try {
+      const requests = await apiGetJson<BackendRequestRecord[]>("/api/requests");
+      const clientRequests = requests.filter((request) => request.clientId === workspace.client.id);
+      const workspaces = await Promise.all(
+        clientRequests.map((request) =>
+          apiGetJson<BackendRequestWorkspace>(`/api/requests/${encodeURIComponent(request.id)}/workspace`),
+        ),
+      );
+
+      setLiveRequests(workspaces.map(mapLiveRequest));
+    } catch (error) {
+      setFeedbackMessage(
+        error instanceof ApiError
+          ? error.message
+          : "The live client request panel could not be loaded.",
+      );
+    }
+  }
+
+  async function loadLiveDocuments() {
+    try {
+      const documents = await apiGetJson<BackendDocumentRecord[]>("/api/documents");
+      const mappedDocuments = documents
+        .filter((document) => document.clientId === workspace.client.id)
+        .map<DocumentRecord>((document) => ({
+          id: document.id,
+          clientId: document.clientId,
+          clientName: workspace.client.clientName,
+          documentType: document.category,
+          fileName: document.name,
+          monthLabel: formatDateLabel(document.uploadedAtUtc),
+          description: `${document.category} uploaded in the secure document workflow.`,
+          status: mapLiveDocumentStatus(document.status),
+          uploadedBy: workspace.client.clientName,
+          uploadedAt: document.uploadedAtUtc,
+          reviewedBy: undefined,
+          reviewedAt: undefined,
+          sizeLabel: formatSizeLabel(document.sizeBytes),
+          keywordTags: [document.category, document.name],
+          comments: liveCommentsByDocumentId[document.id] ?? [],
+          auditTrail: [],
+          fileMimeType: document.fileType,
+        }));
+
+      setLiveDocuments(mappedDocuments);
+    } catch (error) {
+      setFeedbackMessage(
+        error instanceof ApiError ? error.message : "The live client documents could not be loaded.",
+      );
+    }
+  }
+
+  async function loadLiveDocumentComments(documentId: string) {
+    try {
+      const comments = await apiGetJson<BackendDocumentComment[]>(
+        `/api/documents/${encodeURIComponent(documentId)}/comments`,
+      );
+      const mappedComments = comments.map<DocumentComment>((comment) => ({
+        id: comment.id,
+        author: comment.authorRole === "client" ? workspace.client.clientName : workspace.client.assignedAccountant,
+        role: comment.authorRole === "client" ? "client" : "accountant",
+        message: comment.message,
+        createdAt: comment.createdAtUtc,
+      }));
+
+      setLiveCommentsByDocumentId((current) => ({ ...current, [documentId]: mappedComments }));
+      setLiveDocuments((current) =>
+        current.map((document) =>
+          document.id === documentId ? { ...document, comments: mappedComments } : document,
+        ),
+      );
+    } catch (error) {
+      setFeedbackMessage(
+        error instanceof ApiError
+          ? error.message
+          : "The live document comments could not be loaded.",
+      );
+    }
+  }
+
   function switchTab(tab: WorkspaceTab) {
     setActiveTab(tab);
     setSearchParams((current) => {
@@ -292,7 +549,37 @@ export function AccountantClientWorkspacePage() {
   }
 
   function handleDocumentComment(message: string) {
-    if (!selectedDocument || !user || workspace.client.id !== "firm-client-1") {
+    if (!selectedDocument || !user) {
+      return {
+        ok: false,
+        message: "Select a document before posting a comment.",
+      };
+    }
+
+    if (backendMode) {
+      void (async () => {
+        try {
+          await apiPostJson(`/api/documents/${encodeURIComponent(selectedDocument.id)}/comments`, {
+            message,
+          });
+          await loadLiveDocumentComments(selectedDocument.id);
+          setFeedbackMessage("Document comment posted.");
+        } catch (error) {
+          setFeedbackMessage(
+            error instanceof ApiError
+              ? error.message
+              : "The live document comment could not be posted.",
+          );
+        }
+      })();
+
+      return {
+        ok: true,
+        message: "Sending...",
+      };
+    }
+
+    if (workspace.client.id !== "firm-client-1") {
       return {
         ok: false,
         message: "This seeded workspace is read-only for document comments outside the live client.",
@@ -331,6 +618,38 @@ export function AccountantClientWorkspacePage() {
       return;
     }
 
+    if (backendMode) {
+      void (async () => {
+        try {
+          if (decision === "accepted" || decision === "rejected") {
+            await apiPostJson(`/api/documents/${encodeURIComponent(selectedDocument.id)}/review`, {
+              decision,
+              reason: decision === "rejected" ? trimmedReason : null,
+              internalNote: null,
+            });
+          } else {
+            await apiPostJson(`/api/documents/${encodeURIComponent(selectedDocument.id)}/request-reupload`, {
+              reason: trimmedReason,
+              internalNote: null,
+            });
+          }
+
+          await loadLiveDocuments();
+          await loadLiveDocumentComments(selectedDocument.id);
+          setDecisionMessage("Document workflow updated.");
+          setFeedbackMessage("Document workflow updated.");
+        } catch (error) {
+          const message =
+            error instanceof ApiError
+              ? error.message
+              : "The live document workflow action could not be completed.";
+          setDecisionMessage(message);
+          setFeedbackMessage(message);
+        }
+      })();
+      return;
+    }
+
     const result = portal.reviewRecord({
       recordId: selectedDocument.id,
       action: decision === "request_reupload" ? "rejected" : decision,
@@ -343,7 +662,34 @@ export function AccountantClientWorkspacePage() {
   }
 
   function handleRequestComment(message: string) {
-    if (!selectedRequest || !user || workspace.client.id !== "firm-client-1") {
+    if (!selectedRequest || !user) {
+      return {
+        ok: false,
+        message: "Select a request before posting a comment.",
+      };
+    }
+
+    if (backendMode) {
+      void (async () => {
+        try {
+          await apiPostJson(`/api/requests/${encodeURIComponent(selectedRequest.id)}/comments`, {
+            message,
+          });
+          await loadLiveRequests();
+          setFeedbackMessage("Request comment posted.");
+        } catch (error) {
+          setFeedbackMessage(
+            error instanceof ApiError
+              ? error.message
+              : "The live request comment could not be posted.",
+          );
+        }
+      })();
+
+      return { ok: true, message: "Sending..." };
+    }
+
+    if (workspace.client.id !== "firm-client-1") {
       return {
         ok: false,
         message: "This seeded workspace is read-only for request comments outside the live client.",
@@ -361,7 +707,31 @@ export function AccountantClientWorkspacePage() {
   }
 
   function handleResolveRequest() {
-    if (!selectedRequest || !user || workspace.client.id !== "firm-client-1") {
+    if (!selectedRequest || !user) {
+      setFeedbackMessage("Select a request before updating it.");
+      return;
+    }
+
+    if (backendMode) {
+      void (async () => {
+        try {
+          await apiPostJson(`/api/requests/${encodeURIComponent(selectedRequest.id)}/resolve`, {
+            resolutionNote: "Resolved from the accountant client workspace.",
+          });
+          await loadLiveRequests();
+          setFeedbackMessage("Request resolved.");
+        } catch (error) {
+          setFeedbackMessage(
+            error instanceof ApiError
+              ? error.message
+              : "The live request could not be resolved.",
+          );
+        }
+      })();
+      return;
+    }
+
+    if (workspace.client.id !== "firm-client-1") {
       setFeedbackMessage(
         "This seeded workspace is read-only for request updates outside the live client.",
       );
@@ -381,6 +751,41 @@ export function AccountantClientWorkspacePage() {
       | "clarification_request",
   ) {
     if (!user) {
+      return;
+    }
+
+    if (backendMode) {
+      const dueDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      const details = buildComplianceRequestDetails(
+        record,
+        requestType,
+        dueDate,
+        `Please action ${record.name} so the compliance workflow can move forward.`,
+        user.fullName,
+      );
+
+      void (async () => {
+        try {
+          await apiPostJson("/api/requests", {
+            clientId: workspace.compliance?.clientId ?? workspace.client.id,
+            requestType: toBackendRequestType(details.requestType),
+            title: details.title,
+            description: details.description,
+            priority: "high",
+            dueDateUtc: details.dueDate,
+            relatedDocumentId: null,
+          });
+
+          setFeedbackMessage(`Live request created for ${record.name}.`);
+        } catch (error) {
+          setFeedbackMessage(
+            error instanceof ApiError
+              ? error.message
+              : `The live request for ${record.name} could not be created.`,
+          );
+        }
+      })();
+
       return;
     }
 
@@ -1305,7 +1710,7 @@ export function AccountantClientWorkspacePage() {
           <RequestBoard
             description="Requests track both accountant follow-ups and client questions so each task stays in one accountable thread."
             onOpenRequest={(request) => setSelectedRequestId(request.id)}
-            requests={workspace.requests}
+            requests={requestQueue}
             title="Open inbox"
           />
           <div className="space-y-6">

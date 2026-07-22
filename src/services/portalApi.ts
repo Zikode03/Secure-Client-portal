@@ -1,25 +1,13 @@
-import { apiGetJson, apiPostJson, apiPutJson, hasApiBaseUrl } from "./apiClient";
+import { apiGetJson, apiPatchJson, apiPostJson, apiPutJson, hasApiBaseUrl } from "./apiClient";
 import { portalService } from "./portalData";
 import { getAccountantComplianceCentreData, getClientComplianceCentreData } from "./complianceData";
 import type {
   DocumentComment,
+  FirmClientAccount,
   Role,
   UserAccountRecord,
   WorkflowRequest,
 } from "../types/portal";
-
-interface BackendRequestRecord {
-  id: string;
-  clientId: string;
-  title: string;
-  description: string;
-  priority: string;
-  status: string;
-  dueDateUtc?: string | null;
-  requestedByUserId: string;
-  requestedAtUtc: string;
-  updatedAtUtc: string;
-}
 
 interface RequestWithComments extends WorkflowRequest {
   comments: DocumentComment[];
@@ -46,6 +34,29 @@ interface BackendCreateUserResponse {
   deliveryError?: string | null;
 }
 
+interface BackendClientRecord {
+  id: string;
+  name: string;
+  entityType: string;
+  status: string;
+  complianceHealth: number;
+  assignedAccountantId: string;
+  primaryContact: string;
+  email: string;
+  createdAtUtc: string;
+  updatedAtUtc: string;
+}
+
+interface BackendAssignmentRecord {
+  id: string;
+  clientId: string;
+  clientName?: string;
+  accountantUserId: string;
+  accountantName?: string;
+  isPrimary: boolean;
+  createdAtUtc: string;
+}
+
 function toUserAccountStatus(status?: string): UserAccountRecord["status"] {
   if (status === "disabled" || status === "locked" || status === "suspended") {
     return "suspended";
@@ -56,6 +67,53 @@ function toUserAccountStatus(status?: string): UserAccountRecord["status"] {
   }
 
   return "active";
+}
+
+function toPortfolioStatus(
+  status: string | undefined,
+  complianceHealth: number,
+): FirmClientAccount["status"] {
+  const normalized = status?.trim().toLowerCase();
+
+  if (normalized === "archived") {
+    return "overdue";
+  }
+
+  if (normalized === "inactive" || normalized === "pending" || complianceHealth < 70) {
+    return "attention";
+  }
+
+  return "on_track";
+}
+
+function mapBackendClientRecord(
+  client: BackendClientRecord,
+  assignments: BackendAssignmentRecord[],
+): FirmClientAccount {
+  const primaryAssignment =
+    assignments.find((assignment) => assignment.isPrimary) ??
+    assignments.find((assignment) => assignment.accountantUserId === client.assignedAccountantId);
+  const backupAssignment = assignments.find(
+    (assignment) => !assignment.isPrimary && assignment.accountantUserId !== primaryAssignment?.accountantUserId,
+  );
+  const assignedName = primaryAssignment?.accountantName?.trim();
+  const backupName = backupAssignment?.accountantName?.trim();
+  const normalizedStatus = client.status?.trim().toLowerCase();
+
+  return {
+    id: client.id,
+    clientName: client.name,
+    industry: client.entityType,
+    assignedAccountant: assignedName || "Assigned accountant",
+    assignedAccountantUserId: primaryAssignment?.accountantUserId ?? client.assignedAccountantId,
+    backupAccountant: backupName || undefined,
+    backupAccountantUserId: backupAssignment?.accountantUserId,
+    requiredPack: "Standard monthly pack",
+    completionRate: client.complianceHealth,
+    deadlinePolicy: "6th working day",
+    status: toPortfolioStatus(normalizedStatus, client.complianceHealth),
+    isActive: normalizedStatus !== "archived" && normalizedStatus !== "inactive",
+  };
 }
 
 async function getOrFallback<T>(path: string, fallback: () => T): Promise<T> {
@@ -86,7 +144,6 @@ const backendFallbackOnlyMatchers: Array<(path: string) => boolean> = [
   (path) => path === "/api/accountant/review-workspace",
   (path) => path === "/api/admin/dashboard",
   (path) => path === "/api/admin/policies",
-  (path) => path === "/api/clients",
 ];
 
 function shouldSkipBackendRoute(path: string) {
@@ -128,8 +185,43 @@ export const portalServiceApi = {
   getAdminDashboard() {
     return getOrFallback("/api/admin/dashboard", () => portalService.getAdminDashboard());
   },
-  getAdminClients() {
-    return getOrFallback("/api/clients", () => portalService.getAdminClients());
+  async getAssignments(clientId?: string): Promise<BackendAssignmentRecord[]> {
+    if (!hasApiBaseUrl()) {
+      return [];
+    }
+
+    const suffix = clientId ? `?clientId=${encodeURIComponent(clientId)}` : "";
+
+    try {
+      return await apiGetJson<BackendAssignmentRecord[]>(`/api/assignments${suffix}`);
+    } catch {
+      return [];
+    }
+  },
+  async getAdminClients() {
+    if (!hasApiBaseUrl()) {
+      return portalService.getAdminClients();
+    }
+
+    try {
+      const [clients, assignments] = await Promise.all([
+        apiGetJson<BackendClientRecord[]>("/api/clients"),
+        apiGetJson<BackendAssignmentRecord[]>("/api/assignments"),
+      ]);
+
+      const assignmentsByClientId = new Map<string, BackendAssignmentRecord[]>();
+      assignments.forEach((assignment) => {
+        const current = assignmentsByClientId.get(assignment.clientId) ?? [];
+        current.push(assignment);
+        assignmentsByClientId.set(assignment.clientId, current);
+      });
+
+      return clients.map((client) =>
+        mapBackendClientRecord(client, assignmentsByClientId.get(client.id) ?? []),
+      );
+    } catch {
+      return portalService.getAdminClients();
+    }
   },
   async updateClientAssignment(
     clientId: string,
@@ -145,21 +237,68 @@ export const portalServiceApi = {
     }
 
     try {
-      await apiPutJson<{ assignedAccountantId: string }, { assignedAccountantId: string }>(
-        `/api/clients/${encodeURIComponent(clientId)}/assignment`,
-        { assignedAccountantId: assignedAccountantUserId ?? "" },
+      if (!assignedAccountantUserId) {
+        return {
+          ok: false,
+          message: "A primary accountant is required when backend mode is enabled.",
+        };
+      }
+
+      const assignments = await apiGetJson<BackendAssignmentRecord[]>(
+        `/api/assignments?clientId=${encodeURIComponent(clientId)}`,
       );
+      const currentPrimary = assignments.find((assignment) => assignment.isPrimary);
+      const existingTarget = assignments.find(
+        (assignment) => assignment.accountantUserId === assignedAccountantUserId,
+      );
+
+      if (currentPrimary?.accountantUserId === assignedAccountantUserId) {
+        return { ok: true, message: "Accountant assignment already up to date." };
+      }
+
+      if (currentPrimary) {
+        await apiPostJson<
+          { clientId: string; accountantUserId: string; isPrimary: boolean },
+          {
+            clientId: string;
+            fromAccountantUserId: string;
+            toAccountantUserId: string;
+            makePrimary: boolean;
+          }
+        >("/api/assignments/reassign", {
+          clientId,
+          fromAccountantUserId: currentPrimary.accountantUserId,
+          toAccountantUserId: assignedAccountantUserId,
+          makePrimary: true,
+        });
+      } else {
+        await apiPostJson<
+          { id: string; clientId: string; accountantUserId: string; isPrimary: boolean },
+          { accountantUserId: string; clientId: string; isPrimary: boolean }
+        >("/api/assignments", {
+          accountantUserId: assignedAccountantUserId,
+          clientId,
+          isPrimary: true,
+        });
+      }
+
+      if (existingTarget && !existingTarget.isPrimary) {
+        await apiPostJson<
+          { id: string; clientId: string; accountantUserId: string; isPrimary: boolean },
+          Record<string, never>
+        >(`/api/assignments/${encodeURIComponent(existingTarget.id)}/make-primary`, {});
+      }
+
       return portalService.updateClientAssignment(
         clientId,
         assignedAccountant,
         assignedAccountantUserId,
       );
     } catch {
-      return portalService.updateClientAssignment(
-        clientId,
-        assignedAccountant,
-        assignedAccountantUserId,
-      );
+      return {
+        ok: false,
+        message: "Could not update the backend assignment.",
+      };
     }
   },
   async getAdminUsers(): Promise<UserAccountRecord[]> {
@@ -318,12 +457,12 @@ export const portalServiceApi = {
       return { ok: false };
     }
   },
-  async addRequestComment(requestId: string, message: string) {
+  async addRequestComment(requestId: string, message: string, isInternal = false) {
     if (!hasApiBaseUrl()) return { ok: true };
     try {
-      const comment = await apiPostJson<DocumentComment, { message: string }>(
+      const comment = await apiPostJson<DocumentComment, { message: string; isInternal: boolean }>(
         `/api/requests/${encodeURIComponent(requestId)}/comments`,
-        { message },
+        { message, isInternal },
       );
       return { ok: true, comment };
     } catch {
@@ -333,16 +472,7 @@ export const portalServiceApi = {
   async updateRequestStatus(requestId: string, status: string) {
     if (!hasApiBaseUrl()) return { ok: true };
     try {
-      const request = await apiGetJson<BackendRequestRecord>(
-        `/api/requests/${encodeURIComponent(requestId)}`,
-      );
-      await apiPutJson<BackendRequestRecord, BackendRequestRecord>(
-        `/api/requests/${encodeURIComponent(requestId)}`,
-        {
-          ...request,
-          status,
-        },
-      );
+      await apiPatchJson(`/api/requests/${encodeURIComponent(requestId)}/status`, { status });
       return { ok: true };
     } catch {
       return { ok: false };

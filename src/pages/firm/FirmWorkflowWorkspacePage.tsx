@@ -1,8 +1,9 @@
 // Friendly guide: this module (FirmWorkflowWorkspacePage) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePortal } from "../../app/portal";
+import { apiGetJson, hasApiBaseUrl } from "../../services/apiClient";
 import { AccountantFollowUpsPage } from "../accountant/AccountantFollowUpsPage";
 import { AccountantReviewPage } from "../accountant/AccountantReviewPage";
 
@@ -17,10 +18,41 @@ interface FirmWorkflowWorkspacePageProps {
 export function FirmWorkflowWorkspacePage({ defaultTab }: FirmWorkflowWorkspacePageProps) {
   const portal = usePortal();
   const [activeTab, setActiveTab] = useState<WorkflowTab>(defaultTab);
-  const reviewCount = portal.getReviewQueue().length;
-  const openRequestCount = portal.clientWorkflow.requests.filter(
-    (request) => request.status !== "resolved" && request.status !== "closed",
-  ).length;
+  const backendMode = hasApiBaseUrl();
+  const [liveReviewCount, setLiveReviewCount] = useState<number | null>(null);
+  const [liveOpenRequestCount, setLiveOpenRequestCount] = useState<number | null>(null);
+  const reviewCount = liveReviewCount ?? portal.getReviewQueue().length;
+  const openRequestCount =
+    liveOpenRequestCount ??
+    portal.clientWorkflow.requests.filter(
+      (request) => request.status !== "resolved" && request.status !== "closed",
+    ).length;
+
+  useEffect(() => {
+    if (!backendMode) {
+      return;
+    }
+
+    void (async () => {
+      try {
+        const [reviewItems, requestItems] = await Promise.all([
+          apiGetJson<unknown[]>("/api/review-queue"),
+          apiGetJson<Array<{ status?: string }>>("/api/requests"),
+        ]);
+
+        setLiveReviewCount(reviewItems.length);
+        setLiveOpenRequestCount(
+          requestItems.filter((request) => {
+            const normalized = request.status?.trim().toLowerCase();
+            return normalized !== "resolved" && normalized !== "closed";
+          }).length,
+        );
+      } catch {
+        setLiveReviewCount(null);
+        setLiveOpenRequestCount(null);
+      }
+    })();
+  }, [backendMode]);
 
 // Render output: this is the visual state users interact with.
   return (

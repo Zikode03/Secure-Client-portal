@@ -9,6 +9,7 @@ import { usePortal } from "../../app/portal";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
+import { ApiError, apiGetBlob, apiGetJson, apiPostJson, hasApiBaseUrl } from "../../services/apiClient";
 import type {
   AuditTrailEntry,
   DocumentComment,
@@ -135,6 +136,165 @@ function queueDueMeta(item: ReviewQueueItem) {
     label: formatDateLabel(dueDate),
     helper: `Due in ${remainingDays} days`,
     helperClass: "text-slate-500",
+  };
+}
+
+interface BackendReviewQueueItem {
+  documentId: string;
+  clientId: string;
+  clientName: string;
+  monthlyPackId: string;
+  year: number;
+  month: number;
+  documentSlotId?: string | null;
+  slotLabel?: string | null;
+  documentName: string;
+  documentCategory: string;
+  documentStatus: string;
+  slotStatus?: string | null;
+  reviewPriority: string;
+  reviewAgeDays: number;
+  currentVersionNumber: number;
+  uploadedAtUtc: string;
+  submittedAtUtc?: string | null;
+  rejectionReason?: string | null;
+}
+
+interface BackendReviewQueueComment {
+  id: string;
+  documentId: string;
+  authorUserId: string;
+  authorRole: string;
+  message: string;
+  createdAtUtc: string;
+}
+
+interface BackendReviewQueueDecision {
+  id: string;
+  documentId: string;
+  decision: string;
+  reviewerUserId: string;
+  reviewerRole: string;
+  reason?: string | null;
+  internalNote?: string | null;
+  decidedAtUtc: string;
+}
+
+interface BackendReviewQueueVersion {
+  id: string;
+  documentId: string;
+  versionNumber: number;
+  name: string;
+  originalFileName: string;
+  storedFileName: string;
+  fileType: string;
+  sizeBytes: number;
+  isCurrent: boolean;
+  uploadedByUserId: string;
+  createdAtUtc: string;
+}
+
+interface BackendReviewWorkspace {
+  item: BackendReviewQueueItem;
+  downloadUrl: string;
+  versions: BackendReviewQueueVersion[];
+  comments: BackendReviewQueueComment[];
+  reviewHistory: BackendReviewQueueDecision[];
+}
+
+function monthLabelFromParts(year: number, month: number) {
+  return new Intl.DateTimeFormat("en-ZA", { month: "long", year: "numeric" }).format(
+    new Date(Date.UTC(year, Math.max(0, month - 1), 1)),
+  );
+}
+
+function mapBackendStatus(status: string): DocumentRecord["status"] {
+  switch (status.trim().toLowerCase()) {
+    case "under_review":
+      return "under_review";
+    case "accepted":
+      return "accepted";
+    case "rejected":
+      return "rejected";
+    case "filed":
+      return "filed";
+    default:
+      return "uploaded";
+  }
+}
+
+function mapBackendComment(comment: BackendReviewQueueComment): DocumentComment {
+  const role = comment.authorRole?.trim().toLowerCase() === "client" ? "client" : "accountant";
+  return {
+    id: comment.id,
+    author: role === "client" ? "Client user" : "Accountant reviewer",
+    role,
+    message: comment.message,
+    createdAt: comment.createdAtUtc,
+  };
+}
+
+function mapBackendQueueItem(
+  item: BackendReviewQueueItem,
+  currentUserName?: string,
+): ReviewQueueItem {
+  return {
+    id: item.documentId,
+    clientName: item.clientName,
+    documentType: item.slotLabel || item.documentCategory,
+    monthLabel: monthLabelFromParts(item.year, item.month),
+    submittedAt: item.submittedAtUtc || item.uploadedAtUtc,
+    status: mapBackendStatus(item.documentStatus),
+    assignedAccountant: currentUserName || "Assigned accountant",
+  };
+}
+
+function mapBackendWorkspace(
+  workspace: BackendReviewWorkspace,
+  fileUrl?: { url: string; mimeType: string },
+): DocumentRecord {
+  const latestDecision = workspace.reviewHistory[workspace.reviewHistory.length - 1];
+  const auditTrail: AuditTrailEntry[] = [
+    ...workspace.versions.map((version) => ({
+      id: `version-${version.id}`,
+      status: `Version ${version.versionNumber} uploaded`,
+      actor: "Portal user",
+      timestamp: version.createdAtUtc,
+      note: `${version.originalFileName} was stored as version ${version.versionNumber}.`,
+    })),
+    ...workspace.reviewHistory.map((decision) => ({
+      id: `decision-${decision.id}`,
+      status: decision.decision,
+      actor: decision.reviewerRole === "accountant" ? "Accountant reviewer" : "Reviewer",
+      timestamp: decision.decidedAtUtc,
+      note: decision.reason || decision.internalNote || `Decision recorded: ${decision.decision}.`,
+    })),
+  ];
+
+  return {
+    id: workspace.item.documentId,
+    clientId: workspace.item.clientId,
+    clientName: workspace.item.clientName,
+    documentType: workspace.item.slotLabel || workspace.item.documentCategory,
+    fileName: workspace.item.documentName,
+    monthLabel: monthLabelFromParts(workspace.item.year, workspace.item.month),
+    description: `${workspace.item.documentCategory} review workspace record.`,
+    status: mapBackendStatus(workspace.item.documentStatus),
+    uploadedBy: "Client user",
+    uploadedAt: workspace.item.uploadedAtUtc,
+    reviewedBy: latestDecision ? "Accountant reviewer" : undefined,
+    reviewedAt: latestDecision?.decidedAtUtc,
+    sizeLabel: `${workspace.versions.length > 0 ? workspace.versions[workspace.versions.length - 1].sizeBytes : 0} B`,
+    keywordTags: [workspace.item.documentCategory, workspace.item.documentName],
+    rejectionReason: workspace.item.rejectionReason ?? undefined,
+    comments: workspace.comments.map(mapBackendComment),
+    auditTrail,
+    fileDataUrl: fileUrl?.url,
+    fileMimeType:
+      fileUrl?.mimeType ??
+      (workspace.versions.length > 0
+        ? workspace.versions[workspace.versions.length - 1].fileType
+        : undefined),
   };
 }
 
@@ -676,10 +836,20 @@ export function AccountantReviewPage() {
   const { user } = useAuth();
   const portal = usePortal();
   const navigate = useNavigate();
+  const backendMode = hasApiBaseUrl();
   const workspaceRef = useRef<HTMLDivElement | null>(null);
+  const [liveQueueItems, setLiveQueueItems] = useState<ReviewQueueItem[] | null>(null);
+  const [liveWorkspaceByDocumentId, setLiveWorkspaceByDocumentId] = useState<Record<string, BackendReviewWorkspace>>({});
+  const [liveFileUrlsByDocumentId, setLiveFileUrlsByDocumentId] = useState<
+    Record<string, { url: string; mimeType: string }>
+  >({});
+  const [workspaceCommentDraft, setWorkspaceCommentDraft] = useState("");
   const queue = useMemo(
-    () => getScopedReviewQueue(user, portal.getReviewQueue(), portal.adminClients),
-    [portal, user],
+    () =>
+      backendMode && liveQueueItems
+        ? liveQueueItems
+        : getScopedReviewQueue(user, portal.getReviewQueue(), portal.adminClients),
+    [backendMode, liveQueueItems, portal, user],
   );
 
 // Local UI state: keeps track of what the user is seeing or editing right now.
@@ -700,15 +870,54 @@ export function AccountantReviewPage() {
   >({});
   const rowActionMenuRef = useRef<HTMLDivElement | null>(null);
 
+  useEffect(() => {
+    if (!backendMode) {
+      return;
+    }
+
+    let isActive = true;
+
+    async function loadQueue() {
+      try {
+        const items = await apiGetJson<BackendReviewQueueItem[]>("/api/review-queue");
+        if (!isActive) {
+          return;
+        }
+
+        setLiveQueueItems(items.map((item) => mapBackendQueueItem(item, user?.fullName)));
+      } catch (error) {
+        if (!isActive) {
+          return;
+        }
+
+        setReviewMessage(
+          error instanceof ApiError ? error.message : "Could not load the live review queue.",
+        );
+      }
+    }
+
+    void loadQueue();
+
+    return () => {
+      isActive = false;
+    };
+  }, [backendMode, user?.fullName]);
+
   const queueRows = useMemo(
     () =>
       queue.map((item) => ({
         item,
-        record: portal.getReviewRecord(item.id),
+        record:
+          backendMode && liveWorkspaceByDocumentId[item.id]
+            ? mapBackendWorkspace(
+                liveWorkspaceByDocumentId[item.id],
+                liveFileUrlsByDocumentId[item.id],
+              )
+            : portal.getReviewRecord(item.id),
         statusMeta: queueStatusMeta(item),
         dueMeta: queueDueMeta(item),
       })),
-    [portal, queue],
+    [backendMode, liveFileUrlsByDocumentId, liveWorkspaceByDocumentId, portal, queue],
   );
 
   const clientOptions = useMemo(
@@ -917,6 +1126,61 @@ export function AccountantReviewPage() {
   }, [activeDocument?.id, activeDocument]);
 
   useEffect(() => {
+    if (!backendMode || !viewerOpen || !selectedRecordId || liveWorkspaceByDocumentId[selectedRecordId]) {
+      return;
+    }
+
+    let isActive = true;
+
+    async function loadWorkspace() {
+      try {
+        const workspace = await apiGetJson<BackendReviewWorkspace>(
+          `/api/review-queue/${encodeURIComponent(selectedRecordId)}`,
+        );
+        if (!isActive) {
+          return;
+        }
+
+        setLiveWorkspaceByDocumentId((current) => ({
+          ...current,
+          [selectedRecordId]: workspace,
+        }));
+
+        try {
+          const { blob, contentType } = await apiGetBlob(
+            `/api/documents/${encodeURIComponent(selectedRecordId)}/download`,
+          );
+          if (!isActive) {
+            return;
+          }
+
+          const url = URL.createObjectURL(blob);
+          setLiveFileUrlsByDocumentId((current) => ({
+            ...current,
+            [selectedRecordId]: { url, mimeType: contentType },
+          }));
+        } catch {
+          // Keep preview shell available when file download cannot be embedded.
+        }
+      } catch (error) {
+        if (!isActive) {
+          return;
+        }
+
+        setReviewMessage(
+          error instanceof ApiError ? error.message : "Could not load the review workspace.",
+        );
+      }
+    }
+
+    void loadWorkspace();
+
+    return () => {
+      isActive = false;
+    };
+  }, [backendMode, liveWorkspaceByDocumentId, selectedRecordId, viewerOpen]);
+
+  useEffect(() => {
     if (!viewerOpen || !activeDocument || !workspaceRef.current) {
       return;
     }
@@ -992,6 +1256,117 @@ export function AccountantReviewPage() {
       timestamp: viewedAt,
       note: "Opened the document review workspace.",
     });
+  }
+
+  async function refreshBackendWorkspace(documentId: string) {
+    if (!backendMode) {
+      return;
+    }
+
+    const [queueItems, workspace] = await Promise.all([
+      apiGetJson<BackendReviewQueueItem[]>("/api/review-queue"),
+      apiGetJson<BackendReviewWorkspace>(`/api/review-queue/${encodeURIComponent(documentId)}`),
+    ]);
+
+    setLiveQueueItems(queueItems.map((item) => mapBackendQueueItem(item, user?.fullName)));
+    setLiveWorkspaceByDocumentId((current) => ({
+      ...current,
+      [documentId]: workspace,
+    }));
+  }
+
+  function handleWorkspaceActionSuccess(message: string) {
+    setReviewMessage(message);
+    setWorkspaceCommentDraft("");
+  }
+
+  async function approveActiveDocument() {
+    if (!backendMode || !activeDocument) {
+      return;
+    }
+
+    try {
+      await apiPostJson(`/api/review-queue/${encodeURIComponent(activeDocument.id)}/review`, {
+        decision: "accepted",
+        reason: null,
+        internalNote: null,
+      });
+      await refreshBackendWorkspace(activeDocument.id);
+      handleWorkspaceActionSuccess("Document approved and queue refreshed.");
+    } catch (error) {
+      setReviewMessage(error instanceof ApiError ? error.message : "Approval failed.");
+    }
+  }
+
+  async function rejectActiveDocument() {
+    if (!backendMode || !activeDocument) {
+      return;
+    }
+
+    const reason = window.prompt("Enter the rejection reason for the client.");
+    if (!reason?.trim()) {
+      return;
+    }
+
+    try {
+      await apiPostJson(`/api/review-queue/${encodeURIComponent(activeDocument.id)}/review`, {
+        decision: "rejected",
+        reason: reason.trim(),
+        internalNote: null,
+      });
+      await refreshBackendWorkspace(activeDocument.id);
+      handleWorkspaceActionSuccess("Document rejected and queue refreshed.");
+    } catch (error) {
+      setReviewMessage(error instanceof ApiError ? error.message : "Rejection failed.");
+    }
+  }
+
+  async function requestReuploadForActiveDocument() {
+    if (!backendMode || !activeDocument) {
+      return;
+    }
+
+    const reason = window.prompt("Enter the re-upload request reason.");
+    if (!reason?.trim()) {
+      return;
+    }
+
+    try {
+      await apiPostJson(
+        `/api/review-queue/${encodeURIComponent(activeDocument.id)}/request-reupload`,
+        {
+          reason: reason.trim(),
+          internalNote: null,
+        },
+      );
+      await refreshBackendWorkspace(activeDocument.id);
+      handleWorkspaceActionSuccess("Re-upload request sent and queue refreshed.");
+    } catch (error) {
+      setReviewMessage(error instanceof ApiError ? error.message : "Request re-upload failed.");
+    }
+  }
+
+  async function addWorkspaceComment() {
+    if (!backendMode || !activeDocument) {
+      return;
+    }
+
+    const message = workspaceCommentDraft.trim();
+    if (!message) {
+      setReviewMessage("Write a comment before sending it.");
+      return;
+    }
+
+    try {
+      await apiPostJson(
+        `/api/review-queue/${encodeURIComponent(activeDocument.id)}/comments`,
+        { message },
+      );
+      await refreshBackendWorkspace(activeDocument.id);
+      handleWorkspaceActionSuccess("Comment added to the review workspace.");
+    } catch (error) {
+      setReviewMessage(error instanceof ApiError ? error.message : "Comment failed.");
+    }
   }
 
   function closeViewer() {
@@ -1758,6 +2133,35 @@ export function AccountantReviewPage() {
                           <span>Download</span>
                         </Button>
                       </div>
+                      {backendMode ? (
+                        <div className="grid gap-2">
+                          <Button
+                            className="h-10 rounded-xl px-3"
+                            onClick={() => void approveActiveDocument()}
+                            size="sm"
+                          >
+                            Approve
+                          </Button>
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            <Button
+                              className="h-10 rounded-xl px-3 text-rose-700"
+                              onClick={() => void rejectActiveDocument()}
+                              size="sm"
+                              variant="secondary"
+                            >
+                              Reject
+                            </Button>
+                            <Button
+                              className="h-10 rounded-xl px-3 text-amber-700"
+                              onClick={() => void requestReuploadForActiveDocument()}
+                              size="sm"
+                              variant="secondary"
+                            >
+                              Request re-upload
+                            </Button>
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                   </section>
 
@@ -1817,6 +2221,23 @@ export function AccountantReviewPage() {
                         />
                       )}
                     </div>
+                    {backendMode ? (
+                      <div className="mt-4 space-y-3 border-t border-slate-200 pt-4">
+                        <textarea
+                          className="min-h-[96px] w-full rounded-[1rem] border border-slate-200 px-3 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-300 focus:ring-4 focus:ring-brand-100"
+                          onChange={(event) => setWorkspaceCommentDraft(event.target.value)}
+                          placeholder="Add a comment to the live review workspace..."
+                          value={workspaceCommentDraft}
+                        />
+                        <Button
+                          className="h-10 rounded-xl px-4"
+                          onClick={() => void addWorkspaceComment()}
+                          size="sm"
+                        >
+                          Add comment
+                        </Button>
+                      </div>
+                    ) : null}
                   </section>
                 </div>
               </div>

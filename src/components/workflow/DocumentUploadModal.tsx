@@ -302,6 +302,7 @@ export function DocumentUploadModal({
       year: Number(year),
       description,
       expiryDate: expiryDate || undefined,
+      file: selectedFile,
       fileDataUrl,
       fileMimeType: selectedFile.type,
     });

@@ -2,15 +2,22 @@
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
 import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
+import { ApiError, apiGetJson, hasApiBaseUrl } from "../../services/apiClient";
+import { recalculatePack } from "../../services/workflowEngine";
 import type {
+  ComplianceAuditEvent,
+  ComplianceCategoryId,
   ComplianceCentreData,
   ComplianceDocumentRecord,
+  MonthlyDocumentSlot,
+  MonthlyPack,
   Tone,
 } from "../../types/portal";
 import { cn } from "../../utils/cn";
@@ -23,6 +30,26 @@ const navyCardClass =
 const navyInnerCardClass =
   "border-[#d7e1ef] bg-white shadow-[0_10px_22px_rgba(6,32,68,0.06)]";
 const navySoftPanelClass = "border-[#d7e1ef] bg-[#eef4fb]";
+const liveComplianceRules = [
+  "Compliance records remain scoped to the signed-in client and assigned accounting team.",
+  "Expired, expiring, missing, and rejected records stay visible until an accepted replacement is reviewed.",
+  "Compliance alerts and monthly pack milestones are surfaced together so action can happen from one workspace.",
+  "Every compliance item keeps its latest review and audit context visible in the portal snapshot.",
+];
+const monthNames = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+] as const;
 
 // Shared shape notes: these types keep UI and data contracts aligned.
 type FeedbackNotice = {
@@ -30,6 +57,93 @@ type FeedbackNotice = {
   title: string;
   message: string;
 };
+
+interface BackendComplianceItemRecord {
+  id: string;
+  clientId: string;
+  categoryId?: string | null;
+  categoryName?: string | null;
+  categoryCode?: string | null;
+  name: string;
+  status: string;
+  ownerUserId?: string | null;
+  ownerName?: string | null;
+  requiredDocumentCategory?: string | null;
+  linkedDocumentId?: string | null;
+  riskLevel?: string | null;
+  dueDateUtc?: string | null;
+  expiryDateUtc?: string | null;
+  alertLevel?: string | null;
+  createdAtUtc: string;
+  updatedAtUtc: string;
+}
+
+interface BackendComplianceAlertRecord {
+  complianceItemId: string;
+  clientId: string;
+  name: string;
+  categoryName?: string | null;
+  status: string;
+  riskLevel: string;
+  expiryDateUtc?: string | null;
+  dueDateUtc?: string | null;
+  ownerName?: string | null;
+  alertLevel?: string | null;
+  message: string;
+}
+
+interface BackendComplianceSummaryClientRecord {
+  clientId: string;
+  total: number;
+  valid: number;
+  expiringSoon: number;
+  expired: number;
+  missing: number;
+  pending: number;
+  rejected: number;
+  criticalRisk: number;
+  highRisk: number;
+  complianceScore: number;
+}
+
+interface BackendComplianceSummaryResponse {
+  generatedAtUtc: string;
+  clients: BackendComplianceSummaryClientRecord[];
+  totals: {
+    totalItems: number;
+    valid: number;
+    expiringSoon: number;
+    expired: number;
+    missing: number;
+    criticalRisk: number;
+    highRisk: number;
+  };
+}
+
+interface BackendMonthlyPackRecord {
+  id: string;
+  clientId: string;
+  year: number;
+  month: number;
+  status: string;
+  createdAtUtc: string;
+  updatedAtUtc: string;
+}
+
+interface BackendDocumentSlotRecord {
+  id: string;
+  monthlyPackId: string;
+  clientId: string;
+  category: string;
+  label: string;
+  isRequired: boolean;
+  status: string;
+  canCurrentlyBeSubmitted: boolean;
+  currentDocumentId?: string | null;
+  dueDateUtc?: string | null;
+  submittedAtUtc?: string | null;
+  rejectionReason?: string | null;
+}
 
 type PriorityKind = "expired" | "expiring" | "missing";
 type ComplianceCalendarEventCategory =
@@ -244,6 +358,325 @@ function MoreIcon() {
       <circle cx="19" cy="12" r="1.7" />
     </svg>
   );
+}
+
+function monthLabelFromParts(year: number, month: number) {
+  return `${monthNames[Math.min(Math.max(month - 1, 0), 11)]} ${year}`;
+}
+
+function buildDefaultDueDate(year: number, month: number) {
+  return new Date(Date.UTC(year, month, 7, 16, 0, 0)).toISOString();
+}
+
+function getDeadlineStatus(dueDate: string): MonthlyPack["deadlineStatus"] {
+  const remainingDays = Math.ceil(
+    (new Date(dueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+  );
+
+  if (remainingDays < 0) {
+    return "late";
+  }
+
+  if (remainingDays <= 3) {
+    return "due";
+  }
+
+  return "on_track";
+}
+
+function mapBackendSlotStatus(status: string): MonthlyDocumentSlot["status"] {
+  switch (status.trim().toLowerCase()) {
+    case "approved":
+      return "accepted";
+    case "submitted":
+      return "under_review";
+    case "rejected":
+      return "rejected";
+    case "uploaded":
+      return "uploaded";
+    case "pending":
+      return "pending";
+    case "partial":
+      return "partial";
+    case "not_applicable":
+      return "accepted";
+    default:
+      return "missing";
+  }
+}
+
+function mapBackendPackSubmissionStatus(status: string): MonthlyPack["submissionStatus"] {
+  switch (status.trim().toLowerCase()) {
+    case "submitted":
+      return "under_accountant_review";
+    case "approved":
+      return "complete";
+    default:
+      return "open";
+  }
+}
+
+function slotProgress(status: MonthlyDocumentSlot["status"]) {
+  switch (status) {
+    case "accepted":
+    case "filed":
+      return 100;
+    case "under_review":
+      return 82;
+    case "uploaded":
+      return 65;
+    case "partial":
+      return 40;
+    case "pending":
+      return 25;
+    case "rejected":
+      return 35;
+    default:
+      return 0;
+  }
+}
+
+function normalizeComplianceCategoryId(name?: string | null, code?: string | null): ComplianceCategoryId {
+  const value = `${name ?? ""} ${code ?? ""}`.trim().toLowerCase();
+
+  if (value.includes("tax") || value.includes("vat") || value.includes("sars")) {
+    return "tax_compliance";
+  }
+
+  if (value.includes("employment") || value.includes("payroll") || value.includes("uif") || value.includes("paye")) {
+    return "employment_payroll_compliance";
+  }
+
+  if (value.includes("financial") || value.includes("bank") || value.includes("invoice")) {
+    return "financial_records_compliance";
+  }
+
+  if (value.includes("insurance")) {
+    return "insurance_compliance";
+  }
+
+  if (value.includes("tender") || value.includes("supplier")) {
+    return "tender_supplier_compliance";
+  }
+
+  if (value.includes("popia") || value.includes("data")) {
+    return "popia_data_protection_compliance";
+  }
+
+  if (value.includes("regulatory") || value.includes("industry") || value.includes("licence")) {
+    return "regulatory_industry_compliance";
+  }
+
+  return "company_registration_compliance";
+}
+
+function getComplianceCategoryDescription(categoryId: ComplianceCategoryId) {
+  switch (categoryId) {
+    case "tax_compliance":
+      return "SARS filings, registrations, and tax support records.";
+    case "financial_records_compliance":
+      return "Financial control records used to support audit and filing readiness.";
+    case "employment_payroll_compliance":
+      return "Employment, payroll, and labour-related compliance support.";
+    case "regulatory_industry_compliance":
+      return "Operational licences and industry-specific regulatory records.";
+    case "insurance_compliance":
+      return "Insurance certificates and current coverage evidence.";
+    case "tender_supplier_compliance":
+      return "Supplier onboarding and tender support records.";
+    case "popia_data_protection_compliance":
+      return "Privacy, data protection, and information governance records.";
+    default:
+      return "Company governance and statutory registration records.";
+  }
+}
+
+function getComplianceCategoryTitle(categoryId: ComplianceCategoryId) {
+  switch (categoryId) {
+    case "tax_compliance":
+      return "Tax Compliance";
+    case "financial_records_compliance":
+      return "Financial Records Compliance";
+    case "employment_payroll_compliance":
+      return "Employment & Payroll Compliance";
+    case "regulatory_industry_compliance":
+      return "Regulatory / Industry Compliance";
+    case "insurance_compliance":
+      return "Insurance Compliance";
+    case "tender_supplier_compliance":
+      return "Tender & Supplier Compliance";
+    case "popia_data_protection_compliance":
+      return "POPIA & Data Protection";
+    default:
+      return "Company Registration Compliance";
+  }
+}
+
+function mapBackendComplianceStatus(status: string): ComplianceDocumentRecord["status"] {
+  switch (status.trim().toLowerCase()) {
+    case "valid":
+      return "valid";
+    case "expired":
+      return "expired";
+    case "missing":
+      return "missing";
+    case "rejected":
+      return "rejected";
+    case "expiring_soon":
+      return "expiring_soon";
+    case "under_review":
+      return "under_review";
+    default:
+      return "compliant";
+  }
+}
+
+function buildComplianceAuditTrail(item: BackendComplianceItemRecord, detail: string, actor: string): ComplianceAuditEvent[] {
+  const trail: ComplianceAuditEvent[] = [
+    {
+      id: `${item.id}-created`,
+      action: "uploaded",
+      actor,
+      timestamp: item.createdAtUtc,
+      detail: "Compliance record added to the controlled register.",
+      complianceItemId: item.id,
+    },
+  ];
+
+  if (item.updatedAtUtc !== item.createdAtUtc) {
+    trail.unshift({
+      id: `${item.id}-updated`,
+      action:
+        item.status === "rejected"
+          ? "rejected"
+          : item.status === "valid"
+            ? "approved"
+            : "reviewed",
+      actor,
+      timestamp: item.updatedAtUtc,
+      detail,
+      complianceItemId: item.id,
+    });
+  }
+
+  return trail;
+}
+
+function buildLiveComplianceCentreData(
+  items: BackendComplianceItemRecord[],
+  alerts: BackendComplianceAlertRecord[],
+  summary: BackendComplianceSummaryResponse,
+  userCompany: string | undefined,
+): ComplianceCentreData {
+  const alertByItemId = new Map(alerts.map((alert) => [alert.complianceItemId, alert]));
+
+  const documents: ComplianceDocumentRecord[] = items.map((item) => {
+    const categoryId = normalizeComplianceCategoryId(item.categoryName, item.categoryCode);
+    const status = mapBackendComplianceStatus(item.status);
+    const alert = alertByItemId.get(item.id);
+    const detail =
+      alert?.message ??
+      (status === "missing"
+        ? "This compliance record is still missing."
+        : status === "expired"
+          ? "This compliance record has expired and needs a replacement."
+          : status === "expiring_soon"
+            ? "This compliance record is approaching expiry."
+            : "This compliance record is currently in good standing.");
+
+    return {
+      id: item.id,
+      categoryId,
+      categoryName: item.categoryName ?? getComplianceCategoryTitle(categoryId),
+      name: item.name,
+      simpleLabel: getClientFacingComplianceLabel(item.name),
+      description: item.requiredDocumentCategory?.trim() || detail,
+      clientId: item.clientId,
+      clientName: userCompany ?? "Client",
+      owner: item.ownerName ? "accountant" : "client",
+      required: true,
+      status,
+      issueDate: item.createdAtUtc,
+      expiryDate: item.expiryDateUtc ?? item.dueDateUtc ?? undefined,
+      lastReviewedDate: item.updatedAtUtc,
+      reviewedBy: item.ownerName ?? undefined,
+      uploadedBy: item.ownerName ?? undefined,
+      versionCount: 1,
+      latestVersionId: item.linkedDocumentId ?? undefined,
+      reminderSchedule: [],
+      notes: detail,
+      auditTrail: buildComplianceAuditTrail(item, detail, item.ownerName ?? "System"),
+      versions: [],
+      monthlyPeriod: undefined,
+      requestIds: [],
+      category: categoryId,
+      reminderDates: [],
+      isLocked: true,
+      versionHistory: [],
+      storageLabel: "Encrypted vault",
+    };
+  });
+
+  const expiredDocuments = documents.filter((item) => item.status === "expired");
+  const expiringDocuments = documents.filter((item) => item.status === "expiring_soon" || item.status === "expiring");
+  const missingRequiredDocuments = documents.filter((item) => item.status === "missing" || item.status === "rejected");
+
+  const categoryMap: Record<HealthMapCategoryId, ComplianceCategoryId> = {
+    tax: "tax_compliance",
+    company: "company_registration_compliance",
+    statutory: "regulatory_industry_compliance",
+    financial: "financial_records_compliance",
+    employment: "employment_payroll_compliance",
+  };
+
+  const categoryGroups = healthCategoryMeta
+    .map((meta) => {
+      const categoryDocuments = documents.filter((item) => mapDocumentToHealthCategory(item) === meta.id);
+      const total = categoryDocuments.length;
+      const compliantCount = categoryDocuments.filter((item) => item.status === "valid" || item.status === "compliant").length;
+      const expiringCount = categoryDocuments.filter((item) => item.status === "expiring" || item.status === "expiring_soon").length;
+      const expiredCount = categoryDocuments.filter((item) => item.status === "expired").length;
+      const missingCount = categoryDocuments.filter((item) => item.status === "missing" || item.status === "rejected").length;
+      const categoryId = categoryMap[meta.id];
+
+      return {
+        id: categoryId,
+        name: meta.title,
+        title: meta.title,
+        description: getComplianceCategoryDescription(categoryId),
+        complianceScore: total === 0 ? 0 : Math.round((compliantCount / total) * 100),
+        totalRequiredItems: total,
+        compliantCount,
+        missingCount,
+        expiringCount,
+        expiredCount,
+        documents: categoryDocuments,
+      };
+    })
+    .filter((group) => group.documents.length > 0);
+
+  const clientSummary = summary.clients[0];
+  const auditTrail = documents
+    .flatMap((item) => item.auditTrail)
+    .sort((left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime());
+
+  return {
+    snapshotDate: summary.generatedAtUtc,
+    summaryMetrics: [],
+    overallScore: clientSummary?.complianceScore ?? 0,
+    portfolioCompliancePercentage: clientSummary?.complianceScore ?? 0,
+    expiredCount: clientSummary?.expired ?? expiredDocuments.length,
+    expiringCount: clientSummary?.expiringSoon ?? expiringDocuments.length,
+    missingRequiredCount: clientSummary?.missing ?? missingRequiredDocuments.length,
+    expiredDocuments,
+    expiringDocuments,
+    missingRequiredDocuments,
+    categoryGroups,
+    auditTrail,
+    secureRules: liveComplianceRules,
+    reportGeneratedAt: summary.generatedAtUtc,
+    retentionNote: "Historic compliance evidence remains retained for audit visibility while valid replacements are reviewed.",
+  };
 }
 
 function daysFromSnapshot(dateValue: string) {
@@ -715,40 +1148,158 @@ function PrioritySection({
 }
 
 export function ClientComplianceCentrePage() {
+  const { user } = useAuth();
   const { clientComplianceCentre: data, clientWorkflow } = usePortal();
   const [feedbackNotice, setFeedbackNotice] = useState<FeedbackNotice | null>(null);
+  const [liveComplianceData, setLiveComplianceData] = useState<ComplianceCentreData | null>(null);
+  const [liveMonthPack, setLiveMonthPack] = useState<MonthlyPack | null>(null);
+  const [complianceNotice, setComplianceNotice] = useState<FeedbackNotice | null>(null);
   const [priorityFilter, setPriorityFilter] = useState<"all" | PriorityKind>("all");
   const [selectedCalendarDay, setSelectedCalendarDay] = useState<number>(7);
   const [calendarFilter, setCalendarFilter] = useState<ComplianceCalendarStatusFilter>("all");
+  const backendMode = hasApiBaseUrl();
+  const backendClientId = user?.clientIds[0] ?? null;
 
-  const insightCards = useMemo(() => buildInsightCards(data), [data]);
-  const healthMap = useMemo(() => buildHealthMap(data), [data]);
+  useEffect(() => {
+    if (!backendMode || !backendClientId) {
+      return;
+    }
+
+    let isMounted = true;
+    const clientId = backendClientId;
+
+    async function loadComplianceCentre() {
+      try {
+        const [items, alerts, summary, packs] = await Promise.all([
+          apiGetJson<BackendComplianceItemRecord[]>(
+            `/api/compliance/items?clientId=${encodeURIComponent(clientId)}`,
+          ),
+          apiGetJson<BackendComplianceAlertRecord[]>(
+            `/api/compliance/alerts?clientId=${encodeURIComponent(clientId)}`,
+          ),
+          apiGetJson<BackendComplianceSummaryResponse>(
+            `/api/compliance/reports/summary?clientId=${encodeURIComponent(clientId)}`,
+          ),
+          apiGetJson<BackendMonthlyPackRecord[]>(
+            `/api/monthly-packs?clientId=${encodeURIComponent(clientId)}`,
+          ),
+        ]);
+
+        const liveData = buildLiveComplianceCentreData(items, alerts, summary, user?.company);
+        const currentPack = [...packs]
+          .sort((left, right) => {
+            if (left.year !== right.year) {
+              return right.year - left.year;
+            }
+
+            return right.month - left.month;
+          })[0];
+
+        let mappedPack: MonthlyPack | null = null;
+
+        if (currentPack) {
+          const slots = await apiGetJson<BackendDocumentSlotRecord[]>(
+            `/api/document-slots/${encodeURIComponent(currentPack.id)}`,
+          );
+          const monthLabel = monthLabelFromParts(currentPack.year, currentPack.month);
+          const dueDate = buildDefaultDueDate(currentPack.year, currentPack.month);
+          const mappedSlots: MonthlyDocumentSlot[] = slots.map((slot) => {
+            const mappedStatus = mapBackendSlotStatus(slot.status);
+
+            return {
+              id: slot.id,
+              documentType: slot.label,
+              description: slot.label,
+              month: monthLabelFromParts(currentPack.year, currentPack.month).split(" ")[0] ?? monthLabel,
+              year: currentPack.year,
+              acceptedFiles: [],
+              dueDate: slot.dueDateUtc ?? dueDate,
+              status: mappedStatus,
+              progress: slotProgress(mappedStatus),
+              autoName: slot.label,
+              isRequired: slot.isRequired,
+              supportsExpiryDate: false,
+              lastSubmission: slot.submittedAtUtc ?? undefined,
+              rejectionReason: slot.rejectionReason ?? undefined,
+            };
+          });
+
+          mappedPack = recalculatePack({
+            monthLabel,
+            dueDate,
+            deadlineStatus: getDeadlineStatus(dueDate),
+            progressPercent: 0,
+            completedCount: 0,
+            totalCount: 0,
+            canComplete: false,
+            completionMessage: "",
+            submissionStatus: mapBackendPackSubmissionStatus(currentPack.status),
+            submittedAt: undefined,
+            slots: mappedSlots,
+          });
+        }
+
+        if (!isMounted) {
+          return;
+        }
+
+        setLiveComplianceData(liveData);
+        setLiveMonthPack(mappedPack);
+        setComplianceNotice(null);
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        setComplianceNotice({
+          tone: "warning",
+          title: "Live compliance view unavailable",
+          message:
+            error instanceof ApiError
+              ? error.message
+              : "The compliance centre could not load the live backend data, so the seeded workspace view is still shown.",
+        });
+      }
+    }
+
+    void loadComplianceCentre();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [backendClientId, backendMode, user?.company]);
+
+  const effectiveData = backendMode && liveComplianceData ? liveComplianceData : data;
+  const effectiveMonthPack = backendMode && liveMonthPack ? liveMonthPack : clientWorkflow.monthPack;
+
+  const insightCards = useMemo(() => buildInsightCards(effectiveData), [effectiveData]);
+  const healthMap = useMemo(() => buildHealthMap(effectiveData), [effectiveData]);
   const latestAuditDate = useMemo(() => {
-    if (!data.auditTrail[0]) {
+    if (!effectiveData.auditTrail[0]) {
       return "No audit history";
     }
 
-    const latest = [...data.auditTrail].sort(
+    const latest = [...effectiveData.auditTrail].sort(
       (left, right) => new Date(right.timestamp).getTime() - new Date(left.timestamp).getTime(),
     )[0];
     return formatDateLabel(latest.timestamp);
-  }, [data.auditTrail]);
+  }, [effectiveData.auditTrail]);
   const prioritySections = useMemo(
     () => [
       {
         id: "expired" as const,
-        count: data.expiredDocuments.length,
+        count: effectiveData.expiredDocuments.length,
         icon: <AlertIcon />,
-        items: data.expiredDocuments,
+        items: effectiveData.expiredDocuments,
         kind: "expired" as const,
         title: "Expired Documents",
         titleClassName: "text-rose-600",
       },
       {
         id: "expiring" as const,
-        count: data.expiringDocuments.length,
+        count: effectiveData.expiringDocuments.length,
         icon: <ClockIcon />,
-        items: [...data.expiringDocuments].sort(
+        items: [...effectiveData.expiringDocuments].sort(
           (left, right) => daysFromSnapshot(getSafeExpiryDate(left)) - daysFromSnapshot(getSafeExpiryDate(right)),
         ),
         kind: "expiring" as const,
@@ -757,15 +1308,15 @@ export function ClientComplianceCentrePage() {
       },
       {
         id: "missing" as const,
-        count: data.missingRequiredDocuments.length,
+        count: effectiveData.missingRequiredDocuments.length,
         icon: <DocumentIcon />,
-        items: data.missingRequiredDocuments,
+        items: effectiveData.missingRequiredDocuments,
         kind: "missing" as const,
         title: "Missing Required",
         titleClassName: "text-slate-600",
       },
     ],
-    [data],
+    [effectiveData],
   );
   const visiblePrioritySections = useMemo(
     () =>
@@ -775,8 +1326,8 @@ export function ClientComplianceCentrePage() {
     [priorityFilter, prioritySections],
   );
   const allComplianceDocuments = useMemo(
-    () => data.categoryGroups.flatMap((group) => group.documents),
-    [data.categoryGroups],
+    () => effectiveData.categoryGroups.flatMap((group) => group.documents),
+    [effectiveData.categoryGroups],
   );
   const calendarEvents = useMemo(() => {
     const events: ComplianceCalendarEvent[] = [];
@@ -797,7 +1348,7 @@ export function ClientComplianceCentrePage() {
       });
     });
 
-    [...data.expiredDocuments, ...data.expiringDocuments].forEach((item) => {
+    [...effectiveData.expiredDocuments, ...effectiveData.expiringDocuments].forEach((item) => {
       events.push({
         id: `expiry-${item.id}`,
         title: `${getClientFacingComplianceLabel(item.name)} Expiry`,
@@ -813,13 +1364,13 @@ export function ClientComplianceCentrePage() {
       });
     });
 
-    data.missingRequiredDocuments.forEach((item) => {
+    effectiveData.missingRequiredDocuments.forEach((item) => {
       events.push({
         id: `request-${item.id}`,
         title: `Upload ${getClientFacingComplianceLabel(item.name)}`,
         category: "request",
         status: "due-soon",
-        date: data.snapshotDate,
+        date: effectiveData.snapshotDate,
         description: item.notes,
         requestedBy: "Accountant",
         priority: "high",
@@ -837,29 +1388,29 @@ export function ClientComplianceCentrePage() {
         category: "monthly-pack",
         status: "completed",
         date: "2026-05-01T08:00:00.000Z",
-        description: `${clientWorkflow.monthPack.monthLabel} pack is available for document collection.`,
+        description: `${effectiveMonthPack.monthLabel} pack is available for document collection.`,
         actionLabel: "Open Monthly Pack",
       },
       {
         id: "monthly-pack-due",
         title: "Monthly Pack Review",
         category: "monthly-pack",
-        status: clientWorkflow.monthPack.submissionStatus === "complete" ? "completed" : "upcoming",
-        date: clientWorkflow.monthPack.dueDate,
-        description: clientWorkflow.monthPack.completionMessage,
-        priority: clientWorkflow.monthPack.canComplete ? "medium" : "high",
+        status: effectiveMonthPack.submissionStatus === "complete" ? "completed" : "upcoming",
+        date: effectiveMonthPack.dueDate,
+        description: effectiveMonthPack.completionMessage,
+        priority: effectiveMonthPack.canComplete ? "medium" : "high",
         actionLabel: "Open Monthly Pack",
       },
     );
 
-    if (clientWorkflow.monthPack.submittedAt) {
+    if (effectiveMonthPack.submittedAt) {
       events.push({
         id: "monthly-pack-submitted",
         title: "Pack Submitted",
         category: "monthly-pack",
         status: "completed",
-        date: clientWorkflow.monthPack.submittedAt,
-        description: `${clientWorkflow.monthPack.monthLabel} pack was submitted for accountant review.`,
+        date: effectiveMonthPack.submittedAt,
+        description: `${effectiveMonthPack.monthLabel} pack was submitted for accountant review.`,
         actionLabel: "Open Monthly Pack",
       });
     }
@@ -868,7 +1419,7 @@ export function ClientComplianceCentrePage() {
       const date = new Date(event.date);
       return date.getUTCFullYear() === 2026 && date.getUTCMonth() === 4;
     });
-  }, [allComplianceDocuments, clientWorkflow.monthPack, data]);
+  }, [allComplianceDocuments, effectiveData, effectiveMonthPack]);
   const visibleCalendarEvents = useMemo(
     () =>
       calendarFilter === "all"
@@ -984,7 +1535,7 @@ export function ClientComplianceCentrePage() {
               showNotice(
                 "warning",
                 "Compliance alerts queued",
-                `${data.expiredDocuments.length + data.missingRequiredDocuments.length} urgent compliance item${data.expiredDocuments.length + data.missingRequiredDocuments.length === 1 ? "" : "s"} currently need action.`,
+                `${effectiveData.expiredDocuments.length + effectiveData.missingRequiredDocuments.length} urgent compliance item${effectiveData.expiredDocuments.length + effectiveData.missingRequiredDocuments.length === 1 ? "" : "s"} currently need action.`,
               )
             }
             type="button"
@@ -1001,6 +1552,15 @@ export function ClientComplianceCentrePage() {
           onDismiss={() => setFeedbackNotice(null)}
           title={feedbackNotice.title}
           tone={feedbackNotice.tone}
+        />
+      ) : null}
+
+      {complianceNotice ? (
+        <FeedbackBanner
+          message={complianceNotice.message}
+          onDismiss={() => setComplianceNotice(null)}
+          title={complianceNotice.title}
+          tone={complianceNotice.tone}
         />
       ) : null}
 
@@ -1541,7 +2101,7 @@ export function ClientComplianceCentrePage() {
                 <div>
                   <p className="text-[1.12rem] font-semibold">Compliance Health Snapshot</p>
                   <div className="mt-3 flex flex-wrap items-center gap-4">
-                    <p className="text-[3.2rem] font-semibold leading-none tracking-tight">{data.overallScore}%</p>
+                    <p className="text-[3.2rem] font-semibold leading-none tracking-tight">{effectiveData.overallScore}%</p>
                     <span className="inline-flex items-center gap-2 rounded-full bg-emerald-400/16 px-4 py-2 text-[0.9rem] font-semibold text-emerald-100 ring-1 ring-emerald-300/15">
                       <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
                       Excellent Standing
@@ -1574,7 +2134,7 @@ export function ClientComplianceCentrePage() {
                 <div className="mt-3 divide-y divide-[#d7e1ef]">
                   {[
                     { label: "Compliance Areas", value: String(healthMap.length) },
-                    { label: "Document Types", value: String(data.categoryGroups.reduce((sum, group) => sum + group.documents.length, 0)) },
+                    { label: "Document Types", value: String(effectiveData.categoryGroups.reduce((sum, group) => sum + group.documents.length, 0)) },
                     { label: "Time Period Covered", value: "May 2025 - May 2026" },
                   ].map((item) => (
                     <div className="flex items-center justify-between gap-4 py-3 text-[0.9rem]" key={item.label}>

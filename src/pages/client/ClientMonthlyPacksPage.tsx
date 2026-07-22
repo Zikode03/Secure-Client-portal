@@ -25,8 +25,10 @@ import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
 import { useDisclosure } from "../../hooks/useDisclosure";
 import { useClientWorkflow } from "../../hooks/useClientWorkflow";
-import type { MonthlyDocumentSlot } from "../../types/portal";
+import { ApiError, apiGetJson, apiPostForm, apiPostJson, hasApiBaseUrl } from "../../services/apiClient";
+import type { DocumentRecord, InvoiceRecord, MonthlyDocumentSlot, MonthlyPack, PreviousMonthComparison } from "../../types/portal";
 import { formatDateLabel } from "../../utils/formatters";
+import { recalculatePack } from "../../services/workflowEngine";
 
 // Component flow: gather data first, then render a focused UI state.
 function downloadSlotFile(slot: MonthlyDocumentSlot, clientName: string) {
@@ -72,6 +74,242 @@ const monthlyPackActionButtonClass =
 
 function normaliseDocumentType(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+interface BackendMonthlyPackResponse {
+  id: string;
+  clientId: string;
+  year: number;
+  month: number;
+  status: string;
+  createdAtUtc: string;
+  updatedAtUtc: string;
+}
+
+interface BackendDocumentSlotResponse {
+  id: string;
+  monthlyPackId: string;
+  clientId: string;
+  category: string;
+  label: string;
+  isRequired: boolean;
+  status: string;
+  canCurrentlyBeSubmitted: boolean;
+  currentDocumentId?: string | null;
+  dueDateUtc?: string | null;
+  submittedAtUtc?: string | null;
+  submittedByUserId?: string | null;
+  reviewStatus?: string | null;
+  rejectionReason?: string | null;
+  createdAtUtc: string;
+  updatedAtUtc: string;
+}
+
+interface BackendDocumentRecord {
+  id: string;
+  clientId: string;
+  monthlyPackId: string;
+  name: string;
+  category: string;
+  documentSlotId?: string | null;
+  status: string;
+  fileType: string;
+  sizeBytes: number;
+  storageKey?: string | null;
+  uploadedByUserId: string;
+  currentVersionNumber: number;
+  uploadedAtUtc: string;
+  updatedAtUtc: string;
+}
+
+const monthNames = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
+function monthLabelFromParts(year: number, month: number) {
+  return `${monthNames[Math.max(0, month - 1)] ?? "Month"} ${year}`;
+}
+
+function buildDefaultDueDate(year: number, month: number) {
+  const dueMonth = month === 12 ? 1 : month + 1;
+  const dueYear = month === 12 ? year + 1 : year;
+  return new Date(Date.UTC(dueYear, dueMonth - 1, 6)).toISOString();
+}
+
+function isInvoiceCategory(value: string) {
+  return normaliseDocumentType(value).includes("invoice");
+}
+
+function acceptedFilesForSlot(category: string, label: string) {
+  const normalized = `${normaliseDocumentType(category)} ${normaliseDocumentType(label)}`;
+
+  if (normalized.includes("bank statement")) {
+    return ["PDF", "CSV", "XLSX"];
+  }
+
+  if (normalized.includes("invoice")) {
+    return ["PDF", "ZIP", "CSV", "XLSX"];
+  }
+
+  if (normalized.includes("signed")) {
+    return ["PDF"];
+  }
+
+  return ["PDF", "PNG", "JPG", "DOCX", "XLSX"];
+}
+
+function supportsExpiryDate(category: string, label: string) {
+  return /(tax|certificate|contract|id|address|coida|csd|insurance|lease|vat|paye|uif|sdl)/i.test(
+    `${category} ${label}`,
+  );
+}
+
+function mapBackendSlotStatus(
+  status: string,
+  isRequired: boolean,
+): MonthlyDocumentSlot["status"] {
+  const normalized = status.trim().toLowerCase();
+
+  switch (normalized) {
+    case "draft":
+      return "draft";
+    case "submitted":
+      return "uploaded";
+    case "under_review":
+      return "under_review";
+    case "accepted":
+      return "accepted";
+    case "rejected":
+    case "reupload_required":
+      return "rejected";
+    case "not_applicable":
+      return isRequired ? "accepted" : "filed";
+    default:
+      return "missing";
+  }
+}
+
+function slotProgress(status: MonthlyDocumentSlot["status"]) {
+  switch (status) {
+    case "draft":
+      return 65;
+    case "uploaded":
+      return 85;
+    case "under_review":
+      return 90;
+    case "accepted":
+    case "filed":
+      return 100;
+    case "rejected":
+      return 35;
+    default:
+      return 0;
+  }
+}
+
+function mapBackendPackSubmissionStatus(
+  status: string,
+): MonthlyPack["submissionStatus"] {
+  const normalized = status.trim().toLowerCase();
+
+  switch (normalized) {
+    case "under_review":
+      return "under_accountant_review";
+    case "complete":
+    case "closed":
+      return "complete";
+    case "partially_submitted":
+    case "in_progress":
+    case "not_started":
+    default:
+      return "open";
+  }
+}
+
+function formatSizeLabel(sizeBytes: number) {
+  if (sizeBytes >= 1_000_000) {
+    return `${(sizeBytes / 1_000_000).toFixed(1)} MB`;
+  }
+
+  if (sizeBytes >= 1_000) {
+    return `${Math.round(sizeBytes / 1_000)} KB`;
+  }
+
+  return `${sizeBytes} B`;
+}
+
+function mapBackendDocumentStatus(
+  status: string,
+): DocumentRecord["status"] {
+  const normalized = status.trim().toLowerCase();
+
+  switch (normalized) {
+    case "under_review":
+      return "under_review";
+    case "accepted":
+      return "accepted";
+    case "rejected":
+      return "rejected";
+    case "filed":
+      return "filed";
+    case "uploaded":
+    default:
+      return "uploaded";
+  }
+}
+
+function buildLivePreviousMonthComparison(
+  currentPack: BackendMonthlyPackResponse,
+  previousPack: BackendMonthlyPackResponse | undefined,
+  documents: BackendDocumentRecord[],
+): PreviousMonthComparison {
+  const currentMonthLabel = monthLabelFromParts(currentPack.year, currentPack.month);
+  const previousMonthLabel = previousPack
+    ? monthLabelFromParts(previousPack.year, previousPack.month)
+    : monthLabelFromParts(
+        currentPack.month === 1 ? currentPack.year - 1 : currentPack.year,
+        currentPack.month === 1 ? 12 : currentPack.month - 1,
+      );
+
+  const currentInvoiceCount = documents.filter(
+    (document) =>
+      document.monthlyPackId === currentPack.id &&
+      isInvoiceCategory(document.category),
+  ).length;
+  const previousInvoiceCount = previousPack
+    ? documents.filter(
+        (document) =>
+          document.monthlyPackId === previousPack.id &&
+          isInvoiceCategory(document.category),
+      ).length
+    : 0;
+  const delta = currentInvoiceCount - previousInvoiceCount;
+
+  return {
+    currentMonthLabel,
+    previousMonthLabel,
+    currentInvoiceCount,
+    previousInvoiceCount,
+    delta,
+    message:
+      delta === 0
+        ? "Invoice volumes are aligned with the previous pack."
+        : delta > 0
+          ? `${delta} more invoice document${delta === 1 ? "" : "s"} than the previous pack.`
+          : `${Math.abs(delta)} fewer invoice document${Math.abs(delta) === 1 ? "" : "s"} than the previous pack.`,
+    tone: delta === 0 ? "info" : delta > 0 ? "warning" : "success",
+  };
 }
 
 function comparisonOptionId(value: string) {
@@ -135,6 +373,16 @@ export function ClientMonthlyPacksPage() {
   const navigate = useNavigate();
   const uploadModal = useDisclosure(false);
   const [selectedSlot, setSelectedSlot] = useState<MonthlyDocumentSlot | null>(null);
+  const [liveMonthPack, setLiveMonthPack] = useState<MonthlyPack | null>(null);
+  const [liveDocuments, setLiveDocuments] = useState<DocumentRecord[] | null>(null);
+  const [liveInvoices, setLiveInvoices] = useState<InvoiceRecord[] | null>(null);
+  const [livePreviousMonthComparison, setLivePreviousMonthComparison] =
+    useState<PreviousMonthComparison | null>(null);
+  const [livePackId, setLivePackId] = useState<string>("");
+  const [liveSlotMetaById, setLiveSlotMetaById] = useState<
+    Record<string, { currentDocumentId?: string; canCurrentlyBeSubmitted: boolean }>
+  >({});
+  const [isSyncingBackendPack, setIsSyncingBackendPack] = useState(false);
 // Local UI state: keeps track of what the user is seeing or editing right now.
   const {
     clientName,
@@ -152,10 +400,187 @@ export function ClientMonthlyPacksPage() {
     clientName: user?.company,
     uploadedBy: user?.fullName ?? user?.name,
   });
+  const backendClientId = user?.clientIds[0] ?? "";
+  const backendMode = hasApiBaseUrl() && Boolean(backendClientId);
+
+  async function loadBackendMonthlyPack() {
+    if (!backendMode) {
+      return;
+    }
+
+    setIsSyncingBackendPack(true);
+
+    try {
+      const packs = await apiGetJson<BackendMonthlyPackResponse[]>(
+        `/api/monthly-packs?clientId=${encodeURIComponent(backendClientId)}`,
+      );
+      const currentPack = packs[0];
+
+      if (!currentPack) {
+        setLiveMonthPack(null);
+        setLiveDocuments([]);
+        setLiveInvoices([]);
+        setLivePreviousMonthComparison(null);
+        setLivePackId("");
+        setLiveSlotMetaById({});
+        return;
+      }
+
+      const [slots, documents] = await Promise.all([
+        apiGetJson<BackendDocumentSlotResponse[]>(
+          `/api/document-slots/${encodeURIComponent(currentPack.id)}`,
+        ),
+        apiGetJson<BackendDocumentRecord[]>("/api/documents"),
+      ]);
+
+      const documentsForClient = documents.filter(
+        (document) => document.clientId === backendClientId,
+      );
+      const packById = new Map(
+        packs.map((pack) => [pack.id, pack] satisfies [string, BackendMonthlyPackResponse]),
+      );
+      const businessName = clientName ?? user?.company ?? "Client";
+
+      const mappedSlots = slots.map<MonthlyDocumentSlot>((slot) => {
+        const mappedStatus = mapBackendSlotStatus(slot.status, slot.isRequired);
+        const pack = packById.get(slot.monthlyPackId) ?? currentPack;
+        return {
+          id: slot.id,
+          documentType: slot.label,
+          description: `${slot.label} for ${monthLabelFromParts(pack.year, pack.month)}.`,
+          status: mappedStatus,
+          month: monthNames[Math.max(0, pack.month - 1)] ?? "Month",
+          year: pack.year,
+          acceptedFiles: acceptedFilesForSlot(slot.category, slot.label),
+          progress: slotProgress(mappedStatus),
+          autoName: `${businessName.replace(/\s+/g, "")}_${slot.label.replace(/\s+/g, "")}_${monthNames[Math.max(0, pack.month - 1)]}_${pack.year}.pdf`,
+          isRequired: slot.isRequired,
+          assignedOwner: "Client",
+          dueDate: slot.dueDateUtc ?? buildDefaultDueDate(pack.year, pack.month),
+          supportsExpiryDate: supportsExpiryDate(slot.category, slot.label),
+          lastSubmission: slot.submittedAtUtc ?? undefined,
+          rejectionReason: slot.rejectionReason ?? undefined,
+        };
+      });
+
+      const mappedPack = recalculatePack({
+        monthLabel: monthLabelFromParts(currentPack.year, currentPack.month),
+        dueDate:
+          mappedSlots
+            .map((slot) => slot.dueDate)
+            .filter((value): value is string => Boolean(value))
+            .sort()[0] ?? buildDefaultDueDate(currentPack.year, currentPack.month),
+        deadlineStatus: "on_track",
+        progressPercent: 0,
+        completedCount: 0,
+        totalCount: 0,
+        canComplete: false,
+        completionMessage: "",
+        submissionStatus: mapBackendPackSubmissionStatus(currentPack.status),
+        submittedAt: (() => {
+          const submissions = mappedSlots
+            .map((slot) => slot.lastSubmission)
+            .filter((value): value is string => Boolean(value))
+            .sort();
+          return submissions.length > 0 ? submissions[submissions.length - 1] : undefined;
+        })(),
+        slots: mappedSlots,
+      });
+
+      const mappedDocuments = documentsForClient.map<DocumentRecord>((document) => {
+        const pack = packById.get(document.monthlyPackId);
+        return {
+          id: document.id,
+          clientId: document.clientId,
+          clientName: businessName,
+          documentType: document.category,
+          fileName: document.name,
+          monthLabel: pack
+            ? monthLabelFromParts(pack.year, pack.month)
+            : formatDateLabel(document.uploadedAtUtc),
+          description: `${document.category} uploaded to the monthly pack.`,
+          status: mapBackendDocumentStatus(document.status),
+          uploadedBy: user?.fullName ?? user?.name ?? "Portal user",
+          uploadedAt: document.uploadedAtUtc,
+          reviewedBy: undefined,
+          reviewedAt: undefined,
+          sizeLabel: formatSizeLabel(document.sizeBytes),
+          keywordTags: [document.category],
+          rejectionReason: undefined,
+          comments: [],
+          auditTrail: [],
+          fileMimeType: document.fileType,
+        };
+      });
+
+      const mappedInvoices = documentsForClient
+        .filter((document) => isInvoiceCategory(document.category))
+        .map<InvoiceRecord>((document) => {
+          const pack = packById.get(document.monthlyPackId);
+          return {
+            id: document.id,
+            clientId: document.clientId,
+            clientName: businessName,
+            invoiceNumber: document.name.replace(/\.[^.]+$/, ""),
+            fileName: document.name,
+            monthLabel: pack
+              ? monthLabelFromParts(pack.year, pack.month)
+              : formatDateLabel(document.uploadedAtUtc),
+            description: `${document.category} uploaded to the monthly pack.`,
+            amountLabel: "R 0.00",
+            uploadedAt: document.uploadedAtUtc,
+            status: "uploaded",
+            keywordTags: [document.category],
+            fileMimeType: document.fileType,
+          };
+        });
+
+      setLivePackId(currentPack.id);
+      setLiveMonthPack(mappedPack);
+      setLiveDocuments(mappedDocuments);
+      setLiveInvoices(mappedInvoices);
+      setLivePreviousMonthComparison(
+        buildLivePreviousMonthComparison(currentPack, packs[1], documentsForClient),
+      );
+      setLiveSlotMetaById(
+        Object.fromEntries(
+          slots.map((slot) => [
+            slot.id,
+            {
+              currentDocumentId: slot.currentDocumentId ?? undefined,
+              canCurrentlyBeSubmitted: slot.canCurrentlyBeSubmitted,
+            },
+          ]),
+        ),
+      );
+    } catch (error) {
+      showFeedbackNotice(
+        "danger",
+        "Monthly pack sync failed",
+        error instanceof ApiError
+          ? error.message
+          : "Could not load the live monthly pack from the backend.",
+      );
+    } finally {
+      setIsSyncingBackendPack(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadBackendMonthlyPack();
+  }, [backendClientId, backendMode]);
+
+  const effectiveDocuments = backendMode && liveDocuments ? liveDocuments : documents;
+  const effectiveInvoices = backendMode && liveInvoices ? liveInvoices : invoices;
+  const effectiveMonthPack = backendMode && liveMonthPack ? liveMonthPack : monthPack;
+  const effectivePreviousMonthComparison =
+    backendMode && livePreviousMonthComparison
+      ? livePreviousMonthComparison
+      : previousMonthComparison;
 
   const requiredSlots = useMemo(
-    () => monthPack.slots.filter((slot) => slot.isRequired),
-    [monthPack.slots],
+    () => effectiveMonthPack.slots.filter((slot) => slot.isRequired),
+    [effectiveMonthPack.slots],
   );
 
   const blockingSlots = useMemo(
@@ -183,13 +608,13 @@ export function ClientMonthlyPacksPage() {
       return 0;
     }
 
-    return Math.round((readyRequiredCount / monthPack.totalCount) * 100);
-  }, [monthPack.totalCount, readyRequiredCount]);
+    return Math.round((readyRequiredCount / effectiveMonthPack.totalCount) * 100);
+  }, [effectiveMonthPack.totalCount, readyRequiredCount]);
 
   const dueDaysRemaining = useMemo(() => {
-    const difference = new Date(monthPack.dueDate).getTime() - Date.now();
+    const difference = new Date(effectiveMonthPack.dueDate).getTime() - Date.now();
     return Math.max(0, Math.ceil(difference / 86_400_000));
-  }, [monthPack.dueDate]);
+  }, [effectiveMonthPack.dueDate]);
 
   const highlightedSlot = useMemo(
     () =>
@@ -199,9 +624,16 @@ export function ClientMonthlyPacksPage() {
       blockingSlots.find((slot) => slot.status === "pending_signature") ??
       blockingSlots[0] ??
       requiredSlots[0] ??
-      monthPack.slots[0] ??
+      effectiveMonthPack.slots[0] ??
       null,
-    [blockingSlots, monthPack.slots, requiredSlots],
+    [blockingSlots, effectiveMonthPack.slots, requiredSlots],
+  );
+  const backendSubmittableSlot = useMemo(
+    () =>
+      effectiveMonthPack.slots.find(
+        (slot) => liveSlotMetaById[slot.id]?.canCurrentlyBeSubmitted,
+      ) ?? null,
+    [effectiveMonthPack.slots, liveSlotMetaById],
   );
   const existingSlotFileNames = useMemo(() => {
     if (!selectedSlot) {
@@ -209,7 +641,7 @@ export function ClientMonthlyPacksPage() {
     }
 
     const targetMonthLabel = `${selectedSlot.month} ${selectedSlot.year}`;
-    const documentFileNames = documents
+    const documentFileNames = effectiveDocuments
       .filter(
         (document) =>
           document.documentType === selectedSlot.documentType &&
@@ -218,16 +650,16 @@ export function ClientMonthlyPacksPage() {
       .map((document) => document.fileName);
     const invoiceFileNames =
       selectedSlot.documentType.toLowerCase().includes("invoice")
-        ? invoices
+        ? effectiveInvoices
             .filter((invoice) => invoice.monthLabel === targetMonthLabel)
             .map((invoice) => invoice.fileName)
         : [];
 
     return [...documentFileNames, ...invoiceFileNames];
-  }, [documents, invoices, selectedSlot]);
+  }, [effectiveDocuments, effectiveInvoices, selectedSlot]);
 
   const submissionState = useMemo(() => {
-    if (monthPack.submissionStatus === "under_accountant_review") {
+    if (effectiveMonthPack.submissionStatus === "under_accountant_review") {
       return {
         label: "Under Review",
         tone: "info" as const,
@@ -237,7 +669,7 @@ export function ClientMonthlyPacksPage() {
       };
     }
 
-    if (monthPack.canComplete) {
+    if (effectiveMonthPack.canComplete) {
       return {
         label: "Ready",
         tone: "success" as const,
@@ -254,25 +686,25 @@ export function ClientMonthlyPacksPage() {
       bannerMessage: blockerSummaryText(missingRequiredCount, rejectedRequiredCount),
       statusHelper: "Fix blockers to enable submission",
     };
-  }, [missingRequiredCount, monthPack.canComplete, monthPack.submissionStatus, rejectedRequiredCount]);
+  }, [effectiveMonthPack.canComplete, effectiveMonthPack.submissionStatus, missingRequiredCount, rejectedRequiredCount]);
 
   const monthComparisonOptions = useMemo<MonthComparisonOption[]>(() => {
-    const currentMonthLabel = previousMonthComparison.currentMonthLabel;
-    const previousMonthLabel = previousMonthComparison.previousMonthLabel;
+    const currentMonthLabel = effectivePreviousMonthComparison.currentMonthLabel;
+    const previousMonthLabel = effectivePreviousMonthComparison.previousMonthLabel;
     const uniqueDocumentTypes = Array.from(
-      new Set(monthPack.slots.map((slot) => slot.documentType)),
+      new Set(effectiveMonthPack.slots.map((slot) => slot.documentType)),
     );
-    const nonInvoiceDocuments = documents.filter(
+    const nonInvoiceDocuments = effectiveDocuments.filter(
       (document) => !normaliseDocumentType(document.documentType).includes("invoice"),
     );
 
     function countDocuments(documentType: string, monthLabel: string) {
-      const normalisedType = normaliseDocumentType(documentType);
+        const normalisedType = normaliseDocumentType(documentType);
 
       if (normalisedType.includes("invoice")) {
         return monthLabel === currentMonthLabel
-          ? previousMonthComparison.currentInvoiceCount
-          : previousMonthComparison.previousInvoiceCount;
+          ? effectivePreviousMonthComparison.currentInvoiceCount
+          : effectivePreviousMonthComparison.previousInvoiceCount;
       }
 
       return nonInvoiceDocuments.filter(
@@ -288,10 +720,10 @@ export function ClientMonthlyPacksPage() {
       currentMonthLabel,
       previousMonthLabel,
       currentCount:
-        previousMonthComparison.currentInvoiceCount +
+        effectivePreviousMonthComparison.currentInvoiceCount +
         nonInvoiceDocuments.filter((document) => document.monthLabel === currentMonthLabel).length,
       previousCount:
-        previousMonthComparison.previousInvoiceCount +
+        effectivePreviousMonthComparison.previousInvoiceCount +
         nonInvoiceDocuments.filter((document) => document.monthLabel === previousMonthLabel).length,
     };
 
@@ -307,13 +739,13 @@ export function ClientMonthlyPacksPage() {
         previousMonthLabel,
         currentCount,
         previousCount,
-        message: isInvoiceType ? previousMonthComparison.message : undefined,
-        tone: isInvoiceType ? previousMonthComparison.tone : undefined,
+        message: isInvoiceType ? effectivePreviousMonthComparison.message : undefined,
+        tone: isInvoiceType ? effectivePreviousMonthComparison.tone : undefined,
       };
     });
 
     return [allDocumentsOption, ...documentTypeOptions];
-  }, [documents, monthPack.slots, previousMonthComparison]);
+  }, [effectiveDocuments, effectiveMonthPack.slots, effectivePreviousMonthComparison]);
 
 // Reactive sync: this block responds when dependencies change.
   useEffect(() => {
@@ -343,6 +775,43 @@ export function ClientMonthlyPacksPage() {
 
   function handleOpenChecklist() {
     document.getElementById("pack-checklist")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  async function handleSubmitAction() {
+    if (!backendMode) {
+      submitMonth();
+      return;
+    }
+
+    if (!backendSubmittableSlot) {
+      showFeedbackNotice(
+        "warning",
+        "No slot ready to submit",
+        "Upload a file into a checklist slot before sending it for accountant review.",
+      );
+      return;
+    }
+
+    try {
+      await apiPostJson<
+        BackendDocumentSlotResponse,
+        Record<string, never>
+      >(`/api/document-slots/${encodeURIComponent(backendSubmittableSlot.id)}/submit`, {});
+      await loadBackendMonthlyPack();
+      showFeedbackNotice(
+        "success",
+        "Slot submitted",
+        `${backendSubmittableSlot.documentType} was submitted for accountant review.`,
+      );
+    } catch (error) {
+      showFeedbackNotice(
+        "danger",
+        "Slot submission failed",
+        error instanceof ApiError
+          ? error.message
+          : "The selected slot could not be submitted for review.",
+      );
+    }
   }
 
   function handleDownloadSlot(slot: MonthlyDocumentSlot) {
@@ -398,6 +867,7 @@ export function ClientMonthlyPacksPage() {
         >
           <div className="flex items-center justify-between gap-3 bg-brand-700 px-5 py-4 text-white">
             <h2 className="text-[1.05rem] font-semibold">{monthPack.monthLabel} Monthly Pack</h2>
+            <h2 className="text-[1.05rem] font-semibold">{effectiveMonthPack.monthLabel} Monthly Pack</h2>
             <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-[0.72rem] font-semibold text-emerald-100 ring-1 ring-emerald-300/30">
               {submissionState.label}
             </span>
@@ -430,13 +900,13 @@ export function ClientMonthlyPacksPage() {
                   <div className="rounded-xl border border-[#e8ecf5] bg-white px-4 py-3">
                     <p className="text-[0.72rem] font-semibold text-[#53617f]">Required documents</p>
                     <p className="mt-1 text-[1.15rem] font-semibold text-[#091333]">
-                      {readyRequiredCount} of {monthPack.totalCount}
+                  {readyRequiredCount} of {effectiveMonthPack.totalCount}
                     </p>
                   </div>
                   <div className="rounded-xl border border-[#e8ecf5] bg-white px-4 py-3">
                     <p className="text-[0.72rem] font-semibold text-[#53617f]">Submission deadline</p>
                     <p className="mt-1 text-[1rem] font-semibold text-[#091333]">
-                      {formatDateLabel(monthPack.dueDate)}
+                      {formatDateLabel(effectiveMonthPack.dueDate)}
                     </p>
                     <p className="mt-0.5 text-[0.76rem] text-[#53617f]">{dueDaysRemaining} days remaining</p>
                   </div>
@@ -450,18 +920,22 @@ export function ClientMonthlyPacksPage() {
                   <span>Continue Pack</span>
                   <ChevronRight aria-hidden="true" className="h-4 w-4" />
                 </Button>
-                <Button
-                  className={monthlyPackActionButtonClass}
-                  disabled={!monthPack.canComplete || monthPack.submissionStatus === "under_accountant_review"}
-                  onClick={submitMonth}
-                >
-                  <Send aria-hidden="true" className="h-4 w-4" />
-                  <span>Submit Month</span>
-                </Button>
+                  <Button
+                    className={monthlyPackActionButtonClass}
+                    disabled={
+                      backendMode
+                        ? !backendSubmittableSlot || isSyncingBackendPack
+                        : !effectiveMonthPack.canComplete || effectiveMonthPack.submissionStatus === "under_accountant_review"
+                    }
+                    onClick={() => void handleSubmitAction()}
+                  >
+                    <Send aria-hidden="true" className="h-4 w-4" />
+                    <span>{backendMode ? "Submit Slot" : "Submit Month"}</span>
+                  </Button>
                 {highlightedSlot ? (
                   <Button
                     className={`${monthlyPackActionButtonClass} sm:col-span-2 lg:col-span-2 xl:col-span-2`}
-                    disabled={monthPack.submissionStatus === "under_accountant_review"}
+                    disabled={effectiveMonthPack.submissionStatus === "under_accountant_review" || isSyncingBackendPack}
                     onClick={() => handleOpenUpload(highlightedSlot)}
                   >
                     <span>
@@ -513,10 +987,10 @@ export function ClientMonthlyPacksPage() {
         <div className="h-full" id="pack-checklist">
           <MonthlyPackChecklist
             onDownload={handleDownloadSlot}
-            isReadOnly={monthPack.submissionStatus === "under_accountant_review"}
+            isReadOnly={effectiveMonthPack.submissionStatus === "under_accountant_review"}
             onUpload={handleOpenUpload}
             onView={() => navigate("/client/documents")}
-            pack={monthPack}
+            pack={effectiveMonthPack}
           />
         </div>
 
@@ -535,7 +1009,59 @@ export function ClientMonthlyPacksPage() {
         existingFileNames={existingSlotFileNames}
         isOpen={uploadModal.isOpen}
         onClose={uploadModal.close}
-        onUploaded={uploadToSlot}
+        onUploaded={(submission) => {
+          if (!backendMode) {
+            uploadToSlot(submission);
+            return;
+          }
+
+          if (!livePackId || !submission.file || !user?.clientIds[0]) {
+            showFeedbackNotice(
+              "danger",
+              "Upload failed",
+              "The live monthly pack context is missing. Refresh the page and try again.",
+            );
+            return;
+          }
+
+          const targetSlotMeta = liveSlotMetaById[submission.slotId];
+          const form = new FormData();
+          form.append("ClientId", user.clientIds[0]);
+          form.append("MonthlyPackId", livePackId);
+          form.append("DocumentSlotId", submission.slotId);
+          form.append("DocumentType", submission.documentType);
+          if (targetSlotMeta?.currentDocumentId) {
+            form.append("DocumentId", targetSlotMeta.currentDocumentId);
+          }
+          form.append("File", submission.file, submission.fileName);
+
+          void apiPostForm<{
+            id: string;
+            clientId: string;
+            monthlyPackId: string;
+            documentSlotId: string;
+            documentType: string;
+            name: string;
+            status: string;
+          }>("/api/documents/upload", form)
+            .then(async () => {
+              await loadBackendMonthlyPack();
+              showFeedbackNotice(
+                "success",
+                targetSlotMeta?.currentDocumentId ? "New version uploaded" : "Upload saved",
+                `${submission.documentType} was uploaded into the live monthly pack.`,
+              );
+            })
+            .catch((error: unknown) => {
+              showFeedbackNotice(
+                "danger",
+                "Upload failed",
+                error instanceof ApiError
+                  ? error.message
+                  : "The document could not be uploaded to the backend.",
+              );
+            });
+        }}
         selectedSlot={selectedSlot}
       />
     </div>

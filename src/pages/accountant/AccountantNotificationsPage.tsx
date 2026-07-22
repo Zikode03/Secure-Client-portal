@@ -1,7 +1,7 @@
 // Friendly guide: this module (AccountantNotificationsPage) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
@@ -9,6 +9,7 @@ import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
+import { ApiError, apiGetJson, apiPostJson, hasApiBaseUrl } from "../../services/apiClient";
 import type { NotificationItem, NotificationState, Tone } from "../../types/portal";
 import { cn } from "../../utils/cn";
 import { formatDateLabel, formatDateTimeLabel } from "../../utils/formatters";
@@ -17,6 +18,19 @@ const notificationSnapshotDate = new Date("2026-05-11T00:00:00.000Z");
 
 // Shared shape notes: these types keep UI and data contracts aligned.
 type NotificationFilter = "all" | "unread" | "action" | "compliance";
+
+interface BackendNotificationRecord {
+  id: string;
+  userId: string;
+  clientId?: string | null;
+  type: string;
+  title: string;
+  message: string;
+  linkUrl?: string | null;
+  isRead: boolean;
+  createdAtUtc: string;
+  readAtUtc?: string | null;
+}
 
 // Component flow: gather data first, then render a focused UI state.
 function BellIcon() {
@@ -277,6 +291,79 @@ function destinationFor(notification: NotificationItem) {
   };
 }
 
+function mapBackendNotification(notification: BackendNotificationRecord): NotificationItem {
+  const type = notification.type.trim().toLowerCase();
+  const title = notification.title.trim();
+  const message = notification.message.trim();
+
+  const kind =
+    type.includes("compliance")
+      ? "expiring_documents"
+      : type.includes("rejected") || type.includes("reupload")
+        ? "rejected_documents"
+        : type.includes("deadline")
+          ? "deadline_reminder"
+          : "missing_documents";
+
+  const tone: Tone =
+    kind === "rejected_documents"
+      ? "danger"
+      : kind === "expiring_documents" || kind === "deadline_reminder"
+        ? "warning"
+        : "info";
+
+  const actionHref =
+    notification.linkUrl && notification.linkUrl.startsWith("/")
+      ? notification.linkUrl.startsWith("/requests/")
+        ? "/firm/inbox"
+        : notification.linkUrl.startsWith("/documents/")
+          ? "/firm/review"
+          : notification.linkUrl.startsWith("/compliance")
+            ? "/firm/compliance"
+            : notification.linkUrl
+      : kind === "expiring_documents"
+        ? "/firm/compliance"
+        : kind === "rejected_documents"
+          ? "/firm/review"
+          : "/firm/clients";
+
+  return {
+    id: notification.id,
+    kind,
+    title,
+    message,
+    createdAt: notification.createdAtUtc,
+    dueDate: undefined,
+    tone,
+    actionLabel:
+      kind === "expiring_documents"
+        ? "Open compliance centre"
+        : kind === "rejected_documents"
+          ? "Open review queue"
+          : "Open client workspace",
+    actionHref,
+    linkedRecordLabel: title,
+    linkedWorkspace:
+      kind === "expiring_documents"
+        ? "compliance"
+        : kind === "rejected_documents"
+          ? "documents"
+          : "requests",
+    state: notification.isRead ? "reviewed" : "unread",
+    activity: notification.readAtUtc
+      ? [
+          {
+            id: `${notification.id}-read`,
+            title: "Notification reviewed",
+            detail: "This notification has been read.",
+            timestamp: notification.readAtUtc,
+            tone: "info",
+          },
+        ]
+      : [],
+  };
+}
+
 interface FeedbackState {
   message: string;
   title: string;
@@ -287,14 +374,35 @@ export function AccountantNotificationsPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const portal = usePortal();
+  const backendMode = hasApiBaseUrl();
   const [searchParams, setSearchParams] = useSearchParams();
   const [filter, setFilter] = useState<NotificationFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [feedback, setFeedback] = useState<FeedbackState | null>(null);
-  const notifications = portal.accountantDashboard.notifications;
+  const [liveNotifications, setLiveNotifications] = useState<NotificationItem[]>([]);
+  const notifications = backendMode ? liveNotifications : portal.accountantDashboard.notifications;
   const focusedNotificationId = searchParams.get("notification") ?? "";
   const isAdmin = user?.role === "admin";
   const actorName = user?.fullName ?? user?.name ?? "Firm reviewer";
+
+  useEffect(() => {
+    if (!backendMode) {
+      return;
+    }
+
+    void (async () => {
+      try {
+        const data = await apiGetJson<BackendNotificationRecord[]>("/api/notifications");
+        setLiveNotifications(data.map(mapBackendNotification));
+      } catch (error) {
+        setFeedback({
+          title: "Notifications unavailable",
+          message: error instanceof ApiError ? error.message : "The live notification inbox could not be loaded.",
+          tone: "danger",
+        });
+      }
+    })();
+  }, [backendMode]);
 
   const unreadCount = useMemo(
     () => notifications.filter((item) => isUnread(item)).length,
@@ -370,6 +478,51 @@ export function AccountantNotificationsPage() {
     title: string,
     tone: Tone,
   ) {
+    if (backendMode) {
+      void (async () => {
+        try {
+          await apiPostJson(`/api/notifications/${encodeURIComponent(notification.id)}/mark-read`, {});
+          setLiveNotifications((current) =>
+            current.map((item) =>
+              item.id === notification.id
+                ? {
+                    ...item,
+                    state,
+                    activity: [
+                      ...(item.activity ?? []),
+                      {
+                        id: `${item.id}-${state}`,
+                        title: state === "resolved" ? "Notification resolved" : "Notification reviewed",
+                        detail:
+                          state === "resolved"
+                            ? `${actorName} completed the required action for this notification.`
+                            : `${actorName} reviewed this notification.`,
+                        timestamp: new Date().toISOString(),
+                        tone: state === "resolved" ? "success" : "info",
+                        actor: actorName,
+                      },
+                    ],
+                  }
+                : item,
+            ),
+          );
+          setFeedback({
+            message: state === "resolved" ? "Notification marked as resolved." : "Notification marked as reviewed.",
+            title,
+            tone,
+          });
+          focusNotification(notification.id);
+        } catch (error) {
+          setFeedback({
+            title: "Update failed",
+            message: error instanceof ApiError ? error.message : "The notification could not be updated.",
+            tone: "danger",
+          });
+        }
+      })();
+      return;
+    }
+
     const result = portal.updateNotificationState(notification.id, state, actorName);
     setFeedback({
       message: result.message,
@@ -586,9 +739,9 @@ export function AccountantNotificationsPage() {
                   <div className="flex flex-wrap items-center gap-2">
                     <Button
                       className="h-10 rounded-xl"
-                      onClick={() => navigate(destination.href)}
+                      onClick={() => navigate(backendMode ? notification.actionHref : destination.href)}
                     >
-                      <span>{destination.label}</span>
+                      <span>{backendMode ? notification.actionLabel : destination.label}</span>
                     </Button>
 
                     {notification.state !== "reviewed" && notification.state !== "resolved" ? (

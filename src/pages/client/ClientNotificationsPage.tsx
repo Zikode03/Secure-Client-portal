@@ -1,13 +1,15 @@
 // Friendly guide: this module (ClientNotificationsPage) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
+import { ApiError, apiGetJson, apiPostJson, hasApiBaseUrl } from "../../services/apiClient";
 import type { NotificationItem, NotificationKind, Tone } from "../../types/portal";
 import { cn } from "../../utils/cn";
 import { formatDateLabel } from "../../utils/formatters";
@@ -17,6 +19,19 @@ const notificationSnapshotDate = new Date("2026-05-07T00:00:00.000Z");
 // Shared shape notes: these types keep UI and data contracts aligned.
 type NotificationFilter = "all" | "unread" | "action";
 type NotificationSection = "today" | "this_week" | "earlier";
+
+interface BackendNotificationRecord {
+  id: string;
+  userId: string;
+  clientId?: string | null;
+  type: string;
+  title: string;
+  message: string;
+  linkUrl?: string | null;
+  isRead: boolean;
+  createdAtUtc: string;
+  readAtUtc?: string | null;
+}
 
 // Component flow: gather data first, then render a focused UI state.
 function BellIcon() {
@@ -276,15 +291,91 @@ function matchesFilter(
   filter: NotificationFilter,
   reviewedIds: Set<string>,
 ) {
+  const reviewed = item.state === "reviewed" || item.state === "resolved" || reviewedIds.has(item.id);
+
   if (filter === "all") {
     return true;
   }
 
   if (filter === "unread") {
-    return !reviewedIds.has(item.id);
+    return !reviewed;
   }
 
   return item.kind === "missing_documents" || item.kind === "rejected_documents";
+}
+
+function mapBackendNotification(notification: BackendNotificationRecord): NotificationItem {
+  const type = notification.type.trim().toLowerCase();
+
+  const kind: NotificationKind =
+    type.includes("compliance")
+      ? "expiring_documents"
+      : type.includes("rejected") || type.includes("reupload")
+        ? "rejected_documents"
+        : type.includes("deadline")
+          ? "deadline_reminder"
+          : "missing_documents";
+
+  const tone: Tone =
+    kind === "rejected_documents"
+      ? "danger"
+      : kind === "expiring_documents" || kind === "deadline_reminder"
+        ? "warning"
+        : "info";
+
+  const actionHref =
+    notification.linkUrl && notification.linkUrl.startsWith("/")
+      ? notification.linkUrl.startsWith("/requests/")
+        ? "/client/inbox"
+        : notification.linkUrl.startsWith("/documents/")
+          ? "/client/documents"
+          : notification.linkUrl.startsWith("/compliance")
+            ? "/client/compliance"
+            : notification.linkUrl
+      : kind === "expiring_documents"
+        ? "/client/compliance"
+        : kind === "rejected_documents"
+          ? "/client/documents"
+          : "/client/packs";
+
+  return {
+    id: notification.id,
+    kind,
+    title: notification.title,
+    message: notification.message,
+    createdAt: notification.createdAtUtc,
+    tone,
+    actionLabel:
+      kind === "expiring_documents"
+        ? "Open compliance centre"
+        : kind === "rejected_documents"
+          ? "Open documents"
+          : kind === "deadline_reminder"
+            ? "Open monthly pack"
+            : "Open request inbox",
+    actionHref,
+    linkedRecordLabel: notification.title,
+    linkedWorkspace:
+      kind === "expiring_documents"
+        ? "compliance"
+        : kind === "rejected_documents"
+          ? "documents"
+          : kind === "deadline_reminder"
+            ? "monthly_packs"
+            : "requests",
+    state: notification.isRead ? "reviewed" : "unread",
+    activity: notification.readAtUtc
+      ? [
+          {
+            id: `${notification.id}-read`,
+            title: "Notification reviewed",
+            detail: "This notification has been read.",
+            timestamp: notification.readAtUtc,
+            tone: "info",
+          },
+        ]
+      : [],
+  };
 }
 
 function kindDescription(kind: NotificationKind) {
@@ -389,8 +480,11 @@ function Illustration({ tone }: { tone: Tone }) {
 
 export function ClientNotificationsPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const portal = usePortal();
-  const notifications = portal.clientWorkflow.notifications;
+  const backendMode = hasApiBaseUrl();
+  const [liveNotifications, setLiveNotifications] = useState<NotificationItem[]>([]);
+  const notifications = backendMode ? liveNotifications : portal.clientWorkflow.notifications;
   const [filter, setFilter] = useState<NotificationFilter>("all");
   const [reviewedIds, setReviewedIds] = useState<string[]>([]);
 // Local UI state: keeps track of what the user is seeing or editing right now.
@@ -398,6 +492,34 @@ export function ClientNotificationsPage() {
     notifications[0]?.id ?? "",
   );
   const [feedbackMessage, setFeedbackMessage] = useState("");
+
+  useEffect(() => {
+    if (!backendMode) {
+      return;
+    }
+
+    void (async () => {
+      try {
+        const data = await apiGetJson<BackendNotificationRecord[]>("/api/notifications");
+        setLiveNotifications(data.map(mapBackendNotification));
+      } catch (error) {
+        setFeedbackMessage(
+          error instanceof ApiError ? error.message : "The live notification inbox could not be loaded.",
+        );
+      }
+    })();
+  }, [backendMode]);
+
+  useEffect(() => {
+    if (!notifications.length) {
+      setSelectedNotificationId("");
+      return;
+    }
+
+    if (!notifications.some((item) => item.id === selectedNotificationId)) {
+      setSelectedNotificationId(notifications[0].id);
+    }
+  }, [notifications, selectedNotificationId]);
 
   const reviewedSet = useMemo(() => new Set(reviewedIds), [reviewedIds]);
 
@@ -439,6 +561,44 @@ export function ClientNotificationsPage() {
     }
 
     navigate(selectedNotification.actionHref);
+  }
+
+  function markNotificationRead(notificationId: string) {
+    if (!backendMode) {
+      setReviewedIds((current) => (current.includes(notificationId) ? current : [...current, notificationId]));
+      return;
+    }
+
+    void (async () => {
+      try {
+        await apiPostJson(`/api/notifications/${encodeURIComponent(notificationId)}/mark-read`, {});
+        setLiveNotifications((current) =>
+          current.map((item) =>
+            item.id === notificationId
+              ? {
+                  ...item,
+                  state: "reviewed",
+                  activity: [
+                    ...(item.activity ?? []),
+                    {
+                      id: `${item.id}-reviewed`,
+                      title: "Notification reviewed",
+                      detail: `${user?.fullName ?? "Client"} reviewed this notification.`,
+                      timestamp: new Date().toISOString(),
+                      tone: "info",
+                      actor: user?.fullName ?? "Client",
+                    },
+                  ],
+                }
+              : item,
+          ),
+        );
+      } catch (error) {
+        setFeedbackMessage(
+          error instanceof ApiError ? error.message : "The notification could not be marked as read.",
+        );
+      }
+    })();
   }
 
   return (
@@ -536,9 +696,7 @@ export function ClientNotificationsPage() {
                           key={item.id}
                           onClick={() => {
                             setSelectedNotificationId(item.id);
-                            setReviewedIds((current) =>
-                              current.includes(item.id) ? current : [...current, item.id],
-                            );
+                            markNotificationRead(item.id);
                           }}
                           type="button"
                         >
