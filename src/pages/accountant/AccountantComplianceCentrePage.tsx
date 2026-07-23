@@ -1,17 +1,19 @@
 // Friendly guide: this module (AccountantComplianceCentrePage) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
+import { ApiError, apiGetJson, hasApiBaseUrl } from "../../services/apiClient";
+import { portalServiceApi } from "../../services/portalApi";
 import { Button } from "../../components/ui/Button";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
 import { SelectField } from "../../components/ui/SelectField";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
 import { TextField } from "../../components/ui/TextField";
 import { formatDateLabel } from "../../utils/formatters";
-import { getScopedComplianceStatuses, hasPermission } from "../../utils/permissions";
+import { getScopedClients, getScopedComplianceStatuses, hasPermission } from "../../utils/permissions";
 import type { Tone } from "../../types/portal";
 
 // Shared shape notes: these types keep UI and data contracts aligned.
@@ -29,6 +31,34 @@ interface SupplierRow {
   complianceState: SupplierComplianceState;
   riskLevel: "low" | "medium" | "high";
   riskScore: number;
+}
+
+interface BackendMonthlyPackRecord {
+  id: string;
+  clientId: string;
+  year: number;
+  month: number;
+  status: string;
+  createdAtUtc: string;
+  updatedAtUtc: string;
+}
+
+interface BackendDocumentSlotRecord {
+  id: string;
+  monthlyPackId: string;
+  clientId: string;
+  category: string;
+  label: string;
+  isRequired: boolean;
+  status: string;
+  canCurrentlyBeSubmitted: boolean;
+  currentDocumentId?: string | null;
+  dueDateUtc?: string | null;
+  submittedAtUtc?: string | null;
+  reviewStatus?: string | null;
+  rejectionReason?: string | null;
+  createdAtUtc: string;
+  updatedAtUtc: string;
 }
 
 const categories = [
@@ -102,10 +132,39 @@ function mapComplianceState(score: number): SupplierComplianceState {
   return "non_compliant";
 }
 
+function mapBackendSlotStatus(status: string) {
+  const normalized = status.trim().toLowerCase();
+  if (normalized === "not_started") return "missing";
+  if (normalized === "draft") return "draft";
+  if (normalized === "partial") return "partial";
+  if (normalized === "pending") return "pending";
+  if (normalized === "pending_signature") return "pending_signature";
+  if (normalized === "submitted" || normalized === "uploaded") return "uploaded";
+  if (normalized === "under_review") return "under_review";
+  if (normalized === "accepted") return "accepted";
+  if (normalized === "reupload_required" || normalized === "rejected") return "rejected";
+  return "filed";
+}
+
+function buildPackDueDate(pack: BackendMonthlyPackRecord, slots: BackendDocumentSlotRecord[]) {
+  const dueDates = slots
+    .map((slot) => slot.dueDateUtc)
+    .filter((value): value is string => Boolean(value))
+    .sort((left, right) => left.localeCompare(right));
+
+  if (dueDates.length > 0) {
+    return dueDates[0];
+  }
+
+  const safeDay = Math.min(28, new Date(pack.year, pack.month, 0).getDate());
+  return new Date(Date.UTC(pack.year, pack.month - 1, safeDay)).toISOString();
+}
+
 export function AccountantComplianceCentrePage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const portal = usePortal();
+  const backendMode = hasApiBaseUrl();
   const currentDateLabel = useMemo(() => formatDateLabel(new Date().toISOString()), []);
 // Local UI state: keeps track of what the user is seeing or editing right now.
   const [searchQuery, setSearchQuery] = useState("");
@@ -126,6 +185,7 @@ export function AccountantComplianceCentrePage() {
   const [feedbackNotice, setFeedbackNotice] = useState<
     { tone: Tone; title: string; message: string } | null
   >(null);
+  const [liveSupplierRows, setLiveSupplierRows] = useState<SupplierRow[] | null>(null);
   const pageSize = 5;
   const canRequestDocuments = hasPermission(user, "request:documents");
   const canExportReports =
@@ -143,7 +203,95 @@ export function AccountantComplianceCentrePage() {
     [portal.accountantComplianceCentre.clientStatuses, portal.adminClients, user],
   );
 
+  useEffect(() => {
+    if (!backendMode) {
+      return;
+    }
+
+    let isActive = true;
+
+    async function loadLiveComplianceRows() {
+      try {
+        const [clients, packs] = await Promise.all([
+          portalServiceApi.getAdminClients(),
+          apiGetJson<BackendMonthlyPackRecord[]>("/api/monthly-packs"),
+        ]);
+
+        const slotResponses = await Promise.all(
+          packs.map(async (pack) => ({
+            monthlyPackId: pack.id,
+            slots: await apiGetJson<BackendDocumentSlotRecord[]>(`/api/document-slots/${encodeURIComponent(pack.id)}`),
+          })),
+        );
+
+        if (!isActive) {
+          return;
+        }
+
+        const scopedClients = getScopedClients(user, clients);
+        const slotsByPackId = new Map(slotResponses.map((entry) => [entry.monthlyPackId, entry.slots]));
+        const latestPackByClientId = new Map();
+
+        packs.forEach((pack) => {
+          const current = latestPackByClientId.get(pack.clientId);
+          const currentKey = current ? current.year * 100 + current.month : 0;
+          const nextKey = pack.year * 100 + pack.month;
+          if (!current || nextKey > currentKey) {
+            latestPackByClientId.set(pack.clientId, pack);
+          }
+        });
+
+        const rows = scopedClients.map((client: (typeof scopedClients)[number], index: number) => {
+          const latestPack = latestPackByClientId.get(client.id);
+          const slots = latestPack ? slotsByPackId.get(latestPack.id) ?? [] : [];
+          const dueDate = latestPack ? buildPackDueDate(latestPack, slots) : new Date().toISOString();
+          const requiredBlockingSlots = slots.filter((slot) => {
+            if (!slot.isRequired) return false;
+            const mappedStatus = mapBackendSlotStatus(slot.status);
+            return mappedStatus === "missing" || mappedStatus === "draft" || mappedStatus === "partial" || mappedStatus === "pending" || mappedStatus === "pending_signature" || mappedStatus === "rejected";
+          });
+          const completedSlots = slots.filter((slot) => {
+            const mappedStatus = mapBackendSlotStatus(slot.status);
+            return mappedStatus === "accepted" || mappedStatus === "under_review" || mappedStatus === "uploaded" || mappedStatus === "filed";
+          }).length;
+          const completionScore = slots.length > 0 ? Math.round((completedSlots / slots.length) * 100) : client.completionRate;
+          const headlineSlot = requiredBlockingSlots[0] ?? slots[0];
+          const hasOverdue = requiredBlockingSlots.some((slot) => new Date(slot.dueDateUtc ?? dueDate).getTime() < Date.now());
+
+          return {
+            id: client.id,
+            name: client.clientName,
+            category: headlineSlot?.label || headlineSlot?.category || categories[index % categories.length],
+            contractExpiry: headlineSlot?.dueDateUtc || dueDate,
+            complianceState: mapComplianceState(completionScore),
+            riskLevel: hasOverdue ? "high" : mapRiskLevel(completionScore),
+            riskScore: Math.max(1, 100 - completionScore),
+          };
+        });
+
+        setLiveSupplierRows(rows);
+      } catch (error) {
+        if (!isActive) return;
+        setFeedbackNotice({
+          tone: "warning",
+          title: "Live compliance workspace unavailable",
+          message: error instanceof ApiError ? error.message : "The live compliance workspace could not be loaded, so the seeded view is still shown.",
+        });
+      }
+    }
+
+    void loadLiveComplianceRows();
+
+    return () => {
+      isActive = false;
+    };
+  }, [backendMode, user]);
+
   const supplierRows = useMemo<SupplierRow[]>(() => {
+    if (backendMode && liveSupplierRows) {
+      return liveSupplierRows;
+    }
+
     return clientStatuses.map((item, index) => {
       const riskLevel = mapRiskLevel(item.score);
       const complianceState = mapComplianceState(item.score);
@@ -160,7 +308,7 @@ export function AccountantComplianceCentrePage() {
         riskScore: Math.max(1, 100 - item.score),
       };
     });
-  }, [clientStatuses]);
+  }, [backendMode, clientStatuses, liveSupplierRows]);
 
   const selectedClient = useMemo(() => {
     if (supplierRows.length === 0) {

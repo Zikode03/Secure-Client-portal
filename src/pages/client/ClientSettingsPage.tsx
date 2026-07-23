@@ -1,7 +1,4 @@
-// Friendly guide: this module (ClientSettingsPage) supports the Secure Client Portal workflow.
-// The goal is clear, maintainable code so future edits feel safe and straightforward.
-
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
@@ -22,9 +19,7 @@ interface FeedbackNotice {
   message: string;
 }
 
-// Component flow: gather data first, then render a focused UI state.
 function BuildingIcon() {
-// Render output: this is the visual state users interact with.
   return (
     <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
       <path
@@ -197,25 +192,54 @@ function sectionIcon(section: SettingsSection) {
   }
 }
 
+function formatDateValue(value?: string) {
+  if (!value) {
+    return "Not recorded";
+  }
+
+  return new Intl.DateTimeFormat("en-ZA", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(value));
+}
+
 export function ClientSettingsPage() {
   const navigate = useNavigate();
   const { changePassword, user } = useAuth();
   const portal = usePortal();
 
+  const notificationPreferences = portal.clientSettings.notificationPreferences;
+  const securitySettings = portal.clientSettings.security;
+  const initialProfile = useMemo(() => portal.clientProfile, [portal.clientProfile]);
+
   const [activeSection, setActiveSection] = useState<SettingsSection>("business");
-  const [profile, setProfile] = useState<BusinessProfile>(portal.clientProfile);
-// Local UI state: keeps track of what the user is seeing or editing right now.
+  const [profile, setProfile] = useState<BusinessProfile>(initialProfile);
   const [industry, setIndustry] = useState("Accounting & Financial Services");
   const [jobTitle, setJobTitle] = useState(user?.title ?? "Finance Manager");
-  const [deadlineAlerts, setDeadlineAlerts] = useState(true);
-  const [rejectionAlerts, setRejectionAlerts] = useState(true);
-  const [complianceAlerts, setComplianceAlerts] = useState(true);
-  const [weeklySummary, setWeeklySummary] = useState(false);
+  const [deadlineAlerts, setDeadlineAlerts] = useState(notificationPreferences.deadlineAlerts);
+  const [rejectionAlerts, setRejectionAlerts] = useState(notificationPreferences.rejectionAlerts);
+  const [complianceAlerts, setComplianceAlerts] = useState(notificationPreferences.complianceAlerts);
+  const [weeklySummary, setWeeklySummary] = useState(notificationPreferences.weeklySummary);
+  const [browserAlerts, setBrowserAlerts] = useState(notificationPreferences.browserAlerts);
   const [feedbackNotice, setFeedbackNotice] = useState<FeedbackNotice | null>(null);
   const [currentPassword, setCurrentPassword] = useState("");
   const [nextPassword, setNextPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+
+  useEffect(() => {
+    setProfile(initialProfile);
+    setJobTitle(user?.title ?? "Finance Manager");
+  }, [initialProfile, user]);
+
+  useEffect(() => {
+    setDeadlineAlerts(notificationPreferences.deadlineAlerts);
+    setRejectionAlerts(notificationPreferences.rejectionAlerts);
+    setComplianceAlerts(notificationPreferences.complianceAlerts);
+    setWeeklySummary(notificationPreferences.weeklySummary);
+    setBrowserAlerts(notificationPreferences.browserAlerts);
+  }, [notificationPreferences]);
 
   const sections: Array<{
     id: SettingsSection;
@@ -259,7 +283,7 @@ export function ClientSettingsPage() {
   }
 
   function handleResetProfile() {
-    setProfile(portal.clientProfile);
+    setProfile(initialProfile);
     setIndustry("Accounting & Financial Services");
     setJobTitle(user?.title ?? "Finance Manager");
     setFeedbackNotice({
@@ -316,6 +340,23 @@ export function ClientSettingsPage() {
       setNextPassword("");
       setConfirmPassword("");
     }
+  }
+
+  function handleSaveNotifications() {
+    const result = portal.updateClientNotificationPreferences({
+      ...notificationPreferences,
+      deadlineAlerts,
+      rejectionAlerts,
+      complianceAlerts,
+      weeklySummary,
+      browserAlerts,
+    });
+
+    setFeedbackNotice({
+      tone: result.ok ? "success" : "danger",
+      title: result.ok ? "Preferences saved" : "Save failed",
+      message: result.message,
+    });
   }
 
   function renderBusinessProfile() {
@@ -444,6 +485,8 @@ export function ClientSettingsPage() {
   }
 
   function renderSecurity() {
+    const activeSessions = securitySettings.activeSessions ?? [];
+
     return (
       <SurfaceCard className="rounded-[1.55rem] border border-slate-200/80 bg-white p-6 shadow-[0_22px_48px_rgba(15,23,42,0.05)]">
         <div className="flex items-start gap-4">
@@ -466,7 +509,9 @@ export function ClientSettingsPage() {
               </div>
               <div>
                 <p className="text-sm font-semibold text-slate-950">Password protection</p>
-                <p className="text-[0.84rem] text-slate-500">Last changed 18 days ago</p>
+                <p className="text-[0.84rem] text-slate-500">
+                  Last changed {formatDateValue(securitySettings.passwordLastChangedAt)}
+                </p>
               </div>
             </div>
             <div className="mt-4 space-y-3">
@@ -516,22 +561,35 @@ export function ClientSettingsPage() {
               </div>
               <div>
                 <p className="text-sm font-semibold text-slate-950">Active sessions</p>
-                <p className="text-[0.84rem] text-slate-500">1 trusted browser session</p>
+                <p className="text-[0.84rem] text-slate-500">
+                  {activeSessions.length} trusted session{activeSessions.length === 1 ? "" : "s"}
+                </p>
               </div>
             </div>
-            <Button
-              className="mt-4 h-10 rounded-xl border border-slate-200 bg-white px-4 text-slate-700 hover:bg-slate-50"
-              onClick={() =>
-                setFeedbackNotice({
-                  tone: "success",
-                  title: "Secure session confirmed",
-                  message: "Your client workspace is currently secured with one active trusted session.",
-                })
-              }
-              variant="secondary"
-            >
-              Review sessions
-            </Button>
+            <div className="mt-4 space-y-2">
+              {activeSessions.map((session) => (
+                <div className="rounded-xl border border-slate-200 bg-white px-3 py-2" key={session.id}>
+                  <p className="text-sm font-medium text-slate-900">{session.label}</p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {session.location} | Last active {formatDateValue(session.lastActiveAt)}
+                    {session.isCurrent ? " | Current session" : ""}
+                  </p>
+                </div>
+              ))}
+              <Button
+                className="mt-2 h-10 rounded-xl border border-slate-200 bg-white px-4 text-slate-700 hover:bg-slate-50"
+                onClick={() =>
+                  setFeedbackNotice({
+                    tone: "success",
+                    title: "Session review complete",
+                    message: `You currently have ${activeSessions.length} trusted session${activeSessions.length === 1 ? "" : "s"} in this workspace.`,
+                  })
+                }
+                variant="secondary"
+              >
+                Review sessions
+              </Button>
+            </div>
           </div>
         </div>
       </SurfaceCard>
@@ -580,6 +638,21 @@ export function ClientSettingsPage() {
             label="Weekly summary email"
             onChange={() => setWeeklySummary((current) => !current)}
           />
+          <Toggle
+            checked={browserAlerts}
+            description="Show browser alerts for urgent workflow changes while you are signed in."
+            label="Browser alerts"
+            onChange={() => setBrowserAlerts((current) => !current)}
+          />
+        </div>
+
+        <div className="mt-5 flex justify-end">
+          <Button
+            className="h-11 rounded-xl bg-[linear-gradient(135deg,#5442ff,#6f59ff)] px-6 shadow-[0_16px_30px_rgba(84,66,255,0.18)] hover:bg-[linear-gradient(135deg,#4a38ef,#6650ff)]"
+            onClick={handleSaveNotifications}
+          >
+            Save preferences
+          </Button>
         </div>
       </SurfaceCard>
     );
@@ -688,45 +761,45 @@ export function ClientSettingsPage() {
 
       <SurfaceCard className="rounded-[1.55rem] border border-slate-200/80 bg-white p-3 shadow-[0_22px_48px_rgba(15,23,42,0.05)]">
         <div className="grid gap-2 md:grid-cols-4">
-            {sections.map((section) => {
-              const active = activeSection === section.id;
+          {sections.map((section) => {
+            const active = activeSection === section.id;
 
-              return (
-                <button
+            return (
+              <button
+                className={cn(
+                  "flex items-start gap-3 rounded-[1.05rem] border px-3.5 py-3.5 text-left transition",
+                  active
+                    ? "border-brand-100 bg-[linear-gradient(180deg,#f7f8ff_0%,#ffffff_100%)] shadow-[0_12px_26px_rgba(84,66,255,0.06)]"
+                    : "border-slate-200 bg-white hover:bg-slate-50",
+                )}
+                key={section.id}
+                onClick={() => setActiveSection(section.id)}
+                type="button"
+              >
+                <div
                   className={cn(
-                    "flex items-start gap-3 rounded-[1.05rem] border px-3.5 py-3.5 text-left transition",
-                    active
-                      ? "border-brand-100 bg-[linear-gradient(180deg,#f7f8ff_0%,#ffffff_100%)] shadow-[0_12px_26px_rgba(84,66,255,0.06)]"
-                      : "border-slate-200 bg-white hover:bg-slate-50",
+                    "flex h-10 w-10 shrink-0 items-center justify-center rounded-full ring-1",
+                    section.tone,
                   )}
-                  key={section.id}
-                  onClick={() => setActiveSection(section.id)}
-                  type="button"
                 >
-                  <div
+                  {sectionIcon(section.id)}
+                </div>
+                <div className="space-y-1">
+                  <p
                     className={cn(
-                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-full ring-1",
-                      section.tone,
+                      "text-[0.92rem] font-semibold",
+                      active ? "text-brand-700" : "text-slate-950",
                     )}
                   >
-                    {sectionIcon(section.id)}
-                  </div>
-                  <div className="space-y-1">
-                    <p
-                      className={cn(
-                        "text-[0.92rem] font-semibold",
-                        active ? "text-brand-700" : "text-slate-950",
-                      )}
-                    >
-                      {section.title}
-                    </p>
-                    <p className="line-clamp-2 text-[0.76rem] leading-5 text-slate-500">
-                      {section.description}
-                    </p>
-                  </div>
-                </button>
-              );
-            })}
+                    {section.title}
+                  </p>
+                  <p className="line-clamp-2 text-[0.76rem] leading-5 text-slate-500">
+                    {section.description}
+                  </p>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </SurfaceCard>
 

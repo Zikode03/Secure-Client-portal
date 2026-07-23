@@ -4,8 +4,11 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
 import { Button } from "../../components/ui/Button";
+import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
-import type { FirmClientAccount, PortfolioRow } from "../../types/portal";
+import { ApiError, apiGetJson, hasApiBaseUrl } from "../../services/apiClient";
+import { portalServiceApi } from "../../services/portalApi";
+import type { FirmClientAccount, PortfolioRow, Tone } from "../../types/portal";
 import { cn } from "../../utils/cn";
 import { getScopedClients } from "../../utils/permissions";
 
@@ -15,6 +18,75 @@ type SortMode = "priority" | "deadline" | "progress";
 type ViewMode = "grid" | "list";
 type SavedFilter = "all" | "my_urgent" | "due_48h" | "blocked_3d";
 type PortfolioView = { account: FirmClientAccount | null; row: PortfolioRow };
+
+interface BackendMonthlyPackRecord {
+  id: string;
+  clientId: string;
+  year: number;
+  month: number;
+  status: string;
+  createdAtUtc: string;
+  updatedAtUtc: string;
+}
+
+interface BackendDocumentSlotRecord {
+  id: string;
+  monthlyPackId: string;
+  clientId: string;
+  category: string;
+  label: string;
+  isRequired: boolean;
+  status: string;
+  canCurrentlyBeSubmitted: boolean;
+  currentDocumentId?: string | null;
+  dueDateUtc?: string | null;
+  submittedAtUtc?: string | null;
+  reviewStatus?: string | null;
+  rejectionReason?: string | null;
+  createdAtUtc: string;
+  updatedAtUtc: string;
+}
+
+interface FeedbackNotice {
+  tone: Tone;
+  title: string;
+  message: string;
+}
+
+function formatMonthLabel(year: number, month: number) {
+  return new Intl.DateTimeFormat("en-ZA", { month: "long", year: "numeric" }).format(
+    new Date(year, month - 1, 1),
+  );
+}
+
+function buildPackDueDate(pack: BackendMonthlyPackRecord, slots: BackendDocumentSlotRecord[]) {
+  const dueDates = slots
+    .map((slot) => slot.dueDateUtc)
+    .filter((value): value is string => Boolean(value))
+    .sort((left, right) => left.localeCompare(right));
+
+  if (dueDates.length > 0) {
+    return dueDates[0];
+  }
+
+  const safeDay = Math.min(28, new Date(pack.year, pack.month, 0).getDate());
+  return new Date(Date.UTC(pack.year, pack.month - 1, safeDay)).toISOString();
+}
+
+function mapBackendSlotStatus(status: string) {
+  const normalized = status.trim().toLowerCase();
+
+  if (normalized === "not_started") return "missing";
+  if (normalized === "draft") return "draft";
+  if (normalized === "partial") return "partial";
+  if (normalized === "pending") return "pending";
+  if (normalized === "pending_signature") return "pending_signature";
+  if (normalized === "submitted" || normalized === "uploaded") return "uploaded";
+  if (normalized === "under_review") return "under_review";
+  if (normalized === "accepted") return "accepted";
+  if (normalized === "reupload_required" || normalized === "rejected") return "rejected";
+  return "filed";
+}
 
 function getFirstName(value: string | undefined) {
   return value?.split(" ").filter(Boolean)[0] ?? "there";
@@ -124,30 +196,143 @@ export function AccountantPortfolioPage() {
   const { user } = useAuth();
   const portal = usePortal();
   const navigate = useNavigate();
+  const backendMode = hasApiBaseUrl();
   const isAdmin = user?.role === "admin";
   const [search, setSearch] = useState("");
   const [sortMode, setSortMode] = useState<SortMode>("priority");
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [savedFilter, setSavedFilter] = useState<SavedFilter>("all");
   const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
+  const [liveClients, setLiveClients] = useState<FirmClientAccount[] | null>(null);
+  const [livePortfolio, setLivePortfolio] = useState<PortfolioRow[] | null>(null);
+  const [feedbackNotice, setFeedbackNotice] = useState<FeedbackNotice | null>(null);
   const actionMenuRef = useRef<HTMLTableCellElement | null>(null);
 
-  const accountById = useMemo(() => new Map(portal.adminClients.map((client) => [client.id, client])), [portal.adminClients]);
-  const scopedClients = useMemo(() => getScopedClients(user, portal.adminClients), [portal.adminClients, user]);
+const sourceClients = backendMode && liveClients ? liveClients : portal.adminClients;
+  const sourcePortfolio = backendMode && livePortfolio ? livePortfolio : portal.accountantDashboard.portfolio;
+  const accountById = useMemo(() => new Map(sourceClients.map((client) => [client.id, client])), [sourceClients]);
+  const scopedClients = useMemo(() => getScopedClients(user, sourceClients), [sourceClients, user]);
   const scopedClientIds = useMemo(() => new Set(scopedClients.map((client) => client.id)), [scopedClients]);
 
+  useEffect(() => {
+    if (!backendMode) {
+      return;
+    }
+
+    let isMounted = true;
+
+    async function loadLivePortfolio() {
+      try {
+        const [clients, packs] = await Promise.all([
+          portalServiceApi.getAdminClients(),
+          apiGetJson<BackendMonthlyPackRecord[]>("/api/monthly-packs"),
+        ]);
+
+        const slotResponses = await Promise.all(
+          packs.map(async (pack) => ({
+            monthlyPackId: pack.id,
+            slots: await apiGetJson<BackendDocumentSlotRecord[]>(
+              `/api/document-slots/${encodeURIComponent(pack.id)}`,
+            ),
+          })),
+        );
+
+        if (!isMounted) {
+          return;
+        }
+
+        const slotsByPackId = new Map(
+          slotResponses.map((entry) => [entry.monthlyPackId, entry.slots]),
+        );
+
+        const latestPackByClientId = new Map<string, BackendMonthlyPackRecord>();
+        packs.forEach((pack) => {
+          const current = latestPackByClientId.get(pack.clientId);
+          const currentKey = current ? current.year * 100 + current.month : 0;
+          const nextKey = pack.year * 100 + pack.month;
+          if (!current || nextKey > currentKey) {
+            latestPackByClientId.set(pack.clientId, pack);
+          }
+        });
+
+        const portfolioRows = clients.map((client) => {
+          const latestPack = latestPackByClientId.get(client.id);
+          const slots = latestPack ? slotsByPackId.get(latestPack.id) ?? [] : [];
+          const totalSlots = slots.length;
+          const completedSlots = slots.filter((slot) => {
+            const mappedStatus = mapBackendSlotStatus(slot.status);
+            return mappedStatus === "accepted" || mappedStatus === "under_review" || mappedStatus === "uploaded" || mappedStatus === "filed";
+          }).length;
+          const requiredBlockingSlots = slots.filter((slot) => {
+            if (!slot.isRequired) {
+              return false;
+            }
+
+            const mappedStatus = mapBackendSlotStatus(slot.status);
+            return mappedStatus === "missing" || mappedStatus === "draft" || mappedStatus === "partial" || mappedStatus === "pending" || mappedStatus === "pending_signature" || mappedStatus === "rejected";
+          });
+          const dueDate = latestPack ? buildPackDueDate(latestPack, slots) : new Date().toISOString();
+          const overdueCount = requiredBlockingSlots.filter((slot) => {
+            const slotDueDate = slot.dueDateUtc ?? dueDate;
+            return new Date(slotDueDate).getTime() < Date.now();
+          }).length;
+
+          return {
+            id: `${client.id}-${latestPack?.id ?? "current"}`,
+            clientId: client.id,
+            clientName: client.clientName,
+            monthLabel: latestPack
+              ? formatMonthLabel(latestPack.year, latestPack.month)
+              : formatMonthLabel(new Date().getFullYear(), new Date().getMonth() + 1),
+            progressPercent: totalSlots > 0 ? Math.round((completedSlots / totalSlots) * 100) : client.completionRate,
+            status: client.status,
+            assignedAccountant: client.assignedAccountant,
+            missingCount: requiredBlockingSlots.length,
+            overdueCount,
+            deadline: dueDate,
+          } satisfies PortfolioRow;
+        });
+
+        setLiveClients(clients);
+        setLivePortfolio(portfolioRows);
+        setFeedbackNotice(null);
+      } catch (error) {
+        if (!isMounted) {
+          return;
+        }
+
+        setFeedbackNotice({
+          tone: "warning",
+          title: "Live portfolio unavailable",
+          message:
+            error instanceof ApiError
+              ? error.message
+              : "The live accountant portfolio could not be loaded, so the seeded workspace view is still shown.",
+        });
+      }
+    }
+
+    void loadLivePortfolio();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [backendMode]);
+
   const assignedPortfolio = useMemo(() => {
-    const portfolioRows = isAdmin
-      ? [
-          ...portal.accountantDashboard.portfolio,
-          ...portal.adminClients
-            .filter((client) => !portal.accountantDashboard.portfolio.some((row) => row.clientId === client.id))
-            .map(portfolioRowFromAccount),
-        ]
-      : portal.accountantDashboard.portfolio;
+    const portfolioRows = backendMode && livePortfolio
+      ? livePortfolio
+      : isAdmin
+        ? [
+            ...sourcePortfolio,
+            ...sourceClients
+              .filter((client) => !sourcePortfolio.some((row) => row.clientId === client.id))
+              .map(portfolioRowFromAccount),
+          ]
+        : sourcePortfolio;
     const visibleRows = isAdmin ? portfolioRows : portfolioRows.filter((row) => scopedClientIds.has(row.clientId));
     return visibleRows.map<PortfolioView>((row) => ({ row, account: accountById.get(row.clientId) ?? null }));
-  }, [accountById, isAdmin, portal.accountantDashboard.portfolio, portal.adminClients, scopedClientIds]);
+  }, [accountById, backendMode, isAdmin, livePortfolio, scopedClientIds, sourceClients, sourcePortfolio]);
 
   const visibleClients = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -237,6 +422,15 @@ export function AccountantPortfolioPage() {
           </Button>
         ) : null}
       </div>
+
+      {feedbackNotice ? (
+        <FeedbackBanner
+          message={feedbackNotice.message}
+          onDismiss={() => setFeedbackNotice(null)}
+          title={feedbackNotice.title}
+          tone={feedbackNotice.tone}
+        />
+      ) : null}
 
       <SurfaceCard className="rounded-[1.75rem] border border-slate-200/90 bg-white/95 p-4 shadow-[0_22px_48px_rgba(15,23,42,0.06)] sm:p-5">
         <div className="space-y-5">
@@ -559,3 +753,4 @@ export function AccountantPortfolioPage() {
     </div>
   );
 }
+

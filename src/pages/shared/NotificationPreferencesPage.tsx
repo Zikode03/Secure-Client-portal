@@ -1,17 +1,21 @@
-// Friendly guide: this module (NotificationPreferencesPage) supports the Secure Client Portal workflow.
-// The goal is clear, maintainable code so future edits feel safe and straightforward.
-
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
 import { Button } from "../../components/ui/Button";
+import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
+import type { Tone } from "../../types/portal";
 
-// Shared shape notes: these types keep UI and data contracts aligned.
 interface RoleNotificationPreferences {
   emailReminders: boolean;
   escalationAlerts: boolean;
   quietHours: string;
+}
+
+interface FeedbackNotice {
+  tone: Tone;
+  title: string;
+  message: string;
 }
 
 const DEFAULT_PREFERENCES: RoleNotificationPreferences = {
@@ -20,12 +24,32 @@ const DEFAULT_PREFERENCES: RoleNotificationPreferences = {
   quietHours: "22:00-06:00",
 };
 
-// Component flow: gather data first, then render a focused UI state.
+function PreferenceToggle({
+  checked,
+  description,
+  label,
+  onChange,
+}: {
+  checked: boolean;
+  description: string;
+  label: string;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
+      <div>
+        <p className="font-medium text-slate-900">{label}</p>
+        <p className="mt-1 text-xs text-slate-500">{description}</p>
+      </div>
+      <input checked={checked} onChange={(event) => onChange(event.target.checked)} type="checkbox" />
+    </label>
+  );
+}
+
 export function NotificationPreferencesPage() {
   const { user } = useAuth();
   const portal = usePortal();
-// Local UI state: keeps track of what the user is seeing or editing right now.
-  const [flash, setFlash] = useState("");
+  const [feedbackNotice, setFeedbackNotice] = useState<FeedbackNotice | null>(null);
 
   const isClient = user?.role === "client";
   const storageKey = useMemo(
@@ -39,16 +63,22 @@ export function NotificationPreferencesPage() {
   const [emailReminders, setEmailReminders] = useState(DEFAULT_PREFERENCES.emailReminders);
   const [escalationAlerts, setEscalationAlerts] = useState(DEFAULT_PREFERENCES.escalationAlerts);
   const [quietHours, setQuietHours] = useState(DEFAULT_PREFERENCES.quietHours);
+  const [rejectionAlerts, setRejectionAlerts] = useState(false);
+  const [weeklySummary, setWeeklySummary] = useState(false);
+  const [browserAlerts, setBrowserAlerts] = useState(false);
 
-// Reactive sync: this block responds when dependencies change.
   useEffect(() => {
     if (!user) {
       return;
     }
 
     if (isClient) {
-      setEmailReminders(portal.clientSettings.notificationPreferences.deadlineAlerts);
-      setEscalationAlerts(portal.clientSettings.notificationPreferences.complianceAlerts);
+      const preferences = portal.clientSettings.notificationPreferences;
+      setEmailReminders(preferences.deadlineAlerts);
+      setEscalationAlerts(preferences.complianceAlerts);
+      setRejectionAlerts(preferences.rejectionAlerts);
+      setWeeklySummary(preferences.weeklySummary);
+      setBrowserAlerts(preferences.browserAlerts);
       setQuietHours(DEFAULT_PREFERENCES.quietHours);
       return;
     }
@@ -78,20 +108,32 @@ export function NotificationPreferencesPage() {
   }, [isClient, portal.clientSettings.notificationPreferences, storageKey, user]);
 
   function savePreferences() {
-    setFlash("");
+    setFeedbackNotice(null);
 
     if (isClient) {
       const result = portal.updateClientNotificationPreferences({
         ...portal.clientSettings.notificationPreferences,
         deadlineAlerts: emailReminders,
         complianceAlerts: escalationAlerts,
+        rejectionAlerts,
+        weeklySummary,
+        browserAlerts,
       });
-      setFlash(result.message);
+
+      setFeedbackNotice({
+        tone: result.ok ? "success" : "danger",
+        title: result.ok ? "Preferences saved" : "Save failed",
+        message: result.message,
+      });
       return;
     }
 
     if (!storageKey || typeof window === "undefined") {
-      setFlash("Unable to save preferences for this role.");
+      setFeedbackNotice({
+        tone: "danger",
+        title: "Save failed",
+        message: "Unable to save preferences for this role.",
+      });
       return;
     }
 
@@ -103,46 +145,86 @@ export function NotificationPreferencesPage() {
         quietHours,
       }),
     );
-    setFlash("Notification preferences saved.");
+
+    setFeedbackNotice({
+      tone: "success",
+      title: "Preferences saved",
+      message: "Notification preferences saved.",
+    });
   }
 
-// Render output: this is the visual state users interact with.
   return (
-    <SurfaceCard className="rounded-2xl border border-slate-200 bg-white p-5 shadow-none">
-      <h1 className="text-xl font-semibold text-slate-950">Notification Preferences</h1>
-      <p className="mt-1 text-sm text-slate-500">
-        Configure reminders, escalation channels, and quiet hours per role.
-      </p>
-
-      <div className="mt-4 space-y-3">
-        <label className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm">
-          <span>Email reminders</span>
-          <input checked={emailReminders} onChange={(event) => setEmailReminders(event.target.checked)} type="checkbox" />
-        </label>
-
-        <label className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm">
-          <span>Escalation alerts</span>
-          <input checked={escalationAlerts} onChange={(event) => setEscalationAlerts(event.target.checked)} type="checkbox" />
-        </label>
-
-        <label className="block rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm">
-          <span className="block text-slate-700">Quiet hours</span>
-          <input
-            className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2"
-            onChange={(event) => setQuietHours(event.target.value)}
-            value={quietHours}
-          />
-        </label>
-      </div>
-
-      <div className="mt-4">
-        <Button onClick={savePreferences}>Save preferences</Button>
-      </div>
-      {flash ? (
-        <p className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-          {flash}
-        </p>
+    <div className="space-y-4">
+      {feedbackNotice ? (
+        <FeedbackBanner
+          message={feedbackNotice.message}
+          onDismiss={() => setFeedbackNotice(null)}
+          title={feedbackNotice.title}
+          tone={feedbackNotice.tone}
+        />
       ) : null}
-    </SurfaceCard>
+
+      <SurfaceCard className="rounded-2xl border border-slate-200 bg-white p-5 shadow-none">
+        <h1 className="text-xl font-semibold text-slate-950">Notification Preferences</h1>
+        <p className="mt-1 text-sm text-slate-500">
+          Configure reminders, escalation channels, and quiet hours per role.
+        </p>
+
+        <div className="mt-4 space-y-3">
+          <PreferenceToggle
+            checked={emailReminders}
+            description="Receive reminders before monthly pack deadlines arrive."
+            label="Deadline reminders"
+            onChange={setEmailReminders}
+          />
+
+          <PreferenceToggle
+            checked={escalationAlerts}
+            description="Receive alerts when compliance or workflow issues need escalation."
+            label="Escalation alerts"
+            onChange={setEscalationAlerts}
+          />
+
+          {isClient ? (
+            <>
+              <PreferenceToggle
+                checked={rejectionAlerts}
+                description="Be notified when a document is rejected and a corrected version is needed."
+                label="Rejected document alerts"
+                onChange={setRejectionAlerts}
+              />
+              <PreferenceToggle
+                checked={weeklySummary}
+                description="Receive a weekly summary of your open tasks, packs, and reviews."
+                label="Weekly summary"
+                onChange={setWeeklySummary}
+              />
+              <PreferenceToggle
+                checked={browserAlerts}
+                description="Allow browser notifications for high-priority workflow events."
+                label="Browser alerts"
+                onChange={setBrowserAlerts}
+              />
+            </>
+          ) : (
+            <label className="block rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
+              <span className="block font-medium text-slate-900">Quiet hours</span>
+              <span className="mt-1 block text-xs text-slate-500">
+                Silence reminder noise during this time window.
+              </span>
+              <input
+                className="mt-3 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm"
+                onChange={(event) => setQuietHours(event.target.value)}
+                value={quietHours}
+              />
+            </label>
+          )}
+        </div>
+
+        <div className="mt-4">
+          <Button onClick={savePreferences}>Save preferences</Button>
+        </div>
+      </SurfaceCard>
+    </div>
   );
 }

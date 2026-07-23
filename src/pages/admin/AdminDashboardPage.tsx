@@ -1,10 +1,263 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePortal } from "../../app/portal";
 import { Button } from "../../components/ui/Button";
+import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
+import { ApiError, apiGetJson, hasApiBaseUrl } from "../../services/apiClient";
+import type {
+  AdminDashboardData,
+  DocumentPolicy,
+  FirmClientAccount,
+  ManagedAccountant,
+  NotificationItem,
+  SummaryMetric,
+  Tone,
+} from "../../types/portal";
 import { cn } from "../../utils/cn";
+
+interface BackendAdminUserRecord {
+  id: string;
+  fullName: string;
+  email: string;
+  role: string;
+  securityStatus?: string | null;
+}
+
+interface BackendClientRecord {
+  id: string;
+  name: string;
+  entityType: string;
+  status: string;
+  complianceHealth: number;
+  assignedAccountantId: string;
+  primaryContact: string;
+  email: string;
+}
+
+interface BackendAssignmentRecord {
+  id: string;
+  clientId: string;
+  clientName?: string | null;
+  accountantUserId: string;
+  accountantName?: string | null;
+  isPrimary: boolean;
+}
+
+interface BackendNotificationRecord {
+  id: string;
+  userId: string;
+  clientId?: string | null;
+  type: string;
+  title: string;
+  message: string;
+  linkUrl?: string | null;
+  isRead: boolean;
+  createdAtUtc: string;
+}
+
+interface BackendReviewQueueRecord {
+  id: string;
+  clientId?: string | null;
+  clientName?: string | null;
+  status?: string | null;
+  assignedToUserId?: string | null;
+  assignedToName?: string | null;
+}
+
+interface FeedbackNotice {
+  tone: Tone;
+  title: string;
+  message: string;
+}
+
+const livePolicies: DocumentPolicy[] = [
+  {
+    id: "policy-client-access",
+    name: "Client assignment control",
+    description: "Primary accountant ownership determines who should carry the live client workload.",
+    requiredByDay: "Immediate",
+    gracePeriod: "No grace period",
+    owner: "Admin",
+  },
+  {
+    id: "policy-review-age",
+    name: "Review queue ageing",
+    description: "Review items older than three days should be escalated before the month-end bottleneck grows.",
+    requiredByDay: "3 days",
+    gracePeriod: "4 extra days",
+    owner: "Operations",
+  },
+  {
+    id: "policy-request-sla",
+    name: "Request SLA visibility",
+    description: "Waiting-on-client and overdue requests stay visible in admin oversight until they are resolved.",
+    requiredByDay: "Daily",
+    gracePeriod: "N/A",
+    owner: "Admin",
+  },
+  {
+    id: "policy-compliance-risk",
+    name: "Compliance risk watch",
+    description: "Inactive and low-health clients should surface quickly so assignments and reviews can be rebalanced.",
+    requiredByDay: "Weekly",
+    gracePeriod: "2 days",
+    owner: "Compliance",
+  },
+];
+
+function normalizeAccountantStatus(status?: string | null): ManagedAccountant["status"] {
+  switch ((status ?? "").trim().toLowerCase()) {
+    case "invited":
+      return "capacity_available";
+    case "disabled":
+    case "locked":
+      return "busy";
+    default:
+      return "active";
+  }
+}
+
+function mapLiveAccountants(
+  users: BackendAdminUserRecord[],
+  assignments: BackendAssignmentRecord[],
+  reviewQueue: BackendReviewQueueRecord[],
+): ManagedAccountant[] {
+  return users
+    .filter((user) => user.role.trim().toLowerCase() === "accountant")
+    .map((user) => {
+      const assignedClientCount = assignments.filter(
+        (assignment) => assignment.accountantUserId === user.id,
+      ).length;
+      const openReviews = reviewQueue.filter((item) => {
+        const status = (item.status ?? "").trim().toLowerCase();
+        return item.assignedToUserId === user.id && status !== "approved" && status !== "rejected";
+      }).length;
+
+      return {
+        id: user.id,
+        name: user.fullName,
+        email: user.email,
+        title: "Accountant",
+        assignedClientCount,
+        openReviews,
+        status:
+          openReviews >= 8
+            ? "busy"
+            : assignedClientCount <= 2
+              ? "capacity_available"
+              : normalizeAccountantStatus(user.securityStatus),
+      };
+    })
+    .sort((left, right) => left.name.localeCompare(right.name));
+}
+
+function mapLiveClients(
+  clients: BackendClientRecord[],
+  assignments: BackendAssignmentRecord[],
+  accountants: ManagedAccountant[],
+): FirmClientAccount[] {
+  return clients.map((client) => {
+    const clientAssignments = assignments.filter((assignment) => assignment.clientId === client.id);
+    const primaryAssignment = clientAssignments.find((assignment) => assignment.isPrimary) ?? null;
+
+    return {
+      id: client.id,
+      clientName: client.name,
+      industry: client.entityType,
+      assignedAccountant:
+        primaryAssignment?.accountantName ??
+        accountants.find((accountant) => accountant.id === client.assignedAccountantId)?.name ??
+        "Unassigned",
+      assignedAccountantUserId:
+        primaryAssignment?.accountantUserId ?? (client.assignedAccountantId || undefined),
+      requiredPack: "Current month pack",
+      completionRate: client.complianceHealth,
+      deadlinePolicy: "Monthly",
+      status:
+        client.status === "active"
+          ? client.complianceHealth < 60
+            ? "attention"
+            : "on_track"
+          : client.status === "inactive"
+            ? "attention"
+            : "overdue",
+      isActive: client.status === "active",
+    };
+  });
+}
+
+function mapNotificationTone(type: string): Tone {
+  const value = type.trim().toLowerCase();
+  if (value.includes("rejected") || value.includes("overdue") || value.includes("exception")) {
+    return "danger";
+  }
+
+  if (value.includes("missing") || value.includes("deadline") || value.includes("expiring")) {
+    return "warning";
+  }
+
+  if (value.includes("review") || value.includes("request")) {
+    return "info";
+  }
+
+  return "neutral";
+}
+
+function mapNotificationKind(type: string): NotificationItem["kind"] {
+  const value = type.trim().toLowerCase();
+  if (value.includes("rejected")) return "rejected_documents";
+  if (value.includes("deadline") || value.includes("expiring")) return "deadline_reminder";
+  if (value.includes("missing")) return "missing_documents";
+  return "expiring_documents";
+}
+
+function buildSummaryMetrics(
+  clients: FirmClientAccount[],
+  accountants: ManagedAccountant[],
+  notifications: NotificationItem[],
+  reviewQueue: BackendReviewQueueRecord[],
+): SummaryMetric[] {
+  const activeClients = clients.filter((client) => client.isActive ?? true).length;
+  const attentionClients = clients.filter((client) => client.status !== "on_track").length;
+  const openReviews = reviewQueue.filter((item) => {
+    const status = (item.status ?? "").trim().toLowerCase();
+    return status !== "approved" && status !== "rejected";
+  }).length;
+  const busyAccountants = accountants.filter((accountant) => accountant.status === "busy").length;
+
+  return [
+    {
+      id: "active-clients",
+      label: "Active clients",
+      value: String(activeClients),
+      helper: `${attentionClients} need attention`,
+      tone: attentionClients > 0 ? "warning" : "success",
+    },
+    {
+      id: "open-reviews",
+      label: "Open reviews",
+      value: String(openReviews),
+      helper: `${reviewQueue.length} total review records loaded`,
+      tone: openReviews >= 5 ? "warning" : "info",
+    },
+    {
+      id: "team-capacity",
+      label: "Busy accountants",
+      value: String(busyAccountants),
+      helper: `${accountants.length - busyAccountants} still have capacity`,
+      tone: busyAccountants > 0 ? "warning" : "success",
+    },
+    {
+      id: "firm-alerts",
+      label: "Recent alerts",
+      value: String(notifications.length),
+      helper: notifications.length > 0 ? "Latest workflow events surfaced" : "No recent firm alerts",
+      tone: notifications.length > 0 ? "info" : "neutral",
+    },
+  ];
+}
 
 function statusTone(status: "on_track" | "attention" | "overdue") {
   if (status === "on_track") {
@@ -33,7 +286,102 @@ function workloadTone(openReviews: number) {
 export function AdminDashboardPage() {
   const navigate = useNavigate();
   const portal = usePortal();
-  const dashboard = portal.adminDashboard;
+  const backendMode = hasApiBaseUrl();
+  const [liveDashboard, setLiveDashboard] = useState<AdminDashboardData | null>(null);
+  const [liveAccountants, setLiveAccountants] = useState<ManagedAccountant[] | null>(null);
+  const [feedbackNotice, setFeedbackNotice] = useState<FeedbackNotice | null>(null);
+
+  useEffect(() => {
+    if (!backendMode) {
+      return;
+    }
+
+    let isMounted = true;
+
+    async function loadAdminDashboard() {
+      const results = await Promise.allSettled([
+        apiGetJson<BackendAdminUserRecord[]>("/api/admin/users"),
+        apiGetJson<BackendClientRecord[]>("/api/clients"),
+        apiGetJson<BackendAssignmentRecord[]>("/api/assignments"),
+        apiGetJson<BackendNotificationRecord[]>("/api/notifications"),
+        apiGetJson<BackendReviewQueueRecord[]>("/api/review-queue"),
+      ]);
+
+      if (!isMounted) {
+        return;
+      }
+
+      const [usersResult, clientsResult, assignmentsResult, notificationsResult, reviewQueueResult] = results;
+
+      if (
+        usersResult.status !== "fulfilled" ||
+        clientsResult.status !== "fulfilled" ||
+        assignmentsResult.status !== "fulfilled"
+      ) {
+        const firstError = [usersResult, clientsResult, assignmentsResult]
+          .find((result) => result.status === "rejected");
+        const error = firstError?.status === "rejected" ? firstError.reason : null;
+
+        setFeedbackNotice({
+          tone: "warning",
+          title: "Live admin dashboard unavailable",
+          message:
+            error instanceof ApiError
+              ? error.message
+              : "The admin dashboard could not load the live backend data, so the seeded workspace view is still shown.",
+        });
+        return;
+      }
+
+      const users = usersResult.value;
+      const clients = clientsResult.value;
+      const assignments = assignmentsResult.value;
+      const reviewQueue = reviewQueueResult.status === "fulfilled" ? reviewQueueResult.value : [];
+      const notifications = notificationsResult.status === "fulfilled" ? notificationsResult.value : [];
+      const mappedAccountants = mapLiveAccountants(users, assignments, reviewQueue);
+      const mappedClients = mapLiveClients(clients, assignments, mappedAccountants);
+      const mappedNotifications: NotificationItem[] = notifications
+        .slice(0, 8)
+        .map((item) => ({
+          id: item.id,
+          kind: mapNotificationKind(item.type),
+          title: item.title,
+          message: item.message,
+          createdAt: item.createdAtUtc,
+          tone: mapNotificationTone(item.type),
+          actionLabel: item.linkUrl ? "Open" : "Review",
+          actionHref: item.linkUrl ?? "/admin/assignments",
+          state: item.isRead ? "reviewed" : "unread",
+          activity: [],
+        }));
+
+      setLiveAccountants(mappedAccountants);
+      setLiveDashboard({
+        summaryMetrics: buildSummaryMetrics(mappedClients, mappedAccountants, mappedNotifications, reviewQueue),
+        clients: mappedClients,
+        policies: livePolicies,
+        notifications: mappedNotifications,
+      });
+      setFeedbackNotice(
+        notificationsResult.status === "rejected" || reviewQueueResult.status === "rejected"
+          ? {
+              tone: "warning",
+              title: "Partial live dashboard",
+              message: "Some secondary dashboard feeds could not be loaded, so a few admin tiles are using limited live data.",
+            }
+          : null,
+      );
+    }
+
+    void loadAdminDashboard();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [backendMode]);
+
+  const dashboard = backendMode && liveDashboard ? liveDashboard : portal.adminDashboard;
+  const managedAccountants = backendMode && liveAccountants ? liveAccountants : portal.managedAccountants;
 
   const criticalClients = useMemo(
     () =>
@@ -51,12 +399,12 @@ export function AdminDashboardPage() {
 
   const capacityRows = useMemo(
     () =>
-      [...portal.managedAccountants].sort(
+      [...managedAccountants].sort(
         (left, right) =>
           right.assignedClientCount - left.assignedClientCount ||
           right.openReviews - left.openReviews,
       ),
-    [portal.managedAccountants],
+    [managedAccountants],
   );
 
   const recentAlerts = useMemo(
@@ -83,6 +431,15 @@ export function AdminDashboardPage() {
         eyebrow="Admin workspace"
         title="Firm dashboard"
       />
+
+      {feedbackNotice ? (
+        <FeedbackBanner
+          message={feedbackNotice.message}
+          onDismiss={() => setFeedbackNotice(null)}
+          title={feedbackNotice.title}
+          tone={feedbackNotice.tone}
+        />
+      ) : null}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {dashboard.summaryMetrics.map((metric) => (

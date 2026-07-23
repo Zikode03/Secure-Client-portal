@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
+import { ApiError, apiGetBlob, apiGetJson, hasApiBaseUrl } from "../../services/apiClient";
+import { portalServiceApi } from "../../services/portalApi";
 import { AuditTrail } from "../../components/workflow/AuditTrail";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
@@ -16,6 +18,7 @@ import {
 } from "../../services/workflowEngine";
 import type {
   DocumentRecord,
+  FirmClientAccount,
   UnifiedSearchFilters,
   UnifiedSearchResult,
   WorkflowStatus,
@@ -49,6 +52,23 @@ const resultsPerPage = 7;
 // Shared shape notes: these types keep UI and data contracts aligned.
 type ResultTab = "all" | "documents" | "invoices" | "compliance";
 type ViewerTab = "details" | "history" | "related";
+
+interface BackendDocumentRecord {
+  id: string;
+  clientId: string;
+  monthlyPackId: string;
+  name: string;
+  category: string;
+  documentSlotId?: string | null;
+  status: string;
+  fileType: string;
+  sizeBytes: number;
+  storageKey?: string | null;
+  uploadedByUserId: string;
+  currentVersionNumber: number;
+  uploadedAtUtc: string;
+  updatedAtUtc: string;
+}
 
 // Component flow: gather data first, then render a focused UI state.
 function SearchIcon() {
@@ -309,10 +329,60 @@ function isNewResult(value: string) {
   return ageInDays <= 10;
 }
 
+function mapLiveDocumentStatus(status: string): DocumentRecord["status"] {
+  switch (status.trim().toLowerCase()) {
+    case "under_review":
+      return "under_review";
+    case "accepted":
+      return "accepted";
+    case "rejected":
+      return "rejected";
+    case "filed":
+      return "filed";
+    default:
+      return "uploaded";
+  }
+}
+
+function formatSizeLabel(sizeBytes: number) {
+  if (sizeBytes >= 1_000_000) {
+    return `${(sizeBytes / 1_000_000).toFixed(1)} MB`;
+  }
+
+  if (sizeBytes >= 1_000) {
+    return `${Math.max(1, Math.round(sizeBytes / 1_000))} KB`;
+  }
+
+  return `${sizeBytes} B`;
+}
+
+function mapLiveDocumentType(category: string) {
+  const normalized = category.trim().toLowerCase();
+
+  if (normalized.includes("bank")) return "Bank Statement";
+  if (normalized.includes("invoice")) return "Invoices";
+  if (normalized.includes("sign")) return "Signed Documents";
+  if (normalized.includes("compliance") || normalized.includes("tax") || normalized.includes("vat") || normalized.includes("cipc") || normalized.includes("payroll")) return "Compliance Record";
+  return category;
+}
+
+function buildEmptyMonthPack() {
+  return {
+    monthLabel: "Current Period",
+    dueDate: new Date().toISOString(),
+    deadlineStatus: "on_track" as const,
+    progressPercent: 0,
+    completedCount: 0,
+    totalCount: 0,
+    canComplete: false,
+    completionMessage: "",
+    slots: [],
+  };
+}
+
 function mapWorkflowStatusToDocumentStatus(
   value: WorkflowStatus,
-): DocumentRecord["status"] {
-  switch (value) {
+): DocumentRecord["status"] {  switch (value) {
     case "accepted":
     case "filed":
     case "uploaded":
@@ -786,6 +856,7 @@ function Pagination({
 export function AccountantDocumentsPage() {
   const { user } = useAuth();
   const portal = usePortal();
+  const backendMode = hasApiBaseUrl();
   const [searchParams] = useSearchParams();
   const [filters, setFilters] = useState<UnifiedSearchFilters>(defaultFilters);
   const [activeResultTab, setActiveResultTab] = useState<ResultTab>("all");
@@ -797,15 +868,134 @@ export function AccountantDocumentsPage() {
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [previewZoom, setPreviewZoom] = useState(100);
+  const [liveClients, setLiveClients] = useState<FirmClientAccount[] | null>(null);
+  const [liveDocuments, setLiveDocuments] = useState<DocumentRecord[]>([]);
 
+  const sourceClients = backendMode && liveClients ? liveClients : portal.adminClients;
   const assignedClients = useMemo(
-    () => getScopedClients(user, portal.adminClients),
-    [portal.adminClients, user],
+    () => getScopedClients(user, sourceClients),
+    [sourceClients, user],
   );
+
+  useEffect(() => {
+    if (!backendMode) {
+      return;
+    }
+
+    let isActive = true;
+
+    async function loadLiveDocuments() {
+      try {
+        const [clients, records] = await Promise.all([
+          portalServiceApi.getAdminClients(),
+          apiGetJson<BackendDocumentRecord[]>("/api/documents"),
+        ]);
+
+        if (!isActive) {
+          return;
+        }
+
+        const clientNameById = new Map(clients.map((client) => [client.id, client.clientName]));
+        const mappedDocuments = records.map((record) => {
+          const clientName = clientNameById.get(record.clientId) ?? "Client";
+          const documentType = mapLiveDocumentType(record.category);
+          return {
+            id: record.id,
+            clientId: record.clientId,
+            clientName,
+            documentType,
+            fileName: record.name,
+            monthLabel: formatDateLabel(record.uploadedAtUtc),
+            description: `${record.category} uploaded in the live document workflow.`,
+            status: mapLiveDocumentStatus(record.status),
+            uploadedBy: clientName,
+            uploadedAt: record.uploadedAtUtc,
+            reviewedBy: undefined,
+            reviewedAt: undefined,
+            sizeLabel: formatSizeLabel(record.sizeBytes),
+            keywordTags: [record.category, record.name, documentType],
+            comments: [],
+            auditTrail: [],
+            fileMimeType: record.fileType,
+          } satisfies DocumentRecord;
+        });
+
+        setLiveClients(clients);
+        setLiveDocuments(mappedDocuments);
+      } catch (error) {
+        if (!isActive) {
+          return;
+        }
+
+        setFeedbackMessage(
+          error instanceof ApiError
+            ? error.message
+            : "The live document centre could not be loaded, so the seeded workspace view is still shown.",
+        );
+      }
+    }
+
+    void loadLiveDocuments();
+
+    return () => {
+      isActive = false;
+    };
+  }, [backendMode]);
+
+  useEffect(() => {
+    if (!backendMode || !viewerOpen || !selectedResultId) {
+      return;
+    }
+
+    const selectedLiveDocument = liveDocuments.find((document) => document.id === selectedResultId);
+    if (!selectedLiveDocument || selectedLiveDocument.fileDataUrl) {
+      return;
+    }
+
+    let isActive = true;
+
+    async function loadPreviewFile() {
+      try {
+        const { blob, contentType } = await apiGetBlob(`/api/documents/${encodeURIComponent(selectedResultId)}/download`);
+        if (!isActive) {
+          return;
+        }
+
+        const url = URL.createObjectURL(blob);
+        setLiveDocuments((current) =>
+          current.map((document) =>
+            document.id === selectedResultId
+              ? { ...document, fileDataUrl: url, fileMimeType: contentType }
+              : document,
+          ),
+        );
+      } catch {
+        // Preview shell still works without an embedded file.
+      }
+    }
+
+    void loadPreviewFile();
+
+    return () => {
+      isActive = false;
+    };
+  }, [backendMode, liveDocuments, selectedResultId, viewerOpen]);
 
   const allResults = useMemo(
     () =>
       assignedClients.flatMap((client) => {
+        if (backendMode && liveDocuments.length > 0) {
+          return buildUnifiedSearchResults({
+            clientId: client.id,
+            clientName: client.clientName,
+            documents: liveDocuments.filter((document) => document.clientId === client.id),
+            invoices: [],
+            monthPack: buildEmptyMonthPack(),
+            requests: [],
+            complianceDocuments: [],
+          });
+        }
+
         const workspace = portal.getClientWorkspace(client.id);
         return buildUnifiedSearchResults({
           clientId: client.id,
@@ -818,7 +1008,7 @@ export function AccountantDocumentsPage() {
           complianceDocuments: [],
         });
       }),
-    [assignedClients, portal],
+    [assignedClients, backendMode, liveDocuments, portal],
   );
 
   const filteredResults = useMemo(
@@ -983,7 +1173,7 @@ export function AccountantDocumentsPage() {
       user?.fullName ??
       "Assigned accountant"
     );
-  }, [portal.adminClients, selectedResult, user?.fullName]);
+  }, [selectedResult, sourceClients, user?.fullName]);
 
 // Reactive sync: this block responds when dependencies change.
   useEffect(() => {
@@ -1021,6 +1211,13 @@ export function AccountantDocumentsPage() {
   }, [openMenuResultId, pagedResults]);
 
   function resolveDocumentForResult(result: UnifiedSearchResult) {
+    if (backendMode) {
+      const liveMatch = liveDocuments.find((document) => document.id === result.id);
+      if (liveMatch) {
+        return liveMatch;
+      }
+    }
+
     const workspace = portal.getClientWorkspace(result.clientId);
     const documentMatch = workspace.documents.find((document) => document.id === result.id);
 
@@ -1055,10 +1252,29 @@ export function AccountantDocumentsPage() {
     handleOpenResultTab(result, "details");
   }
 
-  function handleDownloadResult(result: UnifiedSearchResult) {
+  async function handleDownloadResult(result: UnifiedSearchResult) {
     const document = resolveDocumentForResult(result);
-    downloadDocumentFile(document);
-    setFeedbackMessage(`${displayResultTitle(result)} downloaded as a preview file.`);
+
+    if (backendMode && !document.fileDataUrl) {
+      try {
+        const { blob, contentType } = await apiGetBlob(`/api/documents/${encodeURIComponent(result.id)}/download`);
+        const url = URL.createObjectURL(blob);
+        const hydratedDocument = { ...document, fileDataUrl: url, fileMimeType: contentType };
+        setLiveDocuments((current) =>
+          current.map((entry) =>
+            entry.id === result.id ? { ...entry, fileDataUrl: url, fileMimeType: contentType } : entry,
+          ),
+        );
+        downloadDocumentFile(hydratedDocument);
+        setFeedbackMessage(`${displayResultTitle(result)} downloaded from the live backend.`);
+      } catch (error) {
+        setFeedbackMessage(error instanceof ApiError ? error.message : `Could not download ${displayResultTitle(result)}.`);
+      }
+    } else {
+      downloadDocumentFile(document);
+      setFeedbackMessage(`${displayResultTitle(result)} downloaded as a preview file.`);
+    }
+
     setOpenMenuResultId("");
   }
 
