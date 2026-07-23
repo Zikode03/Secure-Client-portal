@@ -12,6 +12,13 @@ import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
 import { useDisclosure } from "../../hooks/useDisclosure";
 import { ApiError, apiGetBlob, apiGetJson, apiPostForm, apiPostJson, hasApiBaseUrl } from "../../services/apiClient";
+import {
+  buildSlotUploadForm,
+  formatSizeLabel,
+  mapBackendDocumentStatus,
+  mapBackendSlotStatus,
+  monthLabelFromParts,
+} from "../../services/clientMonthlyPackBackend";
 import { buildReviewDocumentFromInvoice } from "../../services/workflowEngine";
 import type {
   DocumentRecord,
@@ -90,54 +97,6 @@ interface BackendDocumentSlotResponse {
   updatedAtUtc: string;
 }
 
-const monthNames = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
-
-function monthLabelFromParts(year: number, month: number) {
-  return `${monthNames[Math.max(0, month - 1)] ?? "Month"} ${year}`;
-}
-
-function formatSizeLabel(sizeBytes: number) {
-  if (sizeBytes >= 1_000_000) {
-    return `${(sizeBytes / 1_000_000).toFixed(1)} MB`;
-  }
-
-  if (sizeBytes >= 1_000) {
-    return `${Math.max(1, Math.round(sizeBytes / 1_000))} KB`;
-  }
-
-  return `${sizeBytes} B`;
-}
-
-function mapBackendDocumentStatus(
-  status: string,
-): DocumentRecord["status"] {
-  switch (status.trim().toLowerCase()) {
-    case "under_review":
-      return "under_review";
-    case "accepted":
-      return "accepted";
-    case "rejected":
-      return "rejected";
-    case "filed":
-      return "filed";
-    default:
-      return "uploaded";
-  }
-}
-
 function inferSearchResultType(category: string): UnifiedSearchResult["resultType"] {
   const normalized = category.toLowerCase();
 
@@ -177,30 +136,6 @@ function mapBackendComment(
     message: comment.message,
     createdAt: comment.createdAtUtc,
   };
-}
-
-function mapBackendSlotStatus(
-  slot: BackendDocumentSlotResponse,
-): MonthlyDocumentSlot["status"] {
-  const normalized = slot.status.trim().toLowerCase();
-
-  switch (normalized) {
-    case "draft":
-      return "draft";
-    case "submitted":
-      return "uploaded";
-    case "under_review":
-      return "under_review";
-    case "accepted":
-      return "accepted";
-    case "rejected":
-    case "reupload_required":
-      return "rejected";
-    case "not_applicable":
-      return slot.isRequired ? "accepted" : "filed";
-    default:
-      return "missing";
-  }
 }
 
 // Component flow: gather data first, then render a focused UI state.
@@ -559,6 +494,7 @@ export function ClientDocumentsPage() {
   const [previewZoom, setPreviewZoom] = useState(100);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
+  const [livePackId, setLivePackId] = useState("");
   const [liveDocumentsBase, setLiveDocumentsBase] = useState<DocumentRecord[] | null>(null);
   const [liveCommentsByDocumentId, setLiveCommentsByDocumentId] = useState<Record<string, DocumentComment[]>>({});
   const [liveSlots, setLiveSlots] = useState<MonthlyDocumentSlot[] | null>(null);
@@ -643,8 +579,8 @@ export function ClientDocumentsPage() {
             id: slot.id,
             documentType: slot.label,
             description: `${slot.label} for ${pack ? monthLabelFromParts(pack.year, pack.month) : "current period"}.`,
-            status: mapBackendSlotStatus(slot),
-            month: pack ? monthNames[Math.max(0, pack.month - 1)] ?? "Month" : "Month",
+            status: mapBackendSlotStatus(slot.status, slot.isRequired),
+            month: pack ? monthLabelFromParts(pack.year, pack.month).split(" ")[0] ?? "Month" : "Month",
             year: pack?.year ?? new Date().getUTCFullYear(),
             acceptedFiles: ["PDF", "PNG", "JPG", "DOCX", "XLSX"],
             progress: slot.canCurrentlyBeSubmitted ? 70 : slot.status === "accepted" ? 100 : 0,
@@ -660,6 +596,7 @@ export function ClientDocumentsPage() {
           return;
         }
 
+        setLivePackId(currentPack?.id ?? "");
         setLiveDocumentsBase(mappedDocuments);
         setLiveSlots(mappedSlots);
         setLiveSlotDocumentIds(
@@ -1102,7 +1039,7 @@ export function ClientDocumentsPage() {
 
   function handleUploadToSlot(submission: Parameters<typeof portal.uploadToSlot>[0]) {
     if (backendMode) {
-      if (!selectedSlot || !submission.file || !user?.clientIds[0]) {
+      if (!selectedSlot || !submission.file || !user?.clientIds[0] || !livePackId) {
         setFeedbackNotice({
           tone: "danger",
           title: "Upload failed",
@@ -1111,15 +1048,16 @@ export function ClientDocumentsPage() {
         return;
       }
 
-      const form = new FormData();
-      form.append("ClientId", user.clientIds[0]);
       const documentId = liveSlotDocumentIds[selectedSlot.id];
-      if (documentId) {
-        form.append("DocumentId", documentId);
-      }
-      form.append("DocumentSlotId", selectedSlot.id);
-      form.append("DocumentType", submission.documentType);
-      form.append("File", submission.file, submission.fileName);
+      const form = buildSlotUploadForm({
+        clientId: user.clientIds[0],
+        monthlyPackId: livePackId,
+        submission: {
+          ...submission,
+          slotId: selectedSlot.id,
+        },
+        currentDocumentId: documentId,
+      });
 
       void apiPostForm<{
         id: string;

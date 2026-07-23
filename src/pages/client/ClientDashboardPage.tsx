@@ -26,6 +26,21 @@ import { SurfaceCard } from "../../components/ui/SurfaceCard";
 import { useDisclosure } from "../../hooks/useDisclosure";
 import { useClientWorkflow } from "../../hooks/useClientWorkflow";
 import { ApiError, apiGetBlob, apiGetJson, apiPostForm, apiPostJson, hasApiBaseUrl } from "../../services/apiClient";
+import {
+  acceptedFilesForSlot,
+  buildDefaultDueDate,
+  buildSlotUploadForm,
+  findNextSubmittableSlot,
+  formatSizeLabel,
+  isInvoiceCategory,
+  mapBackendDocumentStatus,
+  mapBackendPackSubmissionStatus,
+  mapBackendSlotStatus,
+  monthLabelFromParts,
+  slotProgress,
+  supportsExpiryDate,
+  type SlotSubmissionMeta,
+} from "../../services/clientMonthlyPackBackend";
 import { recalculatePack } from "../../services/workflowEngine";
 import type {
   DocumentRecord,
@@ -192,150 +207,6 @@ interface LiveClientDashboardData {
   expiringComplianceCount: number;
 }
 
-const monthNames = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
-
-function monthLabelFromParts(year: number, month: number) {
-  return `${monthNames[Math.max(0, month - 1)] ?? "Month"} ${year}`;
-}
-
-function buildDefaultDueDate(year: number, month: number) {
-  const dueMonth = month === 12 ? 1 : month + 1;
-  const dueYear = month === 12 ? year + 1 : year;
-  return new Date(Date.UTC(dueYear, dueMonth - 1, 6)).toISOString();
-}
-
-function normaliseDocumentType(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-}
-
-function isInvoiceCategory(value: string) {
-  return normaliseDocumentType(value).includes("invoice");
-}
-
-function acceptedFilesForSlot(category: string, label: string) {
-  const normalized = `${normaliseDocumentType(category)} ${normaliseDocumentType(label)}`;
-
-  if (normalized.includes("bank statement")) {
-    return ["PDF", "CSV", "XLSX"];
-  }
-
-  if (normalized.includes("invoice")) {
-    return ["PDF", "ZIP", "CSV", "XLSX"];
-  }
-
-  if (normalized.includes("signed")) {
-    return ["PDF"];
-  }
-
-  return ["PDF", "PNG", "JPG", "DOCX", "XLSX"];
-}
-
-function supportsExpiryDate(category: string, label: string) {
-  return /(tax|certificate|contract|id|address|coida|csd|insurance|lease|vat|paye|uif|sdl)/i.test(
-    `${category} ${label}`,
-  );
-}
-
-function slotProgress(status: MonthlyDocumentSlot["status"]) {
-  switch (status) {
-    case "draft":
-      return 65;
-    case "uploaded":
-      return 85;
-    case "under_review":
-      return 90;
-    case "accepted":
-    case "filed":
-      return 100;
-    case "rejected":
-      return 35;
-    default:
-      return 0;
-  }
-}
-
-function mapBackendSlotStatus(
-  status: string,
-  isRequired: boolean,
-): MonthlyDocumentSlot["status"] {
-  const normalized = status.trim().toLowerCase();
-
-  switch (normalized) {
-    case "draft":
-      return "draft";
-    case "submitted":
-      return "uploaded";
-    case "under_review":
-      return "under_review";
-    case "accepted":
-      return "accepted";
-    case "rejected":
-    case "reupload_required":
-      return "rejected";
-    case "not_applicable":
-      return isRequired ? "accepted" : "filed";
-    default:
-      return "missing";
-  }
-}
-
-function mapBackendPackSubmissionStatus(
-  status: string,
-): MonthlyPack["submissionStatus"] {
-  const normalized = status.trim().toLowerCase();
-
-  switch (normalized) {
-    case "under_review":
-      return "under_accountant_review";
-    case "complete":
-    case "closed":
-      return "complete";
-    default:
-      return "open";
-  }
-}
-
-function mapBackendDocumentStatus(status: string): DocumentRecord["status"] {
-  const normalized = status.trim().toLowerCase();
-
-  switch (normalized) {
-    case "under_review":
-      return "under_review";
-    case "accepted":
-      return "accepted";
-    case "rejected":
-      return "rejected";
-    case "filed":
-      return "filed";
-    default:
-      return "uploaded";
-  }
-}
-
-function formatSizeLabel(sizeBytes: number) {
-  if (sizeBytes >= 1_000_000) {
-    return `${(sizeBytes / 1_000_000).toFixed(1)} MB`;
-  }
-
-  if (sizeBytes >= 1_000) {
-    return `${Math.round(sizeBytes / 1_000)} KB`;
-  }
-
-  return `${sizeBytes} B`;
-}
 
 function normalizeClientRequestStatus(
   status: string | undefined,
@@ -802,9 +673,7 @@ export function ClientDashboardPage() {
     message: string;
   } | null>(null);
   const [livePackId, setLivePackId] = useState("");
-  const [liveSlotMetaById, setLiveSlotMetaById] = useState<
-    Record<string, { currentDocumentId?: string; canCurrentlyBeSubmitted: boolean }>
-  >({});
+  const [liveSlotMetaById, setLiveSlotMetaById] = useState<Record<string, SlotSubmissionMeta>>({});
   const {
     documents,
     dismissFeedbackNotice,
@@ -880,17 +749,18 @@ export function ClientDashboardPage() {
       const mappedSlots = slots.map<MonthlyDocumentSlot>((slot) => {
         const pack = packById.get(slot.monthlyPackId) ?? currentPack;
         const mappedStatus = mapBackendSlotStatus(slot.status, slot.isRequired);
+        const monthName = monthLabelFromParts(pack.year, pack.month).split(" ")[0] ?? "Month";
 
         return {
           id: slot.id,
           documentType: slot.label,
           description: `${slot.label} for ${monthLabelFromParts(pack.year, pack.month)}.`,
           status: mappedStatus,
-          month: monthNames[Math.max(0, pack.month - 1)] ?? "Month",
+          month: monthName,
           year: pack.year,
           acceptedFiles: acceptedFilesForSlot(slot.category, slot.label),
           progress: slotProgress(mappedStatus),
-          autoName: `${businessName.replace(/\s+/g, "")}_${slot.label.replace(/\s+/g, "")}_${monthNames[Math.max(0, pack.month - 1)]}_${pack.year}.pdf`,
+          autoName: `${businessName.replace(/\s+/g, "")}_${slot.label.replace(/\s+/g, "")}_${monthName}_${pack.year}.pdf`,
           isRequired: slot.isRequired,
           assignedOwner: "Client",
           dueDate: slot.dueDateUtc ?? buildDefaultDueDate(pack.year, pack.month),
@@ -1132,6 +1002,10 @@ export function ClientDashboardPage() {
     () => getHighlightedSlot(effectiveMonthPack),
     [effectiveMonthPack],
   );
+  const backendSubmittableSlot = useMemo(
+    () => findNextSubmittableSlot(effectiveMonthPack.slots, liveSlotMetaById),
+    [effectiveMonthPack.slots, liveSlotMetaById],
+  );
   const existingSlotFileNames = useMemo(() => {
     if (!selectedSlot) {
       return [];
@@ -1217,13 +1091,15 @@ export function ClientDashboardPage() {
     }
 
     if (
-      effectiveMonthPack.canComplete &&
+      (backendMode ? Boolean(backendSubmittableSlot) : effectiveMonthPack.canComplete) &&
       effectiveMonthPack.submissionStatus !== "under_accountant_review"
     ) {
       items.push({
-        id: "submit-month",
-        title: "Submit this month",
-        detail: "All required documents are ready for accountant review.",
+        id: backendMode ? "submit-slot" : "submit-month",
+        title: backendMode ? "Submit the next ready slot" : "Submit this month",
+        detail: backendMode
+          ? "The next slot that passes backend validation is ready for accountant review."
+          : "All required documents are ready for accountant review.",
         ctaLabel: "Submit",
         tone: "success",
         onAction: () => {
@@ -1249,7 +1125,17 @@ export function ClientDashboardPage() {
     }
 
     return items.slice(0, 5);
-  }, [blockingSlots, effectiveExpiringDocuments, effectiveMonthPack.canComplete, effectiveMonthPack.submissionStatus, navigate, effectiveRequests, submitMonth]);
+  }, [
+    backendMode,
+    backendSubmittableSlot,
+    blockingSlots,
+    effectiveExpiringDocuments,
+    effectiveMonthPack.canComplete,
+    effectiveMonthPack.submissionStatus,
+    navigate,
+    effectiveRequests,
+    submitMonth,
+  ]);
 
   const openRequestsCount = useMemo(
     () => effectiveRequests.filter((request) => request.status !== "resolved" && request.status !== "closed").length,
@@ -1295,15 +1181,12 @@ export function ClientDashboardPage() {
     }
 
     const targetSlotMeta = liveSlotMetaById[submission.slotId];
-    const form = new FormData();
-    form.append("ClientId", backendClientId);
-    form.append("MonthlyPackId", livePackId);
-    form.append("DocumentSlotId", submission.slotId);
-    form.append("DocumentType", submission.documentType);
-    if (targetSlotMeta?.currentDocumentId) {
-      form.append("DocumentId", targetSlotMeta.currentDocumentId);
-    }
-    form.append("File", submission.file, submission.fileName);
+    const form = buildSlotUploadForm({
+      clientId: backendClientId,
+      monthlyPackId: livePackId,
+      submission,
+      currentDocumentId: targetSlotMeta?.currentDocumentId,
+    });
 
     try {
       await apiPostForm("/api/documents/upload", form);
@@ -1325,14 +1208,11 @@ export function ClientDashboardPage() {
   }
 
   async function handleLiveSubmit() {
-    const backendSubmittableSlot =
-      effectiveMonthPack.slots.find((slot) => liveSlotMetaById[slot.id]?.canCurrentlyBeSubmitted) ?? null;
-
     if (!backendSubmittableSlot) {
       showFeedbackNotice(
         "warning",
         "Nothing ready to submit",
-        "Upload a file into a checklist slot before sending it for accountant review.",
+        "Upload or correct a checklist slot before sending it for accountant review.",
       );
       return;
     }
@@ -1374,7 +1254,7 @@ export function ClientDashboardPage() {
               Welcome back, {user?.name?.split(" ")[0] ?? "John"}
             </h1>
             <p className="max-w-2xl text-[0.95rem] leading-6 text-white/78">
-              Your monthly document pack is {effectiveMonthPack.progressPercent}% complete. Resolve blockers, upload missing files, and submit the month for accountant review.
+              Your monthly document pack is {effectiveMonthPack.progressPercent}% complete. Resolve blockers, upload missing files, and submit ready slots for accountant review.
             </p>
           </div>
 
@@ -1390,7 +1270,7 @@ export function ClientDashboardPage() {
           <Button
             className="h-10 rounded-xl bg-[#8ccf45] px-4 text-sm text-[#062044] shadow-[0_14px_28px_rgba(9,34,66,0.22)] hover:bg-[#9ad955]"
             disabled={
-              !effectiveMonthPack.canComplete ||
+              (backendMode ? !backendSubmittableSlot : !effectiveMonthPack.canComplete) ||
               effectiveMonthPack.submissionStatus === "under_accountant_review"
             }
             onClick={() => {
@@ -1403,7 +1283,7 @@ export function ClientDashboardPage() {
             }}
           >
             <Send aria-hidden="true" className="h-4 w-4" />
-            <span>Submit month</span>
+            <span>{backendMode ? "Submit ready slot" : "Submit month"}</span>
           </Button>
           <button
             aria-label="Open dashboard options"

@@ -26,6 +26,22 @@ import { SurfaceCard } from "../../components/ui/SurfaceCard";
 import { useDisclosure } from "../../hooks/useDisclosure";
 import { useClientWorkflow } from "../../hooks/useClientWorkflow";
 import { ApiError, apiGetJson, apiPostForm, apiPostJson, hasApiBaseUrl } from "../../services/apiClient";
+import {
+  acceptedFilesForSlot,
+  buildDefaultDueDate,
+  buildSlotUploadForm,
+  findNextSubmittableSlot,
+  formatSizeLabel,
+  isInvoiceCategory,
+  mapBackendDocumentStatus,
+  mapBackendPackSubmissionStatus,
+  mapBackendSlotStatus,
+  monthLabelFromParts,
+  normaliseDocumentType,
+  slotProgress,
+  supportsExpiryDate,
+  type SlotSubmissionMeta,
+} from "../../services/clientMonthlyPackBackend";
 import type { DocumentRecord, InvoiceRecord, MonthlyDocumentSlot, MonthlyPack, PreviousMonthComparison } from "../../types/portal";
 import { formatDateLabel } from "../../utils/formatters";
 import { recalculatePack } from "../../services/workflowEngine";
@@ -71,10 +87,6 @@ const panelClass =
 
 const monthlyPackActionButtonClass =
   "monthly-pack-action-button h-10 rounded-xl border-0 px-4 text-sm font-semibold ring-0";
-
-function normaliseDocumentType(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-}
 
 interface BackendMonthlyPackResponse {
   id: string;
@@ -122,152 +134,6 @@ interface BackendDocumentRecord {
   updatedAtUtc: string;
 }
 
-const monthNames = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-];
-
-function monthLabelFromParts(year: number, month: number) {
-  return `${monthNames[Math.max(0, month - 1)] ?? "Month"} ${year}`;
-}
-
-function buildDefaultDueDate(year: number, month: number) {
-  const dueMonth = month === 12 ? 1 : month + 1;
-  const dueYear = month === 12 ? year + 1 : year;
-  return new Date(Date.UTC(dueYear, dueMonth - 1, 6)).toISOString();
-}
-
-function isInvoiceCategory(value: string) {
-  return normaliseDocumentType(value).includes("invoice");
-}
-
-function acceptedFilesForSlot(category: string, label: string) {
-  const normalized = `${normaliseDocumentType(category)} ${normaliseDocumentType(label)}`;
-
-  if (normalized.includes("bank statement")) {
-    return ["PDF", "CSV", "XLSX"];
-  }
-
-  if (normalized.includes("invoice")) {
-    return ["PDF", "ZIP", "CSV", "XLSX"];
-  }
-
-  if (normalized.includes("signed")) {
-    return ["PDF"];
-  }
-
-  return ["PDF", "PNG", "JPG", "DOCX", "XLSX"];
-}
-
-function supportsExpiryDate(category: string, label: string) {
-  return /(tax|certificate|contract|id|address|coida|csd|insurance|lease|vat|paye|uif|sdl)/i.test(
-    `${category} ${label}`,
-  );
-}
-
-function mapBackendSlotStatus(
-  status: string,
-  isRequired: boolean,
-): MonthlyDocumentSlot["status"] {
-  const normalized = status.trim().toLowerCase();
-
-  switch (normalized) {
-    case "draft":
-      return "draft";
-    case "submitted":
-      return "uploaded";
-    case "under_review":
-      return "under_review";
-    case "accepted":
-      return "accepted";
-    case "rejected":
-    case "reupload_required":
-      return "rejected";
-    case "not_applicable":
-      return isRequired ? "accepted" : "filed";
-    default:
-      return "missing";
-  }
-}
-
-function slotProgress(status: MonthlyDocumentSlot["status"]) {
-  switch (status) {
-    case "draft":
-      return 65;
-    case "uploaded":
-      return 85;
-    case "under_review":
-      return 90;
-    case "accepted":
-    case "filed":
-      return 100;
-    case "rejected":
-      return 35;
-    default:
-      return 0;
-  }
-}
-
-function mapBackendPackSubmissionStatus(
-  status: string,
-): MonthlyPack["submissionStatus"] {
-  const normalized = status.trim().toLowerCase();
-
-  switch (normalized) {
-    case "under_review":
-      return "under_accountant_review";
-    case "complete":
-    case "closed":
-      return "complete";
-    case "partially_submitted":
-    case "in_progress":
-    case "not_started":
-    default:
-      return "open";
-  }
-}
-
-function formatSizeLabel(sizeBytes: number) {
-  if (sizeBytes >= 1_000_000) {
-    return `${(sizeBytes / 1_000_000).toFixed(1)} MB`;
-  }
-
-  if (sizeBytes >= 1_000) {
-    return `${Math.round(sizeBytes / 1_000)} KB`;
-  }
-
-  return `${sizeBytes} B`;
-}
-
-function mapBackendDocumentStatus(
-  status: string,
-): DocumentRecord["status"] {
-  const normalized = status.trim().toLowerCase();
-
-  switch (normalized) {
-    case "under_review":
-      return "under_review";
-    case "accepted":
-      return "accepted";
-    case "rejected":
-      return "rejected";
-    case "filed":
-      return "filed";
-    case "uploaded":
-    default:
-      return "uploaded";
-  }
-}
 
 function buildLivePreviousMonthComparison(
   currentPack: BackendMonthlyPackResponse,
@@ -379,9 +245,7 @@ export function ClientMonthlyPacksPage() {
   const [livePreviousMonthComparison, setLivePreviousMonthComparison] =
     useState<PreviousMonthComparison | null>(null);
   const [livePackId, setLivePackId] = useState<string>("");
-  const [liveSlotMetaById, setLiveSlotMetaById] = useState<
-    Record<string, { currentDocumentId?: string; canCurrentlyBeSubmitted: boolean }>
-  >({});
+  const [liveSlotMetaById, setLiveSlotMetaById] = useState<Record<string, SlotSubmissionMeta>>({});
   const [isSyncingBackendPack, setIsSyncingBackendPack] = useState(false);
 // Local UI state: keeps track of what the user is seeing or editing right now.
   const {
@@ -444,16 +308,17 @@ export function ClientMonthlyPacksPage() {
       const mappedSlots = slots.map<MonthlyDocumentSlot>((slot) => {
         const mappedStatus = mapBackendSlotStatus(slot.status, slot.isRequired);
         const pack = packById.get(slot.monthlyPackId) ?? currentPack;
+        const monthName = monthLabelFromParts(pack.year, pack.month).split(" ")[0] ?? "Month";
         return {
           id: slot.id,
           documentType: slot.label,
           description: `${slot.label} for ${monthLabelFromParts(pack.year, pack.month)}.`,
           status: mappedStatus,
-          month: monthNames[Math.max(0, pack.month - 1)] ?? "Month",
+          month: monthName,
           year: pack.year,
           acceptedFiles: acceptedFilesForSlot(slot.category, slot.label),
           progress: slotProgress(mappedStatus),
-          autoName: `${businessName.replace(/\s+/g, "")}_${slot.label.replace(/\s+/g, "")}_${monthNames[Math.max(0, pack.month - 1)]}_${pack.year}.pdf`,
+          autoName: `${businessName.replace(/\s+/g, "")}_${slot.label.replace(/\s+/g, "")}_${monthName}_${pack.year}.pdf`,
           isRequired: slot.isRequired,
           assignedOwner: "Client",
           dueDate: slot.dueDateUtc ?? buildDefaultDueDate(pack.year, pack.month),
@@ -629,10 +494,7 @@ export function ClientMonthlyPacksPage() {
     [blockingSlots, effectiveMonthPack.slots, requiredSlots],
   );
   const backendSubmittableSlot = useMemo(
-    () =>
-      effectiveMonthPack.slots.find(
-        (slot) => liveSlotMetaById[slot.id]?.canCurrentlyBeSubmitted,
-      ) ?? null,
+    () => findNextSubmittableSlot(effectiveMonthPack.slots, liveSlotMetaById),
     [effectiveMonthPack.slots, liveSlotMetaById],
   );
   const existingSlotFileNames = useMemo(() => {
@@ -663,8 +525,8 @@ export function ClientMonthlyPacksPage() {
       return {
         label: "Under Review",
         tone: "info" as const,
-        bannerTitle: "This pack has been submitted.",
-        bannerMessage: "The monthly pack is awaiting accountant review.",
+        bannerTitle: "Submitted slots are under review.",
+        bannerMessage: "At least one checklist slot has been sent to the accountant for review.",
         statusHelper: "Awaiting accountant review",
       };
     }
@@ -673,9 +535,9 @@ export function ClientMonthlyPacksPage() {
       return {
         label: "Ready",
         tone: "success" as const,
-        bannerTitle: "This pack is ready.",
-        bannerMessage: "All required documents are ready for accountant review.",
-        statusHelper: "Ready for submission",
+        bannerTitle: "A required slot is ready to submit.",
+        bannerMessage: "All required documents are in place, and the next ready slot can be sent for accountant review.",
+        statusHelper: "Ready for slot submission",
       };
     }
 
@@ -787,7 +649,7 @@ export function ClientMonthlyPacksPage() {
       showFeedbackNotice(
         "warning",
         "No slot ready to submit",
-        "Upload a file into a checklist slot before sending it for accountant review.",
+        "Upload or correct a checklist slot before sending it for accountant review.",
       );
       return;
     }
@@ -866,7 +728,6 @@ export function ClientMonthlyPacksPage() {
           id="submission-readiness"
         >
           <div className="flex items-center justify-between gap-3 bg-brand-700 px-5 py-4 text-white">
-            <h2 className="text-[1.05rem] font-semibold">{monthPack.monthLabel} Monthly Pack</h2>
             <h2 className="text-[1.05rem] font-semibold">{effectiveMonthPack.monthLabel} Monthly Pack</h2>
             <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-[0.72rem] font-semibold text-emerald-100 ring-1 ring-emerald-300/30">
               {submissionState.label}
@@ -900,7 +761,7 @@ export function ClientMonthlyPacksPage() {
                   <div className="rounded-xl border border-[#e8ecf5] bg-white px-4 py-3">
                     <p className="text-[0.72rem] font-semibold text-[#53617f]">Required documents</p>
                     <p className="mt-1 text-[1.15rem] font-semibold text-[#091333]">
-                  {readyRequiredCount} of {effectiveMonthPack.totalCount}
+                      {readyRequiredCount} of {effectiveMonthPack.totalCount}
                     </p>
                   </div>
                   <div className="rounded-xl border border-[#e8ecf5] bg-white px-4 py-3">
@@ -920,18 +781,18 @@ export function ClientMonthlyPacksPage() {
                   <span>Continue Pack</span>
                   <ChevronRight aria-hidden="true" className="h-4 w-4" />
                 </Button>
-                  <Button
-                    className={monthlyPackActionButtonClass}
-                    disabled={
-                      backendMode
-                        ? !backendSubmittableSlot || isSyncingBackendPack
-                        : !effectiveMonthPack.canComplete || effectiveMonthPack.submissionStatus === "under_accountant_review"
-                    }
-                    onClick={() => void handleSubmitAction()}
-                  >
-                    <Send aria-hidden="true" className="h-4 w-4" />
-                    <span>{backendMode ? "Submit Slot" : "Submit Month"}</span>
-                  </Button>
+                <Button
+                  className={monthlyPackActionButtonClass}
+                  disabled={
+                    backendMode
+                      ? !backendSubmittableSlot || isSyncingBackendPack
+                      : !effectiveMonthPack.canComplete || effectiveMonthPack.submissionStatus === "under_accountant_review"
+                  }
+                  onClick={() => void handleSubmitAction()}
+                >
+                  <Send aria-hidden="true" className="h-4 w-4" />
+                  <span>{backendMode ? "Submit Ready Slot" : "Submit Month"}</span>
+                </Button>
                 {highlightedSlot ? (
                   <Button
                     className={`${monthlyPackActionButtonClass} sm:col-span-2 lg:col-span-2 xl:col-span-2`}
@@ -1025,15 +886,12 @@ export function ClientMonthlyPacksPage() {
           }
 
           const targetSlotMeta = liveSlotMetaById[submission.slotId];
-          const form = new FormData();
-          form.append("ClientId", user.clientIds[0]);
-          form.append("MonthlyPackId", livePackId);
-          form.append("DocumentSlotId", submission.slotId);
-          form.append("DocumentType", submission.documentType);
-          if (targetSlotMeta?.currentDocumentId) {
-            form.append("DocumentId", targetSlotMeta.currentDocumentId);
-          }
-          form.append("File", submission.file, submission.fileName);
+          const form = buildSlotUploadForm({
+            clientId: user.clientIds[0],
+            monthlyPackId: livePackId,
+            submission,
+            currentDocumentId: targetSlotMeta?.currentDocumentId,
+          });
 
           void apiPostForm<{
             id: string;

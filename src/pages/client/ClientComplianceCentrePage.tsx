@@ -10,6 +10,13 @@ import { EmptyState } from "../../components/ui/EmptyState";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
 import { ApiError, apiGetJson, hasApiBaseUrl } from "../../services/apiClient";
+import {
+  buildDefaultDueDate,
+  mapBackendPackSubmissionStatus,
+  mapBackendSlotStatus,
+  monthLabelFromParts,
+  slotProgress,
+} from "../../services/clientMonthlyPackBackend";
 import { recalculatePack } from "../../services/workflowEngine";
 import type {
   ComplianceAuditEvent,
@@ -36,20 +43,6 @@ const liveComplianceRules = [
   "Compliance alerts and monthly pack milestones are surfaced together so action can happen from one workspace.",
   "Every compliance item keeps its latest review and audit context visible in the portal snapshot.",
 ];
-const monthNames = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
-] as const;
 
 // Shared shape notes: these types keep UI and data contracts aligned.
 type FeedbackNotice = {
@@ -360,14 +353,6 @@ function MoreIcon() {
   );
 }
 
-function monthLabelFromParts(year: number, month: number) {
-  return `${monthNames[Math.min(Math.max(month - 1, 0), 11)]} ${year}`;
-}
-
-function buildDefaultDueDate(year: number, month: number) {
-  return new Date(Date.UTC(year, month, 7, 16, 0, 0)).toISOString();
-}
-
 function getDeadlineStatus(dueDate: string): MonthlyPack["deadlineStatus"] {
   const remainingDays = Math.ceil(
     (new Date(dueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24),
@@ -382,58 +367,6 @@ function getDeadlineStatus(dueDate: string): MonthlyPack["deadlineStatus"] {
   }
 
   return "on_track";
-}
-
-function mapBackendSlotStatus(status: string): MonthlyDocumentSlot["status"] {
-  switch (status.trim().toLowerCase()) {
-    case "approved":
-      return "accepted";
-    case "submitted":
-      return "under_review";
-    case "rejected":
-      return "rejected";
-    case "uploaded":
-      return "uploaded";
-    case "pending":
-      return "pending";
-    case "partial":
-      return "partial";
-    case "not_applicable":
-      return "accepted";
-    default:
-      return "missing";
-  }
-}
-
-function mapBackendPackSubmissionStatus(status: string): MonthlyPack["submissionStatus"] {
-  switch (status.trim().toLowerCase()) {
-    case "submitted":
-      return "under_accountant_review";
-    case "approved":
-      return "complete";
-    default:
-      return "open";
-  }
-}
-
-function slotProgress(status: MonthlyDocumentSlot["status"]) {
-  switch (status) {
-    case "accepted":
-    case "filed":
-      return 100;
-    case "under_review":
-      return 82;
-    case "uploaded":
-      return 65;
-    case "partial":
-      return 40;
-    case "pending":
-      return 25;
-    case "rejected":
-      return 35;
-    default:
-      return 0;
-  }
 }
 
 function normalizeComplianceCategoryId(name?: string | null, code?: string | null): ComplianceCategoryId {
@@ -1204,7 +1137,7 @@ export function ClientComplianceCentrePage() {
           const monthLabel = monthLabelFromParts(currentPack.year, currentPack.month);
           const dueDate = buildDefaultDueDate(currentPack.year, currentPack.month);
           const mappedSlots: MonthlyDocumentSlot[] = slots.map((slot) => {
-            const mappedStatus = mapBackendSlotStatus(slot.status);
+            const mappedStatus = mapBackendSlotStatus(slot.status, slot.isRequired);
 
             return {
               id: slot.id,
