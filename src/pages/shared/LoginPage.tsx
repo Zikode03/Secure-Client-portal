@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { defaultPathForRole, useAuth } from "../../app/auth";
-import { hasApiBaseUrl } from "../../services/apiClient";
 
 interface InputFieldProps {
   id: string;
@@ -93,20 +92,6 @@ function IconEye({ open }: { open: boolean }) {
   );
 }
 
-function IconCode() {
-  return (
-    <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
-      <path
-        d="M8 7 3.5 12 8 17M16 7l4.5 5L16 17M14 4.5 10 19.5"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-      />
-    </svg>
-  );
-}
-
 function IconBank() {
   return (
     <svg className="h-8 w-8" fill="none" viewBox="0 0 40 40">
@@ -135,6 +120,129 @@ function IconBank() {
   );
 }
 
+function IconDocumentStack() {
+  return (
+    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24">
+      <path
+        d="M8 4.75h6l3.25 3.25v9.25a2 2 0 0 1-2 2H8A2.25 2.25 0 0 1 5.75 17V7A2.25 2.25 0 0 1 8 4.75Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.9"
+      />
+      <path
+        d="M13.25 4.75V8h3.25M9 11h5.25M9 14h3.5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.9"
+      />
+    </svg>
+  );
+}
+
+function IconPeople() {
+  return (
+    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24">
+      <circle cx="8.25" cy="8.5" r="2.75" stroke="currentColor" strokeWidth="1.9" />
+      <circle cx="15.75" cy="9" r="2.25" stroke="currentColor" strokeWidth="1.9" />
+      <path
+        d="M3.75 18c1.1-2.7 3.35-4.25 6-4.25s4.9 1.55 6 4.25M13.2 14.65c1.55.3 2.9 1.3 3.8 3"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.9"
+      />
+    </svg>
+  );
+}
+
+function IconCheckCircle() {
+  return (
+    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="8.25" stroke="currentColor" strokeWidth="1.9" />
+      <path
+        d="m8.6 12.15 2.3 2.3 4.5-4.8"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.9"
+      />
+    </svg>
+  );
+}
+
+function IconGrowth() {
+  return (
+    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24">
+      <path
+        d="M5.5 18.25h13M7.25 16V11.5M12 16V8M16.75 16V5.25"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.9"
+      />
+    </svg>
+  );
+}
+
+function IconProgressBullet() {
+  return (
+    <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.9" />
+      <path
+        d="M12 7.6v4.7l3 1.8"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.9"
+      />
+    </svg>
+  );
+}
+
+function IconDocumentsBullet() {
+  return (
+    <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
+      <path
+        d="M8 4.75h6l3.25 3.25v9.25a2 2 0 0 1-2 2H8A2.25 2.25 0 0 1 5.75 17V7A2.25 2.25 0 0 1 8 4.75Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.9"
+      />
+      <path
+        d="M13.25 4.75V8h3.25M9 11h5.25M9 14h3.5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.9"
+      />
+    </svg>
+  );
+}
+
+function IconReviewBullet() {
+  return (
+    <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
+      <path
+        d="M12 3.75 18.75 6.4v5.25c0 4.4-2.7 7.48-6.75 8.6-4.05-1.12-6.75-4.2-6.75-8.6V6.4L12 3.75Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.9"
+      />
+      <path
+        d="m9.45 11.95 1.75 1.75 3.35-3.7"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.9"
+      />
+    </svg>
+  );
+}
+
 function BrandVisual() {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -146,6 +254,79 @@ function BrandVisual() {
       <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,8,18,0.18)_0%,rgba(2,8,18,0.34)_38%,rgba(2,8,18,0.82)_100%)]" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_28%,rgba(24,172,95,0.12),transparent_24%)]" />
       <div className="absolute inset-y-0 right-0 w-24 bg-[linear-gradient(90deg,transparent_0%,rgba(7,20,33,0.35)_100%)]" />
+    </div>
+  );
+}
+
+function SecureAccountingBrandBlock() {
+  const features = [
+    { label: "Secure", icon: <IconShield /> },
+    { label: "Document Control", icon: <IconDocumentStack /> },
+    { label: "Client Collaboration", icon: <IconPeople /> },
+    { label: "Compliance", icon: <IconCheckCircle /> },
+    { label: "Accounting Intelligence", icon: <IconGrowth /> },
+  ];
+
+  return (
+    <div className="rounded-[28px] border border-slate-200 bg-[radial-gradient(circle_at_top_left,rgba(24,172,95,0.08),transparent_26%),linear-gradient(180deg,#ffffff_0%,#f8fbfd_100%)] px-5 py-5 shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
+      <div className="flex items-start gap-4">
+        <div className="flex h-18 w-18 shrink-0 items-center justify-center rounded-[22px] bg-brand-50 text-brand-600 ring-1 ring-brand-100">
+          <IconBank />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-end gap-x-3 gap-y-1">
+            <span className="text-[2rem] font-semibold leading-none tracking-[-0.045em] text-brand-800">
+              Secure
+            </span>
+            <span className="text-[2rem] font-semibold leading-none tracking-[-0.045em] text-brand-500">
+              Accounting
+            </span>
+          </div>
+          <div className="mt-3 flex items-center gap-3">
+            <span className="h-px flex-1 bg-slate-200" />
+            <span className="h-1.5 w-1.5 rounded-full bg-brand-500" />
+            <span className="h-px w-14 bg-brand-200" />
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-3 sm:grid-cols-5">
+        {features.map((feature) => (
+          <div
+            className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white/90 px-3 py-3 sm:flex-col sm:items-center sm:justify-center sm:text-center"
+            key={feature.label}
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-brand-50 text-brand-600 ring-1 ring-brand-100">
+              {feature.icon}
+            </span>
+            <span className="text-[0.7rem] font-medium uppercase tracking-[0.12em] text-slate-700">
+              {feature.label}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SecureAccountingWordmark() {
+  return (
+    <div className="mx-auto max-w-[540px] text-center">
+      <div className="text-center">
+        <div className="flex flex-wrap items-end justify-center gap-x-3 gap-y-1">
+          <span className="text-[2.8rem] font-semibold leading-none tracking-[-0.055em] text-brand-800">
+            Secure
+          </span>
+          <span className="text-[2.8rem] font-semibold leading-none tracking-[-0.055em] text-brand-500">
+            Accounting
+          </span>
+        </div>
+        <div className="mt-4 flex items-center justify-center gap-3">
+          <span className="h-px w-14 bg-slate-200" />
+          <span className="h-2 w-2 rounded-full bg-brand-500 shadow-[0_0_0_4px_rgba(216,242,228,0.9)]" />
+          <span className="h-px w-14 bg-brand-200" />
+        </div>
+      </div>
     </div>
   );
 }
@@ -164,18 +345,18 @@ function InputField({
 }: InputFieldProps) {
   return (
     <label className="block">
-      <span className="mb-2 block text-[0.8rem] font-medium text-[#22314f]">
+      <span className="mb-2 block text-[0.8rem] font-medium text-slate-700">
         {label}
       </span>
 
       <div className="relative">
-        <span className="absolute inset-y-0 left-4 flex items-center text-[#4d7a67]">
+        <span className="absolute inset-y-0 left-4 flex items-center text-brand-600">
           {icon}
         </span>
 
         <input
           autoComplete={autoComplete}
-          className="h-10 w-full rounded-xl border border-[#d8e1ee] bg-[#fbfcfe] pl-10.5 pr-10.5 text-[0.88rem] text-[#07133d] shadow-none outline-none placeholder:text-slate-400 focus:border-[#9cb8a8] focus:bg-white focus:ring-4 focus:ring-[#edf4ef]"
+          className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10.5 pr-10.5 text-[0.88rem] text-slate-900 shadow-none outline-none placeholder:text-slate-400 focus:border-brand-400 focus:bg-white focus:ring-4 focus:ring-brand-100"
           id={id}
           name={name}
           onChange={(event) => onChange(event.target.value)}
@@ -196,14 +377,27 @@ function InputField({
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { authNotice, clearAuthNotice, login } = useAuth();
+  const { clearAuthNotice, login } = useAuth();
+  const sellingPoints = [
+    {
+      icon: <IconProgressBullet />,
+      text: "Know the progress of your monthly pack items at all times.",
+    },
+    {
+      icon: <IconDocumentsBullet />,
+      text: "Keep bank statements, invoices, and VAT submissions controlled.",
+    },
+    {
+      icon: <IconReviewBullet />,
+      text: "Reduce lost files and improve compliance across every review step.",
+    },
+  ];
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
-  const [showDeveloperAccess, setShowDeveloperAccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -224,26 +418,8 @@ export function LoginPage() {
     navigate(defaultPathForRole(result.user.role));
   }
 
-  function useMockAccount(nextEmail: string) {
-    const passwordsByEmail: Record<string, string> = hasApiBaseUrl()
-      ? {
-          "admin@secureportal.local": "Password123!",
-          "accountant@secureportal.local": "Password123!",
-          "client@secureportal.local": "Password123!",
-        }
-      : {
-          "admin@example.com": "Admin@2026",
-          "accountant@example.com": "Accountant@2026",
-          "client@example.com": "Client@2026",
-        };
-
-    setEmail(nextEmail);
-    setPassword(passwordsByEmail[nextEmail] ?? "");
-    setError("");
-    clearAuthNotice();
-  }
   return (
-    <main className="relative h-screen overflow-hidden bg-[#071421] text-[#07133d]">
+    <main className="relative h-screen overflow-hidden bg-[#071421] text-slate-900">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_28%_18%,rgba(22,163,116,0.26),transparent_28%),radial-gradient(circle_at_72%_78%,rgba(6,31,77,0.52),transparent_34%),linear-gradient(135deg,#071421_0%,#10233b_50%,#06111e_100%)]" />
       <div className="absolute inset-0 opacity-45 [background-image:radial-gradient(circle_at_20%_30%,rgba(255,255,255,0.24)_1px,transparent_1px),radial-gradient(circle_at_70%_20%,rgba(24,172,95,0.18)_1px,transparent_1px)] [background-size:80px_80px,110px_110px]" />
 
@@ -252,53 +428,39 @@ export function LoginPage() {
           <div className="relative hidden overflow-hidden rounded-l-[20px] lg:block">
             <BrandVisual />
 
-            <div className="absolute left-9 top-8 z-10 flex items-center gap-3 text-white">
-              <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 text-emerald-300 ring-1 ring-white/20">
-                <IconShield />
-              </span>
-              <span className="text-[0.8rem] font-medium uppercase tracking-[0.2em]">Secure Accounting</span>
-            </div>
-
-            <div className="absolute bottom-9 left-9 right-9 z-10 text-white">
-              <div className="mb-4 h-px w-20 bg-emerald-300/60" />
-              <p className="text-[0.72rem] font-medium uppercase tracking-[0.18em] text-white/68">
-                Trusted Workspace
+            <div className="absolute inset-x-0 bottom-0 z-10 bg-[linear-gradient(180deg,rgba(4,14,24,0)_0%,rgba(4,14,24,0.82)_36%,rgba(4,14,24,0.94)_100%)] px-9 pb-9 pt-28 text-white">
+              <div className="mb-5 h-px w-24 bg-brand-100/70" />
+              <p className="text-[0.72rem] font-medium uppercase tracking-[0.2em] text-white/70">
+                Business Process Automation
               </p>
-              <h1 className="mt-3 max-w-[360px] text-[2rem] font-medium leading-[1.14] tracking-[-0.025em] drop-shadow-[0_14px_24px_rgba(0,0,0,0.24)]">
-                Document control and compliance oversight for modern accounting teams.
+              <h1 className="mt-3 max-w-[430px] text-[2.2rem] font-medium leading-[1.1] tracking-[-0.03em] drop-shadow-[0_14px_24px_rgba(0,0,0,0.28)]">
+                Speed up accounting operations with secure digital workflows.
               </h1>
-              <p className="mt-3 max-w-[360px] text-[0.86rem] leading-6 text-white/68">
-                Track requests, filings, monthly packs, and client records in one controlled portal.
-              </p>
+              <div className="mt-5 h-px max-w-[360px] bg-white/45" />
+              <div className="mt-6 space-y-3.5 text-[0.95rem] leading-6 text-white/84">
+                {sellingPoints.map((point) => (
+                  <div className="flex items-start gap-3" key={point.text}>
+                    <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/8 text-brand-100 ring-1 ring-white/12">
+                      {point.icon}
+                    </span>
+                    <p>{point.text}</p>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
-          <div className="flex h-full items-center justify-center bg-[linear-gradient(180deg,#ffffff_0%,#fbfcfe_100%)] px-6 py-6 sm:px-9 lg:px-10">
-            <div className="w-full max-w-[400px]">
-              <div className="mb-5">
-                <div className="inline-flex items-center gap-3 rounded-2xl border border-[#e3ebf2] bg-white px-3.5 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[linear-gradient(180deg,#f4faf6_0%,#edf6f0_100%)] text-[#2d6c57] ring-1 ring-[#dbe9df]">
-                    <IconBank />
-                  </span>
-                  <div className="text-left">
-                    <p className="text-[0.92rem] font-medium tracking-[-0.01em] text-[#07133d]">
-                      Secure Client Portal
-                    </p>
-                    <p className="mt-0.5 text-[0.68rem] font-medium uppercase tracking-[0.1em] text-[#7b879d]">
-                      Protected client workspace
-                    </p>
-                  </div>
-                </div>
+          <div className="flex h-full items-center justify-center bg-[linear-gradient(180deg,#ffffff_0%,#f8fbfd_100%)] px-6 py-6 sm:px-9 lg:px-10">
+            <div className="flex min-h-full w-full max-w-[560px] flex-col">
+              <div className="mb-8 hidden lg:block">
+                <SecureAccountingWordmark />
               </div>
 
-              <form className="space-y-3 rounded-[20px] border border-[#e6edf5] bg-white px-4 py-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)] sm:px-5 sm:py-4" onSubmit={handleSubmit}>
-                {authNotice ? (
-                  <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2.5 text-left text-[0.78rem] leading-5 text-sky-900">
-                    <div className="font-medium">Session update</div>
-                    <div className="mt-1 font-medium">{authNotice}</div>
-                  </div>
-                ) : null}
+              <div className="mb-6 lg:hidden">
+                <SecureAccountingBrandBlock />
+              </div>
 
+              <form className="mx-auto w-full max-w-[520px] space-y-5 px-2 sm:px-3" onSubmit={handleSubmit}>
                 <InputField
                   autoComplete="email"
                   id="login-email"
@@ -316,7 +478,7 @@ export function LoginPage() {
                   endAdornment={
                     <button
                       aria-label={showPassword ? "Hide password" : "Show password"}
-                      className="transition hover:text-[#06113c]"
+                      className="transition hover:text-brand-800"
                       onClick={() => setShowPassword((current) => !current)}
                       type="button"
                     >
@@ -334,7 +496,7 @@ export function LoginPage() {
                 />
 
                 <div className="flex items-center justify-between gap-4 text-[0.74rem]">
-                  <label className="flex cursor-pointer items-center gap-2 text-[#22314f]">
+                  <label className="flex cursor-pointer items-center gap-2 text-slate-700">
                     <span className="relative flex h-4 w-4 items-center justify-center rounded border border-slate-300 bg-white text-white">
                       <input
                         checked={rememberMe}
@@ -343,7 +505,7 @@ export function LoginPage() {
                         type="checkbox"
                       />
                       {rememberMe ? (
-                        <span className="absolute inset-0 flex items-center justify-center rounded bg-emerald-600">
+                        <span className="absolute inset-0 flex items-center justify-center rounded bg-brand-500">
                           <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24">
                             <path
                               d="m5 12 4 4L19 6"
@@ -360,10 +522,10 @@ export function LoginPage() {
                   </label>
 
                   <Link
-                    className="font-medium text-[#315b7e] transition hover:text-emerald-700"
+                    className="font-medium text-brand-700 transition hover:text-brand-500"
                     to="/forgot-password"
                   >
-                    Reset password
+                    Forgot Password ?
                   </Link>
                 </div>
 
@@ -376,86 +538,17 @@ export function LoginPage() {
 
                 <button
                   disabled={isSubmitting}
-                  className="flex h-10 w-full items-center justify-center gap-3 rounded-xl bg-[#0a2540] text-[0.86rem] font-medium text-white shadow-[0_10px_18px_rgba(10,37,64,0.16)] transition hover:bg-[#0c2f52] active:translate-y-px"
+                  className="flex h-14 w-full items-center justify-center gap-3 rounded-2xl bg-brand-700 text-[1.1rem] font-semibold text-white shadow-[0_18px_34px_rgba(10,47,102,0.2)] transition hover:bg-brand-800 active:translate-y-px"
                   type="submit"
                 >
-                  <IconLock />
                   {isSubmitting ? "Signing in..." : "Sign in"}
                 </button>
               </form>
 
-              <div className="mt-4 text-center">
-                <button
-                  className="inline-flex items-center gap-3 text-[0.76rem] font-medium text-[#22314f] transition hover:text-emerald-700"
-                  onClick={() => setShowDeveloperAccess((current) => !current)}
-                  type="button"
-                >
-                  <span className="text-emerald-600">
-                    <IconCode />
-                  </span>
-                  Developer access for local testing
-                  <svg
-                    className={`h-4 w-4 text-emerald-600 transition ${
-                      showDeveloperAccess ? "rotate-180" : ""
-                    }`}
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      d="m6 9 6 6 6-6"
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2.4"
-                    />
-                  </svg>
-                </button>
-
-                {showDeveloperAccess ? (
-                  <div className="mt-3 grid gap-2 text-left text-[0.72rem] font-medium">
-                    <button
-                      className="rounded-xl bg-slate-50 px-3 py-2 text-slate-700 ring-1 ring-slate-200 transition hover:bg-brand-50"
-                      onClick={() =>
-                        useMockAccount(
-                          hasApiBaseUrl() ? "client@secureportal.local" : "client@example.com",
-                        )
-                      }
-                      type="button"
-                    >
-                      Client: <span className="text-emerald-600">{hasApiBaseUrl() ? "client@secureportal.local" : "client@example.com"}</span>
-                      <span className="mx-2 text-slate-400">&bull;</span>
-                      <span className="text-emerald-600">{hasApiBaseUrl() ? "Password123!" : "Client@2026"}</span>
-                    </button>
-                    <button
-                      className="rounded-xl bg-slate-50 px-3 py-2 text-slate-700 ring-1 ring-slate-200 transition hover:bg-brand-50"
-                      onClick={() =>
-                        useMockAccount(
-                          hasApiBaseUrl()
-                            ? "accountant@secureportal.local"
-                            : "accountant@example.com",
-                        )
-                      }
-                      type="button"
-                    >
-                      Accountant: <span className="text-emerald-600">{hasApiBaseUrl() ? "accountant@secureportal.local" : "accountant@example.com"}</span>
-                      <span className="mx-2 text-slate-400">&bull;</span>
-                      <span className="text-emerald-600">{hasApiBaseUrl() ? "Password123!" : "Accountant@2026"}</span>
-                    </button>
-                    <button
-                      className="rounded-xl bg-slate-50 px-3 py-2 text-slate-700 ring-1 ring-slate-200 transition hover:bg-brand-50"
-                      onClick={() =>
-                        useMockAccount(
-                          hasApiBaseUrl() ? "admin@secureportal.local" : "admin@example.com",
-                        )
-                      }
-                      type="button"
-                    >
-                      Admin: <span className="text-emerald-600">{hasApiBaseUrl() ? "admin@secureportal.local" : "admin@example.com"}</span>
-                      <span className="mx-2 text-slate-400">&bull;</span>
-                      <span className="text-emerald-600">{hasApiBaseUrl() ? "Password123!" : "Admin@2026"}</span>
-                    </button>
-                  </div>
-                ) : null}
+              <div className="mx-auto mt-auto w-full max-w-[520px] border-t border-slate-200 pt-5 text-center">
+                <p className="text-[0.8rem] text-slate-500">
+                  Copyright © 2026 Secure Accounting
+                </p>
               </div>
             </div>
           </div>

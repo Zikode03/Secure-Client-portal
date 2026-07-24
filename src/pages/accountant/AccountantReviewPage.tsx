@@ -1534,7 +1534,7 @@ export function AccountantReviewPage() {
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                    <h2 className="text-[1.18rem] font-medium text-[#091333]">My work queue</h2>
+                    <h2 className="text-[1.18rem] font-medium text-[#091333]">My slot review queue</h2>
                   </div>
                 </div>
                 <div className="flex items-center gap-3" />
@@ -1666,7 +1666,7 @@ export function AccountantReviewPage() {
                         />
                         <div className="min-w-0">
                           <p className="text-[0.98rem] font-medium text-slate-950">
-                            {row.item.documentType} review
+                            {row.item.documentType} slot review
                           </p>
                           <p className="mt-1 text-[0.88rem] text-slate-500">
                             {row.item.clientName} | {row.item.monthLabel}
@@ -1729,7 +1729,7 @@ export function AccountantReviewPage() {
                                 }}
                                 type="button"
                               >
-                                Open in workspace
+                                Open client slot history
                               </button>
                               <button
                                 className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-[0.84rem] text-slate-700 transition hover:bg-slate-50"
@@ -2062,7 +2062,7 @@ export function AccountantReviewPage() {
                       </h3>
                     </div>
                     <p className="mt-3 text-[0.92rem] leading-7 text-slate-500">
-                      Use this page to inspect the file before moving to the monthly pack for the actual workflow action.
+                      Use this page to inspect the submitted slot version and decide whether it should be accepted, rejected, or sent back for a corrected upload.
                     </p>
                     <span
                       className={cn(
@@ -2107,8 +2107,9 @@ export function AccountantReviewPage() {
                         className="h-11 w-full rounded-xl px-4"
                         onClick={() => openInClientWorkspace(activeRow.item.id)}
                         size="sm"
+                        variant="secondary"
                       >
-                        Move to monthly pack
+                        Open client slot history
                       </Button>
                       <div className="grid gap-2 sm:grid-cols-2">
                         <Button

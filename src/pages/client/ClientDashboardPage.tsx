@@ -555,6 +555,11 @@ function MonthlyPackPreviewCard({
   onOpenPack: () => void;
 }) {
   const progress = Math.max(0, Math.min(pack.progressPercent, 100));
+  const activeReviewCount = pack.slots.filter((slot) =>
+    ["uploaded", "under_review"].includes(slot.status),
+  ).length;
+  const rejectedCount = pack.slots.filter((slot) => slot.status === "rejected").length;
+  const remainingCount = Math.max(0, pack.totalCount - pack.completedCount);
   const packSlots = [...pack.slots].sort((first, second) => {
     if (first.isRequired !== second.isRequired) {
       return first.isRequired ? -1 : 1;
@@ -612,7 +617,13 @@ function MonthlyPackPreviewCard({
             <div className="rounded-xl border border-[#e8ecf5] bg-[#fbfcff] px-4 py-3">
               <p className="text-[0.72rem] font-semibold text-[#53617f]">Status</p>
               <p className="mt-1 text-[0.88rem] font-semibold text-brand-700">
-                {pack.submissionStatus === "under_accountant_review" ? "Under Review" : pack.canComplete ? "Ready" : "Awaiting Uploads"}
+                {rejectedCount > 0
+                  ? "Needs attention"
+                  : activeReviewCount > 0
+                    ? "Review active"
+                    : remainingCount === 0
+                      ? "Ready"
+                      : "Awaiting uploads"}
               </p>
             </div>
             <div className="rounded-xl border border-[#e8ecf5] bg-[#fbfcff] px-4 py-3 sm:col-span-2 xl:col-span-1">
@@ -977,6 +988,8 @@ export function ClientDashboardPage() {
     backendMode && liveDashboardData ? liveDashboardData.expiringDocuments : expiringDocuments;
   const effectiveSmartAlerts =
     backendMode && liveDashboardData ? liveDashboardData.smartAlerts : smartAlerts;
+  const isPackReadOnly =
+    !backendMode && effectiveMonthPack.submissionStatus === "under_accountant_review";
 
   const requiredSlots = useMemo(
     () => effectiveMonthPack.slots.filter((slot) => slot.isRequired),
@@ -1092,7 +1105,7 @@ export function ClientDashboardPage() {
 
     if (
       (backendMode ? Boolean(backendSubmittableSlot) : effectiveMonthPack.canComplete) &&
-      effectiveMonthPack.submissionStatus !== "under_accountant_review"
+      !isPackReadOnly
     ) {
       items.push({
         id: backendMode ? "submit-slot" : "submit-month",
@@ -1131,7 +1144,7 @@ export function ClientDashboardPage() {
     blockingSlots,
     effectiveExpiringDocuments,
     effectiveMonthPack.canComplete,
-    effectiveMonthPack.submissionStatus,
+    isPackReadOnly,
     navigate,
     effectiveRequests,
     submitMonth,
@@ -1194,7 +1207,7 @@ export function ClientDashboardPage() {
       showFeedbackNotice(
         "success",
         targetSlotMeta?.currentDocumentId ? "New version uploaded" : "Upload saved",
-        `${submission.documentType} was uploaded into the live monthly pack.`,
+        `${submission.documentType} was uploaded into its slot and is ready for the next review step.`,
       );
     } catch (error) {
       showFeedbackNotice(
@@ -1223,7 +1236,7 @@ export function ClientDashboardPage() {
       showFeedbackNotice(
         "success",
         "Slot submitted",
-        `${backendSubmittableSlot.documentType} was submitted for accountant review.`,
+        `${backendSubmittableSlot.documentType} was submitted as its own review task.`,
       );
     } catch (error) {
       showFeedbackNotice(
@@ -1254,14 +1267,14 @@ export function ClientDashboardPage() {
               Welcome back, {user?.name?.split(" ")[0] ?? "John"}
             </h1>
             <p className="max-w-2xl text-[0.95rem] leading-6 text-white/78">
-              Your monthly document pack is {effectiveMonthPack.progressPercent}% complete. Resolve blockers, upload missing files, and submit ready slots for accountant review.
+              Resolve blockers, upload missing files, and keep each slot moving through review. Pack progress stays visible as a summary while slot actions stay front and centre.
             </p>
           </div>
 
           <div className="relative flex flex-wrap items-center gap-2.5 sm:flex-nowrap lg:justify-end">
           <Button
             className="client-dashboard-action-button h-10 rounded-lg border-0 px-4 text-sm font-bold ring-0 hover:-translate-y-0.5 active:translate-y-px"
-            disabled={effectiveMonthPack.submissionStatus === "under_accountant_review"}
+            disabled={isPackReadOnly}
             onClick={() => handleOpenUpload(highlightedEffectiveSlot)}
           >
             <CloudUpload aria-hidden="true" className="h-4 w-4" />
@@ -1271,7 +1284,7 @@ export function ClientDashboardPage() {
             className="h-10 rounded-xl bg-[#8ccf45] px-4 text-sm text-[#062044] shadow-[0_14px_28px_rgba(9,34,66,0.22)] hover:bg-[#9ad955]"
             disabled={
               (backendMode ? !backendSubmittableSlot : !effectiveMonthPack.canComplete) ||
-              effectiveMonthPack.submissionStatus === "under_accountant_review"
+              isPackReadOnly
             }
             onClick={() => {
               if (backendMode) {
@@ -1384,8 +1397,8 @@ export function ClientDashboardPage() {
       </div>
 
       <section className="grid items-stretch gap-5">
-        <MonthlyPackPreviewCard onOpenPack={handleOpenWorkspace} pack={effectiveMonthPack} />
         <NextActionsCard items={nextActions} />
+        <MonthlyPackPreviewCard onOpenPack={handleOpenWorkspace} pack={effectiveMonthPack} />
       </section>
 
       <section className="grid gap-5 lg:grid-cols-2">

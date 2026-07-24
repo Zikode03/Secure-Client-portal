@@ -442,6 +442,8 @@ export function ClientMonthlyPacksPage() {
     backendMode && livePreviousMonthComparison
       ? livePreviousMonthComparison
       : previousMonthComparison;
+  const isPackReadOnly =
+    !backendMode && effectiveMonthPack.submissionStatus === "under_accountant_review";
 
   const requiredSlots = useMemo(
     () => effectiveMonthPack.slots.filter((slot) => slot.isRequired),
@@ -521,6 +523,34 @@ export function ClientMonthlyPacksPage() {
   }, [effectiveDocuments, effectiveInvoices, selectedSlot]);
 
   const submissionState = useMemo(() => {
+    if (backendMode) {
+      const activeReviewCount = effectiveMonthPack.slots.filter((slot) =>
+        ["uploaded", "under_review", "accepted", "filed"].includes(slot.status),
+      ).length;
+
+      if (backendSubmittableSlot) {
+        return {
+          label: "Ready",
+          tone: "success" as const,
+          bannerTitle: `${backendSubmittableSlot.documentType} is ready to submit.`,
+          bannerMessage:
+            "Submit the next ready slot for accountant review while the rest of the month continues independently.",
+          statusHelper: "Ready for slot submission",
+        };
+      }
+
+      if (activeReviewCount > 0) {
+        return {
+          label: "Active",
+          tone: "info" as const,
+          bannerTitle: "Slot reviews are already in motion.",
+          bannerMessage:
+            "Some slots are already with the accountant. You can keep uploading or correcting the remaining slots in parallel.",
+          statusHelper: "Parallel slot workflow",
+        };
+      }
+    }
+
     if (effectiveMonthPack.submissionStatus === "under_accountant_review") {
       return {
         label: "Under Review",
@@ -690,21 +720,21 @@ export function ClientMonthlyPacksPage() {
             Monthly Packs
           </p>
           <h1 className="text-[2.05rem] font-semibold tracking-tight text-[#091333]">
-            {monthPack.monthLabel}
+            {effectiveMonthPack.monthLabel}
           </h1>
           <p className="max-w-2xl text-[0.96rem] leading-7 text-[#53617f]">
-            Track, manage, and submit your monthly documents. Stay on top of requirements and keep your compliance up to date.
+            Upload, correct, and submit each slot inside {effectiveMonthPack.monthLabel}. The pack tracks progress, but each document slot moves through review on its own.
           </p>
         </div>
 
         <div className="flex w-full flex-wrap items-center gap-2.5 sm:w-auto lg:justify-end">
           <div className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#dce6ef] bg-white px-4 text-sm font-semibold text-[#091333] shadow-sm">
             <CalendarDays aria-hidden="true" className="h-4 w-4 text-brand-700" />
-            {monthPack.monthLabel}
+            {effectiveMonthPack.monthLabel}
           </div>
           <Button
             className="h-10 rounded-xl bg-brand-700 px-4 text-sm font-semibold text-white shadow-[0_10px_20px_rgba(4,24,52,0.16)] hover:bg-brand-800"
-            disabled={monthPack.submissionStatus === "under_accountant_review"}
+            disabled={isPackReadOnly}
             onClick={() => handleOpenUpload(highlightedSlot)}
           >
             <CloudUpload aria-hidden="true" className="h-4 w-4" />
@@ -749,7 +779,7 @@ export function ClientMonthlyPacksPage() {
             <div className="space-y-5">
               <div className="rounded-2xl border border-[#e8ecf5] bg-[#fbfcff] p-4">
                 <p className="text-[0.74rem] font-semibold uppercase tracking-[0.12em] text-[#53617f]">
-                  Monthly pack status
+                  Monthly pack summary
                 </p>
                 <h3 className="mt-2 text-[1.08rem] font-semibold text-[#091333]">
                   {submissionState.bannerTitle}
@@ -786,7 +816,7 @@ export function ClientMonthlyPacksPage() {
                   disabled={
                     backendMode
                       ? !backendSubmittableSlot || isSyncingBackendPack
-                      : !effectiveMonthPack.canComplete || effectiveMonthPack.submissionStatus === "under_accountant_review"
+                      : !effectiveMonthPack.canComplete || isPackReadOnly
                   }
                   onClick={() => void handleSubmitAction()}
                 >
@@ -796,7 +826,7 @@ export function ClientMonthlyPacksPage() {
                 {highlightedSlot ? (
                   <Button
                     className={`${monthlyPackActionButtonClass} sm:col-span-2 lg:col-span-2 xl:col-span-2`}
-                    disabled={effectiveMonthPack.submissionStatus === "under_accountant_review" || isSyncingBackendPack}
+                    disabled={isPackReadOnly || isSyncingBackendPack}
                     onClick={() => handleOpenUpload(highlightedSlot)}
                   >
                     <span>
@@ -821,7 +851,7 @@ export function ClientMonthlyPacksPage() {
           <div className="grid gap-3 lg:grid-cols-3">
             <PriorityAction
               action="Open"
-              helper={`Confirm required files for ${monthPack.monthLabel}`}
+              helper={`Confirm required files for ${effectiveMonthPack.monthLabel}`}
               icon={<ClipboardList aria-hidden="true" className="h-5 w-5" strokeWidth={1.8} />}
               label="Review checklist requirements"
               onClick={handleOpenChecklist}
@@ -848,7 +878,7 @@ export function ClientMonthlyPacksPage() {
         <div className="h-full" id="pack-checklist">
           <MonthlyPackChecklist
             onDownload={handleDownloadSlot}
-            isReadOnly={effectiveMonthPack.submissionStatus === "under_accountant_review"}
+            isReadOnly={isPackReadOnly}
             onUpload={handleOpenUpload}
             onView={() => navigate("/client/documents")}
             pack={effectiveMonthPack}
@@ -907,7 +937,7 @@ export function ClientMonthlyPacksPage() {
               showFeedbackNotice(
                 "success",
                 targetSlotMeta?.currentDocumentId ? "New version uploaded" : "Upload saved",
-                `${submission.documentType} was uploaded into the live monthly pack.`,
+                `${submission.documentType} was uploaded into its slot and is ready for the next review step.`,
               );
             })
             .catch((error: unknown) => {
