@@ -354,12 +354,13 @@ export function MonthlyPackChecklist({
 
         {openMenuId === slot.id ? (
           <div
-            className="absolute right-0 top-[calc(100%+0.35rem)] z-20 min-w-[196px] rounded-xl border border-slate-200 bg-white p-2 shadow-[0_16px_32px_rgba(15,23,42,0.12)]"
+            className="absolute right-0 top-[calc(100%+0.35rem)] z-50 min-w-[196px] rounded-lg border border-slate-200 bg-white p-1.5 shadow-[0_18px_36px_rgba(4,24,52,0.14)]"
             onClick={(event) => event.stopPropagation()}
+            role="menu"
           >
             {!isReadOnly ? (
               <button
-                className="client-dashboard-link flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-semibold"
+                className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-xs font-semibold text-[#35466d] transition hover:bg-slate-50 hover:text-[#091333]"
                 onClick={() => {
                   closeMenu();
                   if (actionIntent === "view" && onView) {
@@ -368,6 +369,7 @@ export function MonthlyPackChecklist({
                   }
                   onUpload(slot);
                 }}
+                role="menuitem"
                 type="button"
               >
                 <ActionIcon action={buttonIcon} />
@@ -377,11 +379,12 @@ export function MonthlyPackChecklist({
 
             {onView && actionIntent !== "view" ? (
               <button
-                className="client-dashboard-link flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-semibold"
+                className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-xs font-semibold text-[#35466d] transition hover:bg-slate-50 hover:text-[#091333]"
                 onClick={() => {
                   closeMenu();
                   onView(slot);
                 }}
+                role="menuitem"
                 type="button"
               >
                 <ActionIcon action="view" />
@@ -391,11 +394,12 @@ export function MonthlyPackChecklist({
 
             {showDownload ? (
               <button
-                className="client-dashboard-link flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-semibold"
+                className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-xs font-semibold text-[#35466d] transition hover:bg-slate-50 hover:text-[#091333]"
                 onClick={() => {
                   closeMenu();
                   onDownload?.(slot);
                 }}
+                role="menuitem"
                 type="button"
               >
                 <DownloadActionIcon />
@@ -405,11 +409,12 @@ export function MonthlyPackChecklist({
 
             {slot.rejectionReason ? (
               <button
-                className="client-dashboard-link flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-semibold"
+                className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-xs font-semibold text-[#35466d] transition hover:bg-slate-50 hover:text-[#091333]"
                 onClick={() => {
                   closeMenu();
                   toggleReason(slot.id);
                 }}
+                role="menuitem"
                 type="button"
               >
                 <NoteActionIcon />

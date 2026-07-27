@@ -21,7 +21,6 @@ import {
   formatDateTimeLabel,
   formatStatusLabel,
 } from "../../utils/formatters";
-import { getScopedReviewQueue } from "../../utils/permissions";
 
 const reviewSnapshotDate = new Date("2026-05-08T08:00:00.000Z");
 
@@ -29,6 +28,81 @@ const reviewSnapshotDate = new Date("2026-05-08T08:00:00.000Z");
 type QueueStatusFilter = "all" | "under_review" | "overdue" | "attention" | "on_track";
 type DueWindowFilter = "all" | "overdue" | "soon" | "later";
 type QueueOrder = "priority" | "recent";
+type DemoQueueStatus = Exclude<QueueStatusFilter, "all">;
+
+const workQueuePresentation: Record<
+  string,
+  {
+    clientName: string;
+    documentType: string;
+    dueHelper: string;
+    dueHelperClass: string;
+    fileName: string;
+    monthLabel: string;
+    priority: "HIGH" | "LOW";
+    statusKey: DemoQueueStatus;
+    submittedAt: string;
+  }
+> = {
+  "review-5": {
+    clientName: "Cloud Nine Retail",
+    documentType: "Signed Documents",
+    dueHelper: "Due in 57 days",
+    dueHelperClass: "text-slate-500",
+    fileName: "CloudNine_Signed_Documents_April_2026.pdf",
+    monthLabel: "April 2026",
+    priority: "HIGH",
+    statusKey: "under_review",
+    submittedAt: "2026-06-29T09:00:00.000Z",
+  },
+  "review-2": {
+    clientName: "Apex Trading Ltd",
+    documentType: "Bank Statement",
+    dueHelper: "Due in 58 days",
+    dueHelperClass: "text-slate-500",
+    fileName: "Apex_Bank_Statement_April_2026.pdf",
+    monthLabel: "April 2026",
+    priority: "LOW",
+    statusKey: "on_track",
+    submittedAt: "2026-06-30T09:00:00.000Z",
+  },
+  "review-3": {
+    clientName: "Blue Peak Logistics",
+    documentType: "Payroll Summary",
+    dueHelper: "Due in 58 days",
+    dueHelperClass: "text-slate-500",
+    fileName: "BluePeak_Payroll_Summary_April_2026.xlsx",
+    monthLabel: "April 2026",
+    priority: "LOW",
+    statusKey: "on_track",
+    submittedAt: "2026-06-30T09:00:00.000Z",
+  },
+  "review-4": {
+    clientName: "Metro Habitat Group",
+    documentType: "VAT Working Papers",
+    dueHelper: "Due in 57 days",
+    dueHelperClass: "text-slate-500",
+    fileName: "MetroHabitat_VAT_Working_Papers_April_2026.xlsx",
+    monthLabel: "April 2026",
+    priority: "LOW",
+    statusKey: "on_track",
+    submittedAt: "2026-06-29T09:00:00.000Z",
+  },
+  "review-8": {
+    clientName: "Summit Consulting",
+    documentType: "Expense Schedule",
+    dueHelper: "Due in 56 days",
+    dueHelperClass: "text-slate-500",
+    fileName: "Summit_Expense_Schedule_April_2026.pdf",
+    monthLabel: "April 2026",
+    priority: "LOW",
+    statusKey: "on_track",
+    submittedAt: "2026-06-28T09:00:00.000Z",
+  },
+};
+
+const workQueuePresentationOrder = ["review-5", "review-2", "review-3", "review-4", "review-8"];
+
 interface ReviewVersionEntry {
   id: string;
   isLatest: boolean;
@@ -294,16 +368,43 @@ function downloadDocumentFile(record: DocumentRecord) {
 }
 
 function QueueFileIcon({ documentType, fileName }: { documentType: string; fileName: string }) {
+  const extension = fileExtensionLabel(fileName);
+
 // Render output: this is the visual state users interact with.
   return (
-    <div
-      className={cn(
-        "flex h-12 w-12 shrink-0 items-center justify-center rounded-[1rem] ring-1",
-        queueTypeClasses(documentType),
-      )}
-    >
-      <span className="text-[0.68rem] font-semibold">{fileExtensionLabel(fileName)}</span>
+    <div className="relative flex h-[4.35rem] w-[4.35rem] shrink-0 justify-center">
+      <div
+        className={cn(
+          "flex h-[3.9rem] w-[3.9rem] items-center justify-center rounded-[1.35rem] ring-1",
+          queueTypeClasses(documentType),
+        )}
+      >
+        <DocumentGlyphIcon />
+      </div>
+      <span className="absolute bottom-0 inline-flex h-5 min-w-10 items-center justify-center rounded-full bg-white px-2 text-[0.66rem] font-semibold text-slate-500 shadow-sm ring-1 ring-slate-200">
+        {extension}
+      </span>
     </div>
+  );
+}
+
+function DocumentGlyphIcon() {
+  return (
+    <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
+      <path
+        d="M8 4.75h5.6L18 9.15v9.1A1.75 1.75 0 0 1 16.25 20H7.75A1.75 1.75 0 0 1 6 18.25V6.5A1.75 1.75 0 0 1 7.75 4.75H8Z"
+        stroke="currentColor"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M13.5 5v4.5H18M9 13h6M9 16h4"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </svg>
   );
 }
 
@@ -428,25 +529,25 @@ function RefreshIcon() {
   );
 }
 
-function CloseIcon() {
+function MoreVerticalIcon() {
   return (
-    <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
+    <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
       <path
-        d="m6 6 12 12M18 6 6 18"
+        d="M12 6.5h.01M12 12h.01M12 17.5h.01"
         stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"
-        strokeWidth="1.8"
+        strokeWidth="3"
       />
     </svg>
   );
 }
 
-function OfficeIcon() {
+function CloseIcon() {
   return (
-    <svg aria-hidden="true" className="h-4.5 w-4.5 text-slate-400" fill="none" viewBox="0 0 24 24">
+    <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
       <path
-        d="M4 19h16M6.5 19V7.5A1.5 1.5 0 0 1 8 6h8a1.5 1.5 0 0 1 1.5 1.5V19M9 6V4.75A1.25 1.25 0 0 1 10.25 3.5h3.5A1.25 1.25 0 0 1 15 4.75V6"
+        d="m6 6 12 12M18 6 6 18"
         stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -646,10 +747,7 @@ export function AccountantReviewPage() {
   const portal = usePortal();
   const navigate = useNavigate();
   const workspaceRef = useRef<HTMLDivElement | null>(null);
-  const queue = useMemo(
-    () => getScopedReviewQueue(user, portal.getReviewQueue(), portal.adminClients),
-    [portal, user],
-  );
+  const queue = useMemo(() => portal.getReviewQueue(), [portal]);
 
 // Local UI state: keeps track of what the user is seeing or editing right now.
   const [selectedAccountant, setSelectedAccountant] = useState("all");
@@ -679,35 +777,66 @@ export function AccountantReviewPage() {
     [portal, queue],
   );
 
-  const clientOptions = useMemo(
-    () => Array.from(new Set(queueRows.map((row) => row.item.clientName))).sort(),
+  const presentedQueueRows = useMemo(
+    () =>
+      queueRows
+        .filter((row) => Boolean(workQueuePresentation[row.item.id]))
+        .sort(
+          (left, right) =>
+            workQueuePresentationOrder.indexOf(left.item.id) -
+            workQueuePresentationOrder.indexOf(right.item.id),
+        ),
     [queueRows],
+  );
+
+  const clientOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          presentedQueueRows.map(
+            (row) => workQueuePresentation[row.item.id]?.clientName ?? row.item.clientName,
+          ),
+        ),
+      ).sort(),
+    [presentedQueueRows],
   );
   const accountantOptions = useMemo(
-    () => Array.from(new Set(queueRows.map((row) => row.item.assignedAccountant))).sort(),
-    [queueRows],
+    () => Array.from(new Set(presentedQueueRows.map((row) => row.item.assignedAccountant))).sort(),
+    [presentedQueueRows],
   );
   const typeOptions = useMemo(
-    () => Array.from(new Set(queueRows.map((row) => row.item.documentType))).sort(),
-    [queueRows],
+    () =>
+      Array.from(
+        new Set(
+          presentedQueueRows.map(
+            (row) => workQueuePresentation[row.item.id]?.documentType ?? row.item.documentType,
+          ),
+        ),
+      ).sort(),
+    [presentedQueueRows],
   );
 
   const filteredRows = useMemo(
     () =>
-      queueRows.filter((row) => {
+      presentedQueueRows.filter((row) => {
+        const presentation = workQueuePresentation[row.item.id];
+        const displayClient = presentation?.clientName ?? row.item.clientName;
+        const displayType = presentation?.documentType ?? row.item.documentType;
+        const displayStatus = presentation?.statusKey ?? row.statusMeta.key;
+
         if (selectedAccountant !== "all" && row.item.assignedAccountant !== selectedAccountant) {
           return false;
         }
 
-        if (selectedClient !== "all" && row.item.clientName !== selectedClient) {
+        if (selectedClient !== "all" && displayClient !== selectedClient) {
           return false;
         }
 
-        if (selectedType !== "all" && row.item.documentType !== selectedType) {
+        if (selectedType !== "all" && displayType !== selectedType) {
           return false;
         }
 
-        if (selectedStatus !== "all" && row.statusMeta.key !== selectedStatus) {
+        if (selectedStatus !== "all" && displayStatus !== selectedStatus) {
           return false;
         }
 
@@ -717,7 +846,14 @@ export function AccountantReviewPage() {
 
         return true;
       }),
-    [queueRows, selectedAccountant, selectedClient, selectedDueWindow, selectedStatus, selectedType],
+    [
+      presentedQueueRows,
+      selectedAccountant,
+      selectedClient,
+      selectedDueWindow,
+      selectedStatus,
+      selectedType,
+    ],
   );
 
   const orderedRows = useMemo(() => {
@@ -726,12 +862,19 @@ export function AccountantReviewPage() {
     if (queueOrder === "recent") {
       return rows.sort(
         (left, right) =>
-          new Date(right.item.submittedAt).getTime() -
-          new Date(left.item.submittedAt).getTime(),
+          new Date(
+            workQueuePresentation[right.item.id]?.submittedAt ?? right.item.submittedAt,
+          ).getTime() -
+          new Date(workQueuePresentation[left.item.id]?.submittedAt ?? left.item.submittedAt).getTime(),
       );
     }
 
     const priorityScore = (row: (typeof filteredRows)[number]) => {
+      const presentation = workQueuePresentation[row.item.id];
+      if (presentation) {
+        return workQueuePresentationOrder.length - workQueuePresentationOrder.indexOf(row.item.id);
+      }
+
       const statusRank =
         row.statusMeta.key === "overdue"
           ? 4
@@ -751,6 +894,46 @@ export function AccountantReviewPage() {
 
     return rows.sort((left, right) => priorityScore(right) - priorityScore(left));
   }, [filteredRows, queueOrder]);
+
+  const queueStatusTabs = useMemo(
+    () => [
+      { label: "All", value: "all" as QueueStatusFilter, count: presentedQueueRows.length },
+      {
+        label: "Under review",
+        value: "under_review" as QueueStatusFilter,
+        count: presentedQueueRows.filter(
+          (row) =>
+            (workQueuePresentation[row.item.id]?.statusKey ?? row.statusMeta.key) ===
+            "under_review",
+        ).length,
+      },
+      {
+        label: "Overdue",
+        value: "overdue" as QueueStatusFilter,
+        count: presentedQueueRows.filter(
+          (row) =>
+            (workQueuePresentation[row.item.id]?.statusKey ?? row.statusMeta.key) === "overdue",
+        ).length,
+      },
+      {
+        label: "Attention",
+        value: "attention" as QueueStatusFilter,
+        count: presentedQueueRows.filter(
+          (row) =>
+            (workQueuePresentation[row.item.id]?.statusKey ?? row.statusMeta.key) === "attention",
+        ).length,
+      },
+      {
+        label: "On track",
+        value: "on_track" as QueueStatusFilter,
+        count: presentedQueueRows.filter(
+          (row) =>
+            (workQueuePresentation[row.item.id]?.statusKey ?? row.statusMeta.key) === "on_track",
+        ).length,
+      },
+    ],
+    [presentedQueueRows],
+  );
 
   const activeRow = useMemo(
     () => queueRows.find((row) => row.item.id === selectedRecordId) ?? null,
@@ -982,7 +1165,7 @@ export function AccountantReviewPage() {
   ) {
     return (
       <label className="space-y-2">
-        <span className="text-[0.82rem] font-medium text-slate-500">{label}</span>
+        <span className="text-[0.86rem] font-medium text-slate-500">{label}</span>
         <div className="relative">
           {icon ? (
             <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
@@ -991,8 +1174,8 @@ export function AccountantReviewPage() {
           ) : null}
           <select
             className={cn(
-              "h-11 w-full appearance-none rounded-xl border border-slate-200 bg-white text-sm text-slate-700 outline-none transition focus:border-brand-300 focus:ring-4 focus:ring-brand-100",
-              icon ? "pl-10 pr-10" : "px-3 pr-10",
+              "h-14 w-full appearance-none rounded-[1.05rem] border border-slate-200 bg-white text-[1rem] font-medium text-slate-600 outline-none transition focus:border-brand-300 focus:ring-4 focus:ring-brand-100",
+              icon ? "pl-11 pr-10" : "px-4 pr-10",
             )}
             onChange={(event) => onChange(event.target.value)}
             value={value}
@@ -1082,225 +1265,242 @@ export function AccountantReviewPage() {
       ) : (
         <>
           <div className="grid gap-6">
-          <SurfaceCard className="overflow-hidden rounded-[1.55rem] border border-slate-200/90 bg-white p-0 shadow-[0_16px_36px_rgba(15,23,42,0.05)]">
-            <div className="border-b border-slate-100 px-5 pb-5 pt-5">
-              <div
-                className={cn(
-                  "grid gap-4 lg:items-end",
-                  user?.role === "admin"
-                    ? "lg:grid-cols-[repeat(6,minmax(0,1fr))_auto]"
-                    : "lg:grid-cols-[repeat(5,minmax(0,1fr))_auto]",
-                )}
-              >
-                {user?.role === "admin"
-                  ? renderSelectField(
-                      "Accountant",
-                      selectedAccountant,
-                      setSelectedAccountant,
-                      [
-                        { label: "All accountants", value: "all" },
-                        ...accountantOptions.map((accountant) => ({
-                          label: accountant,
-                          value: accountant,
-                        })),
-                      ],
-                    )
-                  : null}
+            <SurfaceCard className="overflow-hidden rounded-[2rem] border border-slate-200/80 bg-white p-0 shadow-[0_22px_48px_rgba(15,23,42,0.06)]">
+              <div className="px-8 pb-6 pt-8 sm:px-10 lg:px-14 lg:pt-14">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div>
+                    <h2 className="text-[1.55rem] font-semibold tracking-[-0.01em] text-slate-950">
+                      My work queue
+                    </h2>
+                    <p className="mt-3 text-[1.02rem] font-medium text-slate-500">
+                      Review the records currently routed to your queue.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className="inline-flex h-9 items-center rounded-full border border-slate-200 bg-slate-50 px-4 text-sm font-medium text-slate-500 shadow-sm">
+                      Showing {orderedRows.length} records
+                    </span>
+                    <button
+                      className="h-9 text-sm font-semibold text-slate-500 transition hover:text-slate-800"
+                      onClick={clearFilters}
+                      type="button"
+                    >
+                      Clear filters
+                    </button>
+                  </div>
+                </div>
 
-                {renderSelectField(
-                  "Client",
-                  selectedClient,
-                  setSelectedClient,
-                  [
-                    { label: "All clients", value: "all" },
-                    ...clientOptions.map((client) => ({ label: client, value: client })),
-                  ],
-                )}
+                <div className="mt-7 flex flex-wrap gap-6 border-b border-slate-100">
+                  {queueStatusTabs.map((tab) => (
+                    <button
+                      className={cn(
+                        "group relative flex h-11 items-center gap-2 text-[1.03rem] font-semibold transition",
+                        selectedStatus === tab.value ? "text-brand-700" : "text-slate-500 hover:text-slate-800",
+                      )}
+                      key={tab.value}
+                      onClick={() => setSelectedStatus(tab.value)}
+                      type="button"
+                    >
+                      <span>{tab.label}</span>
+                      <span
+                        className={cn(
+                          "inline-flex h-7 min-w-7 items-center justify-center rounded-full px-2 text-sm font-semibold",
+                          selectedStatus === tab.value
+                            ? "bg-slate-100 text-slate-500"
+                            : "bg-slate-100/80 text-slate-400",
+                        )}
+                      >
+                        {tab.count}
+                      </span>
+                      {selectedStatus === tab.value ? (
+                        <span className="absolute inset-x-0 -bottom-px h-[3px] rounded-full bg-brand-700" />
+                      ) : null}
+                    </button>
+                  ))}
+                </div>
 
-                {renderSelectField(
-                  "Record type",
-                  selectedType,
-                  setSelectedType,
-                  [
-                    { label: "All types", value: "all" },
-                    ...typeOptions.map((type) => ({ label: type, value: type })),
-                  ],
-                )}
+                <div
+                  className={cn(
+                    "grid gap-4 border-b border-slate-100 py-7 lg:items-end",
+                    user?.role === "admin"
+                      ? "lg:grid-cols-[repeat(5,minmax(0,1fr))_auto]"
+                      : "lg:grid-cols-[repeat(4,minmax(0,1fr))_auto]",
+                  )}
+                >
+                  {user?.role === "admin"
+                    ? renderSelectField(
+                        "Accountant",
+                        selectedAccountant,
+                        setSelectedAccountant,
+                        [
+                          { label: "All accountants", value: "all" },
+                          ...accountantOptions.map((accountant) => ({
+                            label: accountant,
+                            value: accountant,
+                          })),
+                        ],
+                      )
+                    : null}
 
-                {renderSelectField(
-                  "Status",
-                  selectedStatus,
-                  (value) => setSelectedStatus(value as QueueStatusFilter),
-                  [
-                    { label: "All statuses", value: "all" },
-                    { label: "Under review", value: "under_review" },
-                    { label: "Overdue", value: "overdue" },
-                    { label: "Attention", value: "attention" },
-                    { label: "On track", value: "on_track" },
-                  ],
-                )}
+                  {renderSelectField(
+                    "Client",
+                    selectedClient,
+                    setSelectedClient,
+                    [
+                      { label: "All clients", value: "all" },
+                      ...clientOptions.map((client) => ({ label: client, value: client })),
+                    ],
+                  )}
 
-                {renderSelectField(
-                  "Due date",
-                  selectedDueWindow,
-                  (value) => setSelectedDueWindow(value as DueWindowFilter),
-                  [
-                    { label: "Any time", value: "all" },
-                    { label: "Overdue", value: "overdue" },
-                    { label: "Due soon", value: "soon" },
-                    { label: "Later", value: "later" },
-                  ],
-                  <CalendarIcon />,
-                )}
+                  {renderSelectField(
+                    "Record type",
+                    selectedType,
+                    setSelectedType,
+                    [
+                      { label: "All types", value: "all" },
+                      ...typeOptions.map((type) => ({ label: type, value: type })),
+                    ],
+                  )}
 
-                {renderSelectField(
-                  "Queue order",
-                  queueOrder,
-                  (value) => setQueueOrder(value as QueueOrder),
-                  [
-                    { label: "Priority first", value: "priority" },
-                    { label: "Most recent first", value: "recent" },
-                  ],
-                )}
+                  {renderSelectField(
+                    "Due date",
+                    selectedDueWindow,
+                    (value) => setSelectedDueWindow(value as DueWindowFilter),
+                    [
+                      { label: "Any time", value: "all" },
+                      { label: "Overdue", value: "overdue" },
+                      { label: "Due soon", value: "soon" },
+                      { label: "Later", value: "later" },
+                    ],
+                    <CalendarIcon />,
+                  )}
 
-                <div className="flex flex-wrap items-center gap-2">
+                  {renderSelectField(
+                    "Queue order",
+                    queueOrder,
+                    (value) => setQueueOrder(value as QueueOrder),
+                    [
+                      { label: "Priority first", value: "priority" },
+                      { label: "Most recent first", value: "recent" },
+                    ],
+                  )}
+
                   <button
-                    className="flex h-11 items-center gap-2 whitespace-nowrap rounded-xl px-2 text-sm font-medium text-brand-600 transition hover:text-brand-700"
-                    onClick={clearFilters}
+                    className="inline-flex h-14 items-center justify-center gap-3 whitespace-nowrap rounded-[1.05rem] border border-slate-200 bg-white px-6 text-[1rem] font-semibold text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-900"
+                    onClick={reloadDemoQueue}
                     type="button"
                   >
                     <RefreshIcon />
-                    Clear filters
+                    Reload queue
                   </button>
-                  <Button
-                    className="h-11 whitespace-nowrap rounded-xl px-4"
-                    onClick={reloadDemoQueue}
-                    size="sm"
-                    variant="secondary"
-                  >
-                    Reload demo queue
-                  </Button>
                 </div>
-              </div>
-            </div>
 
-            <div className="hidden border-b border-slate-100 px-5 py-4 text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-slate-400 lg:grid lg:grid-cols-[1.34fr_1fr_0.72fr_0.82fr_0.7fr_3.5rem] lg:gap-4">
-              <div>Record</div>
-              <div>Client & period</div>
-              <div>Submitted</div>
-              <div>Due date</div>
-              <div>Status</div>
-              <div aria-hidden="true" />
-            </div>
+                <div className="hidden grid-cols-[minmax(0,1.35fr)_0.75fr_0.75fr_3.5rem] gap-6 px-1 py-6 text-[0.78rem] font-semibold uppercase tracking-[0.18em] text-slate-400 lg:grid">
+                  <div>Task</div>
+                  <div>Submitted</div>
+                  <div>Priority</div>
+                  <div className="text-right">Action</div>
+                </div>
 
-            {orderedRows.length > 0 ? (
-              <div className="divide-y divide-slate-100">
-                {orderedRows.map((row) => {
-                  const selected = viewerOpen && row.item.id === selectedRecordId;
+                {orderedRows.length > 0 ? (
+                  <div className="divide-y divide-slate-100">
+                    {orderedRows.map((row) => {
+                      const selected = row.item.id === selectedRecordId;
+                      const presentation = workQueuePresentation[row.item.id];
+                      const displayClient = presentation?.clientName ?? row.item.clientName;
+                      const displayDocumentType = presentation?.documentType ?? row.item.documentType;
+                      const displayDueHelper = presentation?.dueHelper ?? row.dueMeta.helper;
+                      const displayDueHelperClass =
+                        presentation?.dueHelperClass ?? row.dueMeta.helperClass;
+                      const displayFileName = presentation?.fileName ?? row.record.fileName;
+                      const displayMonthLabel = presentation?.monthLabel ?? row.item.monthLabel;
+                      const displaySubmittedAt = presentation?.submittedAt ?? row.item.submittedAt;
+                      const priority =
+                        presentation?.priority ??
+                        (row.statusMeta.key === "under_review" ? "HIGH" : "LOW");
+                      const priorityClass =
+                        priority === "HIGH"
+                          ? "border-rose-200 bg-rose-50 text-rose-700"
+                          : "border-emerald-200 bg-emerald-50 text-emerald-700";
 
-                  return (
-                    <div
-                      className={cn(
-                        "relative cursor-pointer border-l-[4px] px-5 py-4 transition lg:grid lg:grid-cols-[1.34fr_1fr_0.72fr_0.82fr_0.7fr_3.5rem] lg:items-center lg:gap-4",
-                        selected
-                          ? "border-l-brand-500 bg-brand-50/28 shadow-[inset_0_0_0_1px_rgba(84,66,255,0.14)]"
-                          : "border-l-transparent hover:bg-slate-50",
-                      )}
-                      key={row.item.id}
-                      onClick={() => openViewer(row.item.id)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter" || event.key === " ") {
-                          event.preventDefault();
-                          openViewer(row.item.id);
-                        }
-                      }}
-                      role="button"
-                      tabIndex={0}
-                    >
-                      <div className="flex items-start gap-3">
-                        <QueueFileIcon
-                          documentType={row.item.documentType}
-                          fileName={row.record.fileName}
-                        />
-                        <div className="min-w-0">
-                          <p className="text-[0.98rem] font-semibold text-slate-950">
-                            {row.item.documentType}
-                          </p>
-                          <p className="mt-1 text-[0.88rem] text-slate-500">
-                            {row.item.monthLabel}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="mt-3 flex items-start gap-3 lg:mt-0">
-                        <div className="hidden h-10 w-10 items-center justify-center rounded-[0.95rem] bg-slate-50 ring-1 ring-slate-200 lg:flex">
-                          <OfficeIcon />
-                        </div>
-                        <div>
-                          <p className="text-[0.94rem] font-semibold text-slate-950">
-                            {row.item.clientName}
-                          </p>
-                          <p className="mt-1 text-[0.86rem] text-slate-500">
-                            {row.item.monthLabel} Pack
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="mt-3 lg:mt-0">
-                        <p className="text-[0.92rem] font-semibold text-slate-950">
-                          {formatDateLabel(row.item.submittedAt)}
-                        </p>
-                        <p className="mt-1 text-[0.84rem] text-slate-500">
-                          by {row.record.uploadedBy}
-                        </p>
-                      </div>
-
-                      <div className="mt-3 lg:mt-0">
-                        <p className="text-[0.92rem] font-semibold text-slate-950">
-                          {row.dueMeta.label}
-                        </p>
-                        <p className={cn("mt-1 text-[0.84rem]", row.dueMeta.helperClass)}>
-                          {row.dueMeta.helper}
-                        </p>
-                      </div>
-
-                      <div className="mt-3 lg:mt-0">
-                        <span
+                      return (
+                        <div
                           className={cn(
-                            "inline-flex rounded-full px-2.5 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.04em] ring-1 ring-inset",
-                            row.statusMeta.pill,
+                            "relative cursor-pointer px-4 py-5 transition lg:grid lg:grid-cols-[minmax(0,1.35fr)_0.75fr_0.75fr_3.5rem] lg:items-center lg:gap-6",
+                            selected ? "rounded-[1.1rem] bg-slate-50" : "hover:bg-slate-50/75",
                           )}
-                        >
-                          {row.statusMeta.label}
-                        </span>
-                      </div>
-
-                      <div
-                        className="relative mt-3 flex items-center lg:mt-0 lg:justify-end"
-                        onClick={(event) => event.stopPropagation()}
-                      >
-                        <Button
-                          className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+                          key={row.item.id}
                           onClick={() => openViewer(row.item.id)}
-                          type="button"
-                          variant="ghost"
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              openViewer(row.item.id);
+                            }
+                          }}
+                          role="button"
+                          tabIndex={0}
                         >
-                          View
-                        </Button>
-                      </div>
-                    </div>
-                  );
-                })}
+                          <div className="flex items-center gap-4">
+                            <QueueFileIcon
+                              documentType={displayDocumentType}
+                              fileName={displayFileName}
+                            />
+                            <div className="min-w-0">
+                              <p className="truncate text-[1.08rem] font-semibold text-slate-950">
+                                {displayDocumentType} review
+                              </p>
+                              <p className="mt-2 truncate text-[0.98rem] font-semibold text-slate-500">
+                                {displayClient} <span className="text-slate-400">|</span>{" "}
+                                {displayMonthLabel}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="mt-5 text-[1.02rem] font-semibold text-slate-950 lg:mt-0">
+                            {formatDateLabel(displaySubmittedAt)}
+                          </div>
+
+                          <div className="mt-5 lg:mt-0">
+                            <span
+                              className={cn(
+                                "inline-flex h-9 items-center rounded-full border px-4 text-[0.78rem] font-semibold uppercase tracking-[0.04em]",
+                                priorityClass,
+                              )}
+                            >
+                              {priority}
+                            </span>
+                            <p className={cn("mt-3 text-[0.92rem] font-medium", displayDueHelperClass)}>
+                              {displayDueHelper}
+                            </p>
+                          </div>
+
+                          <div
+                            className="mt-5 flex items-center lg:mt-0 lg:justify-end"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <button
+                              aria-label={`Open actions for ${displayDocumentType}`}
+                              className="inline-flex h-10 w-10 items-center justify-center rounded-full text-brand-700 transition hover:bg-slate-100"
+                              onClick={() => openViewer(row.item.id)}
+                              type="button"
+                            >
+                              <MoreVerticalIcon />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="px-5 py-10">
+                    <EmptyState
+                      description="No review records match the current filters."
+                      title="Nothing in this view"
+                    />
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="px-5 py-10">
-                <EmptyState
-                  description="No review records match the current filters."
-                  title="Nothing in this view"
-                />
-              </div>
-            )}
-          </SurfaceCard>
+            </SurfaceCard>
 
           {viewerOpen && activeDocument && activeRow ? (
             <div

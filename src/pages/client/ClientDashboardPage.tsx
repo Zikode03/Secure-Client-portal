@@ -693,32 +693,35 @@ export function ClientDashboardPage() {
           </button>
 
           {optionsOpen ? (
-            <div className="absolute right-0 top-[calc(100%+0.6rem)] z-20 min-w-[210px] rounded-xl border border-[#dce6ef] bg-white p-2 text-[#091333] shadow-[0_18px_38px_rgba(15,23,42,0.12)]">
+            <div className="absolute right-0 top-12 z-50 min-w-[210px] rounded-lg border border-slate-200 bg-white p-1.5 text-[#091333] shadow-[0_18px_36px_rgba(4,24,52,0.14)]" role="menu">
               <button
-                className={cn("flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm", dashboardLinkClass)}
+                className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-xs font-semibold text-[#35466d] transition hover:bg-slate-50 hover:text-[#091333]"
                 onClick={handleOpenWorkspace}
+                role="menuitem"
                 type="button"
               >
                 Open monthly pack
                 <ChevronRightIcon />
               </button>
               <button
-                className={cn("flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm", dashboardLinkClass)}
+                className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-xs font-semibold text-[#35466d] transition hover:bg-slate-50 hover:text-[#091333]"
                 onClick={() => {
                   navigate("/client/documents");
                   setOptionsOpen(false);
                 }}
+                role="menuitem"
                 type="button"
               >
                 Open documents
                 <ChevronRightIcon />
               </button>
               <button
-                className={cn("flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm", dashboardLinkClass)}
+                className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-xs font-semibold text-[#35466d] transition hover:bg-slate-50 hover:text-[#091333]"
                 onClick={() => {
                   navigate("/client/compliance");
                   setOptionsOpen(false);
                 }}
+                role="menuitem"
                 type="button"
               >
                 Open compliance
@@ -904,6 +907,7 @@ export function ClientDashboardPage() {
         clientName={user?.company ?? "Apex Trading Ltd"}
         existingFileNames={existingSlotFileNames}
         isOpen={uploadModal.isOpen}
+        modalClassName="rounded-lg border-slate-200/80 shadow-[0_18px_44px_rgba(4,24,52,0.14)]"
         onClose={uploadModal.close}
         onUploaded={uploadToSlot}
         selectedSlot={selectedSlot}

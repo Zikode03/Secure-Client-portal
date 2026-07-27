@@ -6,9 +6,11 @@ import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
 import { AuditTrail } from "../../components/workflow/AuditTrail";
+import { DocumentUploadModal } from "../../components/workflow/DocumentUploadModal";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
+import { useDisclosure } from "../../hooks/useDisclosure";
 import {
   buildReviewDocumentFromInvoice,
   buildUnifiedSearchResults,
@@ -16,6 +18,8 @@ import {
 } from "../../services/workflowEngine";
 import type {
   DocumentRecord,
+  MonthlyDocumentSlot,
+  UploadSubmission,
   UnifiedSearchFilters,
   UnifiedSearchResult,
   WorkflowStatus,
@@ -49,6 +53,7 @@ const resultsPerPage = 7;
 // Shared shape notes: these types keep UI and data contracts aligned.
 type ResultTab = "all" | "documents" | "invoices" | "compliance";
 type ViewerTab = "details" | "history" | "related";
+type SortOption = "uploaded_desc" | "uploaded_asc" | "name_asc" | "name_desc" | "uploader_asc" | "type_asc";
 
 // Component flow: gather data first, then render a focused UI state.
 function SearchIcon() {
@@ -67,11 +72,11 @@ function SearchIcon() {
   );
 }
 
-function FilterIcon() {
+function PlusIcon() {
   return (
-    <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
+    <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24">
       <path
-        d="M4.5 6.5h15l-6 6v5l-3 1v-6l-6-6Z"
+        d="M12 5v14M5 12h14"
         stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -109,12 +114,26 @@ function ChevronDownIcon() {
   );
 }
 
-function MoreHorizontalIcon() {
+function MoreVerticalIcon() {
   return (
     <svg aria-hidden="true" className="h-4.5 w-4.5" fill="currentColor" viewBox="0 0 24 24">
-      <circle cx="5" cy="12" r="1.7" />
       <circle cx="12" cy="12" r="1.7" />
-      <circle cx="19" cy="12" r="1.7" />
+      <circle cx="12" cy="5" r="1.7" />
+      <circle cx="12" cy="19" r="1.7" />
+    </svg>
+  );
+}
+
+function SortIcon() {
+  return (
+    <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
+      <path
+        d="M7 5v14m0 0-3-3m3 3 3-3M17 19V5m0 0-3 3m3-3 3 3"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
     </svg>
   );
 }
@@ -262,6 +281,62 @@ function resultFamilyLabel(result: UnifiedSearchResult) {
   }
 }
 
+function documentCategoryLabel(result: UnifiedSearchResult) {
+  const source =
+    result.resultType === "monthly_pack_item" ? result.title : result.typeLabel;
+  const normalisedSource = source.toLowerCase();
+
+  if (result.resultType === "invoice" || normalisedSource.includes("invoice")) {
+    return "Invoices";
+  }
+
+  if (normalisedSource.includes("bank")) {
+    return "Banking";
+  }
+
+  if (
+    normalisedSource.includes("signed") ||
+    normalisedSource.includes("contract") ||
+    normalisedSource.includes("agreement")
+  ) {
+    return "Legal";
+  }
+
+  if (normalisedSource.includes("payroll") || normalisedSource.includes("emp")) {
+    return "Payroll";
+  }
+
+  if (normalisedSource.includes("vat") || normalisedSource.includes("tax")) {
+    return "Tax";
+  }
+
+  if (
+    result.resultType === "compliance_document" ||
+    normalisedSource.includes("compliance") ||
+    normalisedSource.includes("clearance") ||
+    normalisedSource.includes("b-bbee") ||
+    normalisedSource.includes("proof of address")
+  ) {
+    return "Compliance";
+  }
+
+  if (normalisedSource.includes("id copy")) {
+    return "Identity";
+  }
+
+  if (
+    normalisedSource.includes("expense") ||
+    normalisedSource.includes("supplier") ||
+    normalisedSource.includes("purchase order") ||
+    normalisedSource.includes("delivery note") ||
+    normalisedSource.includes("credit note")
+  ) {
+    return "Procurement";
+  }
+
+  return source;
+}
+
 function inferFileLabel(result: UnifiedSearchResult, document?: DocumentRecord | null) {
   const fileName = document?.fileName ?? result.title;
   const extension = fileName.split(".").pop()?.toUpperCase();
@@ -299,6 +374,45 @@ function fileLabelClasses(label: string) {
   }
 
   return "border-slate-200 bg-slate-50 text-slate-600";
+}
+
+function CompactFileIcon() {
+  return (
+    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-[#091333] ring-1 ring-slate-200">
+      <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
+        <path
+          d="M8 4.75h8A2.25 2.25 0 0 1 18.25 7v10A2.25 2.25 0 0 1 16 19.25H8A2.25 2.25 0 0 1 5.75 17V7A2.25 2.25 0 0 1 8 4.75Z"
+          stroke="currentColor"
+          strokeWidth="1.8"
+        />
+        <path
+          d="M9 9.25h6M9 12h6M9 14.75h3.5"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeWidth="1.8"
+        />
+      </svg>
+    </span>
+  );
+}
+
+function initialsFromName(value: string) {
+  const words = value.trim().split(/\s+/).filter(Boolean);
+  const first = words[0]?.[0] ?? "";
+  const second = words[1]?.[0] ?? "";
+  return `${first}${second}`.toUpperCase() || "U";
+}
+
+function avatarClassForName(value: string) {
+  const classes = [
+    "bg-rose-100 text-rose-700",
+    "bg-amber-100 text-amber-800",
+    "bg-emerald-100 text-emerald-700",
+    "bg-sky-100 text-sky-700",
+    "bg-indigo-100 text-indigo-700",
+  ];
+  const index = value.split("").reduce((total, character) => total + character.charCodeAt(0), 0);
+  return classes[index % classes.length];
 }
 
 function isNewResult(value: string) {
@@ -500,26 +614,63 @@ function ResultFilterSelect({
   options: { label: string; value: string }[];
   value: string;
 }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const selectedOption = options.find((option) => option.value === value);
+  const displayValue = selectedOption?.label ?? options[0]?.label ?? "All";
+
   return (
-    <label className="space-y-2">
+    <div
+      className="space-y-2"
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          setIsOpen(false);
+        }
+      }}
+    >
       <span className="text-[0.78rem] font-medium text-slate-500">{label}</span>
-      <div className="relative">
-        <select
-          className="h-10 w-full appearance-none rounded-xl border border-slate-200 bg-white px-3 pr-10 text-sm text-slate-700 outline-none transition focus:border-brand-300 focus:ring-4 focus:ring-brand-100"
-          onChange={(event) => onChange(event.target.value)}
-          value={value}
+      <div className="relative" onClick={(event) => event.stopPropagation()}>
+        <button
+          aria-expanded={isOpen}
+          aria-haspopup="menu"
+          className={`flex h-12 w-full items-center justify-between gap-3 rounded-full border border-slate-200 bg-white px-4 text-left text-sm font-semibold shadow-sm transition ${
+            isOpen || value
+              ? "text-[#00856f] ring-1 ring-[#0a2f66]/10"
+              : "text-[#35466d] hover:bg-slate-50 hover:text-[#091333]"
+          }`}
+          onClick={() => setIsOpen((current) => !current)}
+          type="button"
         >
-          {options.map((option) => (
-            <option key={option.value || option.label} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+          <span className="truncate">{displayValue}</span>
           <ChevronDownIcon />
-        </span>
+        </button>
+
+        {isOpen ? (
+          <div
+            className="absolute left-0 top-14 z-50 max-h-64 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white p-1.5 shadow-[0_18px_36px_rgba(4,24,52,0.14)]"
+            role="menu"
+          >
+            {options.map((option) => (
+              <button
+                className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-xs font-semibold transition ${
+                  value === option.value
+                    ? "bg-[#eaf7f0] text-[#087d69]"
+                    : "text-[#35466d] hover:bg-slate-50 hover:text-[#091333]"
+                }`}
+                key={option.value || option.label}
+                onClick={() => {
+                  onChange(option.value);
+                  setIsOpen(false);
+                }}
+                role="menuitem"
+                type="button"
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
-    </label>
+    </div>
   );
 }
 
@@ -713,95 +864,66 @@ function PreviewShell({
   );
 }
 
-function Pagination({
-  currentPage,
-  onPageChange,
-  totalPages,
-}: {
-  currentPage: number;
-  onPageChange: (page: number) => void;
-  totalPages: number;
-}) {
-  if (totalPages <= 1) {
-    return null;
-  }
-
-  const pages: Array<number | "..."> = [];
-
-  if (totalPages <= 5) {
-    for (let page = 1; page <= totalPages; page += 1) {
-      pages.push(page);
-    }
-  } else if (currentPage <= 3) {
-    pages.push(1, 2, 3, "...", totalPages);
-  } else if (currentPage >= totalPages - 2) {
-    pages.push(1, "...", totalPages - 2, totalPages - 1, totalPages);
-  } else {
-    pages.push(1, "...", currentPage, "...", totalPages);
-  }
-
-  return (
-    <div className="flex items-center gap-2">
-      <button
-        className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-        disabled={currentPage === 1}
-        onClick={() => onPageChange(currentPage - 1)}
-        type="button"
-      >
-        <span>{"<"}</span>
-      </button>
-      {pages.map((page, index) =>
-        page === "..." ? (
-          <span className="px-2 text-sm text-slate-400" key={`ellipsis-${index}`}>
-            ...
-          </span>
-        ) : (
-          <button
-            className={cn(
-              "inline-flex h-9 min-w-9 items-center justify-center rounded-xl border px-3 text-sm font-medium transition",
-              page === currentPage
-                ? "border-brand-300 bg-brand-50 text-brand-700"
-                : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
-            )}
-            key={page}
-            onClick={() => onPageChange(page)}
-            type="button"
-          >
-            {page}
-          </button>
-        ),
-      )}
-      <button
-        className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-        disabled={currentPage === totalPages}
-        onClick={() => onPageChange(currentPage + 1)}
-        type="button"
-      >
-        <span>{">"}</span>
-      </button>
-    </div>
-  );
-}
-
 export function AccountantDocumentsPage() {
   const { user } = useAuth();
   const portal = usePortal();
+  const uploadModal = useDisclosure(false);
   const [searchParams] = useSearchParams();
   const [filters, setFilters] = useState<UnifiedSearchFilters>(defaultFilters);
   const [activeResultTab, setActiveResultTab] = useState<ResultTab>("all");
 // Local UI state: keeps track of what the user is seeing or editing right now.
   const [selectedResultId, setSelectedResultId] = useState("");
   const [viewerOpen, setViewerOpen] = useState(false);
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [viewerTab, setViewerTab] = useState<ViewerTab>("details");
   const [openMenuResultId, setOpenMenuResultId] = useState("");
+  const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [sortOption, setSortOption] = useState<SortOption>("uploaded_desc");
   const [previewZoom, setPreviewZoom] = useState(100);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [selectedUploadSlot, setSelectedUploadSlot] = useState<MonthlyDocumentSlot | null>(null);
 
   const assignedClients = useMemo(
     () => getScopedClients(user, portal.adminClients),
     [portal.adminClients, user],
   );
+
+  const uploadClient = useMemo(
+    () =>
+      assignedClients.find((client) => client.id === filters.clientId) ??
+      assignedClients[0] ??
+      null,
+    [assignedClients, filters.clientId],
+  );
+
+  const uploadWorkspace = useMemo(
+    () => (uploadClient ? portal.getClientWorkspace(uploadClient.id) : null),
+    [portal, uploadClient],
+  );
+
+  const existingUploadFileNames = useMemo(() => {
+    if (!selectedUploadSlot || !uploadWorkspace) {
+      return [];
+    }
+
+    const targetMonthLabel = `${selectedUploadSlot.month} ${selectedUploadSlot.year}`;
+    const documentFileNames = uploadWorkspace.documents
+      .filter(
+        (document) =>
+          document.documentType === selectedUploadSlot.documentType &&
+          document.monthLabel === targetMonthLabel,
+      )
+      .map((document) => document.fileName);
+    const invoiceFileNames = selectedUploadSlot.documentType.toLowerCase().includes("invoice")
+      ? uploadWorkspace.invoices
+          .filter((invoice) => invoice.monthLabel === targetMonthLabel)
+          .map((invoice) => invoice.fileName)
+      : [];
+
+    return [...documentFileNames, ...invoiceFileNames];
+  }, [selectedUploadSlot, uploadWorkspace]);
 
   const allResults = useMemo(
     () =>
@@ -811,12 +933,16 @@ export function AccountantDocumentsPage() {
           clientId: client.id,
           clientName: client.clientName,
           documents: workspace.documents,
-          invoices: workspace.invoices,
+          invoices: [],
           monthPack: workspace.monthPack,
-          // Document centre should reflect live document streams only.
           requests: [],
           complianceDocuments: [],
-        });
+        }).map((result) => ({
+          ...result,
+          resultType: "document" as const,
+          typeLabel:
+            result.resultType === "monthly_pack_item" ? result.title : result.typeLabel,
+        }));
       }),
     [assignedClients, portal],
   );
@@ -831,15 +957,35 @@ export function AccountantDocumentsPage() {
     [activeResultTab, filteredResults],
   );
 
-  const totalPages = Math.max(1, Math.ceil(visibleResults.length / resultsPerPage));
+  const sortedResults = useMemo(() => {
+    return [...visibleResults].sort((left, right) => {
+      switch (sortOption) {
+        case "uploaded_asc":
+          return new Date(left.date).getTime() - new Date(right.date).getTime();
+        case "name_asc":
+          return displayResultTitle(left).localeCompare(displayResultTitle(right));
+        case "name_desc":
+          return displayResultTitle(right).localeCompare(displayResultTitle(left));
+        case "uploader_asc":
+          return (left.uploadedBy ?? left.clientName).localeCompare(right.uploadedBy ?? right.clientName);
+        case "type_asc":
+          return left.typeLabel.localeCompare(right.typeLabel);
+        case "uploaded_desc":
+        default:
+          return new Date(right.date).getTime() - new Date(left.date).getTime();
+      }
+    });
+  }, [sortOption, visibleResults]);
+
+  const totalPages = Math.max(1, Math.ceil(sortedResults.length / resultsPerPage));
 
   const pagedResults = useMemo(
     () =>
-      visibleResults.slice(
+      sortedResults.slice(
         (currentPage - 1) * resultsPerPage,
         currentPage * resultsPerPage,
       ),
-    [currentPage, visibleResults],
+    [currentPage, sortedResults],
   );
 
   const selectedResult = useMemo(
@@ -970,25 +1116,10 @@ export function AccountantDocumentsPage() {
       .slice(0, 4);
   }, [filteredResults, selectedResult]);
 
-  const selectedAccountant = useMemo(() => {
-    if (!selectedResult) {
-      return user?.fullName ?? "Assigned accountant";
-    }
-
-    return (
-      portal.adminClients.find((client) => client.id === selectedResult.clientId)
-        ?.assignedAccountant ??
-      portal.adminClients.find((client) => client.clientName === selectedResult.clientName)
-        ?.assignedAccountant ??
-      user?.fullName ??
-      "Assigned accountant"
-    );
-  }, [portal.adminClients, selectedResult, user?.fullName]);
-
 // Reactive sync: this block responds when dependencies change.
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeResultTab, filters]);
+  }, [activeResultTab, filters, sortOption]);
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -1000,6 +1131,7 @@ export function AccountantDocumentsPage() {
     if (selectedResultId && !filteredResults.some((result) => result.id === selectedResultId)) {
       setSelectedResultId("");
       setViewerOpen(false);
+      setDetailsModalOpen(false);
     }
   }, [filteredResults, selectedResultId]);
 
@@ -1015,7 +1147,12 @@ export function AccountantDocumentsPage() {
   }, [filters.clientId, searchParams]);
 
   useEffect(() => {
-    if (openMenuResultId && !pagedResults.some((result) => result.id === openMenuResultId)) {
+    if (
+      openMenuResultId &&
+      !pagedResults.some(
+        (result) => `${result.resultType}:${result.clientId}:${result.id}` === openMenuResultId,
+      )
+    ) {
       setOpenMenuResultId("");
     }
   }, [openMenuResultId, pagedResults]);
@@ -1055,6 +1192,22 @@ export function AccountantDocumentsPage() {
     handleOpenResultTab(result, "details");
   }
 
+  function handleViewDetails(result: UnifiedSearchResult) {
+    setSelectedResultId(result.id);
+    setDetailsModalOpen(true);
+    setViewerOpen(false);
+    setViewerTab("details");
+    setOpenMenuResultId("");
+  }
+
+  function handlePreviewResult(result: UnifiedSearchResult) {
+    const document = resolveDocumentForResult(result);
+    if (!openPreviewInNewTab(document)) {
+      setFeedbackMessage("Your browser blocked the preview window. Allow pop-ups for this portal and try again.");
+    }
+    setOpenMenuResultId("");
+  }
+
   function handleDownloadResult(result: UnifiedSearchResult) {
     const document = resolveDocumentForResult(result);
     downloadDocumentFile(document);
@@ -1062,11 +1215,33 @@ export function AccountantDocumentsPage() {
     setOpenMenuResultId("");
   }
 
+  function handleOpenUploadModal() {
+    const slot = uploadWorkspace?.monthPack.slots[0] ?? null;
+
+    if (!slot) {
+      setFeedbackMessage("No upload slot is available for this client workspace.");
+      return;
+    }
+
+    setSelectedUploadSlot(slot);
+    uploadModal.open();
+  }
+
+  function handleUploadToSlot(submission: UploadSubmission) {
+    const result = portal.uploadToSlot(submission, {
+      name: user?.name ?? "Accountant user",
+      fullName: user?.fullName ?? "Accountant user",
+    });
+
+    setFeedbackMessage(result.message);
+  }
+
   function handleClearFilters() {
     setFilters(defaultFilters);
     setActiveResultTab("all");
     setSelectedResultId("");
     setViewerOpen(false);
+    setDetailsModalOpen(false);
     setViewerTab("details");
     setCurrentPage(1);
   }
@@ -1074,16 +1249,37 @@ export function AccountantDocumentsPage() {
   return (
     <div
       className="mx-auto max-w-[1280px] space-y-6"
-      onClick={() => setOpenMenuResultId("")}
+      onClick={() => {
+        setOpenMenuResultId("");
+        setIsSortMenuOpen(false);
+      }}
     >
-      <section className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="space-y-1.5">
+      <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+        <div className="min-w-0 space-y-1.5">
           <h1 className="text-[2.05rem] font-semibold tracking-tight text-slate-950">
             Document Centre
           </h1>
           <p className="max-w-3xl text-[0.96rem] leading-7 text-slate-500">
             Search all client document records across every status, period, and document type.
           </p>
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-3 lg:justify-end">
+          <button
+            className="inline-flex h-10 items-center gap-2 rounded-full border border-slate-200 bg-white px-4 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-900"
+            onClick={() => setFeedbackMessage("Saved views are available for this filter layout.")}
+            type="button"
+          >
+            Saved views
+            <ChevronDownIcon />
+          </button>
+          <button
+            className="inline-flex h-10 items-center gap-2 rounded-full bg-brand-700 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-800"
+            onClick={handleOpenUploadModal}
+            type="button"
+          >
+            <PlusIcon />
+            Upload document
+          </button>
         </div>
       </section>
 
@@ -1095,15 +1291,15 @@ export function AccountantDocumentsPage() {
 
       <div className={cn("grid gap-6", viewerOpen ? "lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,430px)]" : "")}>
         <div className="space-y-6">
-          <SurfaceCard className="rounded-[1.7rem] border border-slate-200/90 bg-white p-5 shadow-[0_18px_48px_rgba(15,23,42,0.06)]">
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-3 lg:flex-row">
-                <div className="relative flex-1">
-                  <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+          <SurfaceCard className="rounded-[1.75rem] border border-slate-200/80 bg-white p-5 shadow-[0_22px_52px_rgba(15,23,42,0.06)] sm:p-6">
+            <div className="flex flex-col gap-5">
+              <div className="grid gap-3 lg:grid-cols-1 lg:items-center">
+                <div className="relative">
+                  <span className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 text-slate-400">
                     <SearchIcon />
                   </span>
                   <input
-                    className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-brand-300 focus:ring-4 focus:ring-brand-100"
+                    className="h-14 w-full rounded-full border border-slate-200 bg-white pl-14 pr-5 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-brand-300 focus:ring-4 focus:ring-brand-100"
                     onChange={(event) =>
                       setFilters((current) => ({ ...current, query: event.target.value }))
                     }
@@ -1111,23 +1307,9 @@ export function AccountantDocumentsPage() {
                     value={filters.query}
                   />
                 </div>
-
-                <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
-                  <Button className="h-11 rounded-xl px-4 text-brand-700" variant="secondary">
-                    <FilterIcon />
-                    <span>Filters</span>
-                  </Button>
-                  <button
-                    className="text-sm font-medium text-brand-600 transition hover:text-brand-700"
-                    onClick={handleClearFilters}
-                    type="button"
-                  >
-                    Clear all
-                  </button>
-                </div>
               </div>
 
-              <div className="grid gap-4 lg:grid-cols-4">
+              <div className="grid gap-4 border-t border-slate-100 pt-5 lg:grid-cols-5">
                 <ResultFilterSelect
                   label="Client"
                   onChange={(value) => {
@@ -1161,66 +1343,89 @@ export function AccountantDocumentsPage() {
                   options={statusOptions}
                   value={filters.status}
                 />
-              </div>
-
-              <div className="grid gap-4 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto] lg:items-end">
-                <ResultFilterSelect
-                  label="Uploaded by"
-                  onChange={(value) =>
-                    setFilters((current) => ({ ...current, uploadedBy: value }))
-                  }
-                  options={uploadedByOptions}
-                  value={filters.uploadedBy}
-                />
-                <ResultFilterSelect
-                  label="Reviewed by"
-                  onChange={(value) =>
-                    setFilters((current) => ({ ...current, reviewedBy: value }))
-                  }
-                  options={reviewedByOptions}
-                  value={filters.reviewedBy}
-                />
-                <ResultFilterSelect
-                  label="Expiry status"
-                  onChange={(value) =>
-                    setFilters((current) => ({ ...current, expiryStatus: value }))
-                  }
-                  options={[
-                    { label: "All", value: "" },
-                    { label: "Expiring soon", value: "expiring" },
-                    { label: "Expired", value: "expired" },
-                  ]}
-                  value={filters.expiryStatus}
-                />
                 <ResultFilterSelect
                   label="Year"
                   onChange={(value) => setFilters((current) => ({ ...current, year: value }))}
                   options={yearOptions}
                   value={filters.year}
                 />
+              </div>
+
+              <button
+                className="inline-flex w-fit items-center gap-1.5 text-sm font-semibold text-slate-600 transition hover:text-slate-900"
+                onClick={() => setShowAdvancedFilters((current) => !current)}
+                type="button"
+              >
+                More filters
+                <span className={cn("transition", showAdvancedFilters ? "rotate-180" : "")}>
+                  <ChevronDownIcon />
+                </span>
+              </button>
+
+              {showAdvancedFilters ? (
+                <div className="grid gap-4 lg:grid-cols-3">
+                  <ResultFilterSelect
+                    label="Uploaded by"
+                    onChange={(value) =>
+                      setFilters((current) => ({ ...current, uploadedBy: value }))
+                    }
+                    options={uploadedByOptions}
+                    value={filters.uploadedBy}
+                  />
+                  <ResultFilterSelect
+                    label="Reviewed by"
+                    onChange={(value) =>
+                      setFilters((current) => ({ ...current, reviewedBy: value }))
+                    }
+                    options={reviewedByOptions}
+                    value={filters.reviewedBy}
+                  />
+                  <ResultFilterSelect
+                    label="Expiry status"
+                    onChange={(value) =>
+                      setFilters((current) => ({ ...current, expiryStatus: value }))
+                    }
+                    options={[
+                      { label: "All", value: "" },
+                      { label: "Expiring soon", value: "expiring_soon" },
+                      { label: "Expired", value: "expired" },
+                    ]}
+                    value={filters.expiryStatus}
+                  />
+                </div>
+              ) : null}
+
+              <div className="flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
                 <button
-                  className="inline-flex h-10 items-center gap-1.5 rounded-xl px-1 text-sm font-semibold text-brand-600 transition hover:text-brand-700"
-                  onClick={() => {
-                    setFilters((current) => ({
-                      ...current,
-                      requiredFlag: "required",
-                      expiryStatus: "expiring",
-                      status: current.status || "uploaded",
-                    }));
-                    setFeedbackMessage("Applied priority filter preset for required and expiring items.");
-                  }}
+                  className="inline-flex items-center gap-2 text-sm font-medium text-brand-600 transition hover:text-brand-700"
+                  onClick={() => setFeedbackMessage("Saved this document filter view.")}
                   type="button"
                 >
-                  <span>More filters</span>
-                  <ChevronRightIcon />
+                  <span className="h-3.5 w-3.5 rounded-sm border border-brand-400 bg-brand-50" />
+                  Save this view
                 </button>
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    className="inline-flex h-11 items-center justify-center rounded-full border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-900"
+                    onClick={handleClearFilters}
+                    type="button"
+                  >
+                    Reset
+                  </button>
+                  <button
+                    className="inline-flex h-11 items-center justify-center rounded-full bg-brand-700 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-800"
+                    onClick={() => setFeedbackMessage("Applied document filters.")}
+                    type="button"
+                  >
+                    Apply filters
+                  </button>
+                </div>
               </div>
             </div>
           </SurfaceCard>
 
-          <SurfaceCard className="overflow-hidden rounded-[1.7rem] border border-slate-200/90 bg-white p-0 shadow-[0_18px_48px_rgba(15,23,42,0.06)]">
-            <div className="border-b border-slate-100 px-5 pt-4">
-              <div className="flex flex-nowrap items-center gap-6 overflow-x-auto pb-1">
+          <div className="space-y-4">
+            <div className="flex flex-nowrap items-center gap-6 overflow-x-auto pb-1">
                 {[
                   { id: "all" as const, label: "All results", count: tabCounts.all },
                   { id: "documents" as const, label: "Documents", count: tabCounts.documents },
@@ -1250,15 +1455,14 @@ export function AccountantDocumentsPage() {
                       {tab.count}
                     </span>
                     {activeResultTab === tab.id ? (
-                      <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-brand-500" />
+                      <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-[#091333]" />
                     ) : null}
                   </button>
                 ))}
-              </div>
             </div>
 
             {visibleResults.length === 0 ? (
-              <div className="px-5 py-10">
+              <SurfaceCard className="rounded-lg border border-slate-200 bg-white px-5 py-10 shadow-none">
                 <EmptyState
                   description={
                     assignedClients.length === 0 && user?.role === "accountant"
@@ -1267,160 +1471,356 @@ export function AccountantDocumentsPage() {
                   }
                   title="No results match this view"
                 />
-              </div>
+              </SurfaceCard>
             ) : (
               <>
-                <div className="hidden border-b border-slate-100 px-5 py-4 text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-slate-400 lg:grid lg:grid-cols-[minmax(0,1.85fr)_0.9fr_0.72fr_3.5rem] lg:gap-4">
-                  <div>Document</div>
-                  <div>Uploaded</div>
-                  <div>Status</div>
-                  <div aria-hidden="true" />
+                <div className="space-y-4">
+                  <h2 className="text-[1.08rem] font-semibold text-[#091333]">Recent files</h2>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    {sortedResults.slice(0, 3).map((result) => {
+                      const uploader = result.uploadedBy ?? result.clientName;
+                      return (
+                        <button
+                          className="flex min-h-[86px] items-center gap-4 rounded-lg border border-slate-200 bg-white px-5 py-4 text-left shadow-[0_10px_22px_rgba(15,23,42,0.04)] transition hover:border-slate-300 hover:shadow-[0_14px_28px_rgba(15,23,42,0.07)]"
+                          key={`recent-${result.resultType}-${result.clientId}-${result.id}`}
+                          onClick={() => handlePreviewResult(result)}
+                          type="button"
+                        >
+                          <CompactFileIcon />
+                          <div className="min-w-0">
+                            <p className="truncate text-[0.93rem] font-semibold text-[#091333]">
+                              {displayResultTitle(result)}
+                            </p>
+                            <p className="mt-1 text-[0.76rem] font-medium text-slate-500">
+                              {formatDateLabel(result.date)} <span className="mx-2 text-slate-300">/</span>{" "}
+                              {result.amountLabel ?? inferFileLabel(result)}
+                            </p>
+                            <p className="mt-1 truncate text-[0.74rem] text-slate-400">
+                              {result.clientName} / {uploader}
+                            </p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
-                <div className="divide-y divide-slate-100">
-                  {pagedResults.map((result) => {
-                    const fileLabel = inferFileLabel(result, selectedResultId === result.id ? selectedDocument : null);
-                    const selected = viewerOpen && result.id === selectedResultId;
-
-                    return (
-                      <div
-                        className={cn(
-                          "border-l-[3px] px-5 py-4 transition lg:grid lg:grid-cols-[minmax(0,1.85fr)_0.9fr_0.72fr_3.5rem] lg:items-center lg:gap-4",
-                          selected
-                            ? "border-l-brand-500 bg-brand-50/35"
-                            : "border-l-transparent hover:bg-slate-50/80",
-                        )}
-                        key={result.id}
+                <div className="space-y-3">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <h2 className="text-[1.08rem] font-semibold text-[#091333]">All Files</h2>
+                    <div
+                      className="relative flex h-12 shrink-0 items-center gap-4 self-start rounded-full border border-slate-200 bg-white px-4 text-[#061b41] shadow-[0_10px_22px_rgba(4,24,52,0.06)] sm:self-auto"
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <button
+                        aria-expanded={isSortMenuOpen}
+                        aria-haspopup="menu"
+                        aria-label="Sort documents"
+                        className={`inline-flex h-8 w-8 items-center justify-center rounded-md transition ${
+                          isSortMenuOpen || sortOption !== "uploaded_desc"
+                            ? "bg-[#0a2f66]/10 text-[#00856f]"
+                            : "hover:bg-slate-50"
+                        }`}
+                        onClick={() => setIsSortMenuOpen((current) => !current)}
+                        title={
+                          sortOption === "uploaded_desc"
+                            ? "Newest uploaded"
+                            : sortOption === "uploaded_asc"
+                              ? "Oldest uploaded"
+                              : sortOption === "name_asc"
+                                ? "Name A-Z"
+                                : sortOption === "name_desc"
+                                  ? "Name Z-A"
+                                  : sortOption === "uploader_asc"
+                                    ? "Uploaded by A-Z"
+                                    : "Document type A-Z"
+                        }
+                        type="button"
                       >
-                        <div className="flex items-start gap-4">
+                        <SortIcon />
+                      </button>
+
+                      {isSortMenuOpen ? (
+                        <div
+                          className="absolute right-0 top-14 z-20 w-48 rounded-lg border border-slate-200 bg-white p-1.5 shadow-[0_18px_36px_rgba(4,24,52,0.14)]"
+                          role="menu"
+                        >
+                          {[
+                            { id: "uploaded_desc" as const, label: "Newest uploaded" },
+                            { id: "uploaded_asc" as const, label: "Oldest uploaded" },
+                            { id: "name_asc" as const, label: "Name A-Z" },
+                            { id: "name_desc" as const, label: "Name Z-A" },
+                            { id: "uploader_asc" as const, label: "Uploaded by A-Z" },
+                            { id: "type_asc" as const, label: "Document type A-Z" },
+                          ].map((item) => (
+                            <button
+                              className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-xs font-semibold transition ${
+                                sortOption === item.id
+                                  ? "bg-[#eaf7f0] text-[#087d69]"
+                                  : "text-[#35466d] hover:bg-slate-50 hover:text-[#091333]"
+                              }`}
+                              key={item.id}
+                              onClick={() => {
+                                setSortOption(item.id);
+                                setIsSortMenuOpen(false);
+                              }}
+                              role="menuitem"
+                              type="button"
+                            >
+                              {item.label}
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <SurfaceCard className="overflow-visible rounded-lg border border-slate-200 bg-white p-0 shadow-none">
+                    <div className="hidden grid-cols-[minmax(0,1.35fr)_minmax(130px,0.68fr)_minmax(170px,0.92fr)_72px] gap-6 border-b border-slate-100 px-5 py-4 text-[0.82rem] font-bold text-[#091333] lg:grid">
+                      <span>Name</span>
+                      <span>Uploaded Date</span>
+                      <span>Uploaded By</span>
+                      <span className="text-center">More Actions</span>
+                    </div>
+
+                    <div className="divide-y divide-slate-100">
+                      {pagedResults.map((result) => {
+                        const selected = viewerOpen && result.id === selectedResultId;
+                        const rowMenuKey = `${result.resultType}:${result.clientId}:${result.id}`;
+                        const uploader = result.uploadedBy ?? result.clientName;
+
+                        return (
                           <div
                             className={cn(
-                              "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.9rem] border text-[0.72rem] font-semibold",
-                              fileLabelClasses(fileLabel),
+                              "grid gap-3 px-5 py-4 transition lg:grid-cols-[minmax(0,1.35fr)_minmax(130px,0.68fr)_minmax(170px,0.92fr)_72px] lg:items-center lg:gap-6",
+                              selected ? "bg-brand-50/35 ring-1 ring-inset ring-brand-100" : "hover:bg-slate-50",
                             )}
+                            key={rowMenuKey}
                           >
-                            {fileLabel}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <p className="truncate text-[0.95rem] font-semibold text-slate-950">
-                                {displayResultTitle(result)}
-                              </p>
-                              {isNewResult(result.date) ? (
-                                <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[0.68rem] font-semibold text-brand-700">
-                                  New
-                                </span>
+                            <button
+                              className="flex min-w-0 items-center gap-3 text-left"
+                              onClick={() => handlePreviewResult(result)}
+                              type="button"
+                            >
+                              <CompactFileIcon />
+                              <div className="min-w-0">
+                                <div className="flex min-w-0 items-center gap-2">
+                                  <p className="truncate text-[0.9rem] font-semibold text-[#091333]">
+                                    {displayResultTitle(result)}
+                                  </p>
+                                  {isNewResult(result.date) ? (
+                                    <span className="shrink-0 rounded-full bg-brand-50 px-2 py-0.5 text-[0.68rem] font-semibold text-brand-700 ring-1 ring-inset ring-brand-100">
+                                      New
+                                    </span>
+                                  ) : null}
+                                </div>
+                                <p className="mt-0.5 truncate text-[0.78rem] text-slate-500">
+                                  {result.clientName} / {documentCategoryLabel(result)}
+                                </p>
+                              </div>
+                            </button>
+
+                            <div className="text-[0.86rem] font-medium text-slate-700">
+                              <span className="mr-2 text-[0.7rem] font-bold uppercase tracking-[0.12em] text-slate-400 lg:hidden">
+                                Uploaded Date
+                              </span>
+                              {formatDateLabel(result.date)}
+                            </div>
+
+                            <div className="flex min-w-0 items-center gap-3">
+                              <span
+                                className={cn(
+                                  "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[0.7rem] font-bold",
+                                  avatarClassForName(uploader),
+                                )}
+                              >
+                                {initialsFromName(uploader)}
+                              </span>
+                              <span className="truncate text-[0.86rem] font-medium text-slate-700">
+                                {uploader}
+                              </span>
+                            </div>
+
+                            <div className="relative flex min-w-0 items-center justify-start lg:justify-center">
+                              <button
+                                aria-label={`More actions for ${displayResultTitle(result)}`}
+                                className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition ${
+                                  openMenuResultId === rowMenuKey
+                                    ? "bg-[#0a2f66]/10 text-[#00856f]"
+                                    : "text-[#091333] hover:bg-slate-100"
+                                }`}
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setOpenMenuResultId((current) =>
+                                    current === rowMenuKey ? "" : rowMenuKey,
+                                  );
+                                }}
+                                type="button"
+                              >
+                                <MoreVerticalIcon />
+                              </button>
+
+                              {openMenuResultId === rowMenuKey ? (
+                                <div
+                                  className="absolute right-auto top-[calc(100%+0.35rem)] z-50 w-44 rounded-lg border border-slate-200 bg-white p-1.5 shadow-[0_18px_36px_rgba(4,24,52,0.14)] lg:right-0"
+                                  onClick={(event) => event.stopPropagation()}
+                                  role="menu"
+                                >
+                                  <button
+                                    className="flex w-full rounded-md px-3 py-2 text-left text-xs font-semibold text-[#35466d] transition hover:bg-slate-50 hover:text-[#091333]"
+                                    onClick={() => handleViewDetails(result)}
+                                    role="menuitem"
+                                    type="button"
+                                  >
+                                    View details
+                                  </button>
+                                  <button
+                                    className="flex w-full rounded-md px-3 py-2 text-left text-xs font-semibold text-[#35466d] transition hover:bg-slate-50 hover:text-[#091333]"
+                                    onClick={() => handlePreviewResult(result)}
+                                    role="menuitem"
+                                    type="button"
+                                  >
+                                    Preview file
+                                  </button>
+                                  <button
+                                    className="flex w-full rounded-md px-3 py-2 text-left text-xs font-semibold text-[#35466d] transition hover:bg-slate-50 hover:text-[#091333]"
+                                    onClick={() => handleDownloadResult(result)}
+                                    role="menuitem"
+                                    type="button"
+                                  >
+                                    Download
+                                  </button>
+                                </div>
                               ) : null}
                             </div>
-                            <p className="mt-1 text-[0.84rem] text-slate-500">
-                              {resultFamilyLabel(result)} | {result.monthLabel}
-                            </p>
-                            <p className="mt-1 truncate text-[0.8rem] text-slate-400">
-                              {result.clientName}
-                            </p>
-                            {result.amountLabel ? (
-                              <p className="mt-1 text-[0.84rem] text-slate-400">
-                                {result.amountLabel}
-                              </p>
-                            ) : null}
                           </div>
-                        </div>
+                        );
+                      })}
+                    </div>
 
-                        <div className="mt-3 lg:mt-0">
-                          <p className="text-[0.9rem] font-semibold text-slate-950">
-                            {formatDateLabel(result.date)}
-                          </p>
-                          <p className="mt-1 text-[0.84rem] text-slate-500">
-                            {new Intl.DateTimeFormat("en-ZA", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            }).format(new Date(result.date))}{" "}
-                            by {result.uploadedBy ?? "Client"}
-                          </p>
-                        </div>
-
-                        <div className="mt-3 lg:mt-0">
-                          <span
-                            className={cn(
-                              "inline-flex rounded-full px-2.5 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.04em] ring-1 ring-inset",
-                              toneToAccentClass(statusToTone(result.status)),
-                            )}
-                          >
-                            {formatStatusLabel(result.status)}
-                          </span>
-                        </div>
-
-                        <div className="relative mt-3 flex items-center lg:mt-0 lg:justify-end">
-                          <button
-                            aria-label="Open result actions"
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setOpenMenuResultId((current) =>
-                                current === result.id ? "" : result.id,
-                              );
-                            }}
-                            type="button"
-                          >
-                            <MoreHorizontalIcon />
-                          </button>
-
-                          {openMenuResultId === result.id ? (
-                            <div
-                              className="absolute right-0 top-[calc(100%+0.45rem)] z-10 min-w-[220px] rounded-[1rem] border border-slate-200 bg-white p-2 shadow-[0_20px_42px_rgba(15,23,42,0.14)]"
-                              onClick={(event) => event.stopPropagation()}
-                            >
-                              <button
-                                className="block w-full rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
-                                onClick={() => handleOpenResult(result)}
-                                type="button"
-                              >
-                                Preview file
-                              </button>
-                              <button
-                                className="block w-full rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
-                                onClick={() => handleDownloadResult(result)}
-                                type="button"
-                              >
-                                Download
-                              </button>
-                            </div>
-                          ) : null}
-                        </div>
+                    <div className="flex min-h-[92px] items-center justify-between border-t border-slate-100 bg-white px-5 py-[18px] text-xs font-medium text-[#53617f]">
+                      <span className="font-semibold text-[#091333]">
+                        Page {currentPage} of {totalPages}
+                      </span>
+                      <div className="flex items-center gap-7">
+                        <button
+                          className="inline-flex h-8 items-center justify-center rounded-md px-1 font-semibold text-[#9aa8ba] transition hover:text-[#53617f] disabled:cursor-not-allowed disabled:opacity-70"
+                          disabled={currentPage === 1}
+                          onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                          type="button"
+                        >
+                          Prev
+                        </button>
+                        <button
+                          className="inline-flex h-8 items-center justify-center rounded-md px-1 font-semibold text-[#9aa8ba] transition hover:text-[#53617f] disabled:cursor-not-allowed disabled:opacity-70"
+                          disabled={currentPage === totalPages}
+                          onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                          type="button"
+                        >
+                          Next
+                        </button>
                       </div>
-                    );
-                  })}
-                </div>
-
-                <div className="flex flex-col gap-4 border-t border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="text-sm text-slate-500">
-                    Showing {(currentPage - 1) * resultsPerPage + 1} to{" "}
-                    {Math.min(currentPage * resultsPerPage, visibleResults.length)} of{" "}
-                    {visibleResults.length} results
-                  </p>
-                  <Pagination
-                    currentPage={currentPage}
-                    onPageChange={setCurrentPage}
-                    totalPages={totalPages}
-                  />
+                    </div>
+                  </SurfaceCard>
                 </div>
               </>
             )}
-          </SurfaceCard>
+          </div>
         </div>
+
+        {detailsModalOpen && selectedResult && selectedDocument ? (
+          <div
+            className="fixed inset-0 z-50 bg-slate-950/50 px-3 py-4 sm:px-6 sm:py-6"
+            onClick={() => setDetailsModalOpen(false)}
+          >
+            <SurfaceCard
+              className="mx-auto w-full max-w-[680px] rounded-lg border border-slate-200/80 bg-white p-5 shadow-[0_18px_44px_rgba(4,24,52,0.14)]"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-4">
+                <div className="min-w-0">
+                  <h2 className="truncate text-[1.25rem] font-semibold tracking-tight text-[#091333]">
+                    {displayResultTitle(selectedResult)}
+                  </h2>
+                  <p className="mt-1 truncate text-sm text-slate-500">
+                    {selectedResult.clientName} / {selectedResult.monthLabel}
+                  </p>
+                </div>
+                <button
+                  aria-label="Close document details"
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-50 hover:text-[#091333]"
+                  onClick={() => setDetailsModalOpen(false)}
+                  type="button"
+                >
+                  <CloseIcon />
+                </button>
+              </div>
+
+              <div className="mt-5 grid gap-x-8 gap-y-5 sm:grid-cols-2">
+                <div>
+                  <p className="text-[0.76rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    Status
+                  </p>
+                  <div className="mt-2">
+                    <span
+                      className={cn(
+                        "inline-flex rounded-full px-2.5 py-1 text-[0.72rem] font-semibold ring-1 ring-inset",
+                        toneToAccentClass(statusToTone(selectedResult.status)),
+                      )}
+                    >
+                      {formatStatusLabel(selectedResult.status)}
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-[0.76rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    Document type
+                  </p>
+                  <p className="mt-2 text-sm font-medium text-slate-950">
+                    {selectedResult.typeLabel}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[0.76rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    File type
+                  </p>
+                  <p className="mt-2 text-sm font-medium text-slate-950">
+                    {inferFileLabel(selectedResult, selectedDocument)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[0.76rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    File size
+                  </p>
+                  <p className="mt-2 text-sm font-medium text-slate-950">
+                    {detailValue(selectedDocument.sizeLabel, "Not available")}
+                  </p>
+                </div>
+                <div className="sm:col-span-2">
+                  <p className="text-[0.76rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    Uploaded date and time
+                  </p>
+                  <p className="mt-2 text-sm font-medium text-slate-950">
+                    {formatDateTimeLabel(selectedDocument.uploadedAt)}
+                  </p>
+                </div>
+              </div>
+            </SurfaceCard>
+          </div>
+        ) : null}
 
         {viewerOpen && selectedResult && selectedDocument ? (
           <div
-            className="fixed inset-0 z-50 bg-slate-950/55 px-3 py-4 sm:px-6 sm:py-6"
+            className="fixed inset-0 z-50 bg-slate-950/50 px-3 py-4 sm:px-6 sm:py-6"
             onClick={() => setViewerOpen(false)}
           >
             <SurfaceCard
-              className="mx-auto h-full w-full max-w-[1080px] overflow-y-auto rounded-[1.7rem] border border-slate-200/90 bg-white p-5 shadow-[0_22px_56px_rgba(15,23,42,0.22)]"
+              className="mx-auto h-full w-full max-w-[1080px] overflow-y-auto rounded-lg border border-slate-200/80 bg-white p-5 shadow-[0_18px_44px_rgba(4,24,52,0.14)]"
               onClick={(event) => event.stopPropagation()}
             >
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <h2 className="truncate text-[1.7rem] font-semibold tracking-tight text-slate-950">
+                <h2 className="truncate text-[1.45rem] font-semibold tracking-tight text-[#091333]">
                   {displayResultTitle(selectedResult)}
                 </h2>
                 <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-500">
@@ -1440,7 +1840,7 @@ export function AccountantDocumentsPage() {
 
               <button
                 aria-label="Close document viewer"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-transparent text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-50 hover:text-[#091333]"
                 onClick={() => setViewerOpen(false)}
                 type="button"
               >
@@ -1470,8 +1870,8 @@ export function AccountantDocumentsPage() {
               </Button>
             </div>
 
-            <div className="mt-5 rounded-[1.4rem] border border-slate-200 bg-slate-50 p-3">
-              <div className="flex items-center justify-between rounded-[1rem] border border-slate-200 bg-white px-3 py-2">
+            <div className="mt-5 rounded-lg border border-slate-200 bg-slate-50 p-3">
+              <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2">
                 <div className="flex items-center gap-2">
                   <button
                     className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
@@ -1506,7 +1906,7 @@ export function AccountantDocumentsPage() {
                 </div>
               </div>
 
-              <div className="mt-3 overflow-hidden rounded-[1rem] border border-slate-200 bg-[linear-gradient(180deg,#eef2ff_0%,#ffffff_22%)]">
+              <div className="mt-3 overflow-hidden rounded-lg border border-slate-200 bg-[linear-gradient(180deg,#eef2ff_0%,#ffffff_22%)]">
                 <div className="h-[24rem] overflow-y-auto px-4 py-5">
                   <PreviewShell
                     document={selectedDocument}
@@ -1546,14 +1946,6 @@ export function AccountantDocumentsPage() {
                   <div className="grid gap-x-8 gap-y-5 sm:grid-cols-2">
                     <div>
                       <p className="text-[0.76rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
-                        Document type
-                      </p>
-                      <p className="mt-2 text-sm font-medium text-slate-950">
-                        {selectedResult.typeLabel}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[0.76rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
                         Status
                       </p>
                       <div className="mt-2">
@@ -1569,49 +1961,36 @@ export function AccountantDocumentsPage() {
                     </div>
                     <div>
                       <p className="text-[0.76rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
-                        Uploaded by
+                        Document type
                       </p>
                       <p className="mt-2 text-sm font-medium text-slate-950">
-                        {detailValue(selectedDocument.uploadedBy)}
+                        {selectedResult.typeLabel}
                       </p>
                     </div>
                     <div>
                       <p className="text-[0.76rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
-                        Uploaded on
+                        File type
+                      </p>
+                      <p className="mt-2 text-sm font-medium text-slate-950">
+                        {inferFileLabel(selectedResult, selectedDocument)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[0.76rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                        File size
+                      </p>
+                      <p className="mt-2 text-sm font-medium text-slate-950">
+                        {detailValue(selectedDocument.sizeLabel, "Not available")}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[0.76rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                        Uploaded date and time
                       </p>
                       <p className="mt-2 text-sm font-medium text-slate-950">
                         {formatDateTimeLabel(selectedDocument.uploadedAt)}
                       </p>
                     </div>
-                    <div>
-                      <p className="text-[0.76rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
-                        Reviewed by
-                      </p>
-                      <p className="mt-2 text-sm font-medium text-slate-950">
-                        {detailValue(selectedDocument.reviewedBy, "Waiting for review")}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[0.76rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
-                        Period
-                      </p>
-                      <p className="mt-2 text-sm font-medium text-slate-950">
-                        {selectedResult.monthLabel}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[0.76rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
-                        Assigned to
-                      </p>
-                      <p className="mt-2 text-sm font-medium text-slate-950">
-                        {selectedAccountant}
-                        {selectedAccountant === user?.fullName ? " (You)" : ""}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="rounded-xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-700">
-                    Archive view: inspect this record, trace its history, and collaborate through comments.
                   </div>
                 </div>
               ) : null}
@@ -1661,6 +2040,16 @@ export function AccountantDocumentsPage() {
           </div>
         ) : null}
       </div>
+
+      <DocumentUploadModal
+        clientName={uploadClient?.clientName ?? "Client workspace"}
+        existingFileNames={existingUploadFileNames}
+        isOpen={uploadModal.isOpen}
+        modalClassName="rounded-lg border-slate-200/80 shadow-[0_18px_44px_rgba(4,24,52,0.14)]"
+        onClose={uploadModal.close}
+        onUploaded={handleUploadToSlot}
+        selectedSlot={selectedUploadSlot}
+      />
     </div>
   );
 }

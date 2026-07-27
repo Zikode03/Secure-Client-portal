@@ -86,11 +86,11 @@ function SearchIcon() {
   );
 }
 
-function FilterIcon() {
+function PlusIcon() {
   return (
-    <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
+    <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24">
       <path
-        d="M4.5 6.5h15l-6 6v5l-3 1v-6l-6-6Z"
+        d="M12 5v14M5 12h14"
         stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -585,26 +585,65 @@ function ResultFilterSelect({
   options: { label: string; value: string }[];
   value: string;
 }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const selectedOption = options.find((option) => option.value === value);
+  const displayValue = selectedOption?.label ?? options[0]?.label ?? "All";
+
   return (
-    <label className="space-y-2">
+    <div
+      className="space-y-2"
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          setIsOpen(false);
+        }
+      }}
+    >
       <span className="text-[0.78rem] font-medium text-slate-500">{label}</span>
-      <div className="relative">
-        <select
-          className="h-10 w-full appearance-none rounded-xl border border-slate-200 bg-white px-3 pr-10 text-sm text-slate-700 outline-none transition focus:border-brand-300 focus:ring-4 focus:ring-brand-100"
-          onChange={(event) => onChange(event.target.value)}
-          value={value}
+      <div className="relative" onClick={(event) => event.stopPropagation()}>
+        <button
+          aria-expanded={isOpen}
+          aria-haspopup="menu"
+          className={cn(
+            "flex h-12 w-full items-center justify-between gap-3 rounded-full border border-slate-200 bg-white px-4 text-left text-sm font-semibold shadow-sm transition",
+            isOpen || value
+              ? "text-[#00856f] ring-1 ring-[#0a2f66]/10"
+              : "text-[#35466d] hover:bg-slate-50 hover:text-[#091333]",
+          )}
+          onClick={() => setIsOpen((current) => !current)}
+          type="button"
         >
-          {options.map((option) => (
-            <option key={option.value || option.label} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+          <span className="truncate">{displayValue}</span>
           <ChevronDownIcon />
-        </span>
+        </button>
+
+        {isOpen ? (
+          <div
+            className="absolute left-0 top-14 z-50 max-h-64 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white p-1.5 shadow-[0_18px_36px_rgba(4,24,52,0.14)]"
+            role="menu"
+          >
+            {options.map((option) => (
+              <button
+                className={cn(
+                  "flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-xs font-semibold transition",
+                  value === option.value
+                    ? "bg-[#eaf7f0] text-[#087d69]"
+                    : "text-[#35466d] hover:bg-slate-50 hover:text-[#091333]",
+                )}
+                key={option.value || option.label}
+                onClick={() => {
+                  onChange(option.value);
+                  setIsOpen(false);
+                }}
+                role="menuitem"
+                type="button"
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
-    </label>
+    </div>
   );
 }
 
@@ -798,76 +837,6 @@ function PreviewShell({
   );
 }
 
-function Pagination({
-  currentPage,
-  onPageChange,
-  totalPages,
-}: {
-  currentPage: number;
-  onPageChange: (page: number) => void;
-  totalPages: number;
-}) {
-  if (totalPages <= 1) {
-    return null;
-  }
-
-  const pages: Array<number | "..."> = [];
-
-  if (totalPages <= 5) {
-    for (let page = 1; page <= totalPages; page += 1) {
-      pages.push(page);
-    }
-  } else if (currentPage <= 3) {
-    pages.push(1, 2, 3, "...", totalPages);
-  } else if (currentPage >= totalPages - 2) {
-    pages.push(1, "...", totalPages - 2, totalPages - 1, totalPages);
-  } else {
-    pages.push(1, "...", currentPage, "...", totalPages);
-  }
-
-  return (
-    <div className="flex items-center gap-2">
-      <button
-        className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-        disabled={currentPage === 1}
-        onClick={() => onPageChange(currentPage - 1)}
-        type="button"
-      >
-        <span>{"<"}</span>
-      </button>
-      {pages.map((page, index) =>
-        page === "..." ? (
-          <span className="px-2 text-sm text-slate-400" key={`ellipsis-${index}`}>
-            ...
-          </span>
-        ) : (
-          <button
-            className={cn(
-              "inline-flex h-9 min-w-9 items-center justify-center rounded-xl border px-3 text-sm font-medium transition",
-              page === currentPage
-                ? "border-brand-300 bg-brand-50 text-brand-700"
-                : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
-            )}
-            key={page}
-            onClick={() => onPageChange(page)}
-            type="button"
-          >
-            {page}
-          </button>
-        ),
-      )}
-      <button
-        className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-        disabled={currentPage === totalPages}
-        onClick={() => onPageChange(currentPage + 1)}
-        type="button"
-      >
-        <span>{">"}</span>
-      </button>
-    </div>
-  );
-}
-
 export function AccountantFilingPage() {
   const { user } = useAuth();
   const portal = usePortal();
@@ -882,6 +851,7 @@ export function AccountantFilingPage() {
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [previewZoom, setPreviewZoom] = useState(100);
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   const assignedClients = useMemo(
     () => getScopedClients(user, portal.adminClients),
@@ -1178,14 +1148,32 @@ export function AccountantFilingPage() {
       className="mx-auto max-w-[1280px] space-y-6"
       onClick={() => setOpenMenuResultId("")}
     >
-      <section className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="space-y-1.5">
+      <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+        <div className="min-w-0 space-y-1.5">
           <h1 className="text-[2.05rem] font-semibold tracking-tight text-slate-950">
             Document Filing Register
           </h1>
           <p className="max-w-3xl text-[0.96rem] leading-7 text-slate-500">
             Archive-only register of accepted records. Use this page for retrieval, audit trace, and version reference.
           </p>
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-3 lg:justify-end">
+          <button
+            className="inline-flex h-10 items-center gap-2 rounded-full border border-slate-200 bg-white px-4 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-900"
+            onClick={() => setFeedbackMessage("Saved views are available for this filing register layout.")}
+            type="button"
+          >
+            Saved views
+            <ChevronDownIcon />
+          </button>
+          <button
+            className="inline-flex h-10 items-center gap-2 rounded-full bg-brand-700 px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-800"
+            onClick={() => setFeedbackMessage("Export register action is ready.")}
+            type="button"
+          >
+            <PlusIcon />
+            Export register
+          </button>
         </div>
       </section>
 
@@ -1197,15 +1185,15 @@ export function AccountantFilingPage() {
 
       <div className={cn("grid gap-6", viewerOpen ? "lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,430px)]" : "")}>
         <div className="space-y-6">
-          <SurfaceCard className="rounded-[1.7rem] border border-slate-200/90 bg-white p-5 shadow-[0_18px_48px_rgba(15,23,42,0.06)]">
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-3 lg:flex-row">
-                <div className="relative flex-1">
-                  <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+          <SurfaceCard className="rounded-[1.75rem] border border-slate-200/80 bg-white p-5 shadow-[0_22px_52px_rgba(15,23,42,0.06)] sm:p-6">
+            <div className="flex flex-col gap-5">
+              <div className="grid gap-3 lg:grid-cols-1 lg:items-center">
+                <div className="relative">
+                  <span className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 text-slate-400">
                     <SearchIcon />
                   </span>
                   <input
-                    className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-brand-300 focus:ring-4 focus:ring-brand-100"
+                    className="h-14 w-full rounded-full border border-slate-200 bg-white pl-14 pr-5 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-brand-300 focus:ring-4 focus:ring-brand-100"
                     onChange={(event) =>
                       setFilters((current) => ({ ...current, query: event.target.value }))
                     }
@@ -1213,23 +1201,9 @@ export function AccountantFilingPage() {
                     value={filters.query}
                   />
                 </div>
-
-                <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
-                  <Button className="h-11 rounded-xl px-4 text-brand-700" variant="secondary">
-                    <FilterIcon />
-                    <span>Archive filters</span>
-                  </Button>
-                  <button
-                    className="text-sm font-medium text-brand-600 transition hover:text-brand-700"
-                    onClick={handleClearFilters}
-                    type="button"
-                  >
-                    Clear all
-                  </button>
-                </div>
               </div>
 
-              <div className="grid gap-4 lg:grid-cols-4">
+              <div className="grid gap-4 border-t border-slate-100 pt-5 lg:grid-cols-5">
                 <ResultFilterSelect
                   label="Client"
                   onChange={(value) => {
@@ -1263,256 +1237,273 @@ export function AccountantFilingPage() {
                   options={statusOptions}
                   value={filters.status}
                 />
-              </div>
-
-              <div className="grid gap-4 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto] lg:items-end">
-                <ResultFilterSelect
-                  label="Uploaded by"
-                  onChange={(value) =>
-                    setFilters((current) => ({ ...current, uploadedBy: value }))
-                  }
-                  options={uploadedByOptions}
-                  value={filters.uploadedBy}
-                />
-                <ResultFilterSelect
-                  label="Filed by"
-                  onChange={(value) =>
-                    setFilters((current) => ({ ...current, reviewedBy: value }))
-                  }
-                  options={reviewedByOptions}
-                  value={filters.reviewedBy}
-                />
-                <ResultFilterSelect
-                  label="Expiry status"
-                  onChange={(value) =>
-                    setFilters((current) => ({ ...current, expiryStatus: value }))
-                  }
-                  options={[
-                    { label: "All", value: "" },
-                    { label: "Expiring soon", value: "expiring" },
-                    { label: "Expired", value: "expired" },
-                  ]}
-                  value={filters.expiryStatus}
-                />
                 <ResultFilterSelect
                   label="Year"
                   onChange={(value) => setFilters((current) => ({ ...current, year: value }))}
                   options={yearOptions}
                   value={filters.year}
                 />
+              </div>
+
+              <button
+                className="inline-flex w-fit items-center gap-1.5 text-sm font-semibold text-slate-600 transition hover:text-slate-900"
+                onClick={() => setShowAdvancedFilters((current) => !current)}
+                type="button"
+              >
+                More filters
+                <span className={cn("transition", showAdvancedFilters ? "rotate-180" : "")}>
+                  <ChevronDownIcon />
+                </span>
+              </button>
+
+              {showAdvancedFilters ? (
+                <div className="grid gap-4 lg:grid-cols-3">
+                  <ResultFilterSelect
+                    label="Uploaded by"
+                    onChange={(value) =>
+                      setFilters((current) => ({ ...current, uploadedBy: value }))
+                    }
+                    options={uploadedByOptions}
+                    value={filters.uploadedBy}
+                  />
+                  <ResultFilterSelect
+                    label="Filed by"
+                    onChange={(value) =>
+                      setFilters((current) => ({ ...current, reviewedBy: value }))
+                    }
+                    options={reviewedByOptions}
+                    value={filters.reviewedBy}
+                  />
+                  <ResultFilterSelect
+                    label="Expiry status"
+                    onChange={(value) =>
+                      setFilters((current) => ({ ...current, expiryStatus: value }))
+                    }
+                    options={[
+                      { label: "All", value: "" },
+                      { label: "Expiring soon", value: "expiring" },
+                      { label: "Expired", value: "expired" },
+                    ]}
+                    value={filters.expiryStatus}
+                  />
+                </div>
+              ) : null}
+
+              <div className="flex flex-col gap-3 border-t border-slate-100 pt-5 sm:flex-row sm:items-center sm:justify-between">
                 <button
-                  className="inline-flex h-10 items-center gap-1.5 rounded-xl px-1 text-sm font-semibold text-brand-600 transition hover:text-brand-700"
-                  onClick={() => {
-                    setFilters((current) => ({
-                      ...current,
-                      requiredFlag: "required",
-                      expiryStatus: "expiring",
-                      status: current.status || "accepted",
-                    }));
-                    setFeedbackMessage("Applied priority filter preset for required and expiring items.");
-                  }}
+                  className="inline-flex items-center gap-2 text-sm font-medium text-brand-600 transition hover:text-brand-700"
+                  onClick={() => setFeedbackMessage("Saved this filing register view.")}
                   type="button"
                 >
-                  <span>More archive filters</span>
-                  <ChevronRightIcon />
+                  <span className="h-3.5 w-3.5 rounded-sm border border-brand-400 bg-brand-50" />
+                  Save this view
                 </button>
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    className="inline-flex h-11 items-center justify-center rounded-full border border-slate-200 bg-white px-5 text-sm font-semibold text-slate-600 shadow-sm transition hover:bg-slate-50 hover:text-slate-900"
+                    onClick={handleClearFilters}
+                    type="button"
+                  >
+                    Reset
+                  </button>
+                  <button
+                    className="inline-flex h-11 items-center justify-center rounded-full bg-brand-700 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-800"
+                    onClick={() => setFeedbackMessage("Applied filing register filters.")}
+                    type="button"
+                  >
+                    Apply filters
+                  </button>
+                </div>
               </div>
             </div>
           </SurfaceCard>
 
-          <SurfaceCard className="overflow-hidden rounded-[1.7rem] border border-slate-200/90 bg-white p-0 shadow-[0_18px_48px_rgba(15,23,42,0.06)]">
-            <div className="border-b border-slate-100 px-5 pt-4">
-              <div className="flex flex-nowrap items-center gap-6 overflow-x-auto pb-1">
-                {[
-                  { id: "documents" as const, label: "Filed documents", count: tabCounts.documents },
-                ].map((tab) => (
-                  <button
-                    className={cn(
-                      "relative flex items-center gap-2 pb-4 text-sm font-medium transition",
-                      activeResultTab === tab.id
-                        ? "text-brand-700"
-                        : "text-slate-500 hover:text-slate-700",
-                    )}
-                    key={tab.id}
-                    onClick={() => setActiveResultTab(tab.id)}
-                    type="button"
-                  >
-                    <span>{tab.label}</span>
-                    <span
-                      className={cn(
-                        "rounded-full px-2 py-0.5 text-[0.72rem] font-semibold",
-                        activeResultTab === tab.id
-                          ? "bg-brand-50 text-brand-700"
-                          : "bg-slate-100 text-slate-500",
-                      )}
-                    >
-                      {tab.count}
-                    </span>
-                    {activeResultTab === tab.id ? (
-                      <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-brand-500" />
-                    ) : null}
-                  </button>
-                ))}
-              </div>
+          <div className="space-y-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <h2 className="text-[1.08rem] font-semibold text-[#091333]">Filed documents</h2>
+              <span className="w-fit rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-500">
+                {tabCounts.documents} files
+              </span>
             </div>
 
-            {visibleResults.length === 0 ? (
-              <div className="px-5 py-10">
-                <EmptyState
-                  description={
-                    assignedClients.length === 0 && user?.role === "accountant"
-                      ? "No filed records found in your assigned client portfolio."
-                      : "Only accepted core filing types are shown here (for example invoices, bank statements, signed documents, and compliance records)."
-                  }
-                  title="No filed records match this view"
-                />
-              </div>
-            ) : (
-              <>
-                <div className="hidden border-b border-slate-100 px-5 py-4 text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-slate-400 lg:grid lg:grid-cols-[minmax(0,1.85fr)_0.9fr_0.72fr_3.5rem] lg:gap-4">
-                  <div>Filed record</div>
-                  <div>Filed on</div>
-                  <div>Archive status</div>
-                  <div aria-hidden="true" />
+            <SurfaceCard className="overflow-visible rounded-lg border border-slate-200 bg-white p-0 shadow-none">
+              {visibleResults.length === 0 ? (
+                <div className="px-5 py-10">
+                  <EmptyState
+                    description={
+                      assignedClients.length === 0 && user?.role === "accountant"
+                        ? "No filed records found in your assigned client portfolio."
+                        : "Only accepted core filing types are shown here (for example invoices, bank statements, signed documents, and compliance records)."
+                    }
+                    title="No filed records match this view"
+                  />
                 </div>
+              ) : (
+                <>
+                  <div className="hidden grid-cols-[minmax(0,1.35fr)_minmax(130px,0.68fr)_minmax(170px,0.92fr)_72px] gap-6 border-b border-slate-100 px-5 py-4 text-[0.82rem] font-bold text-[#091333] lg:grid">
+                    <span>Name</span>
+                    <span>Filed Date</span>
+                    <span>Filed By</span>
+                    <span className="text-center">More Actions</span>
+                  </div>
 
-                <div className="divide-y divide-slate-100">
-                  {pagedResults.map((result) => {
-                    const fileLabel = inferFileLabel(result, selectedResultId === result.id ? selectedDocument : null);
-                    const selected = viewerOpen && result.id === selectedResultId;
+                  <div className="divide-y divide-slate-100">
+                    {pagedResults.map((result) => {
+                      const fileLabel = inferFileLabel(result, selectedResultId === result.id ? selectedDocument : null);
+                      const selected = viewerOpen && result.id === selectedResultId;
+                      const filedBy = result.uploadedBy ?? "Client";
 
-                    return (
-                      <div
-                        className={cn(
-                          "border-l-[3px] px-5 py-4 transition lg:grid lg:grid-cols-[minmax(0,1.85fr)_0.9fr_0.72fr_3.5rem] lg:items-center lg:gap-4",
-                          selected
-                            ? "border-l-brand-500 bg-brand-50/35"
-                            : "border-l-transparent hover:bg-slate-50/80",
-                        )}
-                        key={result.id}
-                      >
-                        <div className="flex items-start gap-4">
-                          <div
-                            className={cn(
-                              "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.9rem] border text-[0.72rem] font-semibold",
-                              fileLabelClasses(fileLabel),
-                            )}
+                      return (
+                        <div
+                          className={cn(
+                            "grid gap-3 px-5 py-4 transition lg:grid-cols-[minmax(0,1.35fr)_minmax(130px,0.68fr)_minmax(170px,0.92fr)_72px] lg:items-center lg:gap-6",
+                            selected ? "bg-brand-50/35 ring-1 ring-inset ring-brand-100" : "hover:bg-slate-50",
+                          )}
+                          key={result.id}
+                        >
+                          <button
+                            className="flex min-w-0 items-center gap-3 text-left"
+                            onClick={() => handleOpenResult(result)}
+                            type="button"
                           >
-                            {fileLabel}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <p className="truncate text-[0.95rem] font-semibold text-slate-950">
-                                {displayResultTitle(result)}
-                              </p>
-                              {isNewResult(result.date) ? (
-                                <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[0.68rem] font-semibold text-brand-700">
-                                  New
+                            <div
+                              className={cn(
+                                "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border text-[0.68rem] font-semibold",
+                                fileLabelClasses(fileLabel),
+                              )}
+                            >
+                              {fileLabel}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex min-w-0 items-center gap-2">
+                                <p className="truncate text-[0.9rem] font-semibold text-[#091333]">
+                                  {displayResultTitle(result)}
+                                </p>
+                                {isNewResult(result.date) ? (
+                                  <span className="shrink-0 rounded-full bg-brand-50 px-2 py-0.5 text-[0.68rem] font-semibold text-brand-700 ring-1 ring-inset ring-brand-100">
+                                    New
+                                  </span>
+                                ) : null}
+                              </div>
+                              <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-2 text-[0.78rem] text-slate-500">
+                                <span className="truncate">
+                                  {result.clientName} / {resultFamilyLabel(result)} / {result.monthLabel}
                                 </span>
+                                <span
+                                  className={cn(
+                                    "shrink-0 rounded-full px-2 py-0.5 text-[0.66rem] font-semibold ring-1 ring-inset",
+                                    toneToAccentClass(statusToTone(result.status)),
+                                  )}
+                                >
+                                  {formatStatusLabel(result.status)}
+                                </span>
+                              </div>
+                              {result.amountLabel ? (
+                                <p className="mt-0.5 truncate text-[0.76rem] text-slate-400">
+                                  {result.amountLabel}
+                                </p>
                               ) : null}
                             </div>
-                            <p className="mt-1 text-[0.84rem] text-slate-500">
-                              {resultFamilyLabel(result)} | {result.monthLabel}
-                            </p>
-                            <p className="mt-1 truncate text-[0.8rem] text-slate-400">
-                              {result.clientName}
-                            </p>
-                            {result.amountLabel ? (
-                              <p className="mt-1 text-[0.84rem] text-slate-400">
-                                {result.amountLabel}
-                              </p>
+                          </button>
+
+                          <div className="text-[0.86rem] font-medium text-slate-700">
+                            <span className="mr-2 text-[0.7rem] font-bold uppercase tracking-[0.12em] text-slate-400 lg:hidden">
+                              Filed Date
+                            </span>
+                            {formatDateLabel(result.date)}
+                          </div>
+
+                          <div className="min-w-0 text-[0.86rem] font-medium text-slate-700">
+                            <span className="mr-2 text-[0.7rem] font-bold uppercase tracking-[0.12em] text-slate-400 lg:hidden">
+                              Filed By
+                            </span>
+                            <span className="truncate">{filedBy}</span>
+                          </div>
+
+                          <div className="relative flex min-w-0 items-center justify-start lg:justify-center">
+                            <button
+                              aria-label={`More actions for ${displayResultTitle(result)}`}
+                              className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition ${
+                                openMenuResultId === result.id
+                                  ? "bg-[#0a2f66]/10 text-[#00856f]"
+                                  : "text-[#091333] hover:bg-slate-100"
+                              }`}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                setOpenMenuResultId((current) =>
+                                  current === result.id ? "" : result.id,
+                                );
+                              }}
+                              type="button"
+                            >
+                              <MoreHorizontalIcon />
+                            </button>
+
+                            {openMenuResultId === result.id ? (
+                              <div
+                                className="absolute right-auto top-[calc(100%+0.35rem)] z-50 min-w-[220px] rounded-lg border border-slate-200 bg-white p-1.5 shadow-[0_18px_36px_rgba(4,24,52,0.14)] lg:right-0"
+                                onClick={(event) => event.stopPropagation()}
+                                role="menu"
+                              >
+                                <button
+                                  className="block w-full rounded-md px-3 py-2 text-left text-xs font-semibold text-[#35466d] transition hover:bg-slate-50 hover:text-[#091333]"
+                                  onClick={() => handleOpenResult(result)}
+                                  role="menuitem"
+                                  type="button"
+                                >
+                                  Preview file
+                                </button>
+                                <button
+                                  className="block w-full rounded-md px-3 py-2 text-left text-xs font-semibold text-[#35466d] transition hover:bg-slate-50 hover:text-[#091333]"
+                                  onClick={() => handleDownloadResult(result)}
+                                  role="menuitem"
+                                  type="button"
+                                >
+                                  Download
+                                </button>
+                                <button
+                                  className="block w-full rounded-md px-3 py-2 text-left text-xs font-semibold text-[#35466d] transition hover:bg-slate-50 hover:text-[#091333]"
+                                  onClick={() => handleViewVersionHistory(result)}
+                                  role="menuitem"
+                                  type="button"
+                                >
+                                  View version history
+                                </button>
+                              </div>
                             ) : null}
                           </div>
                         </div>
+                      );
+                    })}
+                  </div>
 
-                        <div className="mt-3 lg:mt-0">
-                          <p className="text-[0.9rem] font-semibold text-slate-950">
-                            {formatDateLabel(result.date)}
-                          </p>
-                          <p className="mt-1 text-[0.84rem] text-slate-500">
-                            {new Intl.DateTimeFormat("en-ZA", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            }).format(new Date(result.date))}{" "}
-                            by {result.uploadedBy ?? "Client"}
-                          </p>
-                        </div>
-
-                        <div className="mt-3 lg:mt-0">
-                          <span
-                            className={cn(
-                              "inline-flex rounded-full px-2.5 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.04em] ring-1 ring-inset",
-                              toneToAccentClass(statusToTone(result.status)),
-                            )}
-                          >
-                            {formatStatusLabel(result.status)}
-                          </span>
-                        </div>
-
-                        <div className="relative mt-3 flex items-center lg:mt-0 lg:justify-end">
-                          <button
-                            aria-label="Open result actions"
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setOpenMenuResultId((current) =>
-                                current === result.id ? "" : result.id,
-                              );
-                            }}
-                            type="button"
-                          >
-                            <MoreHorizontalIcon />
-                          </button>
-
-                          {openMenuResultId === result.id ? (
-                            <div
-                              className="absolute right-0 top-[calc(100%+0.45rem)] z-10 min-w-[220px] rounded-[1rem] border border-slate-200 bg-white p-2 shadow-[0_20px_42px_rgba(15,23,42,0.14)]"
-                              onClick={(event) => event.stopPropagation()}
-                            >
-                              <button
-                                className="block w-full rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
-                                onClick={() => handleOpenResult(result)}
-                                type="button"
-                              >
-                                Preview file
-                              </button>
-                              <button
-                                className="block w-full rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
-                                onClick={() => handleDownloadResult(result)}
-                                type="button"
-                              >
-                                Download
-                              </button>
-                              <button
-                                className="block w-full rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
-                                onClick={() => handleViewVersionHistory(result)}
-                                type="button"
-                              >
-                                View version history
-                              </button>
-                            </div>
-                          ) : null}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="flex flex-col gap-4 border-t border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="text-sm text-slate-500">
-                    Showing {(currentPage - 1) * resultsPerPage + 1} to{" "}
-                    {Math.min(currentPage * resultsPerPage, visibleResults.length)} of{" "}
-                    {visibleResults.length} results
-                  </p>
-                  <Pagination
-                    currentPage={currentPage}
-                    onPageChange={setCurrentPage}
-                    totalPages={totalPages}
-                  />
-                </div>
-              </>
-            )}
-          </SurfaceCard>
+                  <div className="flex min-h-[92px] items-center justify-between border-t border-slate-100 bg-white px-5 py-[18px] text-xs font-medium text-[#53617f]">
+                    <span className="font-semibold text-[#091333]">
+                      Page {currentPage} of {totalPages}
+                    </span>
+                    <div className="flex items-center gap-7">
+                      <button
+                        className="inline-flex h-8 items-center justify-center rounded-md px-1 font-semibold text-[#9aa8ba] transition hover:text-[#53617f] disabled:cursor-not-allowed disabled:opacity-70"
+                        disabled={currentPage === 1}
+                        onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                        type="button"
+                      >
+                        Prev
+                      </button>
+                      <button
+                        className="inline-flex h-8 items-center justify-center rounded-md px-1 font-semibold text-[#9aa8ba] transition hover:text-[#53617f] disabled:cursor-not-allowed disabled:opacity-70"
+                        disabled={currentPage === totalPages}
+                        onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+                        type="button"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </SurfaceCard>
+          </div>
         </div>
 
         {viewerOpen && selectedResult && selectedDocument ? (

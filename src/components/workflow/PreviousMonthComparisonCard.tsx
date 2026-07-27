@@ -96,6 +96,69 @@ function buildTrendPoints(previousTotal: number, currentTotal: number) {
   });
 }
 
+function CompactComparisonMenu({
+  ariaLabel,
+  onChange,
+  options,
+  value,
+}: {
+  ariaLabel: string;
+  onChange: (value: string) => void;
+  options: { label: string; value: string }[];
+  value: string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const selectedOption = options.find((option) => option.value === value);
+
+  return (
+    <div
+      className="relative"
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          setIsOpen(false);
+        }
+      }}
+    >
+      <button
+        aria-expanded={isOpen}
+        aria-haspopup="menu"
+        aria-label={ariaLabel}
+        className={`inline-flex h-9 min-w-[118px] items-center justify-between gap-3 rounded-full border border-slate-200 bg-white px-3 text-xs font-semibold shadow-sm transition ${
+          isOpen ? "text-[#00856f] ring-1 ring-[#0a2f66]/10" : "text-[#35466d] hover:bg-slate-50 hover:text-[#091333]"
+        }`}
+        onClick={() => setIsOpen((current) => !current)}
+        type="button"
+      >
+        <span className="truncate">{selectedOption?.label ?? options[0]?.label ?? "Select"}</span>
+        <svg aria-hidden="true" className={`h-4 w-4 transition ${isOpen ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24">
+          <path d="m6 9 6 6 6-6" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
+        </svg>
+      </button>
+
+      {isOpen ? (
+        <div className="absolute right-0 top-11 z-50 w-44 rounded-lg border border-slate-200 bg-white p-1.5 shadow-[0_18px_36px_rgba(4,24,52,0.14)]" role="menu">
+          {options.map((option) => (
+            <button
+              className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-xs font-semibold transition ${
+                value === option.value ? "bg-[#eaf7f0] text-[#087d69]" : "text-[#35466d] hover:bg-slate-50 hover:text-[#091333]"
+              }`}
+              key={option.value}
+              onClick={() => {
+                onChange(option.value);
+                setIsOpen(false);
+              }}
+              role="menuitem"
+              type="button"
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 // Component flow: gather data first, then render a focused UI state.
 export function PreviousMonthComparisonCard({
   actionLabel,
@@ -111,6 +174,7 @@ export function PreviousMonthComparisonCard({
     [comparison, comparisonOptions],
   );
   const [selectedOptionId, setSelectedOptionId] = useState(availableOptions[0]?.id ?? "invoices");
+  const [trendGrouping, setTrendGrouping] = useState("day");
   const [hoveredTrendDay, setHoveredTrendDay] = useState<number | null>(null);
 
   useEffect(() => {
@@ -143,18 +207,12 @@ export function PreviousMonthComparisonCard({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {availableOptions.length > 1 ? (
-            <select
-              aria-label="Compare document type"
-              className="h-9 rounded-lg border border-[#c8d7e5] bg-white px-3 text-xs font-semibold text-[#091333] shadow-sm transition focus:border-[#8ccf45] focus:outline-none focus:ring-2 focus:ring-[#8ccf45]/25"
-              onChange={(event) => setSelectedOptionId(event.target.value)}
+            <CompactComparisonMenu
+              ariaLabel="Compare document type"
+              onChange={setSelectedOptionId}
+              options={availableOptions.map((option) => ({ label: option.label, value: option.id }))}
               value={selectedOption.id}
-            >
-              {availableOptions.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+            />
           ) : null}
           <span
             className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset ${toneToAccentClass(selectedTone)}`}
@@ -237,13 +295,12 @@ export function PreviousMonthComparisonCard({
               </div>
             </div>
           </div>
-          <select
-            aria-label="Trend grouping"
-            className="h-9 rounded-lg border border-[#dce6ef] bg-white px-3 text-[0.74rem] font-semibold text-[#091333] shadow-sm"
-            defaultValue="day"
-          >
-            <option value="day">By day</option>
-          </select>
+          <CompactComparisonMenu
+            ariaLabel="Trend grouping"
+            onChange={setTrendGrouping}
+            options={[{ label: "By day", value: "day" }]}
+            value={trendGrouping}
+          />
         </div>
 
         <div className="mt-5 grid grid-cols-[2.25rem_minmax(0,1fr)] gap-3">

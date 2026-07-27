@@ -408,6 +408,16 @@
     background-color: var(--client-dashboard-progress-fill);
   }
 
+  .client-risk-profile {
+    --client-risk-attention: #6f8dbf;
+    --client-risk-compliant: #00856f;
+    --client-risk-high: #061848;
+    --client-risk-track: #dbe7f1;
+    --client-risk-centre: #ffffff;
+    --client-risk-heading: #091333;
+    --client-risk-muted: #667085;
+  }
+
   .client-dashboard-link {
     color: #0b4f5f;
   }
@@ -429,6 +439,18 @@
 
   .client-dashboard-action-button:focus-visible {
     outline-color: #074e5f;
+  }
+
+  .assigned-clients-export-button,
+  html.theme-dark .assigned-clients-export-button {
+    background: #061848 !important;
+    color: #ffffff !important;
+    box-shadow: 0 12px 22px rgba(6, 24, 72, 0.24) !important;
+  }
+
+  .assigned-clients-export-button:hover,
+  html.theme-dark .assigned-clients-export-button:hover {
+    background: #0a2f66 !important;
   }
 
   .monthly-pack-action-button {
@@ -514,6 +536,16 @@
   html.theme-dark .client-dashboard-progress-track {
     --client-dashboard-progress-fill: #78d5a0;
     --client-dashboard-progress-track: #243a5f;
+  }
+
+  html.theme-dark .client-risk-profile {
+    --client-risk-attention: #6f8dbf;
+    --client-risk-compliant: #00856f;
+    --client-risk-high: #061848;
+    --client-risk-track: #243a5f;
+    --client-risk-centre: #0b1b30;
+    --client-risk-heading: #f8fafc;
+    --client-risk-muted: #a9b7cb;
   }
 
   html.theme-dark .client-dashboard-link {

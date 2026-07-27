@@ -26,6 +26,7 @@ type ThreadFilter = "all" | "unread" | "resolved" | "unresolved";
 type ThreadSort = "needs_action" | "newest" | "oldest";
 
 const PREF_KEY = "firm-inbox-preferences-v1";
+const inboxThreadsPerPage = 5;
 const inboxPanelClass =
   "border border-slate-200/80 bg-white shadow-[0_18px_44px_rgba(4,24,52,0.07)]";
 
@@ -135,7 +136,24 @@ function ThreadListPane({
 }) {
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
   const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+  const [currentPage, setCurrentPage] = useState(1);
   const unreadTotal = requests.reduce((sum, request) => sum + trailingClientUnreadCount(request), 0);
+  const totalPages = Math.max(1, Math.ceil(requests.length / inboxThreadsPerPage));
+  const visibleRequests = requests.slice(
+    (currentPage - 1) * inboxThreadsPerPage,
+    currentPage * inboxThreadsPerPage,
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter, requests.length, searchValue, sort]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
 
   return (
     <section className={`${inboxPanelClass} flex h-full min-h-[720px] flex-col overflow-hidden rounded-lg`}>
@@ -154,6 +172,8 @@ function ThreadListPane({
               onChangeSearch("");
               onChangeFilter("all");
               onChangeSort("needs_action");
+              setCurrentPage(1);
+              setCollapsedSections({});
               setIsFilterMenuOpen(false);
               setIsSortMenuOpen(false);
             }}
@@ -259,67 +279,83 @@ function ThreadListPane({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto bg-white">
-        {requests.map((request) => {
+        {visibleRequests.map((request, index) => {
           const selected = request.id === selectedRequestId;
           const lastComment = request.comments[request.comments.length - 1];
           const unread = trailingClientUnreadCount(request);
           const sectionLabel = inboxSectionLabel(lastActivity(request));
-          const previousRequest = requests[requests.indexOf(request) - 1];
+          const previousRequest = visibleRequests[index - 1];
           const previousSection = previousRequest ? inboxSectionLabel(lastActivity(previousRequest)) : "";
-          const showSection = requests.indexOf(request) === 0 || sectionLabel !== previousSection;
+          const showSection = index === 0 || sectionLabel !== previousSection;
+          const isSectionCollapsed = Boolean(collapsedSections[sectionLabel]);
 
           return (
             <div key={request.id}>
               {showSection ? (
-                <div className="flex h-12 w-full items-center gap-2 border-y border-slate-100 bg-[#f7fafc] px-5 text-left text-sm font-semibold text-[#091333]">
-                  <ChevronDown aria-hidden="true" className="h-4 w-4 text-[#35466d]" />
+                <button
+                  aria-expanded={!isSectionCollapsed}
+                  className="flex h-12 w-full items-center gap-2 border-y border-slate-100 bg-[#f7fafc] px-5 text-left text-sm font-semibold text-[#091333] transition hover:bg-[#eef4fa]"
+                  onClick={() =>
+                    setCollapsedSections((current) => ({
+                      ...current,
+                      [sectionLabel]: !current[sectionLabel],
+                    }))}
+                  type="button"
+                >
+                  <ChevronDown aria-hidden="true" className={`h-4 w-4 text-[#35466d] transition ${isSectionCollapsed ? "-rotate-90" : ""}`} />
                   {sectionLabel}
-                </div>
+                </button>
               ) : null}
-              <button
-                className={`relative grid w-full grid-cols-[auto_1fr_auto] items-start gap-3 px-5 py-5 text-left transition ${
-                  selected ? "bg-[#eef2f7] shadow-[0_10px_22px_rgba(4,24,52,0.08)]" : "hover:bg-slate-50"
-                }`}
-                onClick={() => onSelectRequest(request.id)}
-                type="button"
-              >
-                {selected ? <span className="absolute inset-y-0 left-0 w-1 rounded-r-full bg-[#6f8dbf]" /> : null}
-                <span className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-white bg-[#061b41] text-sm font-semibold text-white shadow-sm">
-                  {initials(request.assignedTo)}
-                </span>
-                <div className="min-w-0 pt-0.5">
-                  <p className="line-clamp-1 text-[0.95rem] font-semibold leading-5 text-[#091333]">{request.assignedTo}</p>
-                  <p className="mt-0.5 line-clamp-1 text-[0.78rem] font-semibold leading-4 text-[#091333]">{request.title}</p>
-                  <p className="mt-1 line-clamp-1 text-[0.75rem] font-medium leading-4 text-[#35466d]">
-                    {lastComment?.message ?? request.description}
-                  </p>
-                </div>
-                <div className="flex min-h-14 shrink-0 flex-col items-end justify-between gap-1 pt-0.5">
-                  <p className="text-[0.68rem] font-medium leading-4 text-[#061b41]">{formatShortThreadTime(lastActivity(request))}</p>
-                  {unread > 0 ? (
-                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#087d69] px-1.5 text-[0.62rem] font-bold leading-none text-white">
-                      {unread}
-                    </span>
-                  ) : null}
-                </div>
-              </button>
+              {isSectionCollapsed ? null : (
+                <button
+                  className={`relative grid w-full grid-cols-[auto_1fr_auto] items-start gap-3 px-5 py-5 text-left transition ${
+                    selected ? "bg-[#eef2f7] shadow-[0_10px_22px_rgba(4,24,52,0.08)]" : "hover:bg-slate-50"
+                  }`}
+                  onClick={() => onSelectRequest(request.id)}
+                  type="button"
+                >
+                  {selected ? <span className="absolute inset-y-0 left-0 w-1 rounded-r-full bg-[#6f8dbf]" /> : null}
+                  <span className="flex h-11 w-11 items-center justify-center rounded-full border-2 border-white bg-[#061b41] text-sm font-semibold text-white shadow-sm">
+                    {initials(request.assignedTo)}
+                  </span>
+                  <div className="min-w-0 pt-0.5">
+                    <p className="line-clamp-1 text-[0.95rem] font-semibold leading-5 text-[#091333]">{request.assignedTo}</p>
+                    <p className="mt-0.5 line-clamp-1 text-[0.78rem] font-semibold leading-4 text-[#091333]">{request.title}</p>
+                    <p className="mt-1 line-clamp-1 text-[0.75rem] font-medium leading-4 text-[#35466d]">
+                      {lastComment?.message ?? request.description}
+                    </p>
+                  </div>
+                  <div className="flex min-h-14 shrink-0 flex-col items-end justify-between gap-1 pt-0.5">
+                    <p className="text-[0.68rem] font-medium leading-4 text-[#061b41]">{formatShortThreadTime(lastActivity(request))}</p>
+                    {unread > 0 ? (
+                      <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[#087d69] px-1.5 text-[0.62rem] font-bold leading-none text-white">
+                        {unread}
+                      </span>
+                    ) : null}
+                  </div>
+                </button>
+              )}
             </div>
           );
         })}
       </div>
       <div className="flex min-h-[92px] items-center justify-between border-t border-slate-100 bg-white px-5 py-[18px] text-xs font-medium text-[#53617f]">
-        <span className="font-semibold text-[#091333]">Page 1 of 1</span>
+        <span className="font-semibold text-[#091333]">
+          Page {currentPage} of {totalPages}
+        </span>
         <div className="flex items-center gap-7">
           <button
-            className="inline-flex h-8 items-center justify-center rounded-md px-1 font-semibold text-[#9aa8ba] opacity-70"
-            disabled
+            className="inline-flex h-8 items-center justify-center rounded-md px-1 font-semibold text-[#9aa8ba] transition hover:text-[#53617f] disabled:cursor-not-allowed disabled:opacity-70"
+            disabled={currentPage === 1}
+            onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
             type="button"
           >
             Prev
           </button>
           <button
-            className="inline-flex h-8 items-center justify-center rounded-md px-1 font-semibold text-[#9aa8ba] opacity-70"
-            disabled
+            className="inline-flex h-8 items-center justify-center rounded-md px-1 font-semibold text-[#9aa8ba] transition hover:text-[#53617f] disabled:cursor-not-allowed disabled:opacity-70"
+            disabled={currentPage === totalPages}
+            onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
             type="button"
           >
             Next
@@ -372,6 +408,7 @@ function ConversationPane({
   const [addAuditNote, setAddAuditNote] = useState(false);
   const [isStarred, setIsStarred] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const [isPriorityMenuOpen, setIsPriorityMenuOpen] = useState(false);
   const replyInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -379,6 +416,8 @@ function ConversationPane({
     setDueDateDraft(request.dueDate.slice(0, 10));
     setPriorityDraft(request.priority);
     setAddAuditNote(false);
+    setIsMoreMenuOpen(false);
+    setIsPriorityMenuOpen(false);
   }, [request.assignedTo, request.dueDate, request.priority, request.id]);
 
   function handleAddInternalNote() {
@@ -440,51 +479,52 @@ function ConversationPane({
       </div>
 
       <div className="border-b border-slate-100 bg-white px-7 py-4">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="relative">
-            <button
-              aria-expanded={isMoreMenuOpen}
-              aria-haspopup="menu"
-              className="inline-flex h-11 items-center gap-4 rounded-md bg-[#061b41] px-6 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(6,27,65,0.22)] transition hover:bg-[#09275c]"
-              onClick={() => setIsMoreMenuOpen((current) => !current)}
-              type="button"
-            >
-              Actions
-              <ChevronDown aria-hidden="true" className={`h-4 w-4 transition ${isMoreMenuOpen ? "rotate-180" : ""}`} />
-            </button>
-            {isMoreMenuOpen ? (
-              <div className="absolute left-0 top-13 z-20 w-56 rounded-lg border border-slate-200 bg-white py-2 shadow-[0_18px_36px_rgba(4,24,52,0.14)]" role="menu">
-                {[
-                  { icon: CheckCircle2, label: "Set open", onClick: onSetOpen },
-                  { icon: RefreshCw, label: "Set awaiting client", onClick: onSetAwaitingClient },
-                  { icon: CheckCircle2, label: "Close", onClick: onSetClosed },
-                  { icon: ShieldAlert, label: "Escalate", onClick: onEscalate },
-                  { icon: UserRound, label: "Reassign note", onClick: onReassign },
-                  { icon: Reply, label: "Add internal note", onClick: handleAddInternalNote },
-                ].map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <button
-                      className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-xs font-semibold text-[#091333] transition hover:bg-slate-50"
-                      key={item.label}
-                      onClick={() => {
-                        item.onClick();
-                        setIsMoreMenuOpen(false);
-                      }}
-                      role="menuitem"
-                      type="button"
-                    >
-                      <Icon aria-hidden="true" className="h-4 w-4 text-[#315b9c]" />
-                      {item.label}
-                    </button>
-                  );
-                })}
+        <div className="space-y-5">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="relative">
+                <button
+                  aria-expanded={isMoreMenuOpen}
+                  aria-haspopup="menu"
+                  className="inline-flex h-11 items-center gap-4 rounded-md bg-[#061b41] px-6 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(6,27,65,0.22)] transition hover:bg-[#09275c]"
+                  onClick={() => setIsMoreMenuOpen((current) => !current)}
+                  type="button"
+                >
+                  Actions
+                  <ChevronDown aria-hidden="true" className={`h-4 w-4 transition ${isMoreMenuOpen ? "rotate-180" : ""}`} />
+                </button>
+                {isMoreMenuOpen ? (
+                  <div className="absolute left-0 top-14 z-50 w-56 rounded-lg border border-slate-200 bg-white p-1.5 shadow-[0_18px_36px_rgba(4,24,52,0.14)]" role="menu">
+                    {[
+                      { icon: CheckCircle2, label: "Set open", onClick: onSetOpen },
+                      { icon: RefreshCw, label: "Set awaiting client", onClick: onSetAwaitingClient },
+                      { icon: CheckCircle2, label: "Close", onClick: onSetClosed },
+                      { icon: ShieldAlert, label: "Escalate", onClick: onEscalate },
+                      { icon: UserRound, label: "Reassign note", onClick: onReassign },
+                      { icon: Reply, label: "Add internal note", onClick: handleAddInternalNote },
+                    ].map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <button
+                          className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-xs font-semibold text-[#35466d] transition hover:bg-slate-50 hover:text-[#091333]"
+                          key={item.label}
+                          onClick={() => {
+                            item.onClick();
+                            setIsMoreMenuOpen(false);
+                          }}
+                          role="menuitem"
+                          type="button"
+                        >
+                          <Icon aria-hidden="true" className="h-4 w-4 text-[#315b9c]" />
+                          {item.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
               </div>
-            ) : null}
-          </div>
-        </div>
+            </div>
 
-        <section className="mt-5 overflow-hidden rounded-lg border border-slate-200 bg-white">
+            <section className="overflow-hidden rounded-lg border border-slate-200 bg-white">
           <div className="flex h-12 items-center gap-3 border-b border-slate-200 px-5">
             <UserRound aria-hidden="true" className="h-4 w-4 text-[#315b9c]" />
             <h3 className="text-sm font-semibold text-[#091333]">Assignment &amp; SLA</h3>
@@ -526,19 +566,52 @@ function ConversationPane({
                 <Flag aria-hidden="true" className="h-4 w-4 text-[#315b9c]" />
                 Priority
               </p>
-              <label className="relative inline-flex items-center">
+              <div
+                className="relative inline-flex items-center"
+                onBlur={(event) => {
+                  if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                    setIsPriorityMenuOpen(false);
+                  }
+                }}
+              >
                 <span className="sr-only">Priority</span>
-                <select
-                  className="h-9 appearance-none rounded-full border border-rose-100 bg-rose-50 py-0 pl-4 pr-9 text-xs font-semibold capitalize text-rose-600 outline-none ring-brand-300 transition focus:ring-2"
-                  onChange={(event) => setPriorityDraft(event.target.value as WorkflowRequest["priority"])}
-                  value={priorityDraft}
+                <button
+                  aria-expanded={isPriorityMenuOpen}
+                  aria-haspopup="menu"
+                  className={`inline-flex h-9 min-w-[118px] items-center justify-between gap-3 rounded-full border px-4 text-xs font-semibold capitalize shadow-sm transition ${
+                    isPriorityMenuOpen
+                      ? "border-slate-200 bg-white text-[#00856f] ring-1 ring-[#0a2f66]/10"
+                      : "border-rose-100 bg-rose-50 text-rose-600 hover:bg-white"
+                  }`}
+                  onClick={() => setIsPriorityMenuOpen((current) => !current)}
+                  type="button"
                 >
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                </select>
-                <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-3 h-3.5 w-3.5 text-rose-500" />
-              </label>
+                  {priorityDraft}
+                  <ChevronDown aria-hidden="true" className={`h-3.5 w-3.5 transition ${isPriorityMenuOpen ? "rotate-180" : ""}`} />
+                </button>
+                {isPriorityMenuOpen ? (
+                  <div className="absolute left-0 top-11 z-50 w-40 rounded-lg border border-slate-200 bg-white p-1.5 shadow-[0_18px_36px_rgba(4,24,52,0.14)]" role="menu">
+                    {(["low", "medium", "high"] as WorkflowRequest["priority"][]).map((priority) => (
+                      <button
+                        className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-xs font-semibold capitalize transition ${
+                          priorityDraft === priority
+                            ? "bg-[#eaf7f0] text-[#087d69]"
+                            : "text-[#35466d] hover:bg-slate-50 hover:text-[#091333]"
+                        }`}
+                        key={priority}
+                        onClick={() => {
+                          setPriorityDraft(priority);
+                          setIsPriorityMenuOpen(false);
+                        }}
+                        role="menuitem"
+                        type="button"
+                      >
+                        {priority}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-5 py-4">
@@ -560,7 +633,8 @@ function ConversationPane({
               Save changes
             </Button>
           </div>
-        </section>
+            </section>
+          </div>
       </div>
 
       <div className="min-h-0 flex-1 space-y-6 overflow-y-auto bg-white px-7 py-8">

@@ -696,28 +696,28 @@ function ConversationPane({
             })}
             {messageContextMenu && contextComment ? (
               <div
-                className="fixed z-50 w-44 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 shadow-[0_18px_44px_rgba(4,24,52,0.16)]"
+                className="fixed z-50 w-44 rounded-lg border border-slate-200 bg-white p-1.5 shadow-[0_18px_36px_rgba(4,24,52,0.14)]"
                 onClick={(event) => event.stopPropagation()}
                 role="menu"
                 style={{ left: messageContextMenu.x, top: messageContextMenu.y }}
               >
-                <button className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-semibold text-[#091333] transition hover:bg-[#0a2f66]/10" onClick={handleReplyToMessage} role="menuitem" type="button">
+                <button className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs font-semibold text-[#35466d] transition hover:bg-slate-50 hover:text-[#091333]" onClick={handleReplyToMessage} role="menuitem" type="button">
                   <Reply aria-hidden="true" className="h-4 w-4" />
                   Reply
                 </button>
-                <button className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-semibold text-[#091333] transition hover:bg-[#0a2f66]/10" onClick={handleCopyMessage} role="menuitem" type="button">
+                <button className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs font-semibold text-[#35466d] transition hover:bg-slate-50 hover:text-[#091333]" onClick={handleCopyMessage} role="menuitem" type="button">
                   <Copy aria-hidden="true" className="h-4 w-4" />
                   Copy
                 </button>
-                <button className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-semibold text-[#091333] transition hover:bg-[#0a2f66]/10" onClick={handleForwardMessage} role="menuitem" type="button">
+                <button className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs font-semibold text-[#35466d] transition hover:bg-slate-50 hover:text-[#091333]" onClick={handleForwardMessage} role="menuitem" type="button">
                   <Forward aria-hidden="true" className="h-4 w-4" />
                   Forward
                 </button>
-                <button className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-semibold text-[#091333] transition hover:bg-[#0a2f66]/10" onClick={handlePinMessage} role="menuitem" type="button">
+                <button className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs font-semibold text-[#35466d] transition hover:bg-slate-50 hover:text-[#091333]" onClick={handlePinMessage} role="menuitem" type="button">
                   <Pin aria-hidden="true" className="h-4 w-4" />
                   {pinnedCommentIds.includes(contextComment.id) ? "Unpin" : "Pin"}
                 </button>
-                <button className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-semibold text-rose-700 transition hover:bg-rose-50" onClick={handleDeleteMessage} role="menuitem" type="button">
+                <button className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs font-semibold text-rose-700 transition hover:bg-rose-50" onClick={handleDeleteMessage} role="menuitem" type="button">
                   <Trash2 aria-hidden="true" className="h-4 w-4" />
                   Delete
                 </button>
@@ -1098,6 +1098,7 @@ export function ClientRequestsPage() {
         description="Send a formal request to your accountant for a specific document."
         isOpen={isRequestModalOpen}
         onClose={() => setIsRequestModalOpen(false)}
+        panelClassName="rounded-lg border-slate-200/80 shadow-[0_18px_44px_rgba(4,24,52,0.14)]"
         title="Request a document"
       >
         <div className="space-y-4">

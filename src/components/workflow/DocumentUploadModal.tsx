@@ -14,6 +14,7 @@ interface DocumentUploadModalProps {
   clientName: string;
   existingFileNames?: string[];
   isOpen: boolean;
+  modalClassName?: string;
   selectedSlot: MonthlyDocumentSlot | null;
   onClose: () => void;
   onUploaded: (submission: UploadSubmission) => void;
@@ -123,6 +124,7 @@ export function DocumentUploadModal({
   clientName,
   existingFileNames = [],
   isOpen,
+  modalClassName,
   onClose,
   onUploaded,
   selectedSlot,
@@ -314,6 +316,7 @@ export function DocumentUploadModal({
       description="Smart upload keeps every file attached to the right checklist slot, month, and naming pattern so the accountant can review it without guesswork."
       isOpen={isOpen}
       onClose={onClose}
+      panelClassName={modalClassName}
       title="Smart document upload"
     >
       <div className="space-y-6">

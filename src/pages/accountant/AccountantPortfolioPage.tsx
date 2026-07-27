@@ -1,5 +1,5 @@
 ﻿import { useMemo, useState } from "react";
-import { CalendarDays, ChevronDown, Files, FolderOpen, LayoutGrid, MoreVertical, Search, Sparkles, Table2, UserRound } from "lucide-react";
+import { ArrowUpDown, CalendarDays, ChevronDown, Files, FolderOpen, LayoutGrid, MoreVertical, Search, Sparkles, Table2, UserRound } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
@@ -131,6 +131,7 @@ export function AccountantPortfolioPage() {
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [savedFilter, setSavedFilter] = useState<SavedFilter>("all");
   const [openActionMenuId, setOpenActionMenuId] = useState<string | null>(null);
+  const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
 
   const accountById = useMemo(() => new Map(portal.adminClients.map((client) => [client.id, client])), [portal.adminClients]);
   const scopedClients = useMemo(() => getScopedClients(user, portal.adminClients), [portal.adminClients, user]);
@@ -195,84 +196,138 @@ export function AccountantPortfolioPage() {
   }, [visibleClients]);
 
   return (
-    <div className="w-full space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-slate-200 pb-6">
-        <div className="space-y-2">
-          <p className="text-[0.78rem] font-bold uppercase tracking-[0.2em] text-brand-700">Accountant Workspace</p>
-          <h1 className="text-[2.05rem] font-semibold tracking-tight text-slate-950">{isAdmin ? "Firm Clients" : "Assigned Clients"}</h1>
-          <p className="max-w-3xl text-[0.96rem] leading-7 text-slate-500">
-            Manage client compliance health, monthly packs and filing progress for May 2026. Good morning, {getFirstName(user?.fullName)}.
-          </p>
+    <div className="w-full space-y-6">
+      <div className="border-b border-slate-200 pb-8">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="space-y-5">
+            <p className="text-[0.78rem] font-bold uppercase tracking-[0.24em] text-slate-400">Accountant Workspace</p>
+            <div className="space-y-5">
+              <h1 className="text-[2.05rem] font-semibold tracking-tight text-slate-950">{isAdmin ? "Firm Clients" : "Assigned Clients"}</h1>
+              <p className="max-w-5xl text-[0.96rem] leading-7 text-slate-500">
+                Manage client compliance health, monthly packs and filing progress for May 2026. Good morning, {getFirstName(user?.fullName)}.
+              </p>
+            </div>
+          </div>
+          {isAdmin ? (
+            <Button className="h-12 rounded-xl px-5" onClick={() => navigate("/firm/admin/assignments")} variant="secondary">
+              <UserRound className="h-4 w-4" />
+              Manage assignments
+            </Button>
+          ) : null}
         </div>
-        {isAdmin ? (
-          <Button className="h-12 rounded-xl px-5" onClick={() => navigate("/firm/admin/assignments")} variant="secondary">
-            <UserRound className="h-4 w-4" />
-            Manage assignments
-          </Button>
-        ) : null}
       </div>
 
-      <div className="flex flex-col gap-4">
-        <div className="grid gap-3 min-[1180px]:grid-cols-[minmax(0,1fr)_minmax(320px,420px)] min-[1180px]:items-center">
-          <div className="grid min-w-0 grid-cols-2 gap-2 lg:grid-cols-4">
+      <SurfaceCard className="rounded-[1.9rem] border border-slate-200/80 bg-white p-6 shadow-[0_20px_52px_rgba(15,23,42,0.06)] sm:p-8">
+        <div className="space-y-6">
+          <div className="flex flex-wrap items-center gap-3">
             {[
               { id: "all" as const, label: "All Clients", count: summary.assigned },
-              { id: "my_urgent" as const, label: "My Urgent", count: summary.overdue + summary.attention },
+              { id: "my_urgent" as const, label: "Urgent", count: summary.overdue + summary.attention },
               { id: "due_48h" as const, label: "Due This Week", count: assignedPortfolio.filter(({ row }) => dayDifference(row.deadline) >= 0 && dayDifference(row.deadline) <= 7).length },
-              { id: "blocked_3d" as const, label: "Blocked > 3d", count: assignedPortfolio.filter(({ row }) => row.missingCount > 0 && laneAgingDays(row) >= 3).length },
+              { id: "blocked_3d" as const, label: "Blocked", count: assignedPortfolio.filter(({ row }) => row.missingCount > 0 && laneAgingDays(row) >= 3).length },
             ].map((filter) => (
               <button
                 className={cn(
-                  "inline-flex h-11 min-w-0 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-semibold transition",
-                  savedFilter === filter.id ? "border-brand-700 bg-brand-700 text-white shadow-[0_14px_28px_rgba(10,47,102,0.2)]" : "border-slate-200 bg-white text-slate-700 hover:border-brand-200 hover:bg-brand-50/40",
+                  "inline-flex h-11 items-center justify-center gap-2 rounded-full border px-4 text-sm font-semibold transition",
+                  savedFilter === filter.id ? "border-brand-700 bg-brand-700 text-white shadow-[0_14px_30px_rgba(10,47,102,0.22)]" : "border-slate-200 bg-white text-slate-600 hover:border-brand-200 hover:bg-brand-50/40",
                 )}
                 key={filter.id}
                 onClick={() => setSavedFilter(filter.id)}
                 type="button"
               >
                 <span className="whitespace-nowrap">{filter.label}</span>
-                <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[0.7rem]", savedFilter === filter.id ? "bg-white/15 text-white" : "bg-slate-100 text-slate-500")}>{filter.count}</span>
+                <span className={cn("inline-flex h-6 min-w-6 items-center justify-center rounded-full px-2 text-[0.7rem]", savedFilter === filter.id ? "bg-white/15 text-white" : "bg-slate-100 text-slate-400")}>{filter.count}</span>
               </button>
             ))}
           </div>
-          <div className="min-w-0 min-[1180px]:justify-self-end">
-            <div className="relative w-full min-[1180px]:w-[420px]">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-              <input className="h-11 w-full rounded-lg border border-slate-200 bg-white pl-12 pr-4 text-[0.9rem] text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-300 focus:ring-4 focus:ring-brand-100" onChange={(event) => setSearch(event.target.value)} placeholder="Search clients, industry, or accountant..." value={search} />
-            </div>
-          </div>
-        </div>
 
-        <div className="grid gap-3 rounded-xl border border-slate-200 bg-white p-3 min-[1120px]:grid-cols-[minmax(0,1fr)_auto] min-[1120px]:items-center">
-          <div className="flex min-w-0 flex-wrap items-center gap-3">
-            <div className="relative">
-              <select className="h-10 appearance-none rounded-lg border border-slate-200 bg-white pl-4 pr-10 text-[0.82rem] font-semibold text-slate-700 outline-none transition focus:border-brand-300 focus:ring-4 focus:ring-brand-100" onChange={(event) => setSortMode(event.target.value as SortMode)} value={sortMode}>
-                <option value="priority">Priority</option>
-                <option value="deadline">Due date</option>
-                <option value="progress">Progress</option>
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            </div>
-            <span className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-[0.82rem] font-semibold text-slate-600">Assigned: {summary.assigned}</span>
-            <span className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-[0.82rem] font-semibold text-slate-600">Overdue: {summary.overdue}</span>
-            <span className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-[0.82rem] font-semibold text-slate-600">On track: {summary.onTrack}</span>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-5 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+            <input className="h-11 w-full rounded-full border border-slate-200 bg-white pl-14 pr-5 text-[0.9rem] text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-300 focus:ring-4 focus:ring-brand-100" onChange={(event) => setSearch(event.target.value)} placeholder="Search clients, industry, or accountant..." value={search} />
           </div>
-          <div className="inline-flex w-full rounded-lg border border-slate-200 bg-slate-50 p-1 sm:w-auto min-[1120px]:justify-self-end">
+
+          <div className="border-t border-slate-100 pt-6">
+            <div className="flex flex-col gap-4 min-[980px]:flex-row min-[980px]:items-center min-[980px]:justify-between">
+              <div className="flex min-w-0 flex-wrap items-center gap-3">
+                <span className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[0.82rem] font-semibold text-slate-500">Assigned {summary.assigned}</span>
+                <span className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[0.82rem] font-semibold text-slate-500">Overdue {summary.overdue}</span>
+                <span className="rounded-full border border-slate-200 bg-white px-4 py-2 text-[0.82rem] font-semibold text-slate-500">On track {summary.onTrack}</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-3 min-[980px]:justify-end">
+                <div
+                  className="relative"
+                  onBlur={(event) => {
+                    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                      setIsSortMenuOpen(false);
+                    }
+                  }}
+                >
+                  <button
+                    aria-expanded={isSortMenuOpen}
+                    aria-haspopup="menu"
+                    aria-label="Sort clients"
+                    className={cn(
+                      "inline-flex h-10 min-w-[148px] items-center justify-between gap-3 rounded-full border border-slate-200 bg-white px-4 text-[0.82rem] font-semibold shadow-sm transition",
+                      isSortMenuOpen || sortMode !== "priority"
+                        ? "text-[#00856f] ring-1 ring-[#0a2f66]/10"
+                        : "text-[#35466d] hover:bg-slate-50 hover:text-[#091333]",
+                    )}
+                    onClick={() => setIsSortMenuOpen((current) => !current)}
+                    type="button"
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <ArrowUpDown className="h-4 w-4" />
+                      {sortMode === "priority" ? "Priority" : sortMode === "deadline" ? "Due date" : "Progress"}
+                    </span>
+                    <ChevronDown className={cn("h-4 w-4 transition", isSortMenuOpen ? "rotate-180" : "")} />
+                  </button>
+                  {isSortMenuOpen ? (
+                    <div className="absolute right-0 top-12 z-50 w-44 rounded-lg border border-slate-200 bg-white p-1.5 shadow-[0_18px_36px_rgba(4,24,52,0.14)]" role="menu">
+                      {[
+                        { id: "priority" as const, label: "Priority" },
+                        { id: "deadline" as const, label: "Due date" },
+                        { id: "progress" as const, label: "Progress" },
+                      ].map((option) => (
+                        <button
+                          className={cn(
+                            "flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-xs font-semibold transition",
+                            sortMode === option.id
+                              ? "bg-[#eaf7f0] text-[#087d69]"
+                              : "text-[#35466d] hover:bg-slate-50 hover:text-[#091333]",
+                          )}
+                          key={option.id}
+                          onClick={() => {
+                            setSortMode(option.id);
+                            setIsSortMenuOpen(false);
+                          }}
+                          role="menuitem"
+                          type="button"
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+                <div className="inline-flex rounded-full border border-slate-200 bg-slate-50 p-1">
             {[
               { id: "list" as const, label: "List", icon: Table2 },
               { id: "table" as const, label: "Grid", icon: LayoutGrid },
             ].map((mode) => {
               const Icon = mode.icon;
               return (
-                <button key={mode.id} onClick={() => setViewMode(mode.id)} type="button" className={cn("inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-md px-4 text-sm font-semibold transition sm:flex-none", viewMode === mode.id ? "bg-brand-700 text-white shadow-sm" : "text-slate-500 hover:text-slate-800")}>
+                <button key={mode.id} onClick={() => setViewMode(mode.id)} type="button" className={cn("inline-flex h-10 min-w-[84px] items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold transition", viewMode === mode.id ? "bg-brand-700 text-white shadow-[0_10px_22px_rgba(10,47,102,0.2)]" : "text-slate-500 hover:text-slate-800")}>
                   <Icon className="h-4 w-4" />
                   {mode.label}
                 </button>
               );
             })}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
+      </SurfaceCard>
 
       {visibleClients.length === 0 ? (
         <SurfaceCard><EmptyState description="Try another search or change the filter." title="No assigned clients found" /></SurfaceCard>
@@ -430,46 +485,50 @@ export function AccountantPortfolioPage() {
                           </button>
                         </div>
                         {openActionMenuId === row.id ? (
-                          <div className="absolute right-4 top-11 z-50 w-44 overflow-hidden rounded-lg border border-slate-200 bg-white p-1 text-left shadow-[0_18px_38px_rgba(15,23,42,0.16)]">
+                          <div className="absolute right-4 top-11 z-50 w-44 rounded-lg border border-slate-200 bg-white p-1.5 text-left shadow-[0_18px_36px_rgba(4,24,52,0.14)]" role="menu">
                             <button
-                              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-[0.78rem] font-semibold text-slate-700 transition hover:bg-slate-50"
+                              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs font-semibold text-[#35466d] transition hover:bg-slate-50 hover:text-[#091333]"
                               onClick={() => {
                                 setOpenActionMenuId(null);
                                 navigate(`/firm/clients/${row.clientId}`);
                               }}
+                              role="menuitem"
                               type="button"
                             >
                               <UserRound className="h-4 w-4 text-brand-700" />
                               Open client
                             </button>
                             <button
-                              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-[0.78rem] font-semibold text-slate-700 transition hover:bg-slate-50"
+                              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs font-semibold text-[#35466d] transition hover:bg-slate-50 hover:text-[#091333]"
                               onClick={() => {
                                 setOpenActionMenuId(null);
                                 navigate(`/firm/filing?client=${row.clientId}`);
                               }}
+                              role="menuitem"
                               type="button"
                             >
                               <Files className="h-4 w-4 text-brand-700" />
                               Client Filing
                             </button>
                             <button
-                              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-[0.78rem] font-semibold text-slate-700 transition hover:bg-slate-50"
+                              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs font-semibold text-[#35466d] transition hover:bg-slate-50 hover:text-[#091333]"
                               onClick={() => {
                                 setOpenActionMenuId(null);
                                 navigate(`/firm/inbox?client=${encodeURIComponent(row.clientName)}`);
                               }}
+                              role="menuitem"
                               type="button"
                             >
                               <FolderOpen className="h-4 w-4 text-brand-700" />
                               Open inbox
                             </button>
                             <button
-                              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-[0.78rem] font-semibold text-slate-700 transition hover:bg-slate-50"
+                              className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs font-semibold text-[#35466d] transition hover:bg-slate-50 hover:text-[#091333]"
                               onClick={() => {
                                 setOpenActionMenuId(null);
                                 navigate(`/firm/clients/${row.clientId}/profile`);
                               }}
+                              role="menuitem"
                               type="button"
                             >
                               <Sparkles className="h-4 w-4 text-brand-700" />

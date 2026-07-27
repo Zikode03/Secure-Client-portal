@@ -194,43 +194,6 @@ function isSameCalendarMonth(dateValue: string, monthDate: Date) {
   return date.getFullYear() === monthDate.getFullYear() && date.getMonth() === monthDate.getMonth();
 }
 
-function queuePriorityMeta(priority: WorkQueueItem["priority"]) {
-  if (priority === "high") {
-    return "bg-rose-50 text-rose-600 ring-rose-200";
-  }
-
-  if (priority === "medium") {
-    return "bg-amber-50 text-amber-600 ring-amber-200";
-  }
-
-  return "bg-brand-50 text-brand-600 ring-brand-200";
-}
-
-function queueToneClasses(tone: QueueTone) {
-  switch (tone) {
-    case "rose":
-      return {
-        border: "bg-rose-500",
-        icon: "bg-rose-50 text-rose-500 ring-rose-100",
-      };
-    case "orange":
-      return {
-        border: "bg-amber-500",
-        icon: "bg-amber-50 text-amber-500 ring-amber-100",
-      };
-    case "emerald":
-      return {
-        border: "bg-emerald-500",
-        icon: "bg-emerald-50 text-emerald-500 ring-emerald-100",
-      };
-    default:
-      return {
-        border: "bg-brand-500",
-        icon: "bg-brand-50 text-brand-600 ring-brand-100",
-      };
-  }
-}
-
 function notificationToneClasses(tone: NotificationItem["tone"]) {
   switch (tone) {
     case "danger":
@@ -407,94 +370,45 @@ function ChevronRightIcon() {
   );
 }
 
-function QueueIcon({ tone }: { tone: QueueTone }) {
-  const classes = queueToneClasses(tone);
-
-  return (
-    <div className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ring-1", classes.icon)}>
-      {tone === "rose" ? (
-        <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
-          <path
-            d="M8 3.75h6l4.25 4.25v10.25a2 2 0 0 1-2 2H8A2.25 2.25 0 0 1 5.75 18V6A2.25 2.25 0 0 1 8 3.75Z"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="1.8"
-          />
-          <path
-            d="M13.75 3.75V8h4.25"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="1.8"
-          />
-        </svg>
-      ) : tone === "orange" ? (
-        <CalendarIcon />
-      ) : tone === "emerald" ? (
-        <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
-          <path
-            d="m7.5 12.5 2.75 2.75L16.5 9"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-          />
-          <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
-        </svg>
-      ) : (
-        <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
-          <path
-            d="M7.75 5.75h8.5a2 2 0 0 1 2 2v6.5a2 2 0 0 1-2 2H11l-3.75 3v-3H7.75a2 2 0 0 1-2-2v-6.5a2 2 0 0 1 2-2Z"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="1.8"
-          />
-        </svg>
-      )}
-    </div>
-  );
-}
-
 function ClientRiskProfileChart({ rows }: { rows: PortfolioRow[] }) {
   const totalClients = Math.max(rows.length, 1);
-  const [activeSegmentId, setActiveSegmentId] = useState<string | null>(null);
+  const [activeSegmentId, setActiveSegmentId] = useState("attention");
   const segments = [
     {
       id: "attention",
       label: "Attention Needed",
       count: rows.filter((row) => row.status === "attention").length,
-      color: "#009345",
+      color: "var(--client-risk-attention)",
     },
     {
       id: "compliant",
       label: "Compliant",
       count: rows.filter((row) => row.status === "on_track").length,
-      color: "#005aa3",
+      color: "var(--client-risk-compliant)",
     },
     {
       id: "high-risk",
       label: "High Risk",
       count: rows.filter((row) => row.status === "overdue").length,
-      color: "#c65308",
+      color: "var(--client-risk-high)",
     },
   ];
-  const activeSegment = segments.find((segment) => segment.id === activeSegmentId) ?? null;
-  const activePercentage = activeSegment ? Math.round((activeSegment.count / totalClients) * 100) : null;
+  const activeSegment = segments.find((segment) => segment.id === activeSegmentId) ?? segments[0];
+  const activePercentage = Math.round((activeSegment.count / totalClients) * 100);
   const radius = 50;
   const circumference = 2 * Math.PI * radius;
   let offset = 0;
 
   return (
-    <SurfaceCard className={cn(panelClass, "relative min-h-[334px] overflow-hidden p-0")}>
-      <div className="px-5 pt-5">
-        <h2 className="text-[1rem] font-semibold text-[#091333]">Client risk profile</h2>
-        <p className="mt-2 text-[0.82rem] font-medium text-[#53617f]">Distribution of client compliance status.</p>
+    <SurfaceCard className={cn(panelClass, "client-risk-profile relative min-h-[760px] overflow-hidden p-0 sm:min-h-[850px]")}>
+      <div className="border-b border-[#e7ebf0] px-8 pb-7 pt-8">
+        <h2 className="text-xl font-medium text-[#091333]">Client risk profile</h2>
+        <p className="mt-3 text-base text-[#667085]">Distribution of client compliance status.</p>
       </div>
-      <div className="flex justify-center px-5 pt-9">
-        <svg aria-label="Client risk profile chart" className="h-[170px] w-[170px]" role="img" viewBox="0 0 140 140">
-          <circle cx="70" cy="70" fill="none" r={radius} stroke="#e5edf5" strokeWidth="26" />
+      <div className="m-7 rounded-3xl border border-[#e2e7ed] bg-[#fcfdff] px-6 py-12 sm:m-8 sm:px-8">
+      <div className="flex justify-center">
+        <svg aria-label="Client risk profile chart" className="h-[280px] w-[280px]" role="img" viewBox="0 0 140 140">
+          <circle cx="70" cy="70" fill="none" r={radius} stroke="var(--client-risk-track)" strokeWidth="26" />
           {segments.map((segment) => {
             const length = (segment.count / totalClients) * circumference;
             const dashOffset = -offset;
@@ -507,14 +421,14 @@ function ClientRiskProfileChart({ rows }: { rows: PortfolioRow[] }) {
                 className="cursor-pointer"
                 key={segment.id}
                 onMouseEnter={() => setActiveSegmentId(segment.id)}
-                onMouseLeave={() => setActiveSegmentId(null)}
+                onMouseLeave={() => undefined}
               >
                 <title>{`${segment.label}: ${segment.count} client${segment.count === 1 ? "" : "s"} (${percentage}%)`}</title>
                 <circle
                   cx="70"
                   cy="70"
                   fill="none"
-                  opacity={activeSegmentId && !isActive ? 0.45 : 1}
+                  opacity={!isActive ? 0.88 : 1}
                   r={radius}
                   stroke={segment.color}
                   strokeDasharray={`${length} ${circumference - length}`}
@@ -526,38 +440,41 @@ function ClientRiskProfileChart({ rows }: { rows: PortfolioRow[] }) {
               </g>
             ) : null;
           })}
-          <circle cx="70" cy="70" fill="#ffffff" pointerEvents="none" r="33" />
+          <circle cx="70" cy="70" fill="var(--client-risk-centre)" pointerEvents="none" r="33" />
+          <text fill="var(--client-risk-muted)" fontSize="6" letterSpacing="1.4" textAnchor="middle" x="70" y="61">FOCUS</text>
+          <text fill="var(--client-risk-heading)" fontSize="17" fontWeight="500" textAnchor="middle" x="70" y="77">{activePercentage}%</text>
+          <text fill="var(--client-risk-muted)" fontSize="7" textAnchor="middle" x="70" y="91">{activeSegment.id === "attention" ? "Needs attention" : activeSegment.label}</text>
         </svg>
       </div>
-      <div className="mx-auto mt-2 flex min-h-[38px] w-full items-center justify-center px-5">
-        <div
-          className={cn(
-            "flex min-h-[38px] w-fit items-center justify-center rounded-xl bg-[#eef4fa] px-4 text-center text-[0.76rem] font-bold text-[#091333] transition-opacity",
-            activeSegment ? "opacity-100" : "opacity-0",
-          )}
-        >
-          <span>
-            {activeSegment
-              ? `${activeSegment.label}: ${activeSegment.count} client${activeSegment.count === 1 ? "" : "s"} (${activePercentage}%)`
-              : " "}
-          </span>
+      <div className="mx-auto mt-10 max-w-[460px] overflow-hidden rounded-3xl border border-[#dfe5ec] bg-white shadow-[0_14px_34px_rgba(15,23,42,0.06)]">
+        <div className="p-6">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.16em] text-[#7a8498]">Current focus</p>
+              <p className="mt-3 text-lg font-medium text-[#091333]">{activeSegment.label}</p>
+            </div>
+            <span className="rounded-full border border-[#dfe4eb] bg-[#f8fafc] px-4 py-2 text-sm text-[#667085]">{activePercentage}% of portfolio</span>
+          </div>
+          <div className="my-6 h-px bg-[#e7ebf0]" />
+          <p className="text-sm leading-7 text-[#667085]">Hover over the chart or use the rows below to inspect each client-status segment.</p>
         </div>
-      </div>
-      <div className="flex flex-wrap items-center justify-center gap-x-7 gap-y-3 px-5 pb-5 text-[0.82rem] font-semibold text-[#091333]">
         {segments.map((segment) => (
           <button
-            className="flex items-center gap-2 rounded-lg px-1 py-0.5 transition hover:bg-[#eef4fa]"
+            className={cn("flex w-full items-center gap-4 border-t border-[#e7ebf0] px-6 py-5 text-left transition hover:bg-[#f8fafc]", activeSegmentId === segment.id && "bg-[#fbfcfe]")}
             key={segment.id}
-            onBlur={() => setActiveSegmentId(null)}
             onFocus={() => setActiveSegmentId(segment.id)}
             onMouseEnter={() => setActiveSegmentId(segment.id)}
-            onMouseLeave={() => setActiveSegmentId(null)}
             type="button"
           >
-            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: segment.color }} />
-            <span>{segment.label}</span>
+            <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: segment.color }} />
+            <span className="min-w-0 flex-1">
+              <span className="block text-base font-medium text-[#091333]">{segment.label}</span>
+              <span className="mt-1 block text-sm text-[#667085]">{segment.count} client{segment.count === 1 ? "" : "s"}</span>
+            </span>
+            <span className="text-sm text-[#53617f]">{Math.round((segment.count / totalClients) * 100)}%</span>
           </button>
         ))}
+      </div>
       </div>
     </SurfaceCard>
   );
@@ -574,8 +491,8 @@ function ComplianceHealthTrendChart({ rows }: { rows: PortfolioRow[] }) {
   }));
   const yTicks = [40, 55, 70, 85, 100];
   const width = 760;
-  const height = 300;
-  const padding = { top: 42, right: 36, bottom: 42, left: 38 };
+  const height = 390;
+  const padding = { top: 52, right: 28, bottom: 44, left: 48 };
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
   const minValue = 40;
@@ -588,20 +505,20 @@ function ComplianceHealthTrendChart({ rows }: { rows: PortfolioRow[] }) {
   const linePoints = points.map((point) => `${point.x},${point.y}`).join(" ");
 
   return (
-    <SurfaceCard className={cn(panelClass, "relative overflow-hidden p-0")}>
-      <div className="px-5 pt-5">
-        <h2 className="text-[1rem] font-semibold text-[#091333]">Compliance health trend</h2>
-        <p className="mt-2 text-[0.82rem] font-medium text-[#53617f]">Monthly compliance performance across all clients.</p>
+    <SurfaceCard className={cn(panelClass, "relative min-h-[560px] overflow-hidden p-0")}>
+      <div className="px-10 pt-10">
+        <h2 className="text-xl font-medium text-[#091333]">Compliance health trend</h2>
+        <p className="mt-4 text-base text-[#667085]">Monthly compliance performance across all clients.</p>
       </div>
-      <div className="px-2 pb-4 pt-4 sm:px-5">
+      <div className="px-4 pb-8 pt-6 sm:px-10">
         <svg aria-label="Compliance health trend chart" className="h-auto w-full" role="img" viewBox={`0 0 ${width} ${height}`}>
           {yTicks.map((tick) => {
             const y = padding.top + ((maxValue - tick) / (maxValue - minValue)) * chartHeight;
             return (
               <g key={tick}>
                 <line
-                  stroke="#d9e4ef"
-                  strokeDasharray="3 4"
+                  stroke="#d7dee7"
+                  strokeDasharray="4 5"
                   strokeWidth="1"
                   x1={padding.left}
                   x2={width - padding.right}
@@ -740,7 +657,7 @@ export function AccountantDashboardPage() {
     () =>
       [...scopedPortfolio]
         .sort((left, right) => portfolioRank(right) - portfolioRank(left))
-        .slice(0, 6),
+        .slice(0, 3),
     [scopedPortfolio],
   );
 
@@ -804,6 +721,11 @@ export function AccountantDashboardPage() {
       ),
     [calendarPreviewDate, sortedCalendarDeadlines],
   );
+  const calendarMonthDeadlines = useMemo(
+    () => sortedCalendarDeadlines.filter((item) => isSameCalendarMonth(item.dueDate, calendarPreviewDate)),
+    [calendarPreviewDate, sortedCalendarDeadlines],
+  );
+  const nextCalendarDeadline = calendarMonthDeadlines[0];
 
   const notificationPreview = useMemo(() => data.notifications.slice(0, 4), [data.notifications]);
 
@@ -1159,28 +1081,28 @@ export function AccountantDashboardPage() {
 
       <section className="grid gap-5">
         <SurfaceCard className={cn(panelClass, "min-w-0 overflow-hidden p-0")}>
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e6edf4] bg-[#fbfdff] px-5 pb-4 pt-5">
+          <div className="flex flex-wrap items-center justify-between gap-6 border-b border-[#e7ebf0] px-8 pb-7 pt-8">
             <div>
-              <h2 className="text-[1.05rem] font-semibold text-[#091333]">
+              <h2 className="text-xl font-medium text-[#091333]">
                 {isAdmin ? "Firm clients" : "My assigned clients"}
               </h2>
-              <p className="mt-1 text-[0.76rem] font-medium text-[#53617f]">
+              <p className="mt-3 text-base text-[#667085]">
                 {isAdmin
                   ? "Overview of the firm client portfolio and current pack progress."
                   : "Overview of your clients and pack progress."}
               </p>
             </div>
-            <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-              <label className="relative min-w-[190px] flex-1 sm:flex-none">
+            <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
+              <label className="relative min-w-[250px] flex-1 sm:flex-none">
                 <span className="sr-only">Search clients</span>
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-brand-500">
-                  <svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
+                <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-brand-500">
+                  <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24">
                     <circle cx="11" cy="11" r="6.5" stroke="currentColor" strokeWidth="2" />
                     <path d="m16 16 4 4" stroke="currentColor" strokeLinecap="round" strokeWidth="2" />
                   </svg>
                 </span>
                 <input
-                  className="h-9 w-full rounded-lg border border-[#dce6ef] bg-white pl-9 pr-3 text-[0.74rem] font-medium text-[#091333] outline-none transition placeholder:text-[#7d8aa3] focus:border-brand-400 focus:ring-4 focus:ring-brand-100 sm:w-[205px]"
+                  className="h-12 w-full rounded-xl border border-[#dce6ef] bg-white pl-11 pr-4 text-sm text-[#091333] outline-none transition placeholder:text-[#7d8aa3] focus:border-brand-400 focus:ring-4 focus:ring-brand-100 sm:w-[270px]"
                   onChange={(event) => setClientSearch(event.target.value)}
                   placeholder="Search clients..."
                   value={clientSearch}
@@ -1196,7 +1118,7 @@ export function AccountantDashboardPage() {
                 </Button>
               ) : null}
               <Button
-                className={cn(dashboardActionButtonClass, "h-9 rounded-lg border-0 px-3 text-[0.74rem] ring-0")}
+                className="assigned-clients-export-button h-12 rounded-xl border-0 px-5 text-sm ring-0"
                 onClick={handleExportView}
               >
                 <svg aria-hidden="true" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
@@ -1210,7 +1132,7 @@ export function AccountantDashboardPage() {
 
           {assignedClients.length > 0 ? (
             <>
-              <div className="hidden grid-cols-[minmax(140px,1.45fr)_minmax(112px,0.95fr)_minmax(98px,0.78fr)_minmax(64px,0.48fr)_minmax(68px,0.5fr)] gap-3 border-b border-[#edf2f7] py-3 pl-4 pr-8 text-[0.58rem] font-bold uppercase tracking-[0.08em] text-[#73809a] lg:grid">
+              <div className="hidden grid-cols-[minmax(180px,1.45fr)_minmax(150px,0.95fr)_minmax(135px,0.78fr)_minmax(80px,0.48fr)_minmax(85px,0.5fr)] gap-5 border-b border-[#edf2f7] px-8 py-5 text-xs font-medium uppercase tracking-[0.12em] text-[#73809a] lg:grid">
                 <div>Client</div>
                 <div>Pack progress</div>
                 <div>Due date</div>
@@ -1227,27 +1149,27 @@ export function AccountantDashboardPage() {
 
                   return (
                     <button
-                      className="w-full space-y-3 py-3 pl-4 pr-8 text-left transition lg:grid lg:grid-cols-[minmax(140px,1.45fr)_minmax(112px,0.95fr)_minmax(98px,0.78fr)_minmax(64px,0.48fr)_minmax(68px,0.5fr)] lg:items-center lg:gap-3 lg:space-y-0"
+                      className="w-full space-y-4 px-8 py-7 text-left transition hover:bg-slate-50 lg:grid lg:grid-cols-[minmax(180px,1.45fr)_minmax(150px,0.95fr)_minmax(135px,0.78fr)_minmax(80px,0.48fr)_minmax(85px,0.5fr)] lg:items-center lg:gap-5 lg:space-y-0"
                       key={row.id}
                       onClick={() => openClientWorkspace(row)}
                       type="button"
                     >
                       <div className="flex min-w-0 items-center gap-3">
-                        <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[0.68rem] font-bold ring-1", rowAccentClass(index))}>
+                        <div className={cn("flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-sm font-medium ring-1", rowAccentClass(index))}>
                           {getInitials(row.clientName)}
                         </div>
                         <div className="min-w-0">
-                          <p className="truncate text-[0.74rem] font-bold leading-5 text-[#091333]">
+                          <p className="truncate text-base font-medium leading-6 text-[#091333]">
                             {row.clientName}
                           </p>
-                          <p className="truncate text-[0.63rem] font-semibold text-[#53617f]">
+                          <p className="mt-1 truncate text-sm text-[#667085]">
                             {row.monthLabel} Pack
                           </p>
                         </div>
                       </div>
 
                       <div className="space-y-1.5">
-                        <div className="flex items-center justify-between text-[0.72rem] font-bold text-[#091333]">
+                        <div className="flex items-center justify-between text-sm font-medium text-[#091333]">
                           <span>{row.progressPercent}%</span>
                         </div>
                         <div className="client-dashboard-progress-track h-1.5 overflow-hidden rounded-full">
@@ -1256,7 +1178,7 @@ export function AccountantDashboardPage() {
                             style={{ width: `${Math.min(Math.max(row.progressPercent, 0), 100)}%` }}
                           />
                         </div>
-                        <p className="truncate text-[0.62rem] font-medium text-[#53617f]">
+                        <p className="truncate text-sm text-[#667085]">
                           {row.missingCount} missing <span className="text-slate-300">|</span>{" "}
                           <span className={row.overdueCount > 0 ? "text-rose-600" : "text-slate-500"}>
                             {row.overdueCount} overdue
@@ -1265,17 +1187,17 @@ export function AccountantDashboardPage() {
                       </div>
 
                       <div className="space-y-0.5">
-                        <p className={cn("truncate text-[0.7rem] font-bold", due.textClass)}>{due.label}</p>
-                        <p className="truncate text-[0.62rem] font-medium text-[#53617f]">{due.detail}</p>
+                        <p className={cn("truncate text-sm font-medium", due.textClass)}>{due.label}</p>
+                        <p className="mt-2 truncate text-sm text-[#667085]">{due.detail}</p>
                       </div>
 
                       <div className="flex items-center justify-start">
-                        <span className={cn("inline-flex rounded-md px-2 py-1 text-[0.6rem] font-bold ring-1 ring-inset", risk.className)}>
+                        <span className={cn("inline-flex rounded-full px-3 py-2 text-sm font-medium ring-1 ring-inset", risk.className)}>
                           {risk.label}
                         </span>
                       </div>
 
-                      <div className={cn("flex items-center gap-1.5 text-[0.62rem] font-bold", status.textClass)}>
+                      <div className={cn("flex items-center gap-2 text-sm font-medium", status.textClass)}>
                         <span className={cn("h-1.5 w-1.5 rounded-full", status.dotClass)} />
                         <span>{status.label}</span>
                       </div>
@@ -1312,35 +1234,41 @@ export function AccountantDashboardPage() {
         </SurfaceCard>
 
         <SurfaceCard className={cn(panelClass, "min-w-0 overflow-hidden p-0")}>
-          <div className="space-y-4 border-b border-[#e6edf4] bg-[#fbfdff] px-5 pb-5 pt-5">
-            <div>
-              <h2 className="text-[1.2rem] font-semibold text-[#091333]">
-                {isAdmin ? "Firm work queue" : "My work queue"}
-              </h2>
-              <p className="mt-1 text-[0.86rem] text-[#53617f]">
+          <div className="border-b border-[#e7ebf0] px-8 pb-6 pt-8">
+            <div className="flex flex-wrap items-start justify-between gap-5">
+              <div>
+                <div className="flex flex-wrap items-center gap-5">
+                  <h2 className="text-xl font-medium text-[#091333]">
+                    {isAdmin ? "Firm work queue" : "My work queue"}
+                  </h2>
+                  <button className="text-sm font-medium text-[#25324d] hover:text-brand-600" onClick={() => navigate(activeQueueTab === "reviews" ? "/firm/review" : "/firm/compliance")} type="button">View all tasks</button>
+                </div>
+                <p className="mt-3 text-base text-[#667085]">
                 {isAdmin
                   ? "Reviews and deadline items visible across the firm."
-                  : "Tasks that need your attention."}
-              </p>
+                  : "Your next three tasks, in the order to tackle them."}
+                </p>
+              </div>
+              <span className="rounded-full border border-[#dfe4eb] bg-[#f8fafc] px-4 py-2 text-sm text-[#667085]">Showing {Math.min(3, workQueueByTab[activeQueueTab].length)} tasks</span>
             </div>
-            <div className="flex flex-wrap items-center gap-5">
+            <div className="mt-6 flex flex-wrap items-center gap-6">
               {[
                 { id: "reviews" as const, label: "Reviews", count: queueCounts.reviews },
                 { id: "deadlines" as const, label: "Deadlines", count: queueCounts.deadlines },
               ].map((item) => (
                 <button
                   className={cn(
-                    "flex items-center gap-2 border-b-2 px-0.5 pb-2 text-sm transition",
+                    "flex items-center gap-2 border-b-2 px-0.5 pb-3 text-base transition",
                     activeQueueTab === item.id
-                      ? "border-[#0b4f5f] client-dashboard-link"
-                      : "border-transparent client-dashboard-link",
+                      ? "border-[#253b70] text-[#253b70]"
+                      : "border-transparent text-[#667085]",
                   )}
                   key={item.id}
                   onClick={() => setActiveQueueTab(item.id)}
                   type="button"
                 >
                   <span>{item.label}</span>
-                  <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[0.72rem] font-semibold text-slate-500">
+                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500">
                     {item.count}
                   </span>
                 </button>
@@ -1349,61 +1277,36 @@ export function AccountantDashboardPage() {
           </div>
 
           {workQueueByTab[activeQueueTab].length > 0 ? (
-            <>
-              <div className="divide-y divide-slate-100">
-                {workQueueByTab[activeQueueTab].map((item) => {
-                  const tone = queueToneClasses(item.tone);
-
-                  return (
+              <div className="px-8 pb-6">
+                <div className="hidden grid-cols-[minmax(260px,1.3fr)_minmax(210px,0.9fr)_90px] gap-8 border-b border-[#e7ebf0] px-5 py-5 text-xs font-medium uppercase tracking-[0.14em] text-[#7a8498] lg:grid">
+                  <span>Task</span><span>Details</span><span>Action</span>
+                </div>
+                <div className="divide-y divide-[#e7ebf0]">
+                {workQueueByTab[activeQueueTab].slice(0, 3).map((item) => (
                     <button
-                      className="relative flex w-full items-start gap-3 px-5 py-4 text-left transition hover:bg-slate-50 dark:hover:bg-[#132542]"
+                      className="grid w-full gap-5 px-5 py-6 text-left transition hover:bg-slate-50 lg:grid-cols-[minmax(260px,1.3fr)_minmax(210px,0.9fr)_90px] lg:items-center lg:gap-8"
                       key={item.id}
                       onClick={item.onOpen}
                       type="button"
                     >
-                      <span className={cn("absolute left-0 top-5 h-10 w-1 rounded-r-full", tone.border)} />
-                      <QueueIcon tone={item.tone} />
-                      <div className="min-w-0 flex-1 space-y-1">
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="text-[0.96rem] font-semibold text-slate-950">
-                              {item.title}
-                            </p>
-                            <p className="mt-1 text-[0.82rem] text-slate-500">{item.subtitle}</p>
-                          </div>
-                          <span
-                            className={cn(
-                              "inline-flex rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset",
-                              queuePriorityMeta(item.priority),
-                            )}
-                          >
-                            {item.priority[0].toUpperCase()}
-                            {item.priority.slice(1)}
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between gap-3 pt-1">
-                          <p className="text-[0.8rem] text-slate-500">{item.meta}</p>
-                          <span className="text-slate-400">
-                            <ChevronRightIcon />
-                          </span>
+                      <div className="flex min-w-0 items-center gap-4">
+                        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-[#dfe4eb] bg-[#f8fafc] text-[#42557f]">
+                          <svg aria-hidden="true" className="h-6 w-6" fill="none" viewBox="0 0 24 24"><path d="M7.5 3.75h6.25l3.75 3.75v12.75H7.5a2 2 0 0 1-2-2V5.75a2 2 0 0 1 2-2Z" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.7"/><path d="M13.5 3.75V8h4M9 12h5.5M9 15.5h5.5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.7"/></svg>
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate text-base font-medium text-[#091333]">{item.title}</p>
+                          <p className="mt-2 truncate text-sm text-[#667085]">{item.subtitle}</p>
                         </div>
                       </div>
+                      <div>
+                        <p className="text-sm text-[#667085]">{item.meta}</p>
+                        <p className="mt-3 text-xs font-medium uppercase tracking-[0.1em] text-[#8a94a8]">{item.tab === "reviews" ? "Review" : "Deadline"} · {item.priority} priority</p>
+                      </div>
+                      <span className="text-sm font-medium text-[#25324d]">Open</span>
                     </button>
-                  );
-                })}
+                ))}
+                </div>
               </div>
-
-              <button
-                className={cn(dashboardLinkClass, "flex w-full items-center gap-2 px-5 py-4 text-left text-sm")}
-                onClick={() =>
-                  navigate(activeQueueTab === "reviews" ? "/firm/review" : "/firm/compliance")
-                }
-                type="button"
-              >
-                <span>View all tasks</span>
-                <ChevronRightIcon />
-              </button>
-            </>
           ) : (
             <div className="px-5 py-8">
               <EmptyState
@@ -1415,27 +1318,29 @@ export function AccountantDashboardPage() {
         </SurfaceCard>
       </section>
 
-      <section className="grid gap-5 lg:grid-cols-2 lg:items-start">
+      <section className="grid gap-8 lg:grid-cols-2 lg:items-stretch">
         <SurfaceCard className={cn(panelClass, "min-w-0 overflow-hidden p-0")}>
-          <div className="flex items-center justify-between gap-3 border-b border-[#edf2f7] bg-[#fbfdff] px-5 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-5 border-b border-[#e7ebf0] px-8 pb-7 pt-8">
             <div>
-              <h2 className="text-[1rem] font-semibold text-[#091333]">Compliance calendar</h2>
+              <h2 className="text-xl font-medium text-[#091333]">Compliance calendar</h2>
+              <p className="mt-3 text-base text-[#667085]">
+                {calendarMonthDeadlines.length} deadline{calendarMonthDeadlines.length === 1 ? "" : "s"} in {monthPreviewLabel(calendarPreviewDate.toISOString())}
+              </p>
             </div>
-            <button
-              className={cn(dashboardLinkClass, "inline-flex items-center gap-1.5 text-[0.72rem]")}
-              onClick={() => navigate("/firm/compliance/calendar")}
-              type="button"
-            >
-              <span>View full calendar</span>
-              <ChevronRightIcon />
-            </button>
+            <div className="flex items-center gap-4">
+              <button className="rounded-full border border-[#dfe4eb] px-5 py-3 text-sm font-medium text-[#25324d] transition hover:bg-slate-50" onClick={() => setCalendarPreviewDate(new Date(accountantDashboardDate))} type="button">Today</button>
+              <button className="text-sm font-medium text-[#25324d] transition hover:text-brand-600" onClick={() => navigate("/firm/compliance/calendar")} type="button">View full calendar</button>
+            </div>
           </div>
 
-          <div className="min-h-[268px]">
-            <div className="min-w-0 p-5">
-              <div className="mb-4 flex items-center justify-between">
+          <div className="min-w-0 px-8 py-7">
+              <div className="mb-6 flex flex-wrap gap-3 text-sm text-[#667085]">
+                <span className="rounded-full border border-[#dfe4eb] bg-[#f8fafc] px-4 py-2">{calendarMonthDeadlines.length} deadline{calendarMonthDeadlines.length === 1 ? "" : "s"} this month</span>
+                {nextCalendarDeadline ? <span className="rounded-full border border-[#dfe4eb] px-4 py-2">Next due {formatDateLabel(nextCalendarDeadline.dueDate)}</span> : null}
+              </div>
+              <div className="mb-7 flex items-center justify-between rounded-3xl border border-[#e2e7ed] bg-[#fcfdff] px-5 py-3">
                 <button
-                  className={cn(dashboardLinkClass)}
+                  className="flex h-12 w-12 items-center justify-center rounded-full border border-[#dfe4eb] text-[#314268] transition hover:bg-white"
                   onClick={() =>
                     setCalendarPreviewDate((current) => new Date(current.getFullYear(), current.getMonth() - 1, 1))
                   }
@@ -1446,9 +1351,9 @@ export function AccountantDashboardPage() {
                     <ChevronRightIcon />
                   </span>
                 </button>
-                <p className="text-[0.74rem] font-bold text-[#091333]">{monthPreviewLabel(calendarPreviewDate.toISOString())}</p>
+                <p className="text-lg font-medium tracking-wide text-[#091333]">{monthPreviewLabel(calendarPreviewDate.toISOString())}</p>
                 <button
-                  className={cn(dashboardLinkClass)}
+                  className="flex h-12 w-12 items-center justify-center rounded-full border border-[#dfe4eb] text-[#314268] transition hover:bg-white"
                   onClick={() =>
                     setCalendarPreviewDate((current) => new Date(current.getFullYear(), current.getMonth() + 1, 1))
                   }
@@ -1458,33 +1363,50 @@ export function AccountantDashboardPage() {
                   <ChevronRightIcon />
                 </button>
               </div>
-              <div className="grid grid-cols-7 gap-1.5 text-center">
+              <div className="grid grid-cols-7 gap-x-2 gap-y-4 rounded-3xl border border-[#e2e7ed] px-4 py-6 text-center sm:px-6">
                 {weekDayShortLabels().map((label) => (
-                  <div className="py-1 text-[0.55rem] font-bold uppercase tracking-[0.08em] text-[#73809a]" key={label}>
+                  <div className="py-1 text-xs font-medium uppercase tracking-[0.1em] text-[#73809a]" key={label}>
                     {label}
                   </div>
                 ))}
                 {compactMonthDays(calendarPreviewDate.toISOString()).map((cell, index) => (
-                  <div className="flex h-8 items-center justify-center" key={`${cell.day ?? "blank"}-${index}`}>
+                  <div className="flex h-10 items-center justify-center" key={`${cell.day ?? "blank"}-${index}`}>
                     {cell.day ? (
                       <span
                         className={cn(
-                          "relative flex h-8 w-full items-center justify-center rounded-lg text-[0.68rem] font-bold",
+                          "relative flex h-10 w-10 items-center justify-center rounded-full text-sm font-medium",
                           cell.isActive
                             ? "bg-[#091333] text-white"
-                            : "bg-[#f4f7fb] text-[#53617f]",
+                            : calendarEventDays.has(cell.day) ? "border border-amber-300 bg-amber-50 text-[#091333]" : "text-[#53617f]",
                         )}
                       >
                         {cell.day}
                         {calendarEventDays.has(cell.day) ? (
-                          <span className="absolute -bottom-0.5 h-1 w-1 rounded-full bg-amber-500" />
+                          <span className="absolute bottom-0.5 h-1.5 w-1.5 rounded-full bg-amber-500" />
                         ) : null}
                       </span>
                     ) : null}
                   </div>
                 ))}
               </div>
-            </div>
+              <div className="mt-8 border-t border-[#e7ebf0] pt-7">
+                <p className="mb-5 text-xs font-medium uppercase tracking-[0.16em] text-[#7a8498]">Agenda</p>
+                {calendarMonthDeadlines.length > 0 ? (
+                  <div className="space-y-3">
+                    {calendarMonthDeadlines.slice(0, 3).map((item) => {
+                      const days = dayDifference(item.dueDate);
+                      return <button className="w-full rounded-3xl border border-[#e2e7ed] p-5 text-left transition hover:bg-[#fbfcfe]" key={item.id} onClick={() => navigate("/firm/compliance")} type="button">
+                        <div className="flex items-center justify-between gap-4">
+                          <span className="flex items-center gap-3 text-sm font-medium text-[#091333]"><span className="h-2.5 w-2.5 rounded-full bg-amber-500" />{formatDateLabel(item.dueDate)}</span>
+                          <span className="rounded-full bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">{days < 0 ? `${Math.abs(days)}d overdue` : days === 0 ? "Due today" : `Due in ${days}d`}</span>
+                        </div>
+                        <p className="mt-4 text-lg font-medium text-[#091333]">{item.label}</p>
+                        <p className="mt-2 text-sm text-[#667085]">Owner: {item.owner}</p>
+                      </button>;
+                    })}
+                  </div>
+                ) : <p className="text-sm text-[#667085]">No deadlines scheduled for this month.</p>}
+              </div>
           </div>
         </SurfaceCard>
 

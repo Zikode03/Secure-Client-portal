@@ -534,6 +534,7 @@ export function ClientMonthlyPacksPage() {
         clientName={clientName ?? user?.company ?? "Apex Trading Ltd"}
         existingFileNames={existingSlotFileNames}
         isOpen={uploadModal.isOpen}
+        modalClassName="rounded-lg border-slate-200/80 shadow-[0_18px_44px_rgba(4,24,52,0.14)]"
         onClose={uploadModal.close}
         onUploaded={uploadToSlot}
         selectedSlot={selectedSlot}

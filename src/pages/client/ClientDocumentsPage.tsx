@@ -26,6 +26,7 @@ import {
   statusToTone,
   toneToAccentClass,
 } from "../../utils/formatters";
+import { cn } from "../../utils/cn";
 
 const pageSize = 8;
 
@@ -99,9 +100,9 @@ function EyeIcon() {
 function MoreIcon() {
   return (
     <svg aria-hidden="true" className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-      <circle cx="5" cy="12" r="1.7" />
       <circle cx="12" cy="12" r="1.7" />
-      <circle cx="19" cy="12" r="1.7" />
+      <circle cx="12" cy="5" r="1.7" />
+      <circle cx="12" cy="19" r="1.7" />
     </svg>
   );
 }
@@ -241,6 +242,45 @@ function ResultTypeIcon({ result }: { result: UnifiedSearchResult }) {
   );
 }
 
+function CompactFileIcon() {
+  return (
+    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-slate-50 text-[#091333] ring-1 ring-slate-200">
+      <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
+        <path
+          d="M8 4.75h8A2.25 2.25 0 0 1 18.25 7v10A2.25 2.25 0 0 1 16 19.25H8A2.25 2.25 0 0 1 5.75 17V7A2.25 2.25 0 0 1 8 4.75Z"
+          stroke="currentColor"
+          strokeWidth="1.8"
+        />
+        <path
+          d="M9 9.25h6M9 12h6M9 14.75h3.5"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeWidth="1.8"
+        />
+      </svg>
+    </span>
+  );
+}
+
+function initialsFromName(value: string) {
+  const words = value.trim().split(/\s+/).filter(Boolean);
+  const first = words[0]?.[0] ?? "";
+  const second = words[1]?.[0] ?? "";
+  return `${first}${second}`.toUpperCase() || "U";
+}
+
+function avatarClassForName(value: string) {
+  const classes = [
+    "bg-rose-100 text-rose-700",
+    "bg-amber-100 text-amber-800",
+    "bg-emerald-100 text-emerald-700",
+    "bg-sky-100 text-sky-700",
+    "bg-indigo-100 text-indigo-700",
+  ];
+  const index = value.split("").reduce((total, character) => total + character.charCodeAt(0), 0);
+  return classes[index % classes.length];
+}
+
 function downloadCsv(fileName: string, rows: string[][]) {
   const csv = rows.map((row) => row.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(",")).join("\n");
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -260,21 +300,6 @@ function downloadTextFile(fileName: string, content: string) {
   link.download = fileName;
   link.click();
   window.URL.revokeObjectURL(url);
-}
-
-function toneDotClass(tone: Tone) {
-  switch (tone) {
-    case "success":
-      return "bg-emerald-500";
-    case "warning":
-      return "bg-amber-500";
-    case "danger":
-      return "bg-rose-500";
-    case "info":
-      return "bg-brand-500";
-    default:
-      return "bg-slate-400";
-  }
 }
 
 function normaliseValue(value: string) {
@@ -363,6 +388,79 @@ function createDefaultFilters(): UnifiedSearchFilters {
     uploadedBy: "",
     reviewedBy: "",
   };
+}
+
+function DocumentFilterMenu({
+  label,
+  onChange,
+  options,
+  value,
+}: {
+  label: string;
+  onChange: (value: string) => void;
+  options: { label: string; value: string }[];
+  value: string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const selectedOption = options.find((option) => option.value === value);
+  const displayValue = selectedOption?.label ?? options[0]?.label ?? "All";
+
+  return (
+    <div
+      className="space-y-2"
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          setIsOpen(false);
+        }
+      }}
+    >
+      <span className="text-sm font-medium text-slate-600">{label}</span>
+      <div className="relative" onClick={(event) => event.stopPropagation()}>
+        <button
+          aria-expanded={isOpen}
+          aria-haspopup="menu"
+          className={cn(
+            "flex h-12 w-full items-center justify-between gap-3 rounded-full border border-slate-200 bg-white px-4 text-left text-sm font-semibold shadow-sm transition",
+            isOpen || value
+              ? "text-[#00856f] ring-1 ring-[#0a2f66]/10"
+              : "text-[#35466d] hover:bg-slate-50 hover:text-[#091333]",
+          )}
+          onClick={() => setIsOpen((current) => !current)}
+          type="button"
+        >
+          <span className="truncate">{displayValue}</span>
+          <ChevronDownIcon />
+        </button>
+
+        {isOpen ? (
+          <div
+            className="absolute left-0 top-14 z-50 max-h-64 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white p-1.5 shadow-[0_18px_36px_rgba(4,24,52,0.14)]"
+            role="menu"
+          >
+            {options.map((option) => (
+              <button
+                className={cn(
+                  "flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-xs font-semibold transition",
+                  value === option.value
+                    ? "bg-[#eaf7f0] text-[#087d69]"
+                    : "text-[#35466d] hover:bg-slate-50 hover:text-[#091333]",
+                )}
+                key={option.value || option.label}
+                onClick={() => {
+                  onChange(option.value);
+                  setIsOpen(false);
+                }}
+                role="menuitem"
+                type="button"
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
 }
 
 export function ClientDocumentsPage() {
@@ -793,68 +891,29 @@ export function ClientDocumentsPage() {
             </div>
           </label>
 
-          <label className="space-y-2">
-            <span className="text-sm font-medium text-slate-600">Month</span>
-            <div className="flex h-12 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 shadow-sm">
-              <select
-                className="w-full appearance-none border-none bg-transparent text-sm text-slate-900 outline-none"
-                onChange={(event) =>
-                  setFilters((current) => ({ ...current, month: event.target.value }))
-                }
-                value={filters.month}
-              >
-                <option value="">All periods</option>
-                {monthOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-              <CalendarIcon />
-            </div>
-          </label>
+          <DocumentFilterMenu
+            label="Month"
+            onChange={(value) => setFilters((current) => ({ ...current, month: value }))}
+            options={[{ label: "All periods", value: "" }, ...monthOptions.map((option) => ({ label: option, value: option }))]}
+            value={filters.month}
+          />
 
-          <label className="space-y-2">
-            <span className="text-sm font-medium text-slate-600">Status</span>
-            <div className="flex h-12 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 shadow-sm">
-              <select
-                className="w-full appearance-none border-none bg-transparent text-sm text-slate-900 outline-none"
-                onChange={(event) =>
-                  setFilters((current) => ({ ...current, status: event.target.value }))
-                }
-                value={filters.status}
-              >
-                <option value="">All statuses</option>
-                {statusOptions.map((option) => (
-                  <option key={option} value={option.toLowerCase()}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-              <ChevronDownIcon />
-            </div>
-          </label>
+          <DocumentFilterMenu
+            label="Status"
+            onChange={(value) => setFilters((current) => ({ ...current, status: value }))}
+            options={[
+              { label: "All statuses", value: "" },
+              ...statusOptions.map((option) => ({ label: option, value: option.toLowerCase() })),
+            ]}
+            value={filters.status}
+          />
 
-          <label className="space-y-2">
-            <span className="text-sm font-medium text-slate-600">Document type</span>
-            <div className="flex h-12 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 shadow-sm">
-              <select
-                className="w-full appearance-none border-none bg-transparent text-sm text-slate-900 outline-none"
-                onChange={(event) =>
-                  setFilters((current) => ({ ...current, documentType: event.target.value }))
-                }
-                value={filters.documentType}
-              >
-                <option value="">All types</option>
-                {documentTypeOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-              <ChevronDownIcon />
-            </div>
-          </label>
+          <DocumentFilterMenu
+            label="Document type"
+            onChange={(value) => setFilters((current) => ({ ...current, documentType: value }))}
+            options={[{ label: "All types", value: "" }, ...documentTypeOptions.map((option) => ({ label: option, value: option }))]}
+            value={filters.documentType}
+          />
 
           <div className="space-y-2">
             <span className="text-sm font-medium text-slate-600">More filters</span>
@@ -912,164 +971,222 @@ export function ClientDocumentsPage() {
               />
             </label>
 
-            <label className="space-y-2">
-              <span className="text-sm font-medium text-slate-600">Required / optional</span>
-              <select
-                className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm text-slate-900 outline-none transition focus:border-brand-400 focus:ring-4 focus:ring-brand-100"
-                onChange={(event) =>
-                  setFilters((current) => ({ ...current, requiredFlag: event.target.value }))
-                }
-                value={filters.requiredFlag}
-              >
-                <option value="all">All items</option>
-                <option value="required">Required only</option>
-                <option value="optional">Optional only</option>
-              </select>
-            </label>
+            <DocumentFilterMenu
+              label="Required / optional"
+              onChange={(value) => setFilters((current) => ({ ...current, requiredFlag: value }))}
+              options={[
+                { label: "All items", value: "all" },
+                { label: "Required only", value: "required" },
+                { label: "Optional only", value: "optional" },
+              ]}
+              value={filters.requiredFlag}
+            />
 
-            <label className="space-y-2">
-              <span className="text-sm font-medium text-slate-600">Expiry status</span>
-              <select
-                className="h-11 w-full rounded-xl border border-slate-200 px-3 text-sm text-slate-900 outline-none transition focus:border-brand-400 focus:ring-4 focus:ring-brand-100"
-                onChange={(event) =>
-                  setFilters((current) => ({ ...current, expiryStatus: event.target.value }))
-                }
-                value={filters.expiryStatus}
-              >
-                <option value="">Any expiry state</option>
-                <option value="expiring_soon">Expiring soon</option>
-                <option value="expired">Expired</option>
-              </select>
-            </label>
+            <DocumentFilterMenu
+              label="Expiry status"
+              onChange={(value) => setFilters((current) => ({ ...current, expiryStatus: value }))}
+              options={[
+                { label: "Any expiry state", value: "" },
+                { label: "Expiring soon", value: "expiring_soon" },
+                { label: "Expired", value: "expired" },
+              ]}
+              value={filters.expiryStatus}
+            />
           </div>
         ) : null}
       </SurfaceCard>
 
       <section className="grid gap-5">
-        <SurfaceCard className="overflow-hidden rounded-[1.5rem] border border-slate-200/80 bg-white p-0 shadow-[0_20px_45px_rgba(15,23,42,0.05)]">
-          <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 pb-4 pt-5">
-            <div className="flex items-center gap-3">
-              <h2 className="text-[1.08rem] font-semibold text-slate-950">Search results</h2>
-              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[0.72rem] font-semibold text-slate-500">
-                {sortedResults.length} results
-              </span>
-            </div>
-
-            <label className="flex items-center gap-2 text-sm text-slate-500">
-              <span>Sort:</span>
-              <select
-                className="border-none bg-transparent font-medium text-slate-700 outline-none"
-                onChange={(event) => setSortDirection(event.target.value as SortDirection)}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-[1.08rem] font-semibold text-[#091333]">Recent files</h2>
+            <div className="w-44">
+              <DocumentFilterMenu
+                label="Sort"
+                onChange={(value) => setSortDirection(value as SortDirection)}
+                options={[
+                  { label: "Newest first", value: "newest" },
+                  { label: "Oldest first", value: "oldest" },
+                ]}
                 value={sortDirection}
-              >
-                <option value="newest">Newest first</option>
-                <option value="oldest">Oldest first</option>
-              </select>
-            </label>
+              />
+            </div>
           </div>
 
           {sortedResults.length > 0 ? (
-            <>
-              <div className="hidden grid-cols-[minmax(0,1.9fr)_0.95fr_0.95fr_24px] gap-4 border-b border-slate-100 px-5 py-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-slate-400 lg:grid">
-                <span>Document</span>
-                <span>Updated</span>
-                <span>Status</span>
-                <span />
-              </div>
+            <div className="grid gap-4 md:grid-cols-3">
+              {sortedResults.slice(0, 3).map((result) => {
+                const uploader = result.uploadedBy ?? result.clientName;
+                return (
+                  <button
+                    className="flex min-h-[86px] items-center gap-4 rounded-lg border border-slate-200 bg-white px-5 py-4 text-left shadow-[0_10px_22px_rgba(15,23,42,0.04)] transition hover:border-slate-300 hover:shadow-[0_14px_28px_rgba(15,23,42,0.07)]"
+                    key={`recent-${result.id}`}
+                    onClick={() => {
+                      setSelectedResultId(result.id);
+                      setViewerOpen(true);
+                    }}
+                    type="button"
+                  >
+                    <CompactFileIcon />
+                    <div className="min-w-0">
+                      <p className="truncate text-[0.93rem] font-semibold text-[#091333]">{result.title}</p>
+                      <p className="mt-1 text-[0.76rem] font-medium text-slate-500">
+                        {formatDateLabel(result.date)} <span className="mx-2 text-slate-300">/</span>{" "}
+                        {result.amountLabel ?? result.typeLabel}
+                      </p>
+                      <p className="mt-1 truncate text-[0.74rem] text-slate-400">{uploader}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
+        </div>
 
-              <div className="divide-y divide-slate-100">
-                {visibleResults.map((result) => {
-                  const tone = statusToTone(result.status);
-                  const isSelected = selectedResult?.id === result.id;
-                  const isRecent =
-                    (Date.now() - new Date(result.date).getTime()) / (1000 * 60 * 60 * 24) <= 7;
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <h2 className="text-[1.08rem] font-semibold text-[#091333]">All Files</h2>
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[0.72rem] font-semibold text-slate-500">
+              {sortedResults.length} results
+            </span>
+          </div>
 
-                  return (
-                    <button
-                      className={`w-full px-4 py-4 text-left transition lg:px-5 ${
-                        isSelected
-                          ? "bg-brand-50/35 ring-1 ring-inset ring-brand-200"
-                          : "hover:bg-slate-50"
-                      }`}
-                      key={result.id}
-                      onClick={() => {
-                        setSelectedResultId(result.id);
-                        setViewerOpen(true);
-                      }}
-                      type="button"
-                    >
-                      <div className="grid gap-3 lg:grid-cols-[minmax(0,1.9fr)_0.95fr_0.95fr_24px] lg:items-center lg:gap-4">
-                        <div className="flex items-start gap-3">
-                          <ResultTypeIcon result={result} />
-                          <div className="min-w-0">
-                            <p className="truncate text-[0.98rem] font-medium text-slate-950">
-                              {result.title}
-                            </p>
-                            <p className="mt-0.5 truncate text-[0.82rem] text-slate-500">
-                              {result.typeLabel} | {result.monthLabel}
-                            </p>
-                            {result.amountLabel ? (
-                              <p className="mt-1 text-[0.82rem] font-medium text-slate-400">{result.amountLabel}</p>
-                            ) : null}
-                            {isRecent ? (
-                              <span className="mt-1.5 inline-flex rounded-full bg-brand-50 px-2 py-0.5 text-[0.68rem] font-semibold text-brand-700 ring-1 ring-brand-100">
-                                New
-                              </span>
-                            ) : null}
-                            <p className="mt-1 text-[0.78rem] text-slate-400 lg:hidden">
-                              Updated {formatDateLabel(result.date)}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="text-[0.82rem] text-slate-500">{formatDateLabel(result.date)}</div>
-                        <div className="flex items-center gap-2 text-[0.84rem] font-medium text-slate-700">
-                          <span className={`h-2.5 w-2.5 rounded-full ${toneDotClass(tone)}`} />
-                          <span>{formatStatusLabel(result.status)}</span>
-                        </div>
-
-                        <div className="hidden justify-self-end text-slate-300 lg:block">
-                          <ChevronRightIcon />
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-5 py-4">
-                <div className="flex items-center gap-1.5">
-                  {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
-                    <button
-                      className={`flex h-8 w-8 items-center justify-center rounded-lg text-sm font-medium transition ${
-                        currentPage === pageNumber
-                          ? "bg-brand-600 text-white shadow-[0_10px_20px_rgba(84,66,255,0.2)]"
-                          : "text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-                      }`}
-                      key={pageNumber}
-                      onClick={() => setCurrentPage(pageNumber)}
-                      type="button"
-                    >
-                      {pageNumber}
-                    </button>
-                  ))}
+          <SurfaceCard className="overflow-visible rounded-lg border border-slate-200 bg-white p-0 shadow-none">
+            {sortedResults.length > 0 ? (
+              <>
+                <div className="hidden grid-cols-[minmax(0,1.35fr)_minmax(130px,0.68fr)_minmax(170px,0.92fr)_72px] gap-6 border-b border-slate-100 px-5 py-4 text-[0.82rem] font-bold text-[#091333] lg:grid">
+                  <span>Name</span>
+                  <span>Uploaded Date</span>
+                  <span>Uploaded By</span>
+                  <span className="text-center">More Actions</span>
                 </div>
 
-                <p className="text-sm text-slate-500">
-                  Showing {sortedResults.length === 0 ? 0 : pageStartIndex + 1} to{" "}
-                  {Math.min(pageStartIndex + pageSize, sortedResults.length)} of {sortedResults.length} results
-                </p>
+                <div className="divide-y divide-slate-100">
+                  {visibleResults.map((result) => {
+                    const uploader = result.uploadedBy ?? result.clientName;
+                    const rowMenuKey = `${result.resultType}:${result.clientId}:${result.id}`;
+
+                    return (
+                      <div
+                        className="grid gap-3 px-5 py-4 transition hover:bg-slate-50 lg:grid-cols-[minmax(0,1.35fr)_minmax(130px,0.68fr)_minmax(170px,0.92fr)_72px] lg:items-center lg:gap-6"
+                        key={rowMenuKey}
+                      >
+                        <button
+                          className="flex min-w-0 items-center gap-3 text-left"
+                          onClick={() => {
+                            setSelectedResultId(result.id);
+                            setViewerOpen(true);
+                          }}
+                          type="button"
+                        >
+                          <CompactFileIcon />
+                          <div className="min-w-0">
+                            <p className="truncate text-[0.9rem] font-semibold text-[#091333]">{result.title}</p>
+                            <p className="mt-0.5 truncate text-[0.78rem] text-slate-500 lg:hidden">
+                              {result.typeLabel} / {result.monthLabel}
+                            </p>
+                          </div>
+                        </button>
+
+                        <div className="text-[0.86rem] font-medium text-slate-700">
+                          <span className="mr-2 text-[0.7rem] font-bold uppercase tracking-[0.12em] text-slate-400 lg:hidden">
+                            Uploaded Date
+                          </span>
+                          {formatDateLabel(result.date)}
+                        </div>
+
+                        <div className="flex min-w-0 items-center gap-3">
+                          <span
+                            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[0.7rem] font-bold ${avatarClassForName(
+                              uploader,
+                            )}`}
+                          >
+                            {initialsFromName(uploader)}
+                          </span>
+                          <span className="truncate text-[0.86rem] font-medium text-slate-700">{uploader}</span>
+                        </div>
+
+                        <div className="relative flex justify-start lg:justify-center">
+                          <button
+                            aria-label={`More actions for ${result.title}`}
+                            className="flex h-9 w-9 items-center justify-center rounded-full text-[#091333] transition hover:bg-slate-100"
+                            onClick={() => {
+                              setSelectedResultId(result.id);
+                              setDetailMenuOpen((current) => !current);
+                            }}
+                            type="button"
+                          >
+                            <MoreIcon />
+                          </button>
+
+                          {detailMenuOpen && selectedResultId === result.id ? (
+                            <div className="absolute right-auto top-[calc(100%+0.35rem)] z-50 min-w-[180px] rounded-lg border border-slate-200 bg-white p-1.5 shadow-[0_18px_36px_rgba(4,24,52,0.14)] lg:right-0" role="menu">
+                              <button
+                                className="flex w-full rounded-md px-3 py-2 text-left text-xs font-semibold text-[#35466d] transition hover:bg-slate-50 hover:text-[#091333]"
+                                onClick={() => {
+                                  setSelectedResultId(result.id);
+                                  setViewerOpen(true);
+                                  setDetailMenuOpen(false);
+                                }}
+                                role="menuitem"
+                                type="button"
+                              >
+                                Preview file
+                              </button>
+                              <button
+                                className="flex w-full rounded-md px-3 py-2 text-left text-xs font-semibold text-[#35466d] transition hover:bg-slate-50 hover:text-[#091333]"
+                                onClick={() => {
+                                  setSelectedResultId(result.id);
+                                  setDetailMenuOpen(false);
+                                  handleExportResults();
+                                }}
+                                role="menuitem"
+                                type="button"
+                              >
+                                Export results
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-5 py-4">
+                  <div className="flex items-center gap-1.5">
+                    {Array.from({ length: totalPages }, (_, index) => index + 1).map((pageNumber) => (
+                      <button
+                        className={`flex h-8 w-8 items-center justify-center rounded-lg text-sm font-medium transition ${
+                          currentPage === pageNumber
+                            ? "bg-[#091333] text-white shadow-[0_10px_20px_rgba(9,19,51,0.16)]"
+                            : "text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+                        }`}
+                        key={pageNumber}
+                        onClick={() => setCurrentPage(pageNumber)}
+                        type="button"
+                      >
+                        {pageNumber}
+                      </button>
+                    ))}
+                  </div>
+
+                  <p className="text-sm text-slate-500">
+                    Showing {sortedResults.length === 0 ? 0 : pageStartIndex + 1} to{" "}
+                    {Math.min(pageStartIndex + pageSize, sortedResults.length)} of {sortedResults.length} results
+                  </p>
+                </div>
+              </>
+            ) : (
+              <div className="px-5 py-8">
+                <EmptyState
+                  description="Try broadening the search terms or removing a few filters."
+                  title="No results match this search"
+                />
               </div>
-            </>
-          ) : (
-            <div className="px-5 py-8">
-              <EmptyState
-                description="Try broadening the search terms or removing a few filters."
-                title="No results match this search"
-              />
-            </div>
-          )}
-        </SurfaceCard>
+            )}
+          </SurfaceCard>
+        </div>
 
         {viewerOpen && selectedResult ? (
           <div
@@ -1152,35 +1269,38 @@ export function ClientDocumentsPage() {
                     </button>
 
                     {detailMenuOpen ? (
-                      <div className="absolute right-0 top-[calc(100%+0.6rem)] z-20 min-w-[220px] rounded-xl border border-slate-200 bg-white p-2 shadow-[0_18px_38px_rgba(15,23,42,0.12)]">
+                      <div className="absolute right-0 top-12 z-50 min-w-[220px] rounded-lg border border-slate-200 bg-white p-1.5 shadow-[0_18px_36px_rgba(4,24,52,0.14)]" role="menu">
                         <button
-                          className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+                          className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-xs font-semibold text-[#35466d] transition hover:bg-slate-50 hover:text-[#091333]"
                           onClick={() => {
                             openUploadForSlot(selectedSlotForAction);
                             setDetailMenuOpen(false);
                           }}
+                          role="menuitem"
                           type="button"
                         >
                           Open upload slot
                           <ChevronRightIcon />
                         </button>
                         <button
-                          className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+                          className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-xs font-semibold text-[#35466d] transition hover:bg-slate-50 hover:text-[#091333]"
                           onClick={() => {
                             setActiveTab("related");
                             setDetailMenuOpen(false);
                           }}
+                          role="menuitem"
                           type="button"
                         >
                           View related records
                           <ChevronRightIcon />
                         </button>
                         <button
-                          className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+                          className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-xs font-semibold text-[#35466d] transition hover:bg-slate-50 hover:text-[#091333]"
                           onClick={() => {
                             setActiveTab("comments");
                             setDetailMenuOpen(false);
                           }}
+                          role="menuitem"
                           type="button"
                         >
                           Open comments
@@ -1474,6 +1594,7 @@ export function ClientDocumentsPage() {
         clientName={user?.company ?? "Apex Trading Ltd"}
         existingFileNames={existingSlotFileNames}
         isOpen={uploadModal.isOpen}
+        modalClassName="rounded-lg border-slate-200/80 shadow-[0_18px_44px_rgba(4,24,52,0.14)]"
         onClose={uploadModal.close}
         onUploaded={handleUploadToSlot}
         selectedSlot={selectedSlot}
