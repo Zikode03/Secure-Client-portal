@@ -21,11 +21,12 @@ import {
   type MonthComparisonOption,
 } from "../../components/workflow/PreviousMonthComparisonCard";
 import { Button } from "../../components/ui/Button";
+import { EmptyState } from "../../components/ui/EmptyState";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
 import { useDisclosure } from "../../hooks/useDisclosure";
 import { useClientWorkflow } from "../../hooks/useClientWorkflow";
-import { ApiError, apiGetJson, apiPostForm, apiPostJson, hasApiBaseUrl } from "../../services/apiClient";
+import { ApiError, apiGetBlob, apiGetJson, apiPostForm, apiPostJson, hasApiBaseUrl } from "../../services/apiClient";
 import {
   acceptedFilesForSlot,
   buildDefaultDueDate,
@@ -247,6 +248,7 @@ export function ClientMonthlyPacksPage() {
   const [livePackId, setLivePackId] = useState<string>("");
   const [liveSlotMetaById, setLiveSlotMetaById] = useState<Record<string, SlotSubmissionMeta>>({});
   const [isSyncingBackendPack, setIsSyncingBackendPack] = useState(false);
+  const [liveLoadStatus, setLiveLoadStatus] = useState<"idle" | "loading" | "ready" | "empty" | "error">("idle");
 // Local UI state: keeps track of what the user is seeing or editing right now.
   const {
     clientName,
@@ -273,6 +275,7 @@ export function ClientMonthlyPacksPage() {
     }
 
     setIsSyncingBackendPack(true);
+    setLiveLoadStatus("loading");
 
     try {
       const packs = await apiGetJson<BackendMonthlyPackResponse[]>(
@@ -287,6 +290,7 @@ export function ClientMonthlyPacksPage() {
         setLivePreviousMonthComparison(null);
         setLivePackId("");
         setLiveSlotMetaById({});
+        setLiveLoadStatus("empty");
         return;
       }
 
@@ -365,7 +369,7 @@ export function ClientMonthlyPacksPage() {
             : formatDateLabel(document.uploadedAtUtc),
           description: `${document.category} uploaded to the monthly pack.`,
           status: mapBackendDocumentStatus(document.status),
-          uploadedBy: user?.fullName ?? user?.name ?? "Portal user",
+          uploadedBy: "Portal user",
           uploadedAt: document.uploadedAtUtc,
           reviewedBy: undefined,
           reviewedAt: undefined,
@@ -392,7 +396,7 @@ export function ClientMonthlyPacksPage() {
               ? monthLabelFromParts(pack.year, pack.month)
               : formatDateLabel(document.uploadedAtUtc),
             description: `${document.category} uploaded to the monthly pack.`,
-            amountLabel: "R 0.00",
+            amountLabel: "—",
             uploadedAt: document.uploadedAtUtc,
             status: "uploaded",
             keywordTags: [document.category],
@@ -418,7 +422,12 @@ export function ClientMonthlyPacksPage() {
           ]),
         ),
       );
+      setLiveLoadStatus("ready");
     } catch (error) {
+      setLiveMonthPack(null);
+      setLiveDocuments([]);
+      setLiveInvoices([]);
+      setLiveLoadStatus("error");
       showFeedbackNotice(
         "danger",
         "Monthly pack sync failed",
@@ -706,20 +715,78 @@ export function ClientMonthlyPacksPage() {
     }
   }
 
-  function handleDownloadSlot(slot: MonthlyDocumentSlot) {
+  async function handleDownloadSlot(slot: MonthlyDocumentSlot) {
+    if (backendMode) {
+      const documentId = liveSlotMetaById[slot.id]?.currentDocumentId;
+      if (!documentId) {
+        showFeedbackNotice("warning", "No file available", `${slot.documentType} does not have an uploaded file yet.`);
+        return;
+      }
+
+      try {
+        const { blob } = await apiGetBlob(`/api/documents/${encodeURIComponent(documentId)}/download`);
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `${slot.documentType.replace(/\s+/g, "_")}_${slot.month}_${slot.year}`;
+        link.click();
+        window.URL.revokeObjectURL(url);
+      } catch (error) {
+        showFeedbackNotice(
+          "danger",
+          "Download failed",
+          error instanceof ApiError ? error.message : "The uploaded file could not be downloaded.",
+        );
+      }
+      return;
+    }
+
     const businessName = clientName ?? user?.company ?? "Apex Trading Ltd";
     downloadSlotFile(slot, businessName);
     showFeedbackNotice("success", "Download started", `${slot.documentType} was prepared for download.`);
   }
 
+  if (backendMode && liveLoadStatus !== "ready") {
+    const isLoading = liveLoadStatus === "idle" || liveLoadStatus === "loading";
+    return (
+      <div className="portal-page mx-auto max-w-[1280px] space-y-5 pb-8">
+        {feedbackNotice ? (
+          <FeedbackBanner
+            message={feedbackNotice.message}
+            onDismiss={dismissFeedbackNotice}
+            title={feedbackNotice.title}
+            tone={feedbackNotice.tone}
+          />
+        ) : null}
+        <SurfaceCard className="rounded-2xl border border-slate-200 bg-white p-8">
+          <EmptyState
+            description={
+              isLoading
+                ? "The current monthly pack and its document slots are being loaded."
+                : liveLoadStatus === "empty"
+                  ? "Your accountant has not opened a monthly pack for this client yet."
+                  : "The live monthly pack could not be loaded. No seeded checklist is being shown."
+            }
+            title={isLoading ? "Loading monthly pack" : liveLoadStatus === "empty" ? "No monthly pack yet" : "Monthly pack unavailable"}
+          />
+          {!isLoading ? (
+            <div className="mt-5 flex justify-center">
+              <Button onClick={() => void loadBackendMonthlyPack()}>Try again</Button>
+            </div>
+          ) : null}
+        </SurfaceCard>
+      </div>
+    );
+  }
+
   return (
-    <div className="mx-auto max-w-[1280px] space-y-5 pb-8">
+    <div className="portal-page mx-auto max-w-[1280px] space-y-5 pb-8">
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
         <div className="space-y-2 pt-1">
           <p className="text-[0.78rem] font-semibold uppercase tracking-[0.14em] text-brand-700">
             Monthly Packs
           </p>
-          <h1 className="text-[2.05rem] font-semibold tracking-tight text-[#091333]">
+          <h1 className="portal-page-title text-[#091333]">
             {effectiveMonthPack.monthLabel}
           </h1>
           <p className="max-w-2xl text-[0.96rem] leading-7 text-[#53617f]">
@@ -772,7 +839,7 @@ export function ClientMonthlyPacksPage() {
               }}
             >
               <div className="flex h-[152px] w-[152px] flex-col items-center justify-center rounded-full bg-white shadow-inner">
-                <span className="text-[2.2rem] font-semibold tracking-tight text-[#091333]">{progressPercent}%</span>
+                <span className="text-[1.85rem] font-medium tracking-tight text-[#091333]">{progressPercent}%</span>
                 <span className="text-[0.78rem] font-semibold text-[#53617f]">Complete</span>
               </div>
             </div>
@@ -877,7 +944,7 @@ export function ClientMonthlyPacksPage() {
       <section className="grid items-stretch gap-5">
         <div className="h-full" id="pack-checklist">
           <MonthlyPackChecklist
-            onDownload={handleDownloadSlot}
+            onDownload={(slot) => void handleDownloadSlot(slot)}
             isReadOnly={isPackReadOnly}
             onUpload={handleOpenUpload}
             onView={() => navigate("/client/documents")}
@@ -888,7 +955,7 @@ export function ClientMonthlyPacksPage() {
         <PreviousMonthComparisonCard
           actionLabel="Open documents"
           comparisonOptions={monthComparisonOptions}
-          comparison={previousMonthComparison}
+          comparison={effectivePreviousMonthComparison}
           onCreateFollowUps={() => navigate("/client/inbox")}
           onOpenAffectedRecords={() => navigate("/client/documents")}
           onAction={() => navigate("/client/documents")}

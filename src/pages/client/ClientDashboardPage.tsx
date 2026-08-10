@@ -83,7 +83,7 @@ const dashboardLinkClass =
   "client-dashboard-link font-semibold transition";
 
 const dashboardActionButtonClass =
-  "client-dashboard-action-button inline-flex items-center justify-center rounded-lg font-bold transition hover:-translate-y-0.5 active:translate-y-px focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2";
+  "client-dashboard-action-button inline-flex items-center justify-center rounded-lg font-medium transition hover:-translate-y-0.5 active:translate-y-px focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2";
 
 interface BackendMonthlyPackRecord {
   id: string;
@@ -590,7 +590,7 @@ function MonthlyPackPreviewCard({
           }}
         >
           <div className="flex h-[152px] w-[152px] flex-col items-center justify-center rounded-full bg-white shadow-inner lg:h-[178px] lg:w-[178px]">
-            <span className="text-[2.25rem] font-semibold tracking-tight text-[#091333] lg:text-[2.65rem]">{progress}%</span>
+            <span className="text-[2rem] font-medium tracking-tight text-[#091333]">{progress}%</span>
             <span className="text-[0.78rem] font-semibold text-[#53617f]">Complete</span>
           </div>
         </div>
@@ -678,6 +678,7 @@ export function ClientDashboardPage() {
   const [selectedSlot, setSelectedSlot] = useState<MonthlyDocumentSlot | null>(null);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [liveDashboardData, setLiveDashboardData] = useState<LiveClientDashboardData | null>(null);
+  const [liveLoadStatus, setLiveLoadStatus] = useState<"idle" | "loading" | "ready" | "empty" | "error">("idle");
   const [dashboardNotice, setDashboardNotice] = useState<{
     tone: Tone;
     title: string;
@@ -722,6 +723,8 @@ export function ClientDashboardPage() {
       return;
     }
 
+    setLiveLoadStatus("loading");
+
     try {
       const [packs, allDocuments, requestsData, notifications, alerts, summary] = await Promise.all([
         apiGetJson<BackendMonthlyPackRecord[]>(
@@ -743,6 +746,7 @@ export function ClientDashboardPage() {
         setLiveDashboardData(null);
         setLivePackId("");
         setLiveSlotMetaById({});
+        setLiveLoadStatus("empty");
         return;
       }
 
@@ -818,7 +822,7 @@ export function ClientDashboardPage() {
             : formatDateLabel(document.uploadedAtUtc),
           description: `${document.category} uploaded to the monthly pack.`,
           status: mapBackendDocumentStatus(document.status),
-          uploadedBy: currentUserName,
+          uploadedBy: "Portal user",
           uploadedAt: document.uploadedAtUtc,
           reviewedBy: undefined,
           reviewedAt: undefined,
@@ -845,7 +849,7 @@ export function ClientDashboardPage() {
               ? monthLabelFromParts(pack.year, pack.month)
               : formatDateLabel(document.uploadedAtUtc),
             description: `${document.category} uploaded to the monthly pack.`,
-            amountLabel: "R 0.00",
+            amountLabel: "—",
             uploadedAt: document.uploadedAtUtc,
             status: "uploaded",
             keywordTags: [document.category],
@@ -962,14 +966,17 @@ export function ClientDashboardPage() {
         expiringComplianceCount: clientSummary?.expiringSoon ?? 0,
       });
       setDashboardNotice(null);
+      setLiveLoadStatus("ready");
     } catch (error) {
+      setLiveDashboardData(null);
+      setLiveLoadStatus("error");
       setDashboardNotice({
-        tone: "warning",
+        tone: "danger",
         title: "Live dashboard unavailable",
         message:
           error instanceof ApiError
             ? error.message
-            : "The dashboard could not load the live backend data, so the seeded workspace view is still shown.",
+            : "The dashboard could not load live data. No demo records are being shown.",
       });
     }
   }
@@ -1254,8 +1261,41 @@ export function ClientDashboardPage() {
     setOptionsOpen(false);
   }
 
+  if (backendMode && liveLoadStatus !== "ready") {
+    const isLoading = liveLoadStatus === "idle" || liveLoadStatus === "loading";
+    return (
+      <div className="portal-page mx-auto max-w-[1240px] space-y-5">
+        {dashboardNotice ? (
+          <FeedbackBanner
+            message={dashboardNotice.message}
+            onDismiss={() => setDashboardNotice(null)}
+            title={dashboardNotice.title}
+            tone={dashboardNotice.tone}
+          />
+        ) : null}
+        <SurfaceCard className="rounded-2xl border border-slate-200 bg-white p-8">
+          <EmptyState
+            description={
+              isLoading
+                ? "Your live client workspace is being loaded securely."
+                : liveLoadStatus === "empty"
+                  ? "No monthly pack has been created for this client yet. Ask your accountant to open the current pack."
+                  : "The live dashboard could not be loaded. Check the connection and try again."
+            }
+            title={isLoading ? "Loading dashboard" : liveLoadStatus === "empty" ? "No active monthly pack" : "Dashboard unavailable"}
+          />
+          {!isLoading ? (
+            <div className="mt-5 flex justify-center">
+              <Button onClick={() => void loadBackendDashboard()}>Try again</Button>
+            </div>
+          ) : null}
+        </SurfaceCard>
+      </div>
+    );
+  }
+
   return (
-    <div className="mx-auto max-w-[1240px] space-y-5">
+    <div className="portal-page mx-auto max-w-[1240px] space-y-5">
       <section className="relative overflow-visible rounded-2xl border border-[#dce6ef] bg-[linear-gradient(135deg,#062044_0%,#0a2f66_54%,#1d8b66_100%)] p-5 text-white shadow-[0_24px_60px_rgba(4,24,52,0.18)] md:p-6">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(150,224,113,0.22),transparent_32%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.16),transparent_34%)]" />
         <div className="relative grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
@@ -1263,7 +1303,7 @@ export function ClientDashboardPage() {
             <div className="inline-flex rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-white/80">
               Client Workspace
             </div>
-            <h1 className="text-[2rem] font-semibold tracking-tight md:text-[2.35rem]">
+            <h1 className="portal-page-title text-white">
               Welcome back, {user?.name?.split(" ")[0] ?? "John"}
             </h1>
             <p className="max-w-2xl text-[0.95rem] leading-6 text-white/78">
@@ -1273,7 +1313,7 @@ export function ClientDashboardPage() {
 
           <div className="relative flex flex-wrap items-center gap-2.5 sm:flex-nowrap lg:justify-end">
           <Button
-            className="client-dashboard-action-button h-10 rounded-lg border-0 px-4 text-sm font-bold ring-0 hover:-translate-y-0.5 active:translate-y-px"
+            className="client-dashboard-action-button h-10 rounded-lg border-0 px-4 text-sm font-medium ring-0 hover:-translate-y-0.5 active:translate-y-px"
             disabled={isPackReadOnly}
             onClick={() => handleOpenUpload(highlightedEffectiveSlot)}
           >

@@ -14,7 +14,7 @@ import type { NotificationItem, NotificationKind, Tone } from "../../types/porta
 import { cn } from "../../utils/cn";
 import { formatDateLabel } from "../../utils/formatters";
 
-const notificationSnapshotDate = new Date("2026-05-07T00:00:00.000Z");
+const notificationSnapshotDate = new Date();
 
 // Shared shape notes: these types keep UI and data contracts aligned.
 type NotificationFilter = "all" | "unread" | "action";
@@ -392,19 +392,7 @@ function kindDescription(kind: NotificationKind) {
 }
 
 function linkedItemLabel(notification: NotificationItem) {
-  if (notification.kind === "missing_documents") {
-    return "April 2026 Monthly Pack";
-  }
-
-  if (notification.kind === "deadline_reminder") {
-    return "April 2026 Monthly Pack";
-  }
-
-  if (notification.kind === "rejected_documents") {
-    return "Invoices - April 2026";
-  }
-
-  return "Compliance Record";
+  return notification.linkedRecordLabel?.trim() || notification.title;
 }
 
 function impactLabel(notification: NotificationItem) {
@@ -428,7 +416,7 @@ function blockingLabel(notification: NotificationItem) {
     return "Compliance Centre";
   }
 
-  return "April 2026 Monthly Pack";
+  return notification.linkedRecordLabel?.trim() || "Monthly Pack";
 }
 
 function needLabel(notification: NotificationItem) {
@@ -492,22 +480,36 @@ export function ClientNotificationsPage() {
     notifications[0]?.id ?? "",
   );
   const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [feedbackTone, setFeedbackTone] = useState<Tone>("info");
+  const [liveLoadStatus, setLiveLoadStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
+
+  async function loadNotifications() {
+    if (!backendMode) {
+      return;
+    }
+
+    setLiveLoadStatus("loading");
+    try {
+      const data = await apiGetJson<BackendNotificationRecord[]>("/api/notifications");
+      setLiveNotifications(data.map(mapBackendNotification));
+      setLiveLoadStatus("ready");
+      setFeedbackMessage("");
+    } catch (error) {
+      setLiveNotifications([]);
+      setLiveLoadStatus("error");
+      setFeedbackTone("danger");
+      setFeedbackMessage(
+        error instanceof ApiError ? error.message : "The live notification inbox could not be loaded.",
+      );
+    }
+  }
 
   useEffect(() => {
     if (!backendMode) {
       return;
     }
 
-    void (async () => {
-      try {
-        const data = await apiGetJson<BackendNotificationRecord[]>("/api/notifications");
-        setLiveNotifications(data.map(mapBackendNotification));
-      } catch (error) {
-        setFeedbackMessage(
-          error instanceof ApiError ? error.message : "The live notification inbox could not be loaded.",
-        );
-      }
-    })();
+    void loadNotifications();
   }, [backendMode]);
 
   useEffect(() => {
@@ -594,6 +596,7 @@ export function ClientNotificationsPage() {
           ),
         );
       } catch (error) {
+        setFeedbackTone("danger");
         setFeedbackMessage(
           error instanceof ApiError ? error.message : "The notification could not be marked as read.",
         );
@@ -601,14 +604,47 @@ export function ClientNotificationsPage() {
     })();
   }
 
+  if (backendMode && liveLoadStatus !== "ready") {
+    const isLoading = liveLoadStatus === "idle" || liveLoadStatus === "loading";
+    return (
+      <div className="portal-page mx-auto max-w-[1280px] space-y-4">
+        {feedbackMessage ? (
+          <FeedbackBanner
+            message={feedbackMessage}
+            onDismiss={() => setFeedbackMessage("")}
+            title="Notifications unavailable"
+            tone="danger"
+          />
+        ) : null}
+        <SurfaceCard className="rounded-2xl border border-slate-200 bg-white p-8">
+          <EmptyState
+            description={isLoading ? "Your live notifications are being loaded." : "The notification inbox could not be loaded. No demo notifications are being shown."}
+            title={isLoading ? "Loading notifications" : "Notifications unavailable"}
+          />
+          {!isLoading ? (
+            <div className="mt-5 flex justify-center">
+              <Button onClick={() => void loadNotifications()}>Try again</Button>
+            </div>
+          ) : null}
+        </SurfaceCard>
+      </div>
+    );
+  }
+
   return (
-    <div className="mx-auto max-w-[1280px] space-y-4">
+    <div className="portal-page mx-auto max-w-[1280px] space-y-4">
+      <div className="space-y-1.5">
+        <h1 className="portal-page-title text-slate-950">Notifications</h1>
+        <p className="max-w-2xl text-[0.94rem] leading-6 text-slate-500">
+          Review updates, required actions, and linked client records.
+        </p>
+      </div>
       {feedbackMessage ? (
         <FeedbackBanner
           message={feedbackMessage}
           onDismiss={() => setFeedbackMessage("")}
-          title="Notification updated"
-          tone="success"
+          title={feedbackTone === "danger" ? "Notification update failed" : "Notification updated"}
+          tone={feedbackTone}
         />
       ) : null}
 
@@ -776,9 +812,9 @@ export function ClientNotificationsPage() {
                       {priorityLabel(selectedNotification.tone)} priority
                     </span>
                     <div>
-                      <h1 className="text-[2rem] font-semibold tracking-tight text-slate-950">
+                      <h2 className="portal-detail-title text-slate-950">
                         {selectedNotification.title}
-                      </h1>
+                      </h2>
                       <p className="mt-2 text-[1rem] text-slate-600">
                         {linkedItemLabel(selectedNotification)}
                       </p>

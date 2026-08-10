@@ -545,10 +545,12 @@ function ConversationPane({
   request,
   onReply,
   onToggleStar,
+  canStar = true,
 }: {
   request: WorkflowRequest;
   onReply: (requestId: string, message: string) => ActionResult;
   onToggleStar: (requestId: string) => void;
+  canStar?: boolean;
 }) {
   const [replyMessage, setReplyMessage] = useState("");
   const [attachedFile, setAttachedFile] = useState<ParsedAttachment | null>(null);
@@ -648,7 +650,6 @@ function ConversationPane({
 
   return (
     <section className={`${inboxPanelClass} flex h-full min-h-[720px] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white min-[1080px]:min-h-0`} onClick={() => setMessageContextMenu(null)}>
-      <p className="sr-only">{requestTypeHelperText(request)}</p>
       <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 px-4 py-4 sm:px-5 lg:px-6">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2.5">
@@ -673,17 +674,19 @@ function ConversationPane({
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1 rounded-full border border-slate-200/80 bg-white px-2 py-1 shadow-[0_8px_20px_rgba(15,23,42,0.06)]">
-          <button
-            aria-label={request.isStarred ? "Unstar thread" : "Star thread"}
-            aria-pressed={request.isStarred}
-            className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition ${
-              request.isStarred ? "bg-amber-50 text-amber-500" : "text-[#061b41] hover:bg-slate-50"
-            }`}
-            onClick={() => onToggleStar(request.id)}
-            type="button"
-          >
-            <Star aria-hidden="true" className={`h-4 w-4 ${request.isStarred ? "fill-current" : ""}`} />
-          </button>
+          {canStar ? (
+            <button
+              aria-label={request.isStarred ? "Unstar thread" : "Star thread"}
+              aria-pressed={request.isStarred}
+              className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition ${
+                request.isStarred ? "bg-amber-50 text-amber-500" : "text-[#061b41] hover:bg-slate-50"
+              }`}
+              onClick={() => onToggleStar(request.id)}
+              type="button"
+            >
+              <Star aria-hidden="true" className={`h-4 w-4 ${request.isStarred ? "fill-current" : ""}`} />
+            </button>
+          ) : null}
           <button
             aria-label="Reply to thread"
             className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[#061b41] transition hover:bg-slate-50"
@@ -1080,12 +1083,12 @@ export function ClientRequestsPage() {
   }
 
   return (
-    <div className="client-inbox-page mx-auto flex h-auto w-full max-w-[1680px] flex-col gap-5 pb-8 min-[1080px]:h-full min-[1080px]:min-h-0 min-[1080px]:overflow-hidden min-[1080px]:pb-0">
+    <div className="client-inbox-page portal-page mx-auto flex h-auto w-full max-w-[1680px] flex-col gap-5 pb-8 min-[1080px]:h-full min-[1080px]:min-h-0 min-[1080px]:overflow-hidden min-[1080px]:pb-0">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div className="space-y-2">
-          <p className="text-[0.78rem] font-semibold uppercase tracking-[0.18em] text-[#8190ab]">
+          <h1 className="portal-page-title text-[#091333]">
             Client communications
-          </p>
+          </h1>
           <p className="max-w-2xl text-[0.95rem] leading-6 text-[#53617f]">
             Review accountant follow-ups, reply with context, and keep document requests moving.
           </p>
@@ -1131,6 +1134,7 @@ export function ClientRequestsPage() {
             totalPages={totalPages}
           />
           <ConversationPane
+            canStar={!backendMode}
             onReply={(requestId, message) => {
               if (!backendMode) {
                 return replyToRequest(requestId, "client", user?.fullName ?? "Client", message);
@@ -1166,20 +1170,7 @@ export function ClientRequestsPage() {
 
               return { ok: true, message: "Sending..." };
             }}
-            onToggleStar={(requestId) => {
-              if (!backendMode) {
-                toggleRequestStar(requestId);
-                return;
-              }
-
-              setBackendRequests((current) =>
-                current.map((request) =>
-                  request.id === requestId
-                    ? { ...request, isStarred: !request.isStarred }
-                    : request,
-                ),
-              );
-            }}
+            onToggleStar={toggleRequestStar}
             request={activeRequest}
           />
         </div>

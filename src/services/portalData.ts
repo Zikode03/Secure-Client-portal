@@ -553,7 +553,7 @@ const clientInvoices: InvoiceRecord[] = [
     clientId: "client-apex",
     clientName: "Apex Trading Ltd",
     invoiceNumber: "INV-2041",
-    fileName: "INV-2041_ApexTrading_Apr2026.pdf",
+    fileName: "ApexTrading_Invoice_April_2026.pdf",
     monthLabel: "April 2026",
     description: "Consulting invoice for April month-end preparation.",
     amountLabel: "R 18,400",
@@ -1373,13 +1373,15 @@ const adminDashboardData: AdminDashboardData = {
 const ADMIN_CLIENT_ASSIGNMENTS_STORAGE_KEY = "secure-client-portal.admin-client-assignments";
 
 function readPersistedAdminClients() {
+  const defaultClients = useSeededTestFixtures ? adminDashboardData.clients : cleanAdminClients;
+
   if (typeof window === "undefined") {
-    return clone(cleanAdminClients);
+    return clone(defaultClients);
   }
 
   const raw = window.localStorage.getItem(ADMIN_CLIENT_ASSIGNMENTS_STORAGE_KEY);
   if (!raw) {
-    return clone(cleanAdminClients);
+    return clone(defaultClients);
   }
 
   try {
@@ -1706,45 +1708,51 @@ const cleanReviewWorkspaceData: ReviewWorkspaceData = {
   selectedDocument: emptyReviewDocument,
 };
 
+const useSeededTestFixtures = import.meta.env.MODE === "test";
+
 export const portalService = {
   getDemoUser(role: Role) {
     return clone(demoUsers[role]);
   },
   getClientWorkflowSeed() {
-    return clone(cleanClientWorkflowSeed);
+    return clone(useSeededTestFixtures ? clientWorkflowSeed : cleanClientWorkflowSeed);
   },
   getClientNotifications() {
-    return [];
+    return clone(useSeededTestFixtures ? clientWorkflowSeed.notifications : []);
   },
   getClientComplianceCentre() {
     return getClientComplianceCentreData();
   },
   getClientDocumentCenter(): ClientDocumentCenterData {
     return {
-      latestDocuments: [],
-      previousMonthDocuments: [],
-      expiringDocuments: [],
-      rejectedDocuments: [],
+      latestDocuments: useSeededTestFixtures ? clone(clientDocuments) : [],
+      previousMonthDocuments: useSeededTestFixtures ? clone(clientDocuments) : [],
+      expiringDocuments: useSeededTestFixtures
+        ? clone(clientDocuments.filter((item) => Boolean(item.expiryDate)))
+        : [],
+      rejectedDocuments: useSeededTestFixtures
+        ? clone(clientDocuments.filter((item) => item.status === "rejected"))
+        : [],
     };
   },
   getAccountantDashboard() {
-    return clone(cleanAccountantDashboardData);
+    return clone(useSeededTestFixtures ? accountantDashboardData : cleanAccountantDashboardData);
   },
   getAccountantComplianceCentre() {
     return getAccountantComplianceCentreData();
   },
   getAccountantNotifications() {
-    return [];
+    return clone(useSeededTestFixtures ? accountantDashboardData.notifications : []);
   },
   getReviewWorkspace() {
     return clone(cleanReviewWorkspaceData);
   },
   getAdminDashboard() {
-    return clone({
-      ...adminDashboardData,
-      clients: cleanAdminClients,
-      notifications: [],
-    });
+    return clone(
+      useSeededTestFixtures
+        ? adminDashboardData
+        : { ...adminDashboardData, clients: cleanAdminClients, notifications: [] },
+    );
   },
   getAdminClients() {
     return readPersistedAdminClients();

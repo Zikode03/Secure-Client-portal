@@ -56,20 +56,20 @@ function accountantUser(): SessionUser {
 }
 
 describe("compliance centre buttons", () => {
-  it("opens admin system settings from compliance centre", async () => {
+  it("keeps removed admin shortcuts out of the compliance centre", async () => {
     renderCompliance(adminUser());
 
-    fireEvent.click(await screen.findByRole("button", { name: "Open system settings" }));
-
-    expect(await screen.findByRole("heading", { name: "System settings" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Compliance Workspace" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Open system settings" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Assign accountant" })).not.toBeInTheDocument();
   });
 
-  it("opens admin assignments from assign accountant button", async () => {
+  it("lets an admin create a compliance follow-up", async () => {
     renderCompliance(adminUser());
 
-    fireEvent.click((await screen.findAllByRole("button", { name: "Assign accountant" }))[0]);
+    fireEvent.click(await screen.findByRole("button", { name: /Add Compliance Item/ }));
 
-    expect(await screen.findByRole("heading", { name: "Assign accountants" })).toBeInTheDocument();
+    expect(await screen.findByText("Request created")).toBeInTheDocument();
   });
 
   it("creates a document request from accountant compliance centre", async () => {
@@ -87,7 +87,7 @@ describe("compliance centre buttons", () => {
 
     expect(
       await screen.findByText(
-        "This client workspace keeps the month pack, document review, compliance, requests, messages, and audit trail in one accountable place.",
+        "Keep this client's month pack, document review, compliance, requests, messages, and audit trail in one accountable workspace.",
       ),
     ).toBeInTheDocument();
   });

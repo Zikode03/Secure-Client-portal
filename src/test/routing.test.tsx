@@ -6,6 +6,7 @@ import { MemoryRouter } from "react-router-dom";
 import { AuthProvider } from "../app/auth";
 import App from "../app/App";
 import { PortalProvider } from "../app/portal";
+import { ThemeProvider } from "../app/theme";
 import type { SessionUser } from "../types/portal";
 
 const STORAGE_KEY = "accounting-document-control-session";
@@ -16,11 +17,13 @@ function renderAppAt(path: string, user: SessionUser) {
 
   return render(
     <MemoryRouter initialEntries={[path]}>
-      <PortalProvider>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
-      </PortalProvider>
+      <ThemeProvider>
+        <PortalProvider>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </PortalProvider>
+      </ThemeProvider>
     </MemoryRouter>,
   );
 }
@@ -92,9 +95,10 @@ describe("role-based route access", () => {
   });
 
   it("shows admin-only header badge only for admin role", async () => {
-    renderAppAt("/firm/dashboard", createUser("admin"));
+    const adminView = renderAppAt("/firm/dashboard", createUser("admin"));
     expect(await screen.findByText("Admin only")).toBeInTheDocument();
 
+    adminView.unmount();
     window.localStorage.clear();
     renderAppAt("/firm/dashboard", createUser("accountant"));
     expect(screen.queryByText("Admin only")).not.toBeInTheDocument();
@@ -105,8 +109,10 @@ describe("role-based route access", () => {
 
     expect(await screen.findByText("Compliance Portal")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Compliance Calendar" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Exceptions Queue" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Activity Feed" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Work Queue" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Inbox" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Exceptions Queue" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Activity Feed" })).not.toBeInTheDocument();
     expect(screen.queryByText("System")).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Notification Preferences" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Settings" })).not.toBeInTheDocument();
@@ -128,7 +134,7 @@ describe("role-based route access", () => {
   it("client navigation no longer shows standalone messages or invoices items", async () => {
     renderAppAt("/client/dashboard", createUser("client"));
 
-    expect(await screen.findByText("Monthly Document Control")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /Welcome back, Sarah/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Documents" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Invoices" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Messages" })).not.toBeInTheDocument();
@@ -137,7 +143,7 @@ describe("role-based route access", () => {
   it("legacy client messages route redirects users to contextual workspaces", async () => {
     renderAppAt("/client/messages", createUser("client"));
 
-    expect(await screen.findByText("Messages")).toBeInTheDocument();
+    expect(await screen.findByText("Client communications")).toBeInTheDocument();
   });
 
   it("legacy client invoices route redirects to the document workspace", async () => {
@@ -149,14 +155,14 @@ describe("role-based route access", () => {
   it("legacy firm request detail route redirects to inbox detail view", async () => {
     renderAppAt("/firm/requests/request-1", createUser("accountant"));
 
-    expect(await screen.findByRole("heading", { name: /Re-upload invoice support/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /Submit April invoice evidence bundle/i })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Mark resolved" })).toBeInTheDocument();
   });
 
   it("legacy firm requests list route redirects to inbox list view", async () => {
     renderAppAt("/firm/requests", createUser("accountant"));
 
-    expect(await screen.findByText("Firm inbox and requests")).toBeInTheDocument();
+    expect(await screen.findByText("Request documents from Apex Trading Ltd")).toBeInTheDocument();
   });
 
   it("admin can open request SLA state machine page", async () => {

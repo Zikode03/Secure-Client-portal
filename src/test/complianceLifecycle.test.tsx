@@ -107,8 +107,8 @@ describe("compliance lifecycle", () => {
   it("accountant can see the client compliance overview", () => {
     renderWithProviders(<AccountantComplianceCentrePage />, accountantUser);
 
-    expect(screen.getByRole("heading", { name: "My Compliance Workspace" })).toBeInTheDocument();
-    expect(screen.getByText("Active clients")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Compliance Workspace" })).toBeInTheDocument();
+    expect(screen.getAllByText("Total Items").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Apex Trading Ltd").length).toBeGreaterThan(0);
     expect(screen.getByText("Selected Client")).toBeInTheDocument();
   });
@@ -183,6 +183,6 @@ describe("compliance lifecycle", () => {
 
     expect(getClientFacingComplianceLabel("EMP201")).toBe("Monthly payroll submission (EMP201)");
     expect(screen.getByText("Tax compliance PIN")).toBeInTheDocument();
-    expect(screen.getByText("Monthly payroll submission (EMP201)")).toBeInTheDocument();
+    expect(screen.getAllByText("Monthly payroll submission (EMP201)").length).toBeGreaterThan(0);
   });
 });

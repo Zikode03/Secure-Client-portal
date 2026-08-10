@@ -53,7 +53,7 @@ describe("accountant overflow menus", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows the document actions and opens the viewer comments tab from the overflow menu", async () => {
+  it("shows only implemented document actions in the overflow menu", async () => {
     renderWithProviders(<AccountantDocumentsPage />);
 
     const actionButtons = await screen.findAllByRole("button", {
@@ -63,15 +63,10 @@ describe("accountant overflow menus", () => {
 
     expect(screen.getByRole("button", { name: "Preview file" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Download" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "View version history" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "View comments" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Request re-upload" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Mark under review" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Escalate issue" })).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "View comments" }));
-
-    expect(screen.getByRole("button", { name: /^Comments / })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Open in new tab" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "View version history" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "View comments" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Request re-upload" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Mark under review" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Escalate issue" })).not.toBeInTheDocument();
   });
 });

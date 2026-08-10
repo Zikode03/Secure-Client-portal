@@ -502,6 +502,7 @@ export function ClientDocumentsPage() {
   const [liveFileUrlsByDocumentId, setLiveFileUrlsByDocumentId] = useState<
     Record<string, { url: string; mimeType: string }>
   >({});
+  const [liveLoadStatus, setLiveLoadStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
 
   useEffect(() => {
     return () => {
@@ -521,7 +522,7 @@ export function ClientDocumentsPage() {
     let isActive = true;
     const clientId = user.clientIds[0];
     const businessName = user.company || "Client";
-    const uploaderName = user.fullName || "Client user";
+    setLiveLoadStatus("loading");
 
     async function loadLiveDocumentWorkspace() {
       try {
@@ -559,7 +560,7 @@ export function ClientDocumentsPage() {
                 : formatDateLabel(document.uploadedAtUtc),
               description: `${document.category} uploaded in the secure document workflow.`,
               status: mapBackendDocumentStatus(document.status),
-              uploadedBy: uploaderName,
+              uploadedBy: "Portal user",
               uploadedAt: document.uploadedAtUtc,
               reviewedBy: undefined,
               reviewedAt: undefined,
@@ -604,11 +605,15 @@ export function ClientDocumentsPage() {
             slots.map((slot) => [slot.id, slot.currentDocumentId ?? undefined]),
           ),
         );
+        setLiveLoadStatus("ready");
       } catch (error) {
         if (!isActive) {
           return;
         }
 
+        setLiveDocumentsBase(null);
+        setLiveSlots(null);
+        setLiveLoadStatus("error");
         setFeedbackNotice({
           tone: "danger",
           title: "Document sync failed",
@@ -808,8 +813,12 @@ export function ClientDocumentsPage() {
             mapBackendComment(comment, user?.fullName),
           ),
         }));
-      } catch {
-        // Keep the page usable even if comments are unavailable for one record.
+      } catch (error) {
+        setFeedbackNotice({
+          tone: "warning",
+          title: "Comments unavailable",
+          message: error instanceof ApiError ? error.message : "This document's comments could not be loaded.",
+        });
       }
     }
 
@@ -848,8 +857,12 @@ export function ClientDocumentsPage() {
             [documentId]: { url, mimeType: contentType },
           };
         });
-      } catch {
-        // Synthetic preview remains available as fallback.
+      } catch (error) {
+        setFeedbackNotice({
+          tone: "warning",
+          title: "Preview unavailable",
+          message: error instanceof ApiError ? error.message : "The original document preview could not be loaded.",
+        });
       }
     }
 
@@ -989,16 +1002,32 @@ export function ClientDocumentsPage() {
     uploadModal.open();
   }
 
-  function handleSelectedRecordDownload() {
+  async function handleSelectedRecordDownload() {
     if (!selectedResult) {
       return;
     }
 
-    if (backendMode && selectedDocument?.fileDataUrl) {
-      const link = document.createElement("a");
-      link.href = selectedDocument.fileDataUrl;
-      link.download = selectedDocument.fileName;
-      link.click();
+    if (backendMode) {
+      if (!selectedDocument) {
+        setFeedbackNotice({ tone: "warning", title: "No file selected", message: "Choose a live document before downloading." });
+        return;
+      }
+
+      try {
+        const { blob } = await apiGetBlob(`/api/documents/${encodeURIComponent(selectedDocument.id)}/download`);
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = selectedDocument.fileName;
+        link.click();
+        window.URL.revokeObjectURL(url);
+      } catch (error) {
+        setFeedbackNotice({
+          tone: "danger",
+          title: "Download failed",
+          message: error instanceof ApiError ? error.message : "The original document could not be downloaded.",
+        });
+      }
       return;
     }
 
@@ -1202,14 +1231,41 @@ export function ClientDocumentsPage() {
         ? "Upload"
         : "Open slot";
 
+  if (backendMode && liveLoadStatus !== "ready") {
+    const isLoading = liveLoadStatus === "idle" || liveLoadStatus === "loading";
+    return (
+      <div className="portal-page mx-auto max-w-[1280px] space-y-5">
+        {feedbackNotice ? (
+          <FeedbackBanner
+            message={feedbackNotice.message}
+            onDismiss={() => setFeedbackNotice(null)}
+            title={feedbackNotice.title}
+            tone={feedbackNotice.tone}
+          />
+        ) : null}
+        <SurfaceCard className="rounded-2xl border border-slate-200 bg-white p-8">
+          <EmptyState
+            description={isLoading ? "Your live document register is being loaded." : "The live document register could not be loaded. No seeded records are being shown."}
+            title={isLoading ? "Loading documents" : "Documents unavailable"}
+          />
+          {!isLoading ? (
+            <div className="mt-5 flex justify-center">
+              <Button onClick={() => window.location.reload()}>Try again</Button>
+            </div>
+          ) : null}
+        </SurfaceCard>
+      </div>
+    );
+  }
+
   return (
-    <div className="mx-auto max-w-[1320px] space-y-5">
+    <div className="portal-page mx-auto max-w-[1320px] space-y-5">
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
         <div className="space-y-1.5">
           <div className="text-sm font-semibold uppercase tracking-[0.12em] text-brand-600">
             Client document centre
           </div>
-          <h1 className="text-[1.95rem] font-semibold tracking-tight text-slate-950">
+          <h1 className="portal-page-title text-slate-950">
             Document workspace
           </h1>
           <p className="max-w-3xl text-[0.94rem] leading-7 text-slate-500">
@@ -1583,7 +1639,7 @@ export function ClientDocumentsPage() {
                     </Button>
                     <Button
                       className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-700 hover:bg-slate-50"
-                      onClick={handleSelectedRecordDownload}
+                      onClick={() => void handleSelectedRecordDownload()}
                       size="sm"
                       variant="secondary"
                     >

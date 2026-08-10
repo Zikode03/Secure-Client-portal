@@ -7,6 +7,7 @@ import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
 import { SelectField } from "../../components/ui/SelectField";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
 import { TextField } from "../../components/ui/TextField";
+import { ApiError, apiGetJson, hasApiBaseUrl } from "../../services/apiClient";
 import type { BusinessProfile, Tone } from "../../types/portal";
 import { cn } from "../../utils/cn";
 
@@ -17,6 +18,14 @@ interface FeedbackNotice {
   tone: Tone;
   title: string;
   message: string;
+}
+
+interface BackendClientProfile {
+  id: string;
+  name: string;
+  entityType: string;
+  primaryContact: string;
+  email: string;
 }
 
 function BuildingIcon() {
@@ -208,6 +217,7 @@ export function ClientSettingsPage() {
   const navigate = useNavigate();
   const { changePassword, user } = useAuth();
   const portal = usePortal();
+  const backendMode = hasApiBaseUrl();
 
   const notificationPreferences = portal.clientSettings.notificationPreferences;
   const securitySettings = portal.clientSettings.security;
@@ -241,6 +251,34 @@ export function ClientSettingsPage() {
     setBrowserAlerts(notificationPreferences.browserAlerts);
   }, [notificationPreferences]);
 
+  useEffect(() => {
+    const clientId = user?.clientIds[0];
+    if (!backendMode || !clientId) {
+      return;
+    }
+
+    void apiGetJson<BackendClientProfile>(`/api/clients/${encodeURIComponent(clientId)}`)
+      .then((client) => {
+        setProfile((current) => ({
+          ...current,
+          legalName: client.name,
+          primaryContact: client.primaryContact,
+          financeEmail: client.email,
+          registrationNumber: "",
+          vatNumber: "",
+          phone: "",
+        }));
+        setIndustry(client.entityType || "Client entity");
+      })
+      .catch((error: unknown) => {
+        setFeedbackNotice({
+          tone: "danger",
+          title: "Profile unavailable",
+          message: error instanceof ApiError ? error.message : "The live client profile could not be loaded.",
+        });
+      });
+  }, [backendMode, user?.clientIds]);
+
   const sections: Array<{
     id: SettingsSection;
     title: string;
@@ -256,7 +294,7 @@ export function ClientSettingsPage() {
     {
       id: "security",
       title: "Security",
-      description: "Password, MFA and active sessions",
+      description: "Password and session security",
       tone: "bg-emerald-50 text-emerald-600 ring-emerald-100",
     },
     {
@@ -274,6 +312,14 @@ export function ClientSettingsPage() {
   ];
 
   function handleSaveProfile() {
+    if (backendMode) {
+      setFeedbackNotice({
+        tone: "info",
+        title: "Profile managed by your firm",
+        message: "Contact your accountant to change registered business or primary-contact details.",
+      });
+      return;
+    }
     const result = portal.updateBusinessProfile(profile);
     setFeedbackNotice({
       tone: result.ok ? "success" : "danger",
@@ -343,6 +389,9 @@ export function ClientSettingsPage() {
   }
 
   function handleSaveNotifications() {
+    if (backendMode) {
+      return;
+    }
     const result = portal.updateClientNotificationPreferences({
       ...notificationPreferences,
       deadlineAlerts,
@@ -368,7 +417,7 @@ export function ClientSettingsPage() {
               <BuildingIcon />
             </div>
             <div className="space-y-1">
-              <h2 className="text-[1.45rem] font-semibold tracking-tight text-slate-950">
+              <h2 className="portal-section-title text-slate-950">
                 Business profile
               </h2>
               <p className="text-[0.92rem] leading-7 text-slate-500">
@@ -379,12 +428,18 @@ export function ClientSettingsPage() {
         </div>
 
         <div className="space-y-8 px-6 py-6">
+          {backendMode ? (
+            <div className="rounded-xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-800">
+              Registered business details are read-only in the client portal. Contact your accountant to request a change.
+            </div>
+          ) : null}
           <div className="grid gap-5 md:grid-cols-2">
             <TextField
               label="Company name"
               onChange={(event) =>
                 setProfile((current) => ({ ...current, legalName: event.target.value }))
               }
+              readOnly={backendMode}
               value={profile.legalName}
             />
             <TextField
@@ -392,6 +447,7 @@ export function ClientSettingsPage() {
               onChange={(event) =>
                 setProfile((current) => ({ ...current, registrationNumber: event.target.value }))
               }
+              readOnly={backendMode}
               value={profile.registrationNumber}
             />
             <TextField
@@ -399,10 +455,12 @@ export function ClientSettingsPage() {
               onChange={(event) =>
                 setProfile((current) => ({ ...current, vatNumber: event.target.value }))
               }
+              readOnly={backendMode}
               value={profile.vatNumber}
             />
             <SelectField
               label="Industry"
+              disabled={backendMode}
               onChange={(event) => setIndustry(event.target.value)}
               options={[
                 { label: "Accounting & Financial Services", value: "Accounting & Financial Services" },
@@ -427,6 +485,7 @@ export function ClientSettingsPage() {
               onChange={(event) =>
                 setProfile((current) => ({ ...current, primaryContact: event.target.value }))
               }
+              readOnly={backendMode}
               value={profile.primaryContact}
             />
             <TextField
@@ -434,6 +493,7 @@ export function ClientSettingsPage() {
               onChange={(event) =>
                 setProfile((current) => ({ ...current, financeEmail: event.target.value }))
               }
+              readOnly={backendMode}
               value={profile.financeEmail}
             />
             <TextField
@@ -441,11 +501,13 @@ export function ClientSettingsPage() {
               onChange={(event) =>
                 setProfile((current) => ({ ...current, phone: event.target.value }))
               }
+              readOnly={backendMode}
               value={profile.phone}
             />
             <TextField
               label="Job title"
               onChange={(event) => setJobTitle(event.target.value)}
+              readOnly={backendMode}
               value={jobTitle}
             />
           </div>
@@ -465,7 +527,7 @@ export function ClientSettingsPage() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-3 border-t border-slate-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+        {!backendMode ? <div className="flex flex-col gap-3 border-t border-slate-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
           <Button
             className="h-11 rounded-xl border border-slate-200 bg-white px-5 text-slate-700 hover:bg-slate-50"
             onClick={handleResetProfile}
@@ -479,7 +541,7 @@ export function ClientSettingsPage() {
           >
             Save changes
           </Button>
-        </div>
+        </div> : null}
       </SurfaceCard>
     );
   }
@@ -494,7 +556,7 @@ export function ClientSettingsPage() {
             <ShieldIcon />
           </div>
           <div className="space-y-1">
-            <h2 className="text-[1.45rem] font-semibold tracking-tight text-slate-950">Security</h2>
+            <h2 className="portal-section-title text-slate-950">Security</h2>
             <p className="text-[0.92rem] leading-7 text-slate-500">
               Manage account access, authentication controls, and current session trust.
             </p>
@@ -554,6 +616,20 @@ export function ClientSettingsPage() {
             </div>
           </div>
 
+          {backendMode ? (
+            <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4">
+              <div className="flex items-center gap-3">
+                <div className="text-slate-600"><SessionIcon /></div>
+                <div>
+                  <p className="text-sm font-semibold text-slate-950">Session security</p>
+                  <p className="text-[0.84rem] text-slate-500">Password changes revoke your other active sessions automatically.</p>
+                </div>
+              </div>
+              <p className="mt-4 text-[0.86rem] leading-6 text-slate-600">
+                Detailed session management is not exposed by the current API, so this portal does not display synthetic devices or locations.
+              </p>
+            </div>
+          ) : (
           <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4">
             <div className="flex items-center gap-3">
               <div className="text-slate-600">
@@ -591,12 +667,34 @@ export function ClientSettingsPage() {
               </Button>
             </div>
           </div>
+          )}
         </div>
       </SurfaceCard>
     );
   }
 
   function renderNotifications() {
+    if (backendMode) {
+      return (
+        <SurfaceCard className="rounded-[1.55rem] border border-slate-200/80 bg-white p-6 shadow-[0_22px_48px_rgba(15,23,42,0.05)]">
+          <div className="flex items-start gap-4">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-500 ring-1 ring-amber-100">
+              <BellIcon />
+            </div>
+            <div>
+              <h2 className="portal-section-title text-slate-950">Notification preferences</h2>
+              <p className="mt-2 max-w-2xl text-[0.92rem] leading-7 text-slate-500">
+                The current API delivers workflow notifications but does not yet expose preference storage. No local-only settings are shown or saved in live mode.
+              </p>
+              <Button className="mt-5" onClick={() => navigate("/client/notifications")} variant="secondary">
+                Open notification inbox
+              </Button>
+            </div>
+          </div>
+        </SurfaceCard>
+      );
+    }
+
     return (
       <SurfaceCard className="rounded-[1.55rem] border border-slate-200/80 bg-white p-6 shadow-[0_22px_48px_rgba(15,23,42,0.05)]">
         <div className="flex items-start gap-4">
@@ -604,7 +702,7 @@ export function ClientSettingsPage() {
             <BellIcon />
           </div>
           <div className="space-y-1">
-            <h2 className="text-[1.45rem] font-semibold tracking-tight text-slate-950">
+            <h2 className="portal-section-title text-slate-950">
               Notification preferences
             </h2>
             <p className="text-[0.92rem] leading-7 text-slate-500">
@@ -666,7 +764,7 @@ export function ClientSettingsPage() {
             <DocumentIcon />
           </div>
           <div className="space-y-1">
-            <h2 className="text-[1.45rem] font-semibold tracking-tight text-slate-950">
+            <h2 className="portal-section-title text-slate-950">
               Document preferences
             </h2>
             <p className="text-[0.92rem] leading-7 text-slate-500">
@@ -711,10 +809,10 @@ export function ClientSettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[1280px] space-y-5">
+    <div className="portal-page mx-auto max-w-[1280px] space-y-5">
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
         <div className="space-y-1.5">
-          <h1 className="text-[2.3rem] font-semibold tracking-tight text-slate-950">Settings</h1>
+          <h1 className="portal-page-title text-slate-950">Settings</h1>
           <p className="text-[0.98rem] text-slate-500">
             Manage your account, preferences and security.
           </p>

@@ -239,7 +239,7 @@ describe("ClientMonthlyPacksPage", () => {
 
     renderPage({ monthPack: readyPack });
 
-    expect(screen.getByText("All required documents are ready for accountant review.")).toBeInTheDocument();
+    expect(screen.getByText("All required documents are in place, and the next ready slot can be sent for accountant review.")).toBeInTheDocument();
     screen
       .getAllByRole("button", { name: /submit month/i })
       .forEach((button) => expect(button).toBeEnabled());
@@ -321,7 +321,7 @@ describe("ClientMonthlyPacksPage", () => {
 
     renderPage({ monthPack: readyPack, requests: [] });
 
-    expect(screen.getByText("This pack is ready.")).toBeInTheDocument();
-    expect(screen.getByText("All required documents are ready for accountant review.")).toBeInTheDocument();
+    expect(screen.getByText("A required slot is ready to submit.")).toBeInTheDocument();
+    expect(screen.getByText("All required documents are in place, and the next ready slot can be sent for accountant review.")).toBeInTheDocument();
   });
 });

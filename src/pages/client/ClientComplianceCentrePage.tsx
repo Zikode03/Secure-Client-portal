@@ -3,6 +3,7 @@
 
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
 import { Button } from "../../components/ui/Button";
@@ -31,7 +32,7 @@ import { cn } from "../../utils/cn";
 import { getClientFacingComplianceLabel } from "../../utils/compliance";
 import { formatDateLabel } from "../../utils/formatters";
 
-const complianceSnapshotDate = new Date("2026-05-07T00:00:00.000Z");
+const complianceSnapshotDate = new Date();
 const navyCardClass =
   "border-[#c8d4e6] bg-[#f7faff] shadow-[0_16px_34px_rgba(6,32,68,0.08)]";
 const navyInnerCardClass =
@@ -954,7 +955,7 @@ function InsightCard({ helper, icon, label, tone, value }: InsightCardProps) {
         </div>
         <div className="min-w-0">
           <p className="truncate text-[0.76rem] font-semibold text-[#062044]">{label}</p>
-          <p className={cn("mt-1 text-[2rem] font-semibold leading-none tracking-tight", toneClasses.value)}>
+          <p className={cn("mt-1 text-[1.65rem] font-medium leading-none tracking-tight", toneClasses.value)}>
             {value}
           </p>
           <p className={cn("mt-2 truncate text-[0.76rem] font-medium", toneClasses.helper)}>{helper}</p>
@@ -1081,6 +1082,7 @@ function PrioritySection({
 }
 
 export function ClientComplianceCentrePage() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { clientComplianceCentre: data, clientWorkflow } = usePortal();
   const [feedbackNotice, setFeedbackNotice] = useState<FeedbackNotice | null>(null);
@@ -1088,8 +1090,10 @@ export function ClientComplianceCentrePage() {
   const [liveMonthPack, setLiveMonthPack] = useState<MonthlyPack | null>(null);
   const [complianceNotice, setComplianceNotice] = useState<FeedbackNotice | null>(null);
   const [priorityFilter, setPriorityFilter] = useState<"all" | PriorityKind>("all");
-  const [selectedCalendarDay, setSelectedCalendarDay] = useState<number>(7);
+  const [calendarMonth, setCalendarMonth] = useState(() => new Date());
+  const [selectedCalendarDay, setSelectedCalendarDay] = useState<number>(() => new Date().getDate());
   const [calendarFilter, setCalendarFilter] = useState<ComplianceCalendarStatusFilter>("all");
+  const [liveLoadStatus, setLiveLoadStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const backendMode = hasApiBaseUrl();
   const backendClientId = user?.clientIds[0] ?? null;
 
@@ -1100,6 +1104,7 @@ export function ClientComplianceCentrePage() {
 
     let isMounted = true;
     const clientId = backendClientId;
+    setLiveLoadStatus("loading");
 
     async function loadComplianceCentre() {
       try {
@@ -1177,20 +1182,39 @@ export function ClientComplianceCentrePage() {
         }
 
         setLiveComplianceData(liveData);
-        setLiveMonthPack(mappedPack);
+        setLiveMonthPack(
+          mappedPack ??
+            recalculatePack({
+              monthLabel: "No active monthly pack",
+              dueDate: liveData.snapshotDate,
+              deadlineStatus: "on_track",
+              progressPercent: 0,
+              completedCount: 0,
+              totalCount: 0,
+              canComplete: false,
+              completionMessage: "No monthly pack is currently open.",
+              submissionStatus: "open",
+              submittedAt: undefined,
+              slots: [],
+            }),
+        );
         setComplianceNotice(null);
+        setLiveLoadStatus("ready");
       } catch (error) {
         if (!isMounted) {
           return;
         }
 
+        setLiveComplianceData(null);
+        setLiveMonthPack(null);
+        setLiveLoadStatus("error");
         setComplianceNotice({
-          tone: "warning",
+          tone: "danger",
           title: "Live compliance view unavailable",
           message:
             error instanceof ApiError
               ? error.message
-              : "The compliance centre could not load the live backend data, so the seeded workspace view is still shown.",
+              : "The compliance centre could not load live data. No seeded compliance records are being shown.",
         });
       }
     }
@@ -1204,6 +1228,15 @@ export function ClientComplianceCentrePage() {
 
   const effectiveData = backendMode && liveComplianceData ? liveComplianceData : data;
   const effectiveMonthPack = backendMode && liveMonthPack ? liveMonthPack : clientWorkflow.monthPack;
+
+  useEffect(() => {
+    const snapshot = new Date(effectiveData.snapshotDate);
+    if (Number.isNaN(snapshot.getTime())) {
+      return;
+    }
+    setCalendarMonth(new Date(Date.UTC(snapshot.getUTCFullYear(), snapshot.getUTCMonth(), 1)));
+    setSelectedCalendarDay(snapshot.getUTCDate());
+  }, [effectiveData.snapshotDate]);
 
   const insightCards = useMemo(() => buildInsightCards(effectiveData), [effectiveData]);
   const healthMap = useMemo(() => buildHealthMap(effectiveData), [effectiveData]);
@@ -1262,6 +1295,21 @@ export function ClientComplianceCentrePage() {
     () => effectiveData.categoryGroups.flatMap((group) => group.documents),
     [effectiveData.categoryGroups],
   );
+  const calendarYear = calendarMonth.getUTCFullYear();
+  const calendarMonthIndex = calendarMonth.getUTCMonth();
+  const calendarMonthLabel = new Intl.DateTimeFormat("en-ZA", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(calendarMonth);
+  const calendarDays = useMemo(() => {
+    const leadingDays = new Date(Date.UTC(calendarYear, calendarMonthIndex, 1)).getUTCDay();
+    const daysInMonth = new Date(Date.UTC(calendarYear, calendarMonthIndex + 1, 0)).getUTCDate();
+    return [
+      ...Array.from({ length: leadingDays }, () => null),
+      ...Array.from({ length: daysInMonth }, (_, index) => index + 1),
+    ];
+  }, [calendarMonthIndex, calendarYear]);
   const calendarEvents = useMemo(() => {
     const events: ComplianceCalendarEvent[] = [];
 
@@ -1320,7 +1368,12 @@ export function ClientComplianceCentrePage() {
         title: "Monthly Pack Opened",
         category: "monthly-pack",
         status: "completed",
-        date: "2026-05-01T08:00:00.000Z",
+        date: (() => {
+          const dueDate = new Date(effectiveMonthPack.dueDate);
+          return Number.isNaN(dueDate.getTime())
+            ? effectiveData.snapshotDate
+            : new Date(Date.UTC(dueDate.getUTCFullYear(), dueDate.getUTCMonth(), 1, 8)).toISOString();
+        })(),
         description: `${effectiveMonthPack.monthLabel} pack is available for document collection.`,
         actionLabel: "Open Monthly Pack",
       },
@@ -1350,9 +1403,9 @@ export function ClientComplianceCentrePage() {
 
     return events.filter((event) => {
       const date = new Date(event.date);
-      return date.getUTCFullYear() === 2026 && date.getUTCMonth() === 4;
+      return date.getUTCFullYear() === calendarYear && date.getUTCMonth() === calendarMonthIndex;
     });
-  }, [allComplianceDocuments, effectiveData, effectiveMonthPack]);
+  }, [allComplianceDocuments, calendarMonthIndex, calendarYear, effectiveData, effectiveMonthPack]);
   const visibleCalendarEvents = useMemo(
     () =>
       calendarFilter === "all"
@@ -1369,32 +1422,51 @@ export function ClientComplianceCentrePage() {
     setFeedbackNotice({ tone, title, message });
   }
 
-  function handlePriorityAction(kind: PriorityKind, item: ComplianceDocumentRecord) {
-    const itemLabel = getClientFacingComplianceLabel(item.name);
+  function downloadComplianceReport() {
+    const rows = [
+      ["Compliance report", user?.company ?? "Client"],
+      ["Generated", new Date().toISOString()],
+      ["Overall score", `${effectiveData.overallScore}%`],
+      ["Expired", String(effectiveData.expiredDocuments.length)],
+      ["Expiring soon", String(effectiveData.expiringDocuments.length)],
+      ["Missing required", String(effectiveData.missingRequiredDocuments.length)],
+      [],
+      ["Category", "Document", "Status", "Expiry date", "Owner"],
+      ...effectiveData.categoryGroups.flatMap((group) =>
+        group.documents.map((item) => [
+          group.title,
+          getClientFacingComplianceLabel(item.name),
+          item.status,
+          item.expiryDate ?? "",
+          item.owner ?? "",
+        ]),
+      ),
+    ];
+    const csv = rows
+      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `compliance-report-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    window.URL.revokeObjectURL(url);
+    showNotice("success", "Compliance report downloaded", "The current live compliance register was exported as CSV.");
+  }
 
+  function handlePriorityAction(kind: PriorityKind, _item: ComplianceDocumentRecord) {
     if (kind === "expired") {
-      showNotice(
-        "danger",
-        "Renewal required",
-        `${itemLabel} has expired and now requires a new uploaded version. The previous accepted copy is still retained for audit history.`,
-      );
+      navigate("/client/documents");
       return;
     }
 
     if (kind === "missing") {
-      showNotice(
-        "warning",
-        "Required compliance record missing",
-        `${itemLabel} is still missing from the controlled compliance set. Open the record flow and upload it through the structured slot.`,
-      );
+      navigate("/client/packs#pack-checklist");
       return;
     }
 
-    showNotice(
-      "info",
-      "Renewal window open",
-      `${itemLabel} is inside its renewal window. Review it before ${formatDateLabel(getSafeExpiryDate(item))}.`,
-    );
+    navigate("/client/documents");
   }
 
   function handleCalendarAction(event: ComplianceCalendarEvent) {
@@ -1404,11 +1476,7 @@ export function ClientComplianceCentrePage() {
     }
 
     if (event.category === "monthly-pack") {
-      showNotice(
-        "info",
-        event.title,
-        event.description ?? "Open the monthly pack workspace to review the current milestone.",
-      );
+      navigate("/client/packs");
       return;
     }
 
@@ -1419,11 +1487,38 @@ export function ClientComplianceCentrePage() {
     );
   }
 
+  if (backendMode && liveLoadStatus !== "ready") {
+    const isLoading = liveLoadStatus === "idle" || liveLoadStatus === "loading";
+    return (
+      <div className="client-compliance-centre portal-page mx-auto max-w-[1280px] space-y-6">
+        {complianceNotice ? (
+          <FeedbackBanner
+            message={complianceNotice.message}
+            onDismiss={() => setComplianceNotice(null)}
+            title={complianceNotice.title}
+            tone={complianceNotice.tone}
+          />
+        ) : null}
+        <SurfaceCard className="rounded-2xl border border-slate-200 bg-white p-8">
+          <EmptyState
+            description={isLoading ? "Your live compliance register is being loaded." : "The live compliance register could not be loaded. No seeded records are being shown."}
+            title={isLoading ? "Loading compliance centre" : "Compliance centre unavailable"}
+          />
+          {!isLoading ? (
+            <div className="mt-5 flex justify-center">
+              <Button onClick={() => window.location.reload()}>Try again</Button>
+            </div>
+          ) : null}
+        </SurfaceCard>
+      </div>
+    );
+  }
+
   return (
-    <div className="client-compliance-centre mx-auto max-w-[1280px] space-y-6">
+    <div className="client-compliance-centre portal-page mx-auto max-w-[1280px] space-y-6">
       <section className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="space-y-1.5">
-          <h1 className="text-[2.05rem] font-semibold tracking-tight text-slate-950">
+          <h1 className="portal-page-title text-slate-950">
             Compliance Centre
           </h1>
           <p className="max-w-3xl text-[0.96rem] leading-7 text-slate-500">
@@ -1435,13 +1530,7 @@ export function ClientComplianceCentrePage() {
           <Button
             aria-label="Download compliance report"
             className="client-dashboard-action-button h-12 rounded-2xl border-0 px-5 text-[0.95rem] font-semibold ring-0 hover:-translate-y-0.5 active:translate-y-px"
-            onClick={() =>
-              showNotice(
-                "success",
-                "Compliance report ready",
-                "The latest report includes expiry queues, missing records, audit activity, and the current readiness summary.",
-              )
-            }
+            onClick={downloadComplianceReport}
           >
             <DownloadIcon />
             <span>Download Report</span>
@@ -1467,7 +1556,7 @@ export function ClientComplianceCentrePage() {
             onClick={() =>
               showNotice(
                 "warning",
-                "Compliance alerts queued",
+                "Compliance action summary",
                 `${effectiveData.expiredDocuments.length + effectiveData.missingRequiredDocuments.length} urgent compliance item${effectiveData.expiredDocuments.length + effectiveData.missingRequiredDocuments.length === 1 ? "" : "s"} currently need action.`,
               )
             }
@@ -1552,51 +1641,37 @@ export function ClientComplianceCentrePage() {
                 <button
                   aria-label="Previous month"
                   className="client-dashboard-action-button inline-flex h-9 w-9 items-center justify-center rounded-lg transition hover:-translate-y-0.5 active:translate-y-px"
+                  onClick={() => {
+                    setCalendarMonth(new Date(Date.UTC(calendarYear, calendarMonthIndex - 1, 1)));
+                    setSelectedCalendarDay(1);
+                  }}
                   type="button"
                 >
                   <span aria-hidden="true">&lt;</span>
                 </button>
-                <p className="text-[1rem] font-semibold text-[#0F2B5B]">May 2026</p>
+                <p className="text-[1rem] font-semibold text-[#0F2B5B]">{calendarMonthLabel}</p>
                 <button
                   aria-label="Next month"
                   className="client-dashboard-action-button inline-flex h-9 w-9 items-center justify-center rounded-lg transition hover:-translate-y-0.5 active:translate-y-px"
+                  onClick={() => {
+                    setCalendarMonth(new Date(Date.UTC(calendarYear, calendarMonthIndex + 1, 1)));
+                    setSelectedCalendarDay(1);
+                  }}
                   type="button"
                 >
                   <span aria-hidden="true">&gt;</span>
                 </button>
               </div>
-          <div className="hidden">
-            <div className="flex items-center gap-2 text-brand-700">
-              <button
-                aria-label="Previous month"
-                className="client-dashboard-action-button inline-flex h-8 w-8 items-center justify-center rounded-lg transition hover:-translate-y-0.5 active:translate-y-px"
-                type="button"
-              >
-                <span aria-hidden="true">‹</span>
-              </button>
-              <p className="min-w-[7rem] text-center text-[0.92rem] font-semibold">May 2026</p>
-              <button
-                aria-label="Next month"
-                className="client-dashboard-action-button inline-flex h-8 w-8 items-center justify-center rounded-lg transition hover:-translate-y-0.5 active:translate-y-px"
-                type="button"
-              >
-                <span aria-hidden="true">›</span>
-              </button>
-            </div>
-          </div>
-
           <div className="mt-5 grid grid-cols-7 text-center text-[0.66rem] font-semibold uppercase tracking-[0.04em] text-brand-800">
             {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
               <span key={day}>{day}</span>
             ))}
           </div>
           <div className="mt-3 grid grid-cols-7 gap-y-2 text-center text-[0.78rem] font-semibold">
-            {[26, 27, 28, 29, 30].map((day) => (
-              <span className="flex h-8 items-center justify-center text-slate-300" key={`apr-${day}`}>
-                {day}
-              </span>
-            ))}
-            {Array.from({ length: 31 }, (_, index) => index + 1).map((day) => {
+            {calendarDays.map((day, index) => {
+              if (day === null) {
+                return <span aria-hidden="true" className="h-8" key={`empty-${index}`} />;
+              }
               const dayEvents = visibleCalendarEvents.filter((event) => new Date(event.date).getUTCDate() === day);
               const hasOverdue = dayEvents.some((event) => event.status === "overdue");
               const hasDueSoon = dayEvents.some((event) => event.status === "due-soon");
@@ -1604,7 +1679,7 @@ export function ClientComplianceCentrePage() {
 
               return (
                 <button
-                  aria-label={hasUpcoming ? `Show compliance documents for May ${day}` : `May ${day}`}
+                  aria-label={hasUpcoming ? `Show compliance documents for ${calendarMonthLabel} ${day}` : `${calendarMonthLabel} ${day}`}
                   className={cn(
                     "relative mx-auto flex h-8 w-8 items-center justify-center rounded-full text-brand-800 transition",
                     selectedCalendarDay === day && "bg-brand-800 text-white shadow-sm",
@@ -1629,11 +1704,6 @@ export function ClientComplianceCentrePage() {
                 </button>
               );
             })}
-            {[1, 2, 3, 4, 5, 6].map((day) => (
-              <span className="flex h-8 items-center justify-center text-slate-300" key={`jun-${day}`}>
-                {day}
-              </span>
-            ))}
           </div>
 
           <div className="mt-5 flex flex-wrap gap-4 text-[0.76rem] font-medium text-slate-500">
@@ -1645,7 +1715,7 @@ export function ClientComplianceCentrePage() {
           <div className="mt-5 border-t border-slate-100 pt-4">
             <p className="text-[0.82rem] font-semibold text-slate-950">
               {selectedCalendarEvents.length > 0
-                ? `Documents on May ${selectedCalendarDay}`
+                ? `Documents on ${calendarMonthLabel} ${selectedCalendarDay}`
                 : "Select a dotted day"}
             </p>
             <div className="mt-3 space-y-2">
@@ -1681,7 +1751,7 @@ export function ClientComplianceCentrePage() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[0.78rem] font-semibold uppercase tracking-[0.08em] text-[#64748B]">Event Details</p>
-                  <h3 className="mt-1 text-[1.05rem] font-semibold text-[#0F2B5B]">May {selectedCalendarDay}, 2026</h3>
+                  <h3 className="mt-1 text-[1.05rem] font-semibold text-[#0F2B5B]">{calendarMonthLabel} {selectedCalendarDay}</h3>
                 </div>
                 <span className="rounded-full bg-[#e6eef8] px-3 py-1 text-[0.76rem] font-semibold text-[#062044]">
                   {formatCalendarStatusFilter(calendarFilter)}
@@ -1740,32 +1810,11 @@ export function ClientComplianceCentrePage() {
                           </button>
                           <button
                             className="client-dashboard-action-button inline-flex h-9 items-center justify-center rounded-lg px-3 text-[0.8rem] font-semibold transition hover:-translate-y-0.5 active:translate-y-px"
-                            onClick={() =>
-                              showNotice(
-                                "info",
-                                "Accountant contact ready",
-                                `Your accountant can help with ${event.title}.`,
-                              )
-                            }
+                            onClick={() => navigate("/client/inbox")}
                             type="button"
                           >
                             Contact Accountant
                           </button>
-                          {event.status !== "completed" ? (
-                            <button
-                              className="client-dashboard-action-button inline-flex h-9 items-center justify-center rounded-lg px-3 text-[0.8rem] font-semibold transition hover:-translate-y-0.5 active:translate-y-px"
-                              onClick={() =>
-                                showNotice(
-                                  "success",
-                                  "Completion noted",
-                                  `${event.title} can be marked complete once the required review or upload is accepted.`,
-                                )
-                              }
-                              type="button"
-                            >
-                              Mark Complete
-                            </button>
-                          ) : null}
                         </div>
                       </div>
                     );
@@ -2019,7 +2068,7 @@ export function ClientComplianceCentrePage() {
 
       <SurfaceCard className={cn("overflow-hidden rounded-[1.5rem] p-0", navyCardClass)}>
         <div className="px-6 py-6 lg:px-8">
-          <h2 className="text-[2rem] font-semibold tracking-tight text-brand-800">Compliance Report</h2>
+          <h2 className="portal-section-title text-brand-800">Compliance Report</h2>
           <p className="mt-2 text-[1rem] text-[#53617f]">
             One export that summarises readiness, expiries, missing records, and controlled history.
           </p>
@@ -2032,12 +2081,16 @@ export function ClientComplianceCentrePage() {
                   <ShieldIcon />
                 </div>
                 <div>
-                  <p className="text-[1.12rem] font-semibold">Compliance Health Snapshot</p>
+                  <p className="text-[1.05rem] font-medium">Compliance Health Snapshot</p>
                   <div className="mt-3 flex flex-wrap items-center gap-4">
-                    <p className="text-[3.2rem] font-semibold leading-none tracking-tight">{effectiveData.overallScore}%</p>
+                    <p className="text-[2.25rem] font-medium leading-none tracking-tight">{effectiveData.overallScore}%</p>
                     <span className="inline-flex items-center gap-2 rounded-full bg-emerald-400/16 px-4 py-2 text-[0.9rem] font-semibold text-emerald-100 ring-1 ring-emerald-300/15">
                       <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
-                      Excellent Standing
+                      {effectiveData.overallScore >= 85
+                        ? "Excellent Standing"
+                        : effectiveData.overallScore >= 70
+                          ? "Good Standing"
+                          : "Action Required"}
                     </span>
                   </div>
                   <p className="mt-3 text-[0.9rem] text-white/86">Your compliance posture is strong. Keep your documents up to date.</p>
@@ -2054,8 +2107,8 @@ export function ClientComplianceCentrePage() {
                 </div>
                 <div>
                   <p className="text-[0.95rem] text-white/72">Last Checked</p>
-                  <p className="mt-2 text-[1.5rem] font-semibold">{latestAuditDate}</p>
-                  <p className="mt-2 text-[0.86rem] text-white/86">By John Abraham, Accountant</p>
+                  <p className="mt-2 text-[1.2rem] font-medium">{latestAuditDate}</p>
+                  <p className="mt-2 text-[0.86rem] text-white/86">Latest recorded audit activity</p>
                 </div>
               </div>
             </div>
@@ -2068,7 +2121,7 @@ export function ClientComplianceCentrePage() {
                   {[
                     { label: "Compliance Areas", value: String(healthMap.length) },
                     { label: "Document Types", value: String(effectiveData.categoryGroups.reduce((sum, group) => sum + group.documents.length, 0)) },
-                    { label: "Time Period Covered", value: "May 2025 - May 2026" },
+                    { label: "Report Snapshot", value: formatDateLabel(effectiveData.snapshotDate) },
                   ].map((item) => (
                     <div className="flex items-center justify-between gap-4 py-3 text-[0.9rem]" key={item.label}>
                       <span className="text-[#53617f]">{item.label}</span>
@@ -2079,48 +2132,22 @@ export function ClientComplianceCentrePage() {
             </div>
           </div>
 
-          <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_1fr]">
+          <div className="mt-5">
             <button
               className="flex min-h-24 items-center justify-between rounded-xl bg-brand-800 px-6 py-4 text-left text-white shadow-[0_14px_28px_rgba(10,47,102,0.18)] transition hover:bg-brand-700"
-              onClick={() =>
-                showNotice(
-                  "success",
-                  "Compliance report ready",
-                  "The PDF export includes expiry queues, missing records, audit history, and the readiness summary.",
-                )
-              }
+              onClick={downloadComplianceReport}
               type="button"
             >
               <span className="flex items-center gap-4">
                 <DownloadIcon />
                 <span>
-                  <span className="block text-[1.05rem] font-semibold">Download PDF Report</span>
-                  <span className="mt-1 block text-[0.86rem] text-white/78">Export the latest compliance report</span>
+                  <span className="block text-[1.05rem] font-semibold">Download Compliance CSV</span>
+                  <span className="mt-1 block text-[0.86rem] text-white/78">Export the current live compliance register</span>
                 </span>
               </span>
               <ArrowRightIcon />
             </button>
 
-            <button
-              className="client-dashboard-action-button flex min-h-24 items-center justify-between rounded-xl px-6 py-4 text-left transition hover:-translate-y-0.5 active:translate-y-px"
-              onClick={() =>
-                showNotice(
-                  "info",
-                  "Report scheduling queued",
-                  "Scheduled compliance reporting can be introduced after backend delivery. The monthly summary is ready for controlled export.",
-                )
-              }
-              type="button"
-            >
-              <span className="flex items-center gap-4">
-                <BellIcon />
-                <span>
-                  <span className="block text-[1.05rem] font-semibold">Schedule Automatic Reports</span>
-                  <span className="mt-1 block text-[0.86rem] opacity-75">Receive reports on a regular schedule</span>
-                </span>
-              </span>
-              <ArrowRightIcon />
-            </button>
           </div>
         </div>
       </SurfaceCard>

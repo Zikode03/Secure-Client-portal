@@ -6,6 +6,7 @@ import { MemoryRouter } from "react-router-dom";
 import App from "../app/App";
 import { AuthProvider } from "../app/auth";
 import { PortalProvider } from "../app/portal";
+import { ThemeProvider } from "../app/theme";
 import type { SessionUser } from "../types/portal";
 import { navigationByRole } from "../utils/navigation";
 
@@ -30,11 +31,13 @@ function renderAccountantApp(initialEntries = ["/firm/dashboard"]) {
 
   return render(
     <MemoryRouter initialEntries={initialEntries}>
-      <PortalProvider>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
-      </PortalProvider>
+      <ThemeProvider>
+        <PortalProvider>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </PortalProvider>
+      </ThemeProvider>
     </MemoryRouter>,
   );
 }
@@ -43,7 +46,7 @@ describe("accountant notifications access", () => {
   it("opens dashboard notifications from the bell and routes view more to the full notifications page", async () => {
     renderAccountantApp();
 
-    expect(await screen.findByText("Accountant workspace")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Welcome, Daniel" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Notifications" })).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Open accountant alerts" }));
@@ -53,7 +56,7 @@ describe("accountant notifications access", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "View more" }));
 
-    expect(await screen.findByText("My notifications")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "My alert inbox" })).toBeInTheDocument();
   });
 
   it("keeps admin-only navigation items hidden from the accountant sidebar", () => {

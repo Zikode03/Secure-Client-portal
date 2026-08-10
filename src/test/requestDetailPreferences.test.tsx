@@ -77,7 +77,7 @@ describe("request detail actions and notification preferences", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Post comment" }));
-    expect(await screen.findByText("Comment posted to request thread.")).toBeInTheDocument();
+    expect(await screen.findByText("Comment added to the request thread.")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Mark resolved" }));
     expect(await screen.findByText("Request marked as resolved.")).toBeInTheDocument();

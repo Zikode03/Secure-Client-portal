@@ -128,7 +128,7 @@ describe("ClientRequestsPage", () => {
   it("sends a reply using the client identity", () => {
     const { replyToRequest } = renderPage([createRequest()]);
 
-    fireEvent.change(screen.getByPlaceholderText("Type your message..."), {
+    fireEvent.change(screen.getByPlaceholderText("Reply to your accountant..."), {
       target: { value: "Uploaded the corrected version now." },
     });
     fireEvent.click(screen.getByRole("button", { name: "Send" }));
@@ -189,7 +189,7 @@ describe("ClientRequestsPage", () => {
 
     expect(screen.getByRole("button", { name: "Star thread" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Reply to thread" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Resolve" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Resolve" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Selection mode" })).not.toBeInTheDocument();
   });
 
@@ -261,7 +261,7 @@ describe("ClientRequestsPage", () => {
       .mockReturnValueOnce({ ok: true, message: "Reply added." });
     renderPage([createRequest()], { replyToRequest });
 
-    fireEvent.change(screen.getByPlaceholderText("Type your message..."), {
+    fireEvent.change(screen.getByPlaceholderText("Reply to your accountant..."), {
       target: { value: "Please check this." },
     });
     fireEvent.click(screen.getByRole("button", { name: "Send" }));
