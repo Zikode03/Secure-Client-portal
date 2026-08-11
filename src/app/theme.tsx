@@ -14,11 +14,13 @@ const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 function applyThemeToDom(theme: ThemeMode) {
   const root = document.documentElement;
-  if (theme === "dark") {
-    root.classList.add("theme-dark");
-  } else {
-    root.classList.remove("theme-dark");
-  }
+  const isDark = theme === "dark";
+  root.classList.toggle("theme-dark", isDark);
+  root.dataset.theme = theme;
+  root.style.colorScheme = theme;
+  document
+    .querySelector('meta[name="theme-color"]')
+    ?.setAttribute("content", isDark ? "#090909" : "#eef1f4");
 }
 
 function getInitialTheme(): ThemeMode {
@@ -31,7 +33,9 @@ function getInitialTheme(): ThemeMode {
     return stored;
   }
 
-  return "light";
+  return typeof window.matchMedia === "function" && window.matchMedia("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {

@@ -198,7 +198,7 @@ export const portalServiceApi = {
       return [];
     }
   },
-  async getAdminClients() {
+  async getAdminClients(options: { allowFallback?: boolean } = {}) {
     if (!hasApiBaseUrl()) {
       return portalService.getAdminClients();
     }
@@ -219,7 +219,10 @@ export const portalServiceApi = {
       return clients.map((client) =>
         mapBackendClientRecord(client, assignmentsByClientId.get(client.id) ?? []),
       );
-    } catch {
+    } catch (error) {
+      if (options.allowFallback === false) {
+        throw error;
+      }
       return portalService.getAdminClients();
     }
   },

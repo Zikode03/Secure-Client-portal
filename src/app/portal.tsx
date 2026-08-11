@@ -812,6 +812,7 @@ interface PortalContextValue {
     submission: UploadSubmission,
     actor: Pick<SessionUser, "name" | "fullName">,
   ) => PortalActionResult;
+  submitSlot: (slotId: string, actorName: string) => PortalActionResult;
   submitMonth: (actorName: string) => PortalActionResult;
   finaliseInvoice: (invoiceId: string) => PortalActionResult;
   reviewRecord: (payload: ReviewActionPayload) => PortalActionResult;
@@ -2072,6 +2073,98 @@ const assignedAccountantForApex =
       message: wasRejected
         ? `${targetSlot.documentType} re-uploaded successfully and saved as a draft for this month.`
         : `${targetSlot.documentType} uploaded successfully and saved as a draft for this month.`,
+    };
+  }
+
+  function submitSlot(slotId: string, actorName: string): PortalActionResult {
+    const targetSlot = monthPack.slots.find((slot) => slot.id === slotId);
+    if (!targetSlot) {
+      return { ok: false, message: "The selected document slot could not be found." };
+    }
+
+    if (targetSlot.status !== "draft") {
+      return {
+        ok: false,
+        message: `${targetSlot.documentType} must be uploaded as a draft before it can be submitted.`,
+      };
+    }
+
+    const submittedAt = new Date().toISOString();
+    const targetMonthLabel = `${targetSlot.month} ${targetSlot.year}`;
+    setMonthPack((current) =>
+      recalculatePack({
+        ...current,
+        submissionStatus: "open",
+        slots: current.slots.map((slot) =>
+          slot.id === slotId
+            ? {
+                ...slot,
+                status: "uploaded",
+                progress: 85,
+                lastSubmission: submittedAt,
+              }
+            : slot,
+        ),
+      }),
+    );
+    setDocuments((current) =>
+      current.map((document) =>
+        document.documentType === targetSlot.documentType &&
+        document.monthLabel === targetMonthLabel &&
+        document.status === "draft"
+          ? {
+              ...document,
+              status: "uploaded",
+              auditTrail: [
+                {
+                  id: `audit-${document.auditTrail.length + 7001}`,
+                  status: "Submitted",
+                  actor: actorName,
+                  timestamp: submittedAt,
+                  note: `${document.documentType} was submitted separately for accountant review.`,
+                },
+                ...document.auditTrail,
+              ],
+            }
+          : document,
+      ),
+    );
+    setInvoices((current) =>
+      current.map((invoice) =>
+        targetSlot.documentType.toLowerCase().includes("invoice") &&
+        invoice.monthLabel === targetMonthLabel &&
+        invoice.status === "draft"
+          ? {
+              ...invoice,
+              status: "uploaded",
+              auditTrail: [
+                {
+                  id: `invoice-audit-${(invoice.auditTrail?.length ?? 0) + 1}`,
+                  status: "Submitted",
+                  actor: actorName,
+                  timestamp: submittedAt,
+                  note: "Invoice documents were submitted separately for accountant review.",
+                },
+                ...(invoice.auditTrail ?? []),
+              ],
+            }
+          : invoice,
+      ),
+    );
+    setActivity((current) =>
+      appendActivity(
+        current,
+        `${targetSlot.documentType} submitted`,
+        `${actorName} submitted ${targetSlot.documentType} for accountant review.`,
+        "success",
+        actorName,
+        targetMonthLabel,
+      ),
+    );
+
+    return {
+      ok: true,
+      message: `${targetSlot.documentType} was submitted to your accountant. You can continue working on the other documents.`,
     };
   }
 
@@ -3887,6 +3980,7 @@ const assignedAccountantForApex =
       clientComplianceCentre,
       accountantComplianceCentre,
       uploadToSlot,
+      submitSlot,
       submitMonth,
       finaliseInvoice,
       reviewRecord,

@@ -72,6 +72,16 @@ export function useClientWorkflow(options: ClientWorkflowOptions = {}) {
     );
   }
 
+  function submitSlot(slotId: string, documentType: string) {
+    const result = portal.submitSlot(slotId, workflowActorName);
+    showFeedbackNotice(
+      result.ok ? "success" : "warning",
+      result.ok ? `${documentType} submitted` : "Document submission blocked",
+      result.message,
+    );
+    return result;
+  }
+
   function finaliseInvoice(invoiceId: string) {
     const result = portal.finaliseInvoice(invoiceId);
     showFeedbackNotice(
@@ -141,6 +151,7 @@ export function useClientWorkflow(options: ClientWorkflowOptions = {}) {
     clientName: workflowClientName,
     assignedAccountantName,
     uploadToSlot,
+    submitSlot,
     submitMonth,
     finaliseInvoice,
     replyToRequest,

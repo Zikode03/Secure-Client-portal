@@ -128,7 +128,7 @@ export function InviteSetupPage() {
                     />
                   </svg>
                 </div>
-                <p className="mt-8 text-sm font-black uppercase tracking-[0.42em] text-emerald-300">
+                <p className="mt-8 text-sm font-semibold uppercase tracking-[0.42em] text-emerald-300">
                   {isPasswordReset ? "Password reset" : "Invite setup"}
                 </p>
                 <h1 className="mt-4 text-4xl font-light tracking-[-0.04em] text-white">
@@ -161,7 +161,7 @@ export function InviteSetupPage() {
                   ) : (
                     <>
                       Already have an account?{" "}
-                      <Link className="font-bold text-emerald-300 transition hover:text-emerald-200" to="/login">
+                      <Link className="font-semibold text-emerald-300 transition hover:text-emerald-200" to="/login">
                         log in
                       </Link>
                     </>
@@ -184,7 +184,7 @@ export function InviteSetupPage() {
                     Account: <span className="font-semibold text-white">{emailLabel}</span>
                   </div>
                   <button
-                    className="h-12 w-full rounded-md bg-[linear-gradient(135deg,#18ac5f_0%,#0a7f74_48%,#0a2f66_100%)] text-sm font-black text-white shadow-[0_14px_30px_rgba(6,95,70,0.28)] transition hover:translate-y-[-1px] active:translate-y-0"
+                    className="h-12 w-full rounded-md bg-[linear-gradient(135deg,#18ac5f_0%,#0a7f74_48%,#0a2f66_100%)] text-sm font-semibold text-white shadow-[0_14px_30px_rgba(6,95,70,0.28)] transition hover:translate-y-[-1px] active:translate-y-0"
                     onClick={() => navigate(successState.nextPath)}
                     type="button"
                   >
@@ -200,7 +200,7 @@ export function InviteSetupPage() {
                   </div>
 
                   <label className="block">
-                    <span className="mb-2 block text-xs font-bold text-slate-200">
+                    <span className="mb-2 block text-xs font-semibold text-slate-200">
                       {isPasswordReset ? "Account Email*" : "Invite Email*"}
                     </span>
                     <input
@@ -211,7 +211,7 @@ export function InviteSetupPage() {
                   </label>
 
                   <label className="block">
-                    <span className="mb-2 block text-xs font-bold text-slate-200">
+                    <span className="mb-2 block text-xs font-semibold text-slate-200">
                       {isPasswordReset ? "Full Name" : "Full Name*"}
                     </span>
                     <input
@@ -223,7 +223,7 @@ export function InviteSetupPage() {
                   </label>
 
                   <label className="block">
-                    <span className="mb-2 block text-xs font-bold text-slate-200">
+                    <span className="mb-2 block text-xs font-semibold text-slate-200">
                       Create Password*
                     </span>
                     <input
@@ -236,7 +236,7 @@ export function InviteSetupPage() {
                   </label>
 
                   <label className="block">
-                    <span className="mb-2 block text-xs font-bold text-slate-200">
+                    <span className="mb-2 block text-xs font-semibold text-slate-200">
                       Confirm Password*
                     </span>
                     <input
@@ -274,7 +274,7 @@ export function InviteSetupPage() {
 
                   <button
                     disabled={isSubmitting}
-                    className="h-12 w-full rounded-md bg-[linear-gradient(135deg,#18ac5f_0%,#0a7f74_48%,#0a2f66_100%)] text-sm font-black text-white shadow-[0_14px_30px_rgba(6,95,70,0.28)] transition hover:translate-y-[-1px] active:translate-y-0"
+                    className="h-12 w-full rounded-md bg-[linear-gradient(135deg,#18ac5f_0%,#0a7f74_48%,#0a2f66_100%)] text-sm font-semibold text-white shadow-[0_14px_30px_rgba(6,95,70,0.28)] transition hover:translate-y-[-1px] active:translate-y-0"
                     type="submit"
                   >
                     {isSubmitting

@@ -1,7 +1,7 @@
 // Friendly guide: this module (AccountantDocumentsPage) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
@@ -78,20 +78,6 @@ function SearchIcon() {
       <circle cx="11" cy="11" r="6.25" stroke="currentColor" strokeWidth="1.8" />
       <path
         d="m16 16 4.25 4.25"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
-}
-
-function FilterIcon() {
-  return (
-    <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
-      <path
-        d="M4.5 6.5h15l-6 6v5l-3 1v-6l-6-6Z"
         stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -870,8 +856,11 @@ export function AccountantDocumentsPage() {
   const [previewZoom, setPreviewZoom] = useState(100);
   const [liveClients, setLiveClients] = useState<FirmClientAccount[] | null>(null);
   const [liveDocuments, setLiveDocuments] = useState<DocumentRecord[]>([]);
+  const [liveLoadStatus, setLiveLoadStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [liveRefreshKey, setLiveRefreshKey] = useState(0);
+  const hasLoadedLiveDocuments = useRef(false);
 
-  const sourceClients = backendMode && liveClients ? liveClients : portal.adminClients;
+  const sourceClients = backendMode ? liveClients ?? [] : portal.adminClients;
   const assignedClients = useMemo(
     () => getScopedClients(user, sourceClients),
     [sourceClients, user],
@@ -883,11 +872,14 @@ export function AccountantDocumentsPage() {
     }
 
     let isActive = true;
+    if (!hasLoadedLiveDocuments.current) {
+      setLiveLoadStatus("loading");
+    }
 
     async function loadLiveDocuments() {
       try {
         const [clients, records] = await Promise.all([
-          portalServiceApi.getAdminClients(),
+          portalServiceApi.getAdminClients({ allowFallback: false }),
           apiGetJson<BackendDocumentRecord[]>("/api/documents"),
         ]);
 
@@ -922,15 +914,22 @@ export function AccountantDocumentsPage() {
 
         setLiveClients(clients);
         setLiveDocuments(mappedDocuments);
+        hasLoadedLiveDocuments.current = true;
+        setLiveLoadStatus("ready");
       } catch (error) {
         if (!isActive) {
           return;
         }
 
+        if (!hasLoadedLiveDocuments.current) {
+          setLiveClients([]);
+          setLiveDocuments([]);
+          setLiveLoadStatus("error");
+        }
         setFeedbackMessage(
           error instanceof ApiError
             ? error.message
-            : "The live document centre could not be loaded, so the seeded workspace view is still shown.",
+            : "The live document centre could not be loaded. No demo records are being shown.",
         );
       }
     }
@@ -939,6 +938,28 @@ export function AccountantDocumentsPage() {
 
     return () => {
       isActive = false;
+    };
+  }, [backendMode, liveRefreshKey]);
+
+  useEffect(() => {
+    if (!backendMode) {
+      return;
+    }
+
+    const refresh = () => setLiveRefreshKey((current) => current + 1);
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        refresh();
+      }
+    };
+    const intervalId = window.setInterval(refresh, 30_000);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
   }, [backendMode]);
 
@@ -984,7 +1005,7 @@ export function AccountantDocumentsPage() {
   const allResults = useMemo(
     () =>
       assignedClients.flatMap((client) => {
-        if (backendMode && liveDocuments.length > 0) {
+        if (backendMode) {
           return buildUnifiedSearchResults({
             clientId: client.id,
             clientName: client.clientName,
@@ -1287,6 +1308,29 @@ export function AccountantDocumentsPage() {
     setCurrentPage(1);
   }
 
+  if (backendMode && liveLoadStatus !== "ready") {
+    const isLoading = liveLoadStatus === "idle" || liveLoadStatus === "loading";
+    return (
+      <div className="mx-auto max-w-[1280px] space-y-6">
+        <SurfaceCard className="rounded-2xl border border-slate-200 bg-white p-8">
+          <EmptyState
+            description={
+              isLoading
+                ? "The live client document register is being loaded."
+                : "The backend document register could not be loaded. No demo records are being shown."
+            }
+            title={isLoading ? "Loading documents" : "Documents unavailable"}
+          />
+          {!isLoading ? (
+            <div className="mt-5 flex justify-center">
+              <Button onClick={() => setLiveRefreshKey((current) => current + 1)}>Try again</Button>
+            </div>
+          ) : null}
+        </SurfaceCard>
+      </div>
+    );
+  }
+
   return (
     <div
       className="mx-auto max-w-[1280px] space-y-6"
@@ -1301,6 +1345,15 @@ export function AccountantDocumentsPage() {
             Search all client document records across every status, period, and document type.
           </p>
         </div>
+        {backendMode ? (
+          <Button
+            className="h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-700 hover:bg-slate-50"
+            onClick={() => setLiveRefreshKey((current) => current + 1)}
+            variant="secondary"
+          >
+            Refresh documents
+          </Button>
+        ) : null}
       </section>
 
       {feedbackMessage ? (
@@ -1329,10 +1382,6 @@ export function AccountantDocumentsPage() {
                 </div>
 
                 <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
-                  <Button className="h-11 rounded-xl px-4 text-brand-700" variant="secondary">
-                    <FilterIcon />
-                    <span>Filters</span>
-                  </Button>
                   <button
                     className="text-sm font-medium text-brand-600 transition hover:text-brand-700"
                     onClick={handleClearFilters}

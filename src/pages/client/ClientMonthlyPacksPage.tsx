@@ -10,7 +10,6 @@ import {
   CloudUpload,
   FileText,
   Inbox,
-  Send,
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../app/auth";
@@ -31,7 +30,6 @@ import {
   acceptedFilesForSlot,
   buildDefaultDueDate,
   buildSlotUploadForm,
-  findNextSubmittableSlot,
   formatSizeLabel,
   isInvoiceCategory,
   mapBackendDocumentStatus,
@@ -259,6 +257,7 @@ export function ClientMonthlyPacksPage() {
     monthPack,
     previousMonthComparison,
     showFeedbackNotice,
+    submitSlot,
     submitMonth,
     uploadToSlot,
   } = useClientWorkflow({
@@ -452,7 +451,8 @@ export function ClientMonthlyPacksPage() {
       ? livePreviousMonthComparison
       : previousMonthComparison;
   const isPackReadOnly =
-    !backendMode && effectiveMonthPack.submissionStatus === "under_accountant_review";
+    effectiveMonthPack.submissionStatus === "under_accountant_review" ||
+    effectiveMonthPack.submissionStatus === "complete";
 
   const requiredSlots = useMemo(
     () => effectiveMonthPack.slots.filter((slot) => slot.isRequired),
@@ -480,7 +480,7 @@ export function ClientMonthlyPacksPage() {
   );
 
   const progressPercent = useMemo(() => {
-    if (monthPack.totalCount === 0) {
+    if (effectiveMonthPack.totalCount === 0) {
       return 0;
     }
 
@@ -503,10 +503,6 @@ export function ClientMonthlyPacksPage() {
       effectiveMonthPack.slots[0] ??
       null,
     [blockingSlots, effectiveMonthPack.slots, requiredSlots],
-  );
-  const backendSubmittableSlot = useMemo(
-    () => findNextSubmittableSlot(effectiveMonthPack.slots, liveSlotMetaById),
-    [effectiveMonthPack.slots, liveSlotMetaById],
   );
   const existingSlotFileNames = useMemo(() => {
     if (!selectedSlot) {
@@ -532,41 +528,23 @@ export function ClientMonthlyPacksPage() {
   }, [effectiveDocuments, effectiveInvoices, selectedSlot]);
 
   const submissionState = useMemo(() => {
-    if (backendMode) {
-      const activeReviewCount = effectiveMonthPack.slots.filter((slot) =>
-        ["uploaded", "under_review", "accepted", "filed"].includes(slot.status),
-      ).length;
-
-      if (backendSubmittableSlot) {
-        return {
-          label: "Ready",
-          tone: "success" as const,
-          bannerTitle: `${backendSubmittableSlot.documentType} is ready to submit.`,
-          bannerMessage:
-            "Submit the next ready slot for accountant review while the rest of the month continues independently.",
-          statusHelper: "Ready for slot submission",
-        };
-      }
-
-      if (activeReviewCount > 0) {
-        return {
-          label: "Active",
-          tone: "info" as const,
-          bannerTitle: "Slot reviews are already in motion.",
-          bannerMessage:
-            "Some slots are already with the accountant. You can keep uploading or correcting the remaining slots in parallel.",
-          statusHelper: "Parallel slot workflow",
-        };
-      }
-    }
-
     if (effectiveMonthPack.submissionStatus === "under_accountant_review") {
       return {
         label: "Under Review",
         tone: "info" as const,
-        bannerTitle: "Submitted slots are under review.",
-        bannerMessage: "At least one checklist slot has been sent to the accountant for review.",
+        bannerTitle: "Monthly pack submitted.",
+        bannerMessage: "Your documents for this month are with the accountant for review.",
         statusHelper: "Awaiting accountant review",
+      };
+    }
+
+    if (effectiveMonthPack.submissionStatus === "complete") {
+      return {
+        label: "Complete",
+        tone: "success" as const,
+        bannerTitle: "Monthly pack complete.",
+        bannerMessage: "The accountant has completed the review for this month.",
+        statusHelper: "Review complete",
       };
     }
 
@@ -574,9 +552,9 @@ export function ClientMonthlyPacksPage() {
       return {
         label: "Ready",
         tone: "success" as const,
-        bannerTitle: "A required slot is ready to submit.",
-        bannerMessage: "All required documents are in place, and the next ready slot can be sent for accountant review.",
-        statusHelper: "Ready for slot submission",
+        bannerTitle: "Monthly pack ready to submit.",
+        bannerMessage: "All required documents are uploaded as drafts. Submit the month when you are ready.",
+        statusHelper: "Ready for monthly submission",
       };
     }
 
@@ -684,33 +662,61 @@ export function ClientMonthlyPacksPage() {
       return;
     }
 
-    if (!backendSubmittableSlot) {
+    if (!livePackId || !effectiveMonthPack.canComplete || isPackReadOnly) {
       showFeedbackNotice(
         "warning",
-        "No slot ready to submit",
-        "Upload or correct a checklist slot before sending it for accountant review.",
+        "Monthly pack not ready",
+        "Upload or correct every required document before submitting this month.",
       );
       return;
     }
 
     try {
-      await apiPostJson<
-        BackendDocumentSlotResponse,
-        Record<string, never>
-      >(`/api/document-slots/${encodeURIComponent(backendSubmittableSlot.id)}/submit`, {});
+      await apiPostJson<BackendMonthlyPackResponse, Record<string, never>>(
+        `/api/monthly-packs/${encodeURIComponent(livePackId)}/submit`,
+        {},
+      );
       await loadBackendMonthlyPack();
       showFeedbackNotice(
         "success",
-        "Slot submitted",
-        `${backendSubmittableSlot.documentType} was submitted for accountant review.`,
+        "Monthly pack submitted",
+        `Your documents for ${effectiveMonthPack.monthLabel} were submitted for accountant review.`,
       );
     } catch (error) {
       showFeedbackNotice(
         "danger",
-        "Slot submission failed",
+        "Monthly pack submission failed",
         error instanceof ApiError
           ? error.message
-          : "The selected slot could not be submitted for review.",
+          : "Your monthly pack could not be submitted for review.",
+      );
+    }
+  }
+
+  async function handleSubmitSlotAction(slot: MonthlyDocumentSlot) {
+    if (!backendMode) {
+      submitSlot(slot.id, slot.documentType);
+      return;
+    }
+
+    try {
+      await apiPostJson<BackendDocumentSlotResponse, Record<string, never>>(
+        `/api/document-slots/${encodeURIComponent(slot.id)}/submit`,
+        {},
+      );
+      await loadBackendMonthlyPack();
+      showFeedbackNotice(
+        "success",
+        `${slot.documentType} submitted`,
+        `${slot.documentType} was sent to your accountant. You can continue with the other monthly documents.`,
+      );
+    } catch (error) {
+      showFeedbackNotice(
+        "danger",
+        `${slot.documentType} submission failed`,
+        error instanceof ApiError
+          ? error.message
+          : "The document could not be submitted for review. Refresh the monthly pack and try again.",
       );
     }
   }
@@ -790,7 +796,7 @@ export function ClientMonthlyPacksPage() {
             {effectiveMonthPack.monthLabel}
           </h1>
           <p className="max-w-2xl text-[0.96rem] leading-7 text-[#53617f]">
-            Upload, correct, and submit each slot inside {effectiveMonthPack.monthLabel}. The pack tracks progress, but each document slot moves through review on its own.
+            Submit each draft when it is ready, or submit all remaining drafts together. Drafts left at month-end are submitted automatically.
           </p>
         </div>
 
@@ -878,21 +884,9 @@ export function ClientMonthlyPacksPage() {
                   <span>Continue Pack</span>
                   <ChevronRight aria-hidden="true" className="h-4 w-4" />
                 </Button>
-                <Button
-                  className={monthlyPackActionButtonClass}
-                  disabled={
-                    backendMode
-                      ? !backendSubmittableSlot || isSyncingBackendPack
-                      : !effectiveMonthPack.canComplete || isPackReadOnly
-                  }
-                  onClick={() => void handleSubmitAction()}
-                >
-                  <Send aria-hidden="true" className="h-4 w-4" />
-                  <span>{backendMode ? "Submit Ready Slot" : "Submit Month"}</span>
-                </Button>
                 {highlightedSlot ? (
                   <Button
-                    className={`${monthlyPackActionButtonClass} sm:col-span-2 lg:col-span-2 xl:col-span-2`}
+                    className={monthlyPackActionButtonClass}
                     disabled={isPackReadOnly || isSyncingBackendPack}
                     onClick={() => handleOpenUpload(highlightedSlot)}
                   >
@@ -944,8 +938,20 @@ export function ClientMonthlyPacksPage() {
       <section className="grid items-stretch gap-5">
         <div className="h-full" id="pack-checklist">
           <MonthlyPackChecklist
+            headerActionDisabled={!effectiveMonthPack.canComplete || isPackReadOnly || isSyncingBackendPack}
+            headerActionHelper={
+              isPackReadOnly
+                ? "This monthly pack has been submitted and is now locked while the accountant reviews it."
+                : effectiveMonthPack.canComplete
+                  ? "Ready to send: select Submit Month to submit every draft in this pack for accountant review."
+                  : `${blockerSummaryText(missingRequiredCount, rejectedRequiredCount)} Individual drafts can still be submitted now; any drafts left at month-end submit automatically.`
+            }
+            headerActionLabel={isPackReadOnly ? "Submitted" : "Submit Month"}
             onDownload={(slot) => void handleDownloadSlot(slot)}
             isReadOnly={isPackReadOnly}
+            onHeaderAction={() => void handleSubmitAction()}
+            isSubmitting={isSyncingBackendPack}
+            onSubmit={(slot) => void handleSubmitSlotAction(slot)}
             onUpload={handleOpenUpload}
             onView={() => navigate("/client/documents")}
             pack={effectiveMonthPack}

@@ -290,12 +290,12 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
     location.pathname.startsWith("/firm/inbox") || location.pathname.startsWith("/client/inbox");
 
   const navSurfaceClass = isDark
-    ? "border-brand-700 bg-brand-800 text-slate-100 shadow-[14px_0_34px_rgba(10,47,102,0.28)]"
+    ? "border-neutral-800 bg-[#101010] text-neutral-100 shadow-[14px_0_34px_rgba(0,0,0,0.34)]"
     : "border-slate-200 bg-white text-slate-800 shadow-[14px_0_34px_rgba(15,23,42,0.08)]";
   const navMutedClass = isDark ? "text-slate-400" : "text-slate-500";
   const navHoverClass = isDark ? "hover:bg-white/8 hover:text-white" : "hover:bg-slate-100 hover:text-slate-950";
   const navActiveClass = isDark
-    ? "bg-white/12 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]"
+    ? "bg-white/10 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)]"
     : "bg-slate-100 text-slate-950 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.04)]";
   const iconMutedClass = isDark ? "text-slate-300" : "text-slate-600";
 
@@ -304,7 +304,7 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
       className={cn(
         "min-h-screen",
         isDark
-          ? "bg-brand-900"
+          ? "bg-[#090909]"
           : "bg-[#eef1f4]",
       )}
     >
@@ -389,7 +389,7 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
                     "h-8",
                     effectiveCollapsed ? "w-10 justify-center px-0" : "w-full px-2.5",
                     isDark
-                      ? "border-brand-400/20 bg-brand-700/45 text-slate-300 hover:bg-brand-700/70 hover:text-white"
+                      ? "border-slate-700 bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white"
                       : "border-slate-200 bg-slate-50 text-slate-500 hover:bg-white hover:text-slate-800",
                   )}
                   type="button"
@@ -422,7 +422,7 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
         : cn(
             "rounded-lg px-2.5 py-2 backdrop-blur-md transition",
             isDark
-              ? "bg-slate-400/8 border border-slate-300/20 shadow-[0_2px_8px_rgba(148,163,184,0.1)]"
+              ? "border border-white/8 bg-white/[0.035] shadow-[0_2px_8px_rgba(0,0,0,0.16)]"
               : "bg-gradient-to-br from-slate-50/80 to-gray-50/70 border border-slate-200/60 shadow-[0_2px_8px_rgba(203,213,225,0.3),inset_0_1px_0_rgba(255,255,255,1)]"
           )
     }
@@ -540,7 +540,7 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
                     className={cn(
                       "absolute bottom-[calc(100%+0.6rem)] z-50 w-[240px] rounded-lg border p-3 shadow-[0_18px_42px_rgba(15,23,42,0.18)]",
                       effectiveCollapsed ? "bottom-0 left-[calc(100%+0.75rem)]" : "left-0",
-                      isDark ? "border-brand-400/20 bg-brand-800 text-slate-100" : "border-slate-200 bg-white text-slate-800",
+                      isDark ? "border-neutral-700 bg-[#151515] text-neutral-100" : "border-slate-200 bg-white text-slate-800",
                     )}
                   >
                     <div className="mb-3 flex flex-col gap-3 px-0 py-0 border-b pb-3" style={isDark ? {borderColor: 'rgba(255,255,255,0.1)'} : {borderColor: '#e2e8f0'}}>

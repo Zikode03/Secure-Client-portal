@@ -164,6 +164,7 @@ function buildWorkflowState(overrides: Record<string, unknown> = {}) {
     requests: [createRequest()],
     resolveRequest: vi.fn(() => ({ ok: true, message: "Request marked as resolved." })),
     showFeedbackNotice: vi.fn(),
+    submitSlot: vi.fn(() => ({ ok: true, message: "Document submitted." })),
     submitMonth: vi.fn(),
     uploadToSlot: vi.fn(),
     ...overrides,
@@ -237,12 +238,35 @@ describe("ClientMonthlyPacksPage", () => {
       ),
     };
 
-    renderPage({ monthPack: readyPack });
+    const workflow = renderPage({ monthPack: readyPack });
 
-    expect(screen.getByText("All required documents are in place, and the next ready slot can be sent for accountant review.")).toBeInTheDocument();
-    screen
-      .getAllByRole("button", { name: /submit month/i })
-      .forEach((button) => expect(button).toBeEnabled());
+    expect(screen.getByText("All required documents are uploaded as drafts. Submit the month when you are ready.")).toBeInTheDocument();
+    const submitButtons = screen.getAllByRole("button", { name: /submit month/i });
+    submitButtons.forEach((button) => expect(button).toBeEnabled());
+
+    fireEvent.click(submitButtons[0]);
+
+    expect(workflow.submitMonth).toHaveBeenCalledTimes(1);
+  });
+
+  it("lets the client submit one draft without waiting for the other required documents", () => {
+    const pack = createBasePack();
+    const workflow = renderPage({
+      monthPack: {
+        ...pack,
+        slots: pack.slots.map((slot) =>
+          slot.id === "slot-1"
+            ? { ...slot, status: "draft" as const, progress: 70 }
+            : slot,
+        ),
+      },
+    });
+
+    fireEvent.click(screen.getAllByRole("button", { name: /open actions for bank statement/i })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: "Submit Bank Statement" })[0]);
+
+    expect(workflow.submitSlot).toHaveBeenCalledWith("slot-1", "Bank Statement");
+    expect(workflow.submitMonth).not.toHaveBeenCalled();
   });
 
   it("routes the top upload action to the highest-priority blocker", () => {
@@ -321,7 +345,7 @@ describe("ClientMonthlyPacksPage", () => {
 
     renderPage({ monthPack: readyPack, requests: [] });
 
-    expect(screen.getByText("A required slot is ready to submit.")).toBeInTheDocument();
-    expect(screen.getByText("All required documents are in place, and the next ready slot can be sent for accountant review.")).toBeInTheDocument();
+    expect(screen.getByText("Monthly pack ready to submit.")).toBeInTheDocument();
+    expect(screen.getByText("All required documents are uploaded as drafts. Submit the month when you are ready.")).toBeInTheDocument();
   });
 });

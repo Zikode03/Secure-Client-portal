@@ -839,10 +839,10 @@ function ComplianceHealthTrendChart({ rows }: { rows: PortfolioRow[] }) {
               <circle cx={point.x} cy={point.y} fill="transparent" r="18" />
               <g className="pointer-events-none opacity-0 transition-opacity group-hover:opacity-100">
                 <rect fill="#091333" height="37" rx="7" width="118" x={Math.min(Math.max(point.x - 59, 44), width - 154)} y={Math.max(point.y - 52, 8)} />
-                <text fill="#ffffff" fontSize="10" fontWeight="800" textAnchor="middle" x={Math.min(Math.max(point.x, 103), width - 95)} y={Math.max(point.y - 35, 25)}>
+                <text fill="#ffffff" fontSize="10" fontWeight="600" textAnchor="middle" x={Math.min(Math.max(point.x, 103), width - 95)} y={Math.max(point.y - 35, 25)}>
                   {point.month}
                 </text>
-                <text fill="#dbeafe" fontSize="10" fontWeight="700" textAnchor="middle" x={Math.min(Math.max(point.x, 103), width - 95)} y={Math.max(point.y - 20, 40)}>
+                <text fill="#dbeafe" fontSize="10" fontWeight="600" textAnchor="middle" x={Math.min(Math.max(point.x, 103), width - 95)} y={Math.max(point.y - 20, 40)}>
                   {Math.round(point.value)}% compliance
                 </text>
               </g>

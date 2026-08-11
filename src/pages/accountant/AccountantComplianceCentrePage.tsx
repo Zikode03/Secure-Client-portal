@@ -1,7 +1,7 @@
 // Friendly guide: this module (AccountantComplianceCentrePage) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
@@ -1136,8 +1136,8 @@ export function AccountantComplianceCentrePage() {
                   <p className="text-xs font-medium text-[#53617f]">Compliance progress</p>
                   <div className="mt-4 grid place-items-center">
                     <div
-                      className="grid h-28 w-28 place-items-center rounded-full"
-                      style={{ background: `conic-gradient(#10b981 0% ${Math.max(0, 100 - selectedClient.riskScore)}%, #e7edf4 ${Math.max(0, 100 - selectedClient.riskScore)}% 100%)` }}
+                      className="compliance-progress-ring grid h-28 w-28 place-items-center rounded-full"
+                      style={{ "--compliance-progress": `${Math.max(0, 100 - selectedClient.riskScore)}%` } as CSSProperties}
                     >
                       <div className="grid h-20 w-20 place-items-center rounded-full bg-white">
                         <span className="text-xl font-medium text-[#061848]">{Math.max(0, 100 - selectedClient.riskScore)}%</span>

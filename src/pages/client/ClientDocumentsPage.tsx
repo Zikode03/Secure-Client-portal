@@ -1,7 +1,7 @@
 // Friendly guide: this module (ClientDocumentsPage) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
 import { DocumentUploadModal } from "../../components/workflow/DocumentUploadModal";
@@ -499,10 +499,13 @@ export function ClientDocumentsPage() {
   const [liveCommentsByDocumentId, setLiveCommentsByDocumentId] = useState<Record<string, DocumentComment[]>>({});
   const [liveSlots, setLiveSlots] = useState<MonthlyDocumentSlot[] | null>(null);
   const [liveSlotDocumentIds, setLiveSlotDocumentIds] = useState<Record<string, string | undefined>>({});
+  const [liveDocumentSlotIds, setLiveDocumentSlotIds] = useState<Record<string, string | undefined>>({});
   const [liveFileUrlsByDocumentId, setLiveFileUrlsByDocumentId] = useState<
     Record<string, { url: string; mimeType: string }>
   >({});
   const [liveLoadStatus, setLiveLoadStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [liveRefreshKey, setLiveRefreshKey] = useState(0);
+  const hasLoadedLiveWorkspace = useRef(false);
 
   useEffect(() => {
     return () => {
@@ -522,7 +525,9 @@ export function ClientDocumentsPage() {
     let isActive = true;
     const clientId = user.clientIds[0];
     const businessName = user.company || "Client";
-    setLiveLoadStatus("loading");
+    if (!hasLoadedLiveWorkspace.current) {
+      setLiveLoadStatus("loading");
+    }
 
     async function loadLiveDocumentWorkspace() {
       try {
@@ -605,15 +610,25 @@ export function ClientDocumentsPage() {
             slots.map((slot) => [slot.id, slot.currentDocumentId ?? undefined]),
           ),
         );
+        setLiveDocumentSlotIds(
+          Object.fromEntries(
+            documents
+              .filter((document) => document.clientId === clientId)
+              .map((document) => [document.id, document.documentSlotId ?? undefined]),
+          ),
+        );
+        hasLoadedLiveWorkspace.current = true;
         setLiveLoadStatus("ready");
       } catch (error) {
         if (!isActive) {
           return;
         }
 
-        setLiveDocumentsBase(null);
-        setLiveSlots(null);
-        setLiveLoadStatus("error");
+        if (!hasLoadedLiveWorkspace.current) {
+          setLiveDocumentsBase(null);
+          setLiveSlots(null);
+          setLiveLoadStatus("error");
+        }
         setFeedbackNotice({
           tone: "danger",
           title: "Document sync failed",
@@ -630,7 +645,29 @@ export function ClientDocumentsPage() {
     return () => {
       isActive = false;
     };
-  }, [backendMode, user?.clientIds, user?.company, user?.fullName]);
+  }, [backendMode, liveRefreshKey, user?.clientIds, user?.company, user?.fullName]);
+
+  useEffect(() => {
+    if (!backendMode) {
+      return;
+    }
+
+    const refresh = () => setLiveRefreshKey((current) => current + 1);
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        refresh();
+      }
+    };
+    const intervalId = window.setInterval(refresh, 30_000);
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [backendMode]);
 
   const liveDocuments = useMemo(() => {
     if (!liveDocumentsBase) {
@@ -747,14 +784,19 @@ export function ClientDocumentsPage() {
     );
   }, [backendMode, liveDocuments, portal, selectedResult]);
 
-  const selectedSlotForAction = useMemo(
-    () =>
-      inferSlotFromResult(
-        selectedResult,
-        backendMode && liveSlots ? liveSlots : portal.clientWorkflow.monthPack.slots,
-      ),
-    [backendMode, liveSlots, portal.clientWorkflow.monthPack.slots, selectedResult],
-  );
+  const selectedSlotForAction = useMemo(() => {
+    const slots = backendMode && liveSlots ? liveSlots : portal.clientWorkflow.monthPack.slots;
+    if (backendMode && selectedResult) {
+      const slotId = liveDocumentSlotIds[selectedResult.id];
+      const directSlot = slots.find((slot) => slot.id === slotId);
+      if (directSlot) {
+        return directSlot;
+      }
+    }
+
+    return inferSlotFromResult(selectedResult, slots);
+  }, [backendMode, liveDocumentSlotIds, liveSlots, portal.clientWorkflow.monthPack.slots, selectedResult]);
+  const uploadSlots = backendMode && liveSlots ? liveSlots : portal.clientWorkflow.monthPack.slots;
   const existingSlotFileNames = useMemo(() => {
     if (!selectedSlot) {
       return [];
@@ -980,7 +1022,6 @@ export function ClientDocumentsPage() {
     setCommentError("");
     setPreviewZoom(100);
     setPreviewModalOpen(false);
-    setViewerOpen(false);
   }, [selectedResultId]);
 
   function dismissFeedbackNotice() {
@@ -1094,31 +1135,8 @@ export function ClientDocumentsPage() {
         monthlyPackId: string;
         documentSlotId: string;
       }>("/api/documents/upload", form)
-        .then(async () => {
-          const refreshedDocuments = await apiGetJson<BackendDocumentRecord[]>("/api/documents");
-          setLiveDocumentsBase(
-            refreshedDocuments
-              .filter((document) => document.clientId === user.clientIds[0])
-              .map<DocumentRecord>((document) => ({
-                id: document.id,
-                clientId: document.clientId,
-                clientName: user.company || "Client",
-                documentType: document.category,
-                fileName: document.name,
-                monthLabel: selectedSlot ? `${selectedSlot.month} ${selectedSlot.year}` : formatDateLabel(document.uploadedAtUtc),
-                description: `${document.category} uploaded in the secure document workflow.`,
-                status: mapBackendDocumentStatus(document.status),
-                uploadedBy: user.fullName || "Client user",
-                uploadedAt: document.uploadedAtUtc,
-                reviewedBy: undefined,
-                reviewedAt: undefined,
-                sizeLabel: formatSizeLabel(document.sizeBytes),
-                keywordTags: [document.category, document.name],
-                comments: [],
-                auditTrail: [],
-                fileMimeType: document.fileType,
-              })),
-          );
+        .then(() => {
+          setLiveRefreshKey((current) => current + 1);
           setFeedbackNotice({
             tone: "success",
             title: "Document uploaded",
@@ -1274,6 +1292,15 @@ export function ClientDocumentsPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5 lg:justify-end">
+          {backendMode ? (
+            <Button
+              className="h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-700 hover:bg-slate-50"
+              onClick={() => setLiveRefreshKey((current) => current + 1)}
+              variant="secondary"
+            >
+              <span>Refresh</span>
+            </Button>
+          ) : null}
           <Button
             className="h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-700 hover:bg-slate-50"
             onClick={handleClearFilters}
@@ -1300,6 +1327,63 @@ export function ClientDocumentsPage() {
           tone={feedbackNotice.tone}
         />
       ) : null}
+
+      <SurfaceCard className="rounded-[1.5rem] border border-slate-200/80 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.05)]">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-[1.08rem] font-semibold text-slate-950">Monthly upload checklist</h2>
+            <p className="mt-1 text-sm leading-6 text-slate-500">
+              Choose the correct slot to upload, replace, or resubmit a document.
+            </p>
+          </div>
+          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
+            {uploadSlots.length} slots
+          </span>
+        </div>
+
+        {uploadSlots.length > 0 ? (
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {uploadSlots.map((slot) => {
+              const tone = statusToTone(slot.status);
+              const actionLabel =
+                slot.status === "rejected"
+                  ? "Re-upload"
+                  : slot.status === "missing" || slot.status === "pending"
+                    ? "Upload"
+                    : "Upload new version";
+
+              return (
+                <div className="flex min-h-[150px] flex-col rounded-2xl border border-slate-200 bg-slate-50 p-4" key={slot.id}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-medium text-slate-950">{slot.documentType}</p>
+                      <p className="mt-1 text-xs text-slate-500">{slot.month} {slot.year}</p>
+                    </div>
+                    <span className={`rounded-full px-2 py-1 text-[0.7rem] font-semibold ${toneToAccentClass(tone)}`}>
+                      {formatStatusLabel(slot.status)}
+                    </span>
+                  </div>
+                  <Button
+                    className="mt-auto h-10 w-full rounded-xl"
+                    onClick={() => openUploadForSlot(slot)}
+                    size="sm"
+                    variant={slot.status === "rejected" ? "danger" : "secondary"}
+                  >
+                    {actionLabel}
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="mt-4">
+            <EmptyState
+              description="No monthly document slots are currently available. Ask your accountant to create the current monthly pack."
+              title="No upload slots yet"
+            />
+          </div>
+        )}
+      </SurfaceCard>
 
       <SurfaceCard className="rounded-[1.5rem] border border-slate-200/80 bg-white p-4 shadow-[0_18px_40px_rgba(15,23,42,0.05)]">
         <div className="grid gap-4 lg:grid-cols-[minmax(0,2.2fr)_minmax(150px,1fr)_minmax(170px,1fr)_minmax(170px,1fr)_minmax(170px,1fr)]">
@@ -1967,9 +2051,9 @@ export function ClientDocumentsPage() {
                               </p>
                             </div>
                           </div>
-                          <Button className="h-9 rounded-xl px-3" size="sm" variant="secondary">
+                          <span className="inline-flex h-9 items-center rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700">
                             Open
-                          </Button>
+                          </span>
                         </button>
                       ))}
                     </div>
@@ -2101,6 +2185,7 @@ export function ClientDocumentsPage() {
             <div className="flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3">
               <div className="flex items-center gap-2">
                 <button
+                  aria-label="Zoom out"
                   className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
                   onClick={() => setPreviewZoom((current) => Math.max(80, current - 10))}
                   type="button"
@@ -2108,6 +2193,7 @@ export function ClientDocumentsPage() {
                   -
                 </button>
                 <button
+                  aria-label="Zoom in"
                   className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
                   onClick={() => setPreviewZoom((current) => Math.min(140, current + 10))}
                   type="button"

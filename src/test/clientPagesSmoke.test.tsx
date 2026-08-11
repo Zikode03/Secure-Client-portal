@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { AuthProvider } from "../app/auth";
@@ -46,6 +46,39 @@ describe("client page smoke coverage", () => {
     renderClientPage(<ClientDocumentsPage />);
     expect(screen.getByRole("heading", { name: "Document workspace" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Search results" })).toBeInTheDocument();
+  });
+
+  it("keeps the document workspace open when a client selects a different result", async () => {
+    const { container } = renderClientPage(<ClientDocumentsPage />);
+
+    const resultButton = await waitFor(() => {
+      const unselectedResult = Array.from(
+        container.querySelectorAll<HTMLButtonElement>("div.divide-y.divide-slate-100 > button"),
+      ).find((button) => !button.className.includes("ring-1"));
+      expect(unselectedResult).toBeDefined();
+      return unselectedResult!;
+    });
+
+    fireEvent.click(resultButton);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Close document workspace" })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "View" }));
+    expect(screen.getByRole("button", { name: "Close" })).toBeInTheDocument();
+  });
+
+  it("opens a real upload action from the monthly checklist", () => {
+    renderClientPage(<ClientDocumentsPage />);
+
+    const uploadButton = screen
+      .getAllByRole("button")
+      .find((button) => /^(Upload|Re-upload|Upload new version)$/.test(button.textContent ?? ""));
+
+    expect(uploadButton).toBeDefined();
+    fireEvent.click(uploadButton!);
+    expect(screen.getByRole("heading", { name: "Smart document upload" })).toBeInTheDocument();
   });
 
   it("renders the notification inbox", () => {

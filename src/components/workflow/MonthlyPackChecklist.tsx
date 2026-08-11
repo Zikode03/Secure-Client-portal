@@ -4,6 +4,7 @@
 import { Fragment, useState } from "react";
 import type { MonthlyDocumentSlot, MonthlyPack } from "../../types/portal";
 import { formatDateLabel } from "../../utils/formatters";
+import { Button } from "../ui/Button";
 import { SurfaceCard } from "../ui/SurfaceCard";
 
 // Shared shape notes: these types keep UI and data contracts aligned.
@@ -12,9 +13,13 @@ interface MonthlyPackChecklistProps {
   onUpload: (slot: MonthlyDocumentSlot) => void;
   onView?: (slot: MonthlyDocumentSlot) => void;
   onDownload?: (slot: MonthlyDocumentSlot) => void;
+  onSubmit?: (slot: MonthlyDocumentSlot) => void;
   isReadOnly?: boolean;
+  isSubmitting?: boolean;
   headerActionLabel?: string;
   onHeaderAction?: () => void;
+  headerActionDisabled?: boolean;
+  headerActionHelper?: string;
   showSlotCount?: boolean;
   showFooterMeta?: boolean;
 }
@@ -52,7 +57,7 @@ function statusMeta(slot: MonthlyDocumentSlot) {
             ? "Accepted"
             : slot.status === "filed"
               ? "Filed"
-              : "Uploaded",
+              : "Submitted",
         classes: "text-emerald-700 bg-emerald-50 ring-emerald-100",
         dot: "bg-emerald-500",
       };
@@ -166,6 +171,27 @@ function DownloadActionIcon() {
     <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24">
       <path
         d="M12 4.75v10.5m0 0 4-4m-4 4-4-4M5.75 16.5v1.75A2 2 0 0 0 7.75 20.25h8.5a2 2 0 0 0 2-2V16.5"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+    </svg>
+  );
+}
+
+function SubmitActionIcon() {
+  return (
+    <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24">
+      <path
+        d="m4.5 12.5 14-7-4.75 13.5-2.5-5-6.75-1.5Z"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+      <path
+        d="m11.25 14 3-3"
         stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -308,10 +334,14 @@ function LegendItem({
 }
 
 export function MonthlyPackChecklist({
+  headerActionDisabled = false,
+  headerActionHelper,
   headerActionLabel,
   isReadOnly = false,
+  isSubmitting = false,
   onDownload,
   onHeaderAction,
+  onSubmit,
   onUpload,
   onView,
   pack,
@@ -357,6 +387,21 @@ export function MonthlyPackChecklist({
             className="absolute right-0 top-[calc(100%+0.35rem)] z-20 min-w-[196px] rounded-xl border border-slate-200 bg-white p-2 shadow-[0_16px_32px_rgba(15,23,42,0.12)]"
             onClick={(event) => event.stopPropagation()}
           >
+            {!isReadOnly && slot.status === "draft" && onSubmit ? (
+              <button
+                className="client-dashboard-link flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={isSubmitting}
+                onClick={() => {
+                  closeMenu();
+                  onSubmit(slot);
+                }}
+                type="button"
+              >
+                <SubmitActionIcon />
+                <span>Submit {slot.documentType}</span>
+              </button>
+            ) : null}
+
             {!isReadOnly ? (
               <button
                 className="client-dashboard-link flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-semibold"
@@ -427,7 +472,7 @@ export function MonthlyPackChecklist({
       className="h-full overflow-hidden rounded-2xl border border-[#dce6ef] bg-white p-0 shadow-[0_16px_38px_rgba(4,24,52,0.08)]"
       onClick={() => closeMenu()}
     >
-      <div className="flex flex-col gap-2 px-5 pb-4 pt-5 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-3 px-5 pb-4 pt-5 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap items-center gap-3">
           <h2 className="text-base font-semibold text-[#091333]">Monthly Pack Checklist</h2>
           {showSlotCount ? (
@@ -436,18 +481,31 @@ export function MonthlyPackChecklist({
             </span>
           ) : null}
         </div>
-        {headerActionLabel && onHeaderAction ? (
-          <button
-            className="client-dashboard-link text-sm font-semibold"
-            onClick={onHeaderAction}
-            type="button"
-          >
-            {headerActionLabel}
-          </button>
-        ) : (
+        <div className="flex flex-wrap items-center gap-3">
           <div className="text-sm font-medium text-[#53617f]">Due {formatDateLabel(pack.dueDate)}</div>
-        )}
+          {headerActionLabel && onHeaderAction ? (
+            <Button
+              disabled={headerActionDisabled}
+              onClick={onHeaderAction}
+              size="sm"
+            >
+              {headerActionLabel}
+            </Button>
+          ) : null}
+        </div>
       </div>
+
+      {headerActionHelper ? (
+        <div
+          className={`border-y px-5 py-3 text-sm ${
+            headerActionDisabled
+              ? "border-amber-200 bg-amber-50 text-amber-800"
+              : "border-emerald-200 bg-emerald-50 text-emerald-800"
+          }`}
+        >
+          {headerActionHelper}
+        </div>
+      ) : null}
 
       <div className="divide-y divide-[#edf0f6] lg:hidden">
         {pack.slots.map((slot) => {
