@@ -115,12 +115,8 @@ export function AdminClientsPage() {
 
   const pageCount = Math.max(1, Math.ceil(filteredClients.length / PAGE_SIZE));
   const pagedClients = filteredClients.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  const stats = useMemo(() => ({
-    total: enrichedClients.length,
-    active: enrichedClients.filter((client) => client.status.toLowerCase() === "active").length,
-    unassigned: enrichedClients.filter((client) => !client.accountantUserId).length,
-    atRisk: enrichedClients.filter((client) => client.complianceHealth < 60).length,
-  }), [enrichedClients]);
+  const unassignedCount = enrichedClients.filter((client) => !client.accountantUserId).length;
+  const atRiskCount = enrichedClients.filter((client) => client.complianceHealth < 60).length;
 
   async function toggleStatus(client: ClientRecord) {
     const isActive = client.status.toLowerCase() === "active";
@@ -163,15 +159,14 @@ export function AdminClientsPage() {
 
       {feedback ? <FeedbackBanner message={feedback.message} onDismiss={() => setFeedback(null)} title={feedback.title} tone={feedback.tone} /> : null}
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {[["Total clients", stats.total, "All organisations in the firm"], ["Active clients", stats.active, "Currently active accounts"], ["Unassigned", stats.unassigned, "Need accountant ownership"], ["At risk", stats.atRisk, "Compliance health below 60%"]].map(([label, value, helper]) => (
-          <SurfaceCard className="space-y-2" key={String(label)}><p className="text-sm font-medium text-slate-500">{label}</p><p className="text-[2rem] font-semibold tracking-tight text-slate-950">{value}</p><p className="text-sm text-slate-500">{helper}</p></SurfaceCard>
-        ))}
-      </div>
-
       <SurfaceCard className="space-y-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div><h2 className="portal-section-title text-slate-950">Firm client register</h2><p className="mt-1 text-sm text-slate-500">Lifecycle controls are applied immediately by the backend.</p></div>
+          <div>
+            <h2 className="portal-section-title text-slate-950">Firm client register</h2>
+            <p className="mt-1 text-sm text-slate-500">
+              {enrichedClients.length} clients · {unassignedCount} unassigned · {atRiskCount} below 60% compliance health.
+            </p>
+          </div>
           <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[660px]">
             <TextField label="Search" onChange={(event) => setQuery(event.target.value)} value={query} />
             <SelectField label="Status" onChange={(event) => setStatusFilter(event.target.value)} options={statusOptions} value={statusFilter} />
