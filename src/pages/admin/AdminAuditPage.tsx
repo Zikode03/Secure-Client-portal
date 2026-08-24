@@ -85,8 +85,6 @@ export function AdminAuditPage() {
     });
   }, [entityFilter, logs, query, roleFilter, userMap]);
 
-  const adminActions = logs.filter((log) => log.actorRole === "admin").length;
-  const uniqueActors = new Set(logs.map((log) => log.actorUserId).filter(Boolean)).size;
   const recent24h = logs.filter((log) => Date.now() - new Date(log.createdAtUtc).getTime() <= 24 * 60 * 60 * 1000).length;
 
   return (
@@ -99,26 +97,13 @@ export function AdminAuditPage() {
 
       {feedback ? <FeedbackBanner message={feedback.message} onDismiss={() => setFeedback(null)} title={feedback.title} tone={feedback.tone} /> : null}
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {[
-          ["Audit events", logs.length, "Latest 300 recorded events"],
-          ["Last 24 hours", recent24h, "Recent system activity"],
-          ["Unique actors", uniqueActors, "Users represented in the trail"],
-          ["Admin actions", adminActions, "Administrative changes recorded"],
-        ].map(([label, value, helper]) => (
-          <SurfaceCard className="space-y-2" key={String(label)}>
-            <p className="text-sm font-medium text-slate-500">{label}</p>
-            <p className="text-[2rem] font-semibold tracking-tight text-slate-950">{value}</p>
-            <p className="text-sm text-slate-500">{helper}</p>
-          </SurfaceCard>
-        ))}
-      </div>
-
       <SurfaceCard className="space-y-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <h2 className="portal-section-title text-slate-950">System audit trail</h2>
-            <p className="mt-1 text-sm text-slate-500">Use this register to investigate changes and verify administrative activity.</p>
+            <p className="mt-1 text-sm text-slate-500">
+              Showing {filteredLogs.length} of {logs.length} events · {recent24h} recorded in the last 24 hours.
+            </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3 xl:min-w-[720px]">
             <TextField label="Search" onChange={(event) => setQuery(event.target.value)} value={query} />
