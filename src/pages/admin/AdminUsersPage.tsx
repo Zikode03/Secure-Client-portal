@@ -24,6 +24,20 @@ interface AdminUserRecord {
   securityStatus?: string | null;
 }
 
+interface ResetAccessResponse {
+  id: string;
+  reset: boolean;
+  invite?: { expiresAtUtc: string; setupUrl: string };
+  delivery?: string;
+  deliveryError?: string | null;
+}
+
+interface ResetPasswordResponse {
+  id: string;
+  temporaryPassword: string;
+  reset: boolean;
+}
+
 interface FeedbackNotice {
   tone: Tone;
   title: string;
@@ -130,7 +144,7 @@ export function AdminUsersPage() {
       setNewUserName("");
       setNewUserEmail("");
       setNewUserCompany("");
-      setFeedback({ tone: "success", title: "User created", message: "The user has been added to the firm directory." });
+      setFeedback({ tone: "success", title: "User created", message: "The user has been added and the backend invite flow has been triggered." });
       await loadUsers();
     } catch (error) {
       setFeedback({ tone: "danger", title: "User could not be created", message: error instanceof ApiError ? error.message : "The user could not be created." });
@@ -159,6 +173,13 @@ export function AdminUsersPage() {
         `/api/admin/users/${user.id}/${active ? "disable" : "enable"}`,
         {},
       );
+      setFeedback({
+        tone: "success",
+        title: active ? "Access disabled" : "Access enabled",
+        message: active
+          ? `${user.fullName}'s active sessions have been revoked.`
+          : `${user.fullName} can sign in again.`,
+      });
       await loadUsers();
     } catch (error) {
       setFeedback({ tone: "danger", title: "Status update failed", message: error instanceof ApiError ? error.message : "The user's access status could not be changed." });
@@ -167,10 +188,68 @@ export function AdminUsersPage() {
     }
   }
 
+  async function resetAccess(user: AdminUserRecord) {
+    const reason = window.prompt(`Reason for resetting access for ${user.fullName}:`, "Admin security reset");
+    if (!reason?.trim()) return;
+
+    setBusyUserId(user.id);
+    try {
+      const result = await apiPostJson<ResetAccessResponse, { reason: string }>(
+        `/api/admin/users/${user.id}/reset-access`,
+        { reason: reason.trim() },
+      );
+      setFeedback({
+        tone: result.delivery === "failed" ? "warning" : "success",
+        title: "Access reset issued",
+        message: result.delivery === "failed"
+          ? `Access was reset, but the reset email could not be delivered${result.deliveryError ? `: ${result.deliveryError}` : "."}`
+          : `${user.fullName}'s sessions were revoked and a password-reset setup link was issued.`,
+      });
+      await loadUsers();
+    } catch (error) {
+      setFeedback({ tone: "danger", title: "Access reset failed", message: error instanceof ApiError ? error.message : "The user's access could not be reset." });
+    } finally {
+      setBusyUserId(null);
+    }
+  }
+
+  async function resetPassword(user: AdminUserRecord) {
+    const temporaryPassword = window.prompt(
+      `Temporary password for ${user.fullName}. Leave blank to let the backend generate one:`,
+      "",
+    );
+    if (temporaryPassword === null) return;
+    if (temporaryPassword.trim() && temporaryPassword.trim().length < 8) {
+      setFeedback({ tone: "warning", title: "Password too short", message: "A temporary password must be at least 8 characters long." });
+      return;
+    }
+
+    const reason = window.prompt("Reason for the password reset:", "Admin password reset");
+    if (reason === null) return;
+
+    setBusyUserId(user.id);
+    try {
+      const result = await apiPostJson<ResetPasswordResponse, { newPassword: string | null; reason: string | null }>(
+        `/api/admin/users/${user.id}/reset-password`,
+        { newPassword: temporaryPassword.trim() || null, reason: reason.trim() || null },
+      );
+      setFeedback({
+        tone: "success",
+        title: "Temporary password created",
+        message: `Temporary password for ${user.fullName}: ${result.temporaryPassword}. The account will require a password reset on next access.`,
+      });
+      await loadUsers();
+    } catch (error) {
+      setFeedback({ tone: "danger", title: "Password reset failed", message: error instanceof ApiError ? error.message : "The user's password could not be reset." });
+    } finally {
+      setBusyUserId(null);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <PageHeader
-        description="Create users, control roles, and immediately enable or disable access across the firm."
+        description="Create users, control roles, manage account state, revoke access, and issue secure reset flows across the firm."
         eyebrow="Administration"
         title="Users & access"
       />
@@ -213,7 +292,7 @@ export function AdminUsersPage() {
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h2 className="portal-section-title text-slate-950">Firm directory</h2>
-            <p className="mt-1 text-sm text-slate-500">Manage account access without leaving the admin workspace.</p>
+            <p className="mt-1 text-sm text-slate-500">Account state and security operations are applied immediately by the backend.</p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[620px]">
             <TextField label="Search" onChange={(event) => setQuery(event.target.value)} value={query} />
@@ -230,12 +309,13 @@ export function AdminUsersPage() {
                 <th className="px-4 py-3">Role</th>
                 <th className="px-4 py-3">Company</th>
                 <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3 text-right">Access control</th>
+                <th className="px-4 py-3 text-right">Security actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
               {filteredUsers.map((user) => {
                 const status = normalizedStatus(user);
+                const busy = busyUserId === user.id;
                 return (
                   <tr key={user.id}>
                     <td className="px-4 py-4">
@@ -245,7 +325,7 @@ export function AdminUsersPage() {
                     <td className="px-4 py-4">
                       <select
                         className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
-                        disabled={busyUserId === user.id}
+                        disabled={busy}
                         onChange={(event) => void changeRole(user, event.target.value)}
                         value={user.role.toLowerCase()}
                       >
@@ -258,10 +338,14 @@ export function AdminUsersPage() {
                         {status}
                       </span>
                     </td>
-                    <td className="px-4 py-4 text-right">
-                      <Button disabled={busyUserId === user.id} onClick={() => void toggleStatus(user)} variant="secondary">
-                        {status === "active" ? "Disable access" : "Enable access"}
-                      </Button>
+                    <td className="px-4 py-4">
+                      <div className="flex flex-wrap justify-end gap-2">
+                        <Button disabled={busy} onClick={() => void resetAccess(user)} size="sm" variant="secondary">Reset access</Button>
+                        <Button disabled={busy} onClick={() => void resetPassword(user)} size="sm" variant="secondary">Reset password</Button>
+                        <Button disabled={busy} onClick={() => void toggleStatus(user)} size="sm" variant={status === "active" ? "danger" : "secondary"}>
+                          {status === "active" ? "Disable" : "Enable"}
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 );
