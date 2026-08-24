@@ -124,7 +124,6 @@ async function throwApiError(response: Response, path: string): Promise<never> {
   const message =
     payload?.message ??
     nestedError?.message ??
-    nestedError?.message ??
     `API request failed (${response.status}) for ${path}`;
 
   throw new ApiError(response.status, message, code, payload);
@@ -249,6 +248,20 @@ export async function apiPostForm<TResponse>(
     method: "POST",
     headers,
     body,
+  });
+
+  if (!response.ok) {
+    await throwApiError(response, path);
+  }
+
+  return readJsonResponse<TResponse>(response);
+}
+
+export async function apiDelete<TResponse = void>(path: string, init?: RequestInit): Promise<TResponse> {
+  const response = await fetch(buildUrl(path), {
+    ...init,
+    method: "DELETE",
+    headers: buildHeaders(init),
   });
 
   if (!response.ok) {
