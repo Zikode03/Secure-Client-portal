@@ -24,10 +24,17 @@ describe("admin navigation", () => {
       .map((item) => item.label);
 
     expect(managementLabels).toEqual(
-      expect.arrayContaining(["Users & Access", "Roles & Permissions", "Clients", "Accountants", "Assignments"]),
+      expect.arrayContaining([
+        "Users & Access",
+        "Roles & Permissions",
+        "Clients",
+        "Accountants",
+        "Assignments",
+        "Audit & Security",
+      ]),
     );
     expect(configurationLabels).toEqual(
-      expect.arrayContaining(["Audit & Security", "Request SLA Rules", "System Settings"]),
+      expect.arrayContaining(["Request SLA Rules", "System Settings"]),
     );
   });
 });
