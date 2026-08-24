@@ -1,10 +1,9 @@
-// Friendly guide: this module (AdminRequestStateMachinePage) supports the Secure Client Portal workflow.
-// The goal is clear, maintainable code so future edits feel safe and straightforward.
-
 import { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "../../components/ui/Button";
+import { PageHeader } from "../../components/ui/PageHeader";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
 
-// Shared shape notes: these types keep UI and data contracts aligned.
 type RequestState =
   | "open"
   | "awaiting_accountant"
@@ -71,7 +70,6 @@ const transitionRules: TransitionRule[] = [
   },
 ];
 
-// Component flow: gather data first, then render a focused UI state.
 function statePill(state: RequestState) {
   const base = "rounded-full px-2.5 py-1 text-xs font-semibold";
   switch (state) {
@@ -91,58 +89,71 @@ function statePill(state: RequestState) {
 }
 
 export function AdminRequestStateMachinePage() {
+  const navigate = useNavigate();
   const states = useMemo<RequestState[]>(
     () => ["awaiting_client", "client_replied", "awaiting_accountant", "open", "resolved", "closed"],
     [],
   );
 
-// Render output: this is the visual state users interact with.
   return (
-    <div className="space-y-4">
-      <SurfaceCard className="rounded-2xl border border-slate-200 bg-white p-5 shadow-none">
-        <h1 className="text-xl font-semibold text-slate-950">Request State Machine + SLA Rules</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Internal policy view for allowed status transitions, escalation timers, and reminder cadence.
-        </p>
-      </SurfaceCard>
+    <div className="space-y-6">
+      <PageHeader
+        actions={
+          <Button onClick={() => navigate("/firm/admin/system-settings")}>Edit workflow rules</Button>
+        }
+        description="Reference the request lifecycle and SLA expectations. Editable reminder, deadline and escalation rules are managed in System Settings."
+        eyebrow="Administration"
+        title="Request SLA rules"
+      />
 
-      <SurfaceCard className="rounded-2xl border border-slate-200 bg-white p-5 shadow-none">
-        <h2 className="text-sm font-semibold text-slate-900">Lifecycle</h2>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
+      <SurfaceCard className="space-y-4">
+        <div>
+          <h2 className="portal-section-title text-slate-950">Request lifecycle</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            This is the standard progression used by request workflows across the firm.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
           {states.map((state, index) => (
             <div className="flex items-center gap-2" key={state}>
               <span className={statePill(state)}>{state.replace(/_/g, " ")}</span>
-              {index < states.length - 1 ? <span className="text-slate-300">?</span> : null}
+              {index < states.length - 1 ? <span className="text-slate-300">→</span> : null}
             </div>
           ))}
         </div>
       </SurfaceCard>
 
-      <SurfaceCard className="rounded-2xl border border-slate-200 bg-white p-5 shadow-none">
-        <h2 className="text-sm font-semibold text-slate-900">Allowed Transitions</h2>
-        <div className="mt-3 overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="text-xs uppercase tracking-wide text-slate-500">
+      <SurfaceCard className="overflow-hidden p-0">
+        <div className="border-b border-slate-200 px-5 py-5">
+          <h2 className="portal-section-title text-slate-950">Transition reference</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Review the expected actor, response window, escalation threshold and reminder cadence for each transition.
+          </p>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
+            <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
               <tr>
-                <th className="px-3 py-2">From</th>
-                <th className="px-3 py-2">To</th>
-                <th className="px-3 py-2">Trigger</th>
-                <th className="px-3 py-2">Actor</th>
-                <th className="px-3 py-2">SLA</th>
-                <th className="px-3 py-2">Escalate</th>
-                <th className="px-3 py-2">Reminder</th>
+                <th className="px-5 py-3">From</th>
+                <th className="px-5 py-3">To</th>
+                <th className="px-5 py-3">Trigger</th>
+                <th className="px-5 py-3">Actor</th>
+                <th className="px-5 py-3">SLA</th>
+                <th className="px-5 py-3">Escalate</th>
+                <th className="px-5 py-3">Reminder</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-slate-100 bg-white">
               {transitionRules.map((rule) => (
-                <tr className="border-t border-slate-100" key={`${rule.from}-${rule.to}`}>
-                  <td className="px-3 py-2">{rule.from.replace(/_/g, " ")}</td>
-                  <td className="px-3 py-2">{rule.to.replace(/_/g, " ")}</td>
-                  <td className="px-3 py-2">{rule.trigger}</td>
-                  <td className="px-3 py-2">{rule.actor}</td>
-                  <td className="px-3 py-2">{rule.slaHours ? `${rule.slaHours}h` : "N/A"}</td>
-                  <td className="px-3 py-2">{rule.escalationAfterHours ? `${rule.escalationAfterHours}h` : "N/A"}</td>
-                  <td className="px-3 py-2">{rule.reminderCadenceHours ? `Every ${rule.reminderCadenceHours}h` : "N/A"}</td>
+                <tr key={`${rule.from}-${rule.to}`}>
+                  <td className="px-5 py-4"><span className={statePill(rule.from)}>{rule.from.replace(/_/g, " ")}</span></td>
+                  <td className="px-5 py-4"><span className={statePill(rule.to)}>{rule.to.replace(/_/g, " ")}</span></td>
+                  <td className="px-5 py-4 text-slate-700">{rule.trigger}</td>
+                  <td className="px-5 py-4 text-slate-600">{rule.actor}</td>
+                  <td className="px-5 py-4 text-slate-600">{rule.slaHours ? `${rule.slaHours}h` : "N/A"}</td>
+                  <td className="px-5 py-4 text-slate-600">{rule.escalationAfterHours ? `${rule.escalationAfterHours}h` : "N/A"}</td>
+                  <td className="px-5 py-4 text-slate-600">{rule.reminderCadenceHours ? `Every ${rule.reminderCadenceHours}h` : "N/A"}</td>
                 </tr>
               ))}
             </tbody>
