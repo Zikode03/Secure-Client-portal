@@ -10,6 +10,21 @@ import { canAccessRoute, hasPermission } from "../utils/permissions";
 const WorkspaceLayout = lazy(() =>
   import("../layouts/WorkspaceLayout").then((module) => ({ default: module.WorkspaceLayout })),
 );
+const AdminDashboardPage = lazy(() =>
+  import("../pages/admin/AdminDashboardPage").then((module) => ({
+    default: module.AdminDashboardPage,
+  })),
+);
+const AdminClientsPage = lazy(() =>
+  import("../pages/admin/AdminClientsPage").then((module) => ({
+    default: module.AdminClientsPage,
+  })),
+);
+const AdminUsersPage = lazy(() =>
+  import("../pages/admin/AdminUsersPage").then((module) => ({
+    default: module.AdminUsersPage,
+  })),
+);
 const AdminAccountantsPage = lazy(() =>
   import("../pages/admin/AdminAccountantsPage").then((module) => ({
     default: module.AdminAccountantsPage,
@@ -163,7 +178,6 @@ const NotFoundPage = lazy(() =>
   import("../pages/shared/NotFoundPage").then((module) => ({ default: module.NotFoundPage })),
 );
 
-// Component flow: gather data first, then render a focused UI state.
 function LoadingShell() {
   return <div className="min-h-screen bg-slate-100" />;
 }
@@ -171,110 +185,75 @@ function LoadingShell() {
 function SessionLanding() {
   const { ready, user } = useAuth();
 
-  if (!ready) {
-    return <LoadingShell />;
-  }
-
+  if (!ready) return <LoadingShell />;
   return <Navigate replace to={user ? defaultPathForRole(user.role) : "/login"} />;
 }
 
 function PublicRoute({ children }: { children: JSX.Element }) {
   const { ready, user } = useAuth();
-
-  if (!ready) {
-    return <LoadingShell />;
-  }
-
-  if (user) {
-    return <Navigate replace to={defaultPathForRole(user.role)} />;
-  }
-
+  if (!ready) return <LoadingShell />;
+  if (user) return <Navigate replace to={defaultPathForRole(user.role)} />;
   return children;
 }
 
 function RequireClientWorkspace() {
   const { ready, user } = useAuth();
-
-  if (!ready) {
-    return <LoadingShell />;
-  }
-
-  if (!user) {
-    return <Navigate replace to="/login" />;
-  }
-
-  if (user.role !== "client") {
-    return <AccessDeniedPage />;
-  }
-
+  if (!ready) return <LoadingShell />;
+  if (!user) return <Navigate replace to="/login" />;
+  if (user.role !== "client") return <AccessDeniedPage />;
   return <WorkspaceLayout role="client" />;
 }
 
 function RequireFirmWorkspace() {
   const { ready, user } = useAuth();
-
-  if (!ready) {
-    return <LoadingShell />;
-  }
-
-  if (!user) {
-    return <Navigate replace to="/login" />;
-  }
+  if (!ready) return <LoadingShell />;
+  if (!user) return <Navigate replace to="/login" />;
 
   // Frontend route checks improve UX only. The API and database must still
   // enforce role, assignment, and record ownership before serving real data.
-  if (!canAccessRoute(user, "/firm")) {
-    return <AccessDeniedPage />;
-  }
-
+  if (!canAccessRoute(user, "/firm")) return <AccessDeniedPage />;
   return <WorkspaceLayout role={user.role} />;
 }
 
-function RequirePermission({
-  children,
-  permission,
-}: {
-  children: JSX.Element;
-  permission: Permission;
-}) {
+function RequirePermission({ children, permission }: { children: JSX.Element; permission: Permission }) {
   const { ready, user } = useAuth();
-
-  if (!ready) {
-    return <LoadingShell />;
-  }
-
-  if (!user) {
-    return <Navigate replace to="/login" />;
-  }
-
-  if (!hasPermission(user, permission)) {
-    return <AccessDeniedPage />;
-  }
-
+  if (!ready) return <LoadingShell />;
+  if (!user) return <Navigate replace to="/login" />;
+  if (!hasPermission(user, permission)) return <AccessDeniedPage />;
   return children;
+}
+
+function FirmDashboardRoute() {
+  const { ready, user } = useAuth();
+  if (!ready) return <LoadingShell />;
+  if (!user) return <Navigate replace to="/login" />;
+  return user.role === "admin" ? <AdminDashboardPage /> : <AccountantDashboardPage />;
+}
+
+function FirmClientsRoute() {
+  const { ready, user } = useAuth();
+  if (!ready) return <LoadingShell />;
+  if (!user) return <Navigate replace to="/login" />;
+  return user.role === "admin" ? <AdminClientsPage /> : <AccountantPortfolioPage />;
 }
 
 function redirectAccountantPath(pathname: string) {
   if (pathname.startsWith("/accountant/messages")) {
     return pathname.replace("/accountant/messages", "/firm/inbox");
   }
-
   return pathname.replace("/accountant", "/firm");
 }
 
 function redirectAdminPath(pathname: string) {
   if (pathname.startsWith("/admin/users") || pathname.startsWith("/admin/roles")) {
-    return pathname.replace(/^\/admin\/(?:users|roles)/, "/firm/settings");
+    return pathname.replace(/^\/admin\/(?:users|roles)/, "/firm/admin/users");
   }
-
   if (pathname.startsWith("/admin/accountants")) {
     return pathname.replace("/admin/accountants", "/firm/admin/accountants");
   }
-
   if (pathname.startsWith("/admin/assignments")) {
     return pathname.replace("/admin/assignments", "/firm/admin/assignments");
   }
-
   if (
     pathname.startsWith("/admin/templates") ||
     pathname.startsWith("/admin/deadlines") ||
@@ -282,79 +261,37 @@ function redirectAdminPath(pathname: string) {
   ) {
     return pathname.replace(/^\/admin(?:\/templates|\/deadlines|\/policies)/, "/firm/admin/system-settings");
   }
-
   if (pathname.startsWith("/admin/settings")) {
     return pathname.replace("/admin/settings", "/firm/admin/system-settings");
   }
-
   return pathname.replace("/admin", "/firm");
 }
 
 function LegacyWorkspaceRedirect({ role }: { role: Extract<Role, "admin" | "accountant"> }) {
   const location = useLocation();
   const { ready, user } = useAuth();
+  if (!ready) return <LoadingShell />;
+  if (!user) return <Navigate replace to="/login" />;
+  if (user.role !== role) return <AccessDeniedPage />;
 
-  if (!ready) {
-    return <LoadingShell />;
-  }
-
-  if (!user) {
-    return <Navigate replace to="/login" />;
-  }
-
-  if (user.role !== role) {
-    return <AccessDeniedPage />;
-  }
-
-  const nextPath =
-    role === "accountant"
-      ? redirectAccountantPath(location.pathname)
-      : redirectAdminPath(location.pathname);
-
+  const nextPath = role === "accountant" ? redirectAccountantPath(location.pathname) : redirectAdminPath(location.pathname);
   return <Navigate replace to={`${nextPath}${location.search}`} />;
 }
 
 function LegacyFirmRequestDetailRedirect() {
   const { requestId } = useParams();
-
-  if (!requestId) {
-    return <Navigate replace to="/firm/inbox" />;
-  }
-
+  if (!requestId) return <Navigate replace to="/firm/inbox" />;
   return <Navigate replace to={`/firm/inbox/${requestId}`} />;
 }
 
 export default function App() {
-// Render output: this is the visual state users interact with.
   return (
     <Suspense fallback={<LoadingShell />}>
       <Routes>
         <Route element={<SessionLanding />} path="/" />
-
-        <Route
-          element={
-            <PublicRoute>
-              <LoginPage />
-            </PublicRoute>
-          }
-          path="/login"
-        />
-        <Route
-          element={
-            <PublicRoute>
-              <ForgotPasswordPage />
-            </PublicRoute>
-          }
-          path="/forgot-password"
-        />
-        <Route
-          element={
-            <PublicRoute>
-              <InviteSetupPage />
-            </PublicRoute>
-          }
-          path="/invite-setup"
-        />
+        <Route element={<PublicRoute><LoginPage /></PublicRoute>} path="/login" />
+        <Route element={<PublicRoute><ForgotPasswordPage /></PublicRoute>} path="/forgot-password" />
+        <Route element={<PublicRoute><InviteSetupPage /></PublicRoute>} path="/invite-setup" />
         <Route element={<AccessDeniedPage />} path="/access-denied" />
 
         <Route element={<RequireClientWorkspace />} path="/client">
@@ -374,8 +311,8 @@ export default function App() {
 
         <Route element={<RequireFirmWorkspace />} path="/firm">
           <Route element={<Navigate replace to="dashboard" />} index />
-          <Route element={<AccountantDashboardPage />} path="dashboard" />
-          <Route element={<AccountantPortfolioPage />} path="clients" />
+          <Route element={<FirmDashboardRoute />} path="dashboard" />
+          <Route element={<FirmClientsRoute />} path="clients" />
           <Route element={<AccountantClientWorkspacePage />} path="clients/:clientId" />
           <Route element={<AccountantClientWorkspacePage />} path="clients/:clientId/packs" />
           <Route element={<AccountantDocumentsPage />} path="documents" />
@@ -395,42 +332,29 @@ export default function App() {
           <Route element={<FirmClient360Page />} path="clients/:clientId/profile" />
 
           <Route
-            element={
-              <RequirePermission permission="manage:users">
-                <AdminAccountantsPage />
-              </RequirePermission>
-            }
+            element={<RequirePermission permission="manage:users"><AdminUsersPage /></RequirePermission>}
+            path="admin/users"
+          />
+          <Route
+            element={<RequirePermission permission="manage:users"><AdminAccountantsPage /></RequirePermission>}
             path="admin/accountants"
           />
           <Route
-            element={
-              <RequirePermission permission="manage:assignments">
-                <AdminAssignmentsPage />
-              </RequirePermission>
-            }
+            element={<RequirePermission permission="manage:assignments"><AdminAssignmentsPage /></RequirePermission>}
             path="admin/assignments"
           />
           <Route
-            element={
-              <RequirePermission permission="manage:system_settings">
-                <AdminSettingsPage />
-              </RequirePermission>
-            }
+            element={<RequirePermission permission="manage:system_settings"><AdminSettingsPage /></RequirePermission>}
             path="admin/system-settings"
           />
           <Route
-            element={
-              <RequirePermission permission="manage:system_settings">
-                <AdminRequestStateMachinePage />
-              </RequirePermission>
-            }
+            element={<RequirePermission permission="manage:system_settings"><AdminRequestStateMachinePage /></RequirePermission>}
             path="admin/request-state-machine"
           />
         </Route>
 
         <Route element={<LegacyWorkspaceRedirect role="accountant" />} path="/accountant/*" />
         <Route element={<LegacyWorkspaceRedirect role="admin" />} path="/admin/*" />
-
         <Route element={<NotFoundPage />} path="*" />
       </Routes>
     </Suspense>
