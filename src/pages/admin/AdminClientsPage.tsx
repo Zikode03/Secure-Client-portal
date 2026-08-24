@@ -35,6 +35,18 @@ interface FeedbackNotice {
   message: string;
 }
 
+const statusOptions = [
+  { label: "All statuses", value: "all" },
+  { label: "Active", value: "active" },
+  { label: "Inactive", value: "inactive" },
+];
+
+const ownershipOptions = [
+  { label: "All clients", value: "all" },
+  { label: "Assigned", value: "assigned" },
+  { label: "Unassigned", value: "unassigned" },
+];
+
 function healthTone(value: number) {
   if (value >= 80) return "bg-emerald-50 text-emerald-700";
   if (value >= 60) return "bg-amber-50 text-amber-700";
@@ -162,16 +174,8 @@ export function AdminClientsPage() {
           </div>
           <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[660px]">
             <TextField label="Search" onChange={(event) => setQuery(event.target.value)} value={query} />
-            <SelectField label="Status" onChange={(event) => setStatusFilter(event.target.value)} value={statusFilter}>
-              <option value="all">All statuses</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </SelectField>
-            <SelectField label="Ownership" onChange={(event) => setAssignmentFilter(event.target.value)} value={assignmentFilter}>
-              <option value="all">All clients</option>
-              <option value="assigned">Assigned</option>
-              <option value="unassigned">Unassigned</option>
-            </SelectField>
+            <SelectField label="Status" onChange={(event) => setStatusFilter(event.target.value)} options={statusOptions} value={statusFilter} />
+            <SelectField label="Ownership" onChange={(event) => setAssignmentFilter(event.target.value)} options={ownershipOptions} value={assignmentFilter} />
           </div>
         </div>
 
