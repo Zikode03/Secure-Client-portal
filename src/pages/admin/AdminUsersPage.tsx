@@ -117,12 +117,7 @@ export function AdminUsersPage() {
     });
   }, [query, roleFilter, statusFilter, users]);
 
-  const counts = useMemo(() => ({
-    total: users.length,
-    admins: users.filter((user) => user.role.toLowerCase() === "admin").length,
-    accountants: users.filter((user) => user.role.toLowerCase() === "accountant").length,
-    clients: users.filter((user) => user.role.toLowerCase() === "client").length,
-  }), [users]);
+  const restrictedUsers = users.filter((user) => normalizedStatus(user) !== "active").length;
 
   async function createUser() {
     if (!newUserName.trim() || !newUserEmail.trim()) {
@@ -167,6 +162,8 @@ export function AdminUsersPage() {
 
   async function toggleStatus(user: AdminUserRecord) {
     const active = normalizedStatus(user) === "active";
+    if (active && !window.confirm(`Disable access for ${user.fullName}? Active sessions will be revoked.`)) return;
+
     setBusyUserId(user.id);
     try {
       await apiPostJson<AdminUserRecord, Record<string, never>>(
@@ -258,24 +255,10 @@ export function AdminUsersPage() {
         <FeedbackBanner message={feedback.message} onDismiss={() => setFeedback(null)} title={feedback.title} tone={feedback.tone} />
       ) : null}
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {[
-          ["Total users", counts.total],
-          ["Administrators", counts.admins],
-          ["Accountants", counts.accountants],
-          ["Client users", counts.clients],
-        ].map(([label, value]) => (
-          <SurfaceCard className="space-y-2" key={String(label)}>
-            <p className="text-sm font-medium text-slate-500">{label}</p>
-            <p className="text-[2rem] font-semibold tracking-tight text-slate-950">{value}</p>
-          </SurfaceCard>
-        ))}
-      </div>
-
       <SurfaceCard className="space-y-5">
         <div>
           <h2 className="portal-section-title text-slate-950">Add user</h2>
-          <p className="mt-1 text-sm text-slate-500">Create a firm administrator, accountant, or client user from one controlled screen.</p>
+          <p className="mt-1 text-sm text-slate-500">Create a firm administrator, accountant, or client user.</p>
         </div>
         <div className="grid gap-4 lg:grid-cols-4">
           <TextField label="Full name" onChange={(event) => setNewUserName(event.target.value)} value={newUserName} />
@@ -292,7 +275,9 @@ export function AdminUsersPage() {
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h2 className="portal-section-title text-slate-950">Firm directory</h2>
-            <p className="mt-1 text-sm text-slate-500">Account state and security operations are applied immediately by the backend.</p>
+            <p className="mt-1 text-sm text-slate-500">
+              {users.length} users · {restrictedUsers} disabled or restricted. Account state and security changes apply immediately.
+            </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[620px]">
             <TextField label="Search" onChange={(event) => setQuery(event.target.value)} value={query} />
