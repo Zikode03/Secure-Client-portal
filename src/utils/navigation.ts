@@ -145,11 +145,25 @@ export const navigationByRole: Record<Role, NavigationItem[]> = {
       icon: "dashboard",
     },
     {
+      label: "Work Queue",
+      to: "/firm/review",
+      description: "Oversee the full firm review workload",
+      section: "Main",
+      icon: "review",
+    },
+    {
       label: "Users & Access",
       to: "/firm/admin/users",
       description: "Create users, change roles, and control account access",
       section: "Management",
       icon: "users",
+    },
+    {
+      label: "Roles & Permissions",
+      to: "/firm/admin/roles",
+      description: "Control role scopes and permissions",
+      section: "Management",
+      icon: "policies",
     },
     {
       label: "Clients",
@@ -173,10 +187,10 @@ export const navigationByRole: Record<Role, NavigationItem[]> = {
       icon: "assignments",
     },
     {
-      label: "Work Queue",
-      to: "/firm/review",
-      description: "Oversee the full firm review workload",
-      section: "Main",
+      label: "Audit & Security",
+      to: "/firm/admin/audit",
+      description: "Review administrative and security-sensitive activity",
+      section: "Management",
       icon: "review",
     },
     {
