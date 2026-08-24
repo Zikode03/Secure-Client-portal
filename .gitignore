@@ -2,6 +2,7 @@ node_modules/
 dist/
 .npm-cache/
 .vite/
+.vercel/
 tsconfig.tsbuildinfo
 .vscode/
 .env
