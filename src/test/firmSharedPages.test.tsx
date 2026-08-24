@@ -6,6 +6,10 @@ import { MemoryRouter } from "react-router-dom";
 import { AuthProvider } from "../app/auth";
 import { PortalProvider } from "../app/portal";
 import { AccountantPortfolioPage } from "../pages/accountant/AccountantPortfolioPage";
+import {
+  AccountantReviewPage,
+  mapBackendQueueRecord,
+} from "../pages/accountant/AccountantReviewPage";
 import { AccountantComplianceCentrePage } from "../pages/accountant/AccountantComplianceCentrePage";
 import { AccountantDashboardPage } from "../pages/accountant/AccountantDashboardPage";
 import { AccountantDocumentsPage } from "../pages/accountant/AccountantDocumentsPage";
@@ -167,5 +171,39 @@ describe("shared firm pages", () => {
 
     expect(await screen.findByText("Request documents from Apex Trading Ltd")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Request document" })).toBeInTheDocument();
+  });
+
+  it("renders the review queue for an admin", async () => {
+    renderWithProviders(<AccountantReviewPage />, adminUser);
+
+    expect(await screen.findByRole("heading", { name: "My slot review queue" })).toBeInTheDocument();
+  });
+
+  it("builds a renderable review record from live queue data", () => {
+    const record = mapBackendQueueRecord({
+      documentId: "backend-document-1",
+      clientId: "backend-client-1",
+      clientName: "Live Client",
+      monthlyPackId: "backend-pack-1",
+      year: 2026,
+      month: 8,
+      documentSlotId: "backend-slot-1",
+      slotLabel: "Bank statement",
+      documentName: "august-statement.pdf",
+      documentCategory: "bank_statement",
+      documentStatus: "uploaded",
+      slotStatus: "submitted",
+      reviewPriority: "high",
+      reviewAgeDays: 1,
+      currentVersionNumber: 1,
+      uploadedAtUtc: "invalid-date",
+      submittedAtUtc: null,
+      rejectionReason: null,
+    });
+
+    expect(record.id).toBe("backend-document-1");
+    expect(record.clientId).toBe("backend-client-1");
+    expect(record.fileName).toBe("august-statement.pdf");
+    expect(record.uploadedAt).toBe("2026-05-08T08:00:00.000Z");
   });
 });

@@ -56,7 +56,8 @@ function fileExtensionLabel(fileName: string) {
 }
 
 function addDays(value: string, days: number) {
-  const date = new Date(value);
+  const timestamp = Date.parse(value);
+  const date = Number.isFinite(timestamp) ? new Date(timestamp) : new Date(reviewSnapshotDate);
   date.setUTCDate(date.getUTCDate() + days);
   return date.toISOString();
 }
@@ -208,6 +209,11 @@ function monthLabelFromParts(year: number, month: number) {
   );
 }
 
+function validBackendTimestamp(...values: Array<string | null | undefined>) {
+  const value = values.find((candidate) => candidate && Number.isFinite(Date.parse(candidate)));
+  return value ? new Date(value).toISOString() : reviewSnapshotDate.toISOString();
+}
+
 function mapBackendStatus(status: string): DocumentRecord["status"] {
   switch (status.trim().toLowerCase()) {
     case "under_review":
@@ -243,9 +249,43 @@ function mapBackendQueueItem(
     clientName: item.clientName,
     documentType: item.slotLabel || item.documentCategory,
     monthLabel: monthLabelFromParts(item.year, item.month),
-    submittedAt: item.submittedAtUtc || item.uploadedAtUtc,
+    submittedAt: validBackendTimestamp(item.submittedAtUtc, item.uploadedAtUtc),
     status: mapBackendStatus(item.documentStatus),
     assignedAccountant: currentUserName || "Assigned accountant",
+  };
+}
+
+export function mapBackendQueueRecord(item: BackendReviewQueueItem): DocumentRecord {
+  const uploadedAt = validBackendTimestamp(item.submittedAtUtc, item.uploadedAtUtc);
+  const documentType = item.slotLabel || item.documentCategory || "Document";
+  const fileName = item.documentName || documentType;
+
+  return {
+    id: item.documentId,
+    clientId: item.clientId,
+    clientName: item.clientName,
+    documentType,
+    fileName,
+    monthLabel: monthLabelFromParts(item.year, item.month),
+    description: `${documentType} is waiting in the live review queue.`,
+    status: mapBackendStatus(item.documentStatus),
+    uploadedBy: "Client user",
+    uploadedAt,
+    sizeLabel: "Available when opened",
+    keywordTags: [item.documentCategory, item.slotLabel, item.documentName].filter(
+      (value): value is string => Boolean(value),
+    ),
+    rejectionReason: item.rejectionReason ?? undefined,
+    comments: [],
+    auditTrail: [
+      {
+        id: `queue-${item.documentId}`,
+        status: "Submitted for review",
+        actor: "Client user",
+        timestamp: uploadedAt,
+        note: "Loaded from the live review queue.",
+      },
+    ],
   };
 }
 
@@ -839,6 +879,9 @@ export function AccountantReviewPage() {
   const backendMode = hasApiBaseUrl();
   const workspaceRef = useRef<HTMLDivElement | null>(null);
   const [liveQueueItems, setLiveQueueItems] = useState<ReviewQueueItem[] | null>(null);
+  const [liveQueueRecordsByDocumentId, setLiveQueueRecordsByDocumentId] = useState<
+    Record<string, DocumentRecord>
+  >({});
   const [liveWorkspaceByDocumentId, setLiveWorkspaceByDocumentId] = useState<Record<string, BackendReviewWorkspace>>({});
   const [liveFileUrlsByDocumentId, setLiveFileUrlsByDocumentId] = useState<
     Record<string, { url: string; mimeType: string }>
@@ -885,6 +928,9 @@ export function AccountantReviewPage() {
         }
 
         setLiveQueueItems(items.map((item) => mapBackendQueueItem(item, user?.fullName)));
+        setLiveQueueRecordsByDocumentId(
+          Object.fromEntries(items.map((item) => [item.documentId, mapBackendQueueRecord(item)])),
+        );
       } catch (error) {
         if (!isActive) {
           return;
@@ -908,16 +954,25 @@ export function AccountantReviewPage() {
       queue.map((item) => ({
         item,
         record:
-          backendMode && liveWorkspaceByDocumentId[item.id]
-            ? mapBackendWorkspace(
-                liveWorkspaceByDocumentId[item.id],
-                liveFileUrlsByDocumentId[item.id],
-              )
+          backendMode
+            ? liveWorkspaceByDocumentId[item.id]
+              ? mapBackendWorkspace(
+                  liveWorkspaceByDocumentId[item.id],
+                  liveFileUrlsByDocumentId[item.id],
+                )
+              : liveQueueRecordsByDocumentId[item.id] ?? portal.getReviewRecord(item.id)
             : portal.getReviewRecord(item.id),
         statusMeta: queueStatusMeta(item),
         dueMeta: queueDueMeta(item),
       })),
-    [backendMode, liveFileUrlsByDocumentId, liveWorkspaceByDocumentId, portal, queue],
+    [
+      backendMode,
+      liveFileUrlsByDocumentId,
+      liveQueueRecordsByDocumentId,
+      liveWorkspaceByDocumentId,
+      portal,
+      queue,
+    ],
   );
 
   const clientOptions = useMemo(
@@ -1269,6 +1324,11 @@ export function AccountantReviewPage() {
     ]);
 
     setLiveQueueItems(queueItems.map((item) => mapBackendQueueItem(item, user?.fullName)));
+    setLiveQueueRecordsByDocumentId(
+      Object.fromEntries(
+        queueItems.map((item) => [item.documentId, mapBackendQueueRecord(item)]),
+      ),
+    );
     setLiveWorkspaceByDocumentId((current) => ({
       ...current,
       [documentId]: workspace,
