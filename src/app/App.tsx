@@ -25,6 +25,16 @@ const AdminUsersPage = lazy(() =>
     default: module.AdminUsersPage,
   })),
 );
+const AdminRolesPage = lazy(() =>
+  import("../pages/admin/AdminRolesPage").then((module) => ({
+    default: module.AdminRolesPage,
+  })),
+);
+const AdminAuditPage = lazy(() =>
+  import("../pages/admin/AdminAuditPage").then((module) => ({
+    default: module.AdminAuditPage,
+  })),
+);
 const AdminAccountantsPage = lazy(() =>
   import("../pages/admin/AdminAccountantsPage").then((module) => ({
     default: module.AdminAccountantsPage,
@@ -184,7 +194,6 @@ function LoadingShell() {
 
 function SessionLanding() {
   const { ready, user } = useAuth();
-
   if (!ready) return <LoadingShell />;
   return <Navigate replace to={user ? defaultPathForRole(user.role) : "/login"} />;
 }
@@ -208,9 +217,6 @@ function RequireFirmWorkspace() {
   const { ready, user } = useAuth();
   if (!ready) return <LoadingShell />;
   if (!user) return <Navigate replace to="/login" />;
-
-  // Frontend route checks improve UX only. The API and database must still
-  // enforce role, assignment, and record ownership before serving real data.
   if (!canAccessRoute(user, "/firm")) return <AccessDeniedPage />;
   return <WorkspaceLayout role={user.role} />;
 }
@@ -245,8 +251,14 @@ function redirectAccountantPath(pathname: string) {
 }
 
 function redirectAdminPath(pathname: string) {
-  if (pathname.startsWith("/admin/users") || pathname.startsWith("/admin/roles")) {
-    return pathname.replace(/^\/admin\/(?:users|roles)/, "/firm/admin/users");
+  if (pathname.startsWith("/admin/users")) {
+    return pathname.replace("/admin/users", "/firm/admin/users");
+  }
+  if (pathname.startsWith("/admin/roles")) {
+    return pathname.replace("/admin/roles", "/firm/admin/roles");
+  }
+  if (pathname.startsWith("/admin/audit")) {
+    return pathname.replace("/admin/audit", "/firm/admin/audit");
   }
   if (pathname.startsWith("/admin/accountants")) {
     return pathname.replace("/admin/accountants", "/firm/admin/accountants");
@@ -336,12 +348,20 @@ export default function App() {
             path="admin/users"
           />
           <Route
+            element={<RequirePermission permission="manage:roles"><AdminRolesPage /></RequirePermission>}
+            path="admin/roles"
+          />
+          <Route
             element={<RequirePermission permission="manage:users"><AdminAccountantsPage /></RequirePermission>}
             path="admin/accountants"
           />
           <Route
             element={<RequirePermission permission="manage:assignments"><AdminAssignmentsPage /></RequirePermission>}
             path="admin/assignments"
+          />
+          <Route
+            element={<RequirePermission permission="manage:system_settings"><AdminAuditPage /></RequirePermission>}
+            path="admin/audit"
           />
           <Route
             element={<RequirePermission permission="manage:system_settings"><AdminSettingsPage /></RequirePermission>}
