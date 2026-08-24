@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, BriefcaseBusiness, ClipboardCheck, Search, UsersRound } from "lucide-react";
+import { Search } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { usePortal } from "../../app/portal";
 import { Button } from "../../components/ui/Button";
@@ -94,14 +94,8 @@ function mapLiveAccountants(
 }
 
 function statusClasses(status: ManagedAccountant["status"]) {
-  if (status === "busy") {
-    return "bg-rose-50 text-rose-700 ring-rose-200";
-  }
-
-  if (status === "capacity_available") {
-    return "bg-emerald-50 text-emerald-700 ring-emerald-200";
-  }
-
+  if (status === "busy") return "bg-rose-50 text-rose-700 ring-rose-200";
+  if (status === "capacity_available") return "bg-emerald-50 text-emerald-700 ring-emerald-200";
   return "bg-sky-50 text-sky-700 ring-sky-200";
 }
 
@@ -130,12 +124,9 @@ export function AdminAccountantsPage() {
   const [teamFilter, setTeamFilter] = useState<TeamFilter>("all");
 
   useEffect(() => {
-    if (!backendMode) {
-      return;
-    }
+    if (!backendMode) return;
 
     let isMounted = true;
-
     async function loadLiveAccountants() {
       try {
         const [users, assignments, reviewQueue] = await Promise.all([
@@ -143,18 +134,11 @@ export function AdminAccountantsPage() {
           apiGetJson<BackendAssignmentRecord[]>("/api/assignments"),
           apiGetJson<BackendReviewQueueRecord[]>("/api/review-queue"),
         ]);
-
-        if (!isMounted) {
-          return;
-        }
-
+        if (!isMounted) return;
         setLiveAccountants(mapLiveAccountants(users, assignments, reviewQueue));
         setFeedbackNotice(null);
       } catch (error) {
-        if (!isMounted) {
-          return;
-        }
-
+        if (!isMounted) return;
         setFeedbackNotice({
           tone: "warning",
           title: "Live accountant view unavailable",
@@ -167,10 +151,7 @@ export function AdminAccountantsPage() {
     }
 
     void loadLiveAccountants();
-
-    return () => {
-      isMounted = false;
-    };
+    return () => { isMounted = false; };
   }, [backendMode]);
 
   const accountants = useMemo(
@@ -178,18 +159,8 @@ export function AdminAccountantsPage() {
     [backendMode, liveAccountants, portal.managedAccountants],
   );
 
-  const summary = useMemo(() => {
-    const totalClients = accountants.reduce((sum, accountant) => sum + accountant.assignedClientCount, 0);
-    const totalReviews = accountants.reduce((sum, accountant) => sum + accountant.openReviews, 0);
-    const busy = accountants.filter((accountant) => accountant.status === "busy").length;
-    const available = accountants.filter((accountant) => accountant.status === "capacity_available").length;
-
-    return { totalClients, totalReviews, busy, available };
-  }, [accountants]);
-
   const filteredAccountants = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
-
     return accountants.filter((accountant) => {
       const matchesSearch =
         !query ||
@@ -200,51 +171,22 @@ export function AdminAccountantsPage() {
     });
   }, [accountants, searchTerm, teamFilter]);
 
-  const metrics = [
-    {
-      label: "Accountants",
-      value: accountants.length,
-      helper: `${summary.available} with capacity`,
-      icon: UsersRound,
-    },
-    {
-      label: "Assigned clients",
-      value: summary.totalClients,
-      helper: "Across the current team",
-      icon: BriefcaseBusiness,
-    },
-    {
-      label: "Open reviews",
-      value: summary.totalReviews,
-      helper: "Current review workload",
-      icon: ClipboardCheck,
-    },
-    {
-      label: "Capacity risks",
-      value: summary.busy,
-      helper: summary.busy > 0 ? "Rebalancing may be needed" : "No overloaded accountants",
-      icon: AlertTriangle,
-    },
-  ];
+  const busyCount = accountants.filter((accountant) => accountant.status === "busy").length;
+  const availableCount = accountants.filter((accountant) => accountant.status === "capacity_available").length;
 
   return (
     <div className="space-y-6">
       <PageHeader
         actions={
           <>
-            <Button
-              onClick={() => navigate("/firm/admin/assignments")}
-              variant="secondary"
-            >
+            <Button onClick={() => navigate("/firm/admin/assignments")} variant="secondary">
               Manage assignments
             </Button>
-            <Button onClick={() => navigate("/firm/admin/system-settings")}>
-              Manage user access
-            </Button>
+            <Button onClick={() => navigate("/firm/admin/users")}>Manage user access</Button>
           </>
         }
-        description="Manage accountant capacity, portfolio ownership, review pressure, and access from one operational team view."
-        eyebrow="Admin · Team"
+        description="Manage accountant capacity, portfolio ownership, review pressure, and access."
+        eyebrow="Administration"
         title="Accountant management"
       />
 
@@ -257,34 +199,12 @@ export function AdminAccountantsPage() {
         />
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {metrics.map((metric) => {
-          const Icon = metric.icon;
-          return (
-            <SurfaceCard className="space-y-4" key={metric.label}>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-medium text-slate-500">{metric.label}</p>
-                  <p className="mt-2 text-[1.9rem] font-semibold tracking-tight text-slate-950">
-                    {metric.value}
-                  </p>
-                </div>
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-50 text-brand-700 ring-1 ring-slate-200">
-                  <Icon className="h-5 w-5" />
-                </span>
-              </div>
-              <p className="text-sm text-slate-500">{metric.helper}</p>
-            </SurfaceCard>
-          );
-        })}
-      </div>
-
       <SurfaceCard className="overflow-hidden p-0">
-        <div className="flex flex-col gap-4 border-b border-slate-200 px-5 py-5 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-4 border-b border-slate-200 px-5 py-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-slate-950">Team capacity</h2>
+            <h2 className="portal-section-title text-slate-950">Team capacity</h2>
             <p className="mt-1 text-sm text-slate-500">
-              Review individual workloads before assigning additional clients or month-end reviews.
+              {accountants.length} accountants · {availableCount} with capacity · {busyCount} requiring workload attention.
             </p>
           </div>
 
@@ -339,22 +259,11 @@ export function AdminAccountantsPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-5 py-4 text-sm font-medium text-slate-700">
-                      {accountant.assignedClientCount}
-                    </td>
-                    <td className="px-5 py-4 text-sm font-medium text-slate-700">
-                      {accountant.openReviews}
-                    </td>
-                    <td className="px-5 py-4 text-sm text-slate-600">
-                      {workloadLabel(accountant.openReviews)}
-                    </td>
+                    <td className="px-5 py-4 text-sm font-medium text-slate-700">{accountant.assignedClientCount}</td>
+                    <td className="px-5 py-4 text-sm font-medium text-slate-700">{accountant.openReviews}</td>
+                    <td className="px-5 py-4 text-sm text-slate-600">{workloadLabel(accountant.openReviews)}</td>
                     <td className="px-5 py-4">
-                      <span
-                        className={cn(
-                          "inline-flex rounded-full px-2.5 py-1 text-xs font-semibold capitalize ring-1 ring-inset",
-                          statusClasses(accountant.status),
-                        )}
-                      >
+                      <span className={cn("inline-flex rounded-full px-2.5 py-1 text-xs font-semibold capitalize ring-1 ring-inset", statusClasses(accountant.status))}>
                         {accountant.status.replace(/_/g, " ")}
                       </span>
                     </td>
