@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/Button";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
+import { formatRequestStatus } from "../../utils/formatters";
 
 type RequestState =
   | "open"
@@ -26,7 +27,7 @@ const transitionRules: TransitionRule[] = [
   {
     from: "awaiting_client",
     to: "client_replied",
-    trigger: "Client posts a comment",
+    trigger: "Client responds or uploads the requested correction",
     actor: "Client",
     slaHours: 48,
     escalationAfterHours: 72,
@@ -35,7 +36,7 @@ const transitionRules: TransitionRule[] = [
   {
     from: "client_replied",
     to: "awaiting_accountant",
-    trigger: "System marks reply ready for accountant",
+    trigger: "Response is returned to the accountant queue",
     actor: "System",
     slaHours: 24,
     escalationAfterHours: 48,
@@ -44,7 +45,7 @@ const transitionRules: TransitionRule[] = [
   {
     from: "awaiting_accountant",
     to: "open",
-    trigger: "Accountant responds",
+    trigger: "Accountant reviews and responds",
     actor: "Accountant",
     slaHours: 24,
     escalationAfterHours: 48,
@@ -53,7 +54,7 @@ const transitionRules: TransitionRule[] = [
   {
     from: "open",
     to: "resolved",
-    trigger: "Task complete and confirmed",
+    trigger: "Requested work is complete and confirmed",
     actor: "Client or Accountant",
     slaHours: 0,
     escalationAfterHours: 0,
@@ -62,7 +63,7 @@ const transitionRules: TransitionRule[] = [
   {
     from: "resolved",
     to: "closed",
-    trigger: "Auto-close after confirmation window",
+    trigger: "Confirmation window ends",
     actor: "System",
     slaHours: 24,
     escalationAfterHours: 0,
@@ -110,13 +111,13 @@ export function AdminRequestStateMachinePage() {
         <div>
           <h2 className="portal-section-title text-slate-950">Request lifecycle</h2>
           <p className="mt-1 text-sm text-slate-500">
-            This is the standard progression used by request workflows across the firm.
+            Client and Accountant screens use the same plain-language states shown here. Internal API values remain unchanged.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {states.map((state, index) => (
             <div className="flex items-center gap-2" key={state}>
-              <span className={statePill(state)}>{state.replace(/_/g, " ")}</span>
+              <span className={statePill(state)}>{formatRequestStatus(state)}</span>
               {index < states.length - 1 ? <span className="text-slate-300">→</span> : null}
             </div>
           ))}
@@ -147,8 +148,8 @@ export function AdminRequestStateMachinePage() {
             <tbody className="divide-y divide-slate-100 bg-white">
               {transitionRules.map((rule) => (
                 <tr key={`${rule.from}-${rule.to}`}>
-                  <td className="px-5 py-4"><span className={statePill(rule.from)}>{rule.from.replace(/_/g, " ")}</span></td>
-                  <td className="px-5 py-4"><span className={statePill(rule.to)}>{rule.to.replace(/_/g, " ")}</span></td>
+                  <td className="px-5 py-4"><span className={statePill(rule.from)}>{formatRequestStatus(rule.from)}</span></td>
+                  <td className="px-5 py-4"><span className={statePill(rule.to)}>{formatRequestStatus(rule.to)}</span></td>
                   <td className="px-5 py-4 text-slate-700">{rule.trigger}</td>
                   <td className="px-5 py-4 text-slate-600">{rule.actor}</td>
                   <td className="px-5 py-4 text-slate-600">{rule.slaHours ? `${rule.slaHours}h` : "N/A"}</td>
