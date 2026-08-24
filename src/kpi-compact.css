@@ -1,0 +1,26 @@
+/*
+ * Compact KPI scale shared across Client, Accountant, and Admin workspaces.
+ * Keep KPI values informative without letting summary cards dominate the page.
+ */
+
+[class~="text-[1.7rem]"][class~="tracking-tight"],
+[class~="text-[1.9rem]"][class~="tracking-tight"],
+[class~="text-[2rem]"][class~="tracking-tight"] {
+  font-size: 1.45rem !important;
+  line-height: 1.75rem !important;
+}
+
+/* Client dashboard metric tiles use this exact structural combination. */
+[class~="min-h-[152px]"][class~="flex"][class~="flex-col"][class~="justify-between"] {
+  min-height: 128px !important;
+  padding: 1rem !important;
+}
+
+@media (max-width: 640px) {
+  [class~="text-[1.7rem]"][class~="tracking-tight"],
+  [class~="text-[1.9rem]"][class~="tracking-tight"],
+  [class~="text-[2rem]"][class~="tracking-tight"] {
+    font-size: 1.35rem !important;
+    line-height: 1.65rem !important;
+  }
+}
