@@ -82,16 +82,28 @@ describe("role-based route access", () => {
     ).toBeInTheDocument();
   });
 
-  it("legacy admin users route redirects into settings", async () => {
+  it("legacy admin users route redirects to user management", async () => {
     renderAppAt("/admin/users", createUser("admin"));
 
-    expect(await screen.findByRole("heading", { name: "Settings" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Users & access" })).toBeInTheDocument();
   });
 
   it("admin can access system settings", async () => {
     renderAppAt("/firm/admin/system-settings", createUser("admin"));
 
-    expect(await screen.findByRole("heading", { name: "System settings" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "System configuration" })).toBeInTheDocument();
+  });
+
+  it("legacy admin system settings route redirects to the canonical page", async () => {
+    renderAppAt("/admin/system-settings", createUser("admin"));
+
+    expect(await screen.findByRole("heading", { name: "System configuration" })).toBeInTheDocument();
+  });
+
+  it("legacy request state machine route redirects to the canonical page", async () => {
+    renderAppAt("/admin/request-state-machine", createUser("admin"));
+
+    expect(await screen.findByRole("heading", { name: "Request SLA rules" })).toBeInTheDocument();
   });
 
   it("shows admin-only header badge only for admin role", async () => {
@@ -168,6 +180,6 @@ describe("role-based route access", () => {
   it("admin can open request SLA state machine page", async () => {
     renderAppAt("/firm/admin/request-state-machine", createUser("admin"));
 
-    expect(await screen.findByRole("heading", { name: /Request State Machine/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Request SLA rules" })).toBeInTheDocument();
   });
 });

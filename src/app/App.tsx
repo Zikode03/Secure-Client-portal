@@ -266,6 +266,12 @@ function redirectAdminPath(pathname: string) {
   if (pathname.startsWith("/admin/assignments")) {
     return pathname.replace("/admin/assignments", "/firm/admin/assignments");
   }
+  if (pathname.startsWith("/admin/system-settings")) {
+    return pathname.replace("/admin/system-settings", "/firm/admin/system-settings");
+  }
+  if (pathname.startsWith("/admin/request-state-machine")) {
+    return pathname.replace("/admin/request-state-machine", "/firm/admin/request-state-machine");
+  }
   if (
     pathname.startsWith("/admin/templates") ||
     pathname.startsWith("/admin/deadlines") ||

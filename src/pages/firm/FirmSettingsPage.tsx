@@ -598,7 +598,7 @@ export function FirmSettingsPage() {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <Button onClick={() => navigate("/admin/assignments")} variant="secondary">
+            <Button onClick={() => navigate("/firm/admin/assignments")} variant="secondary">
               Open assignments
             </Button>
             <Button onClick={() => setActiveSection("access")} variant="secondary">
@@ -943,7 +943,7 @@ export function FirmSettingsPage() {
           </Button>
           {isAdmin ? (
             <>
-              <Button onClick={() => navigate("/admin/assignments")} variant="secondary">
+              <Button onClick={() => navigate("/firm/admin/assignments")} variant="secondary">
                 Open assignments
               </Button>
             </>
@@ -1089,7 +1089,7 @@ export function FirmSettingsPage() {
         <div className="flex flex-wrap gap-3">
           {isAdmin ? (
             <>
-              <Button onClick={() => navigate("/admin/system-settings")} variant="secondary">
+              <Button onClick={() => navigate("/firm/admin/system-settings")} variant="secondary">
                 Open system settings
               </Button>
               <Button onClick={() => setActiveSection("access")} variant="secondary">
@@ -1246,7 +1246,7 @@ export function FirmSettingsPage() {
             </Button>
             <Button
               onClick={() =>
-                navigate(isAdmin ? "/admin/system-settings" : "/firm/compliance")
+                navigate(isAdmin ? "/firm/admin/system-settings" : "/firm/compliance")
               }
               size="sm"
               variant="secondary"
