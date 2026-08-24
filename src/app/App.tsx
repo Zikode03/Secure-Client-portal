@@ -58,6 +58,9 @@ const ClientSettingsPage = lazy(() =>
 const AccountantClientWorkspacePage = lazy(() =>
   import("../pages/accountant/AccountantClientWorkspacePage").then((module) => ({ default: module.AccountantClientWorkspacePage })),
 );
+const AccountantClientPackWorkspacePage = lazy(() =>
+  import("../pages/accountant/AccountantClientPackWorkspacePage").then((module) => ({ default: module.AccountantClientPackWorkspacePage })),
+);
 const AccountantPortfolioPage = lazy(() =>
   import("../pages/accountant/AccountantPortfolioPage").then((module) => ({ default: module.AccountantPortfolioPage })),
 );
@@ -245,7 +248,7 @@ export default function App() {
           <Route element={<FirmDashboardRoute />} path="dashboard" />
           <Route element={<FirmClientsRoute />} path="clients" />
           <Route element={<AccountantClientWorkspacePage />} path="clients/:clientId" />
-          <Route element={<AccountantClientWorkspacePage />} path="clients/:clientId/packs" />
+          <Route element={<AccountantClientPackWorkspacePage />} path="clients/:clientId/packs" />
           <Route element={<AccountantDocumentsPage />} path="documents" />
           <Route element={<AccountantFilingPage />} path="filing" />
           <Route element={<FirmReviewQueuePage />} path="review" />
