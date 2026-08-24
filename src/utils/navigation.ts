@@ -188,6 +188,13 @@ export const navigationByRole: Record<Role, NavigationItem[]> = {
       icon: "deadlines",
     },
     {
+      label: "Accountants",
+      to: "/firm/admin/accountants",
+      description: "Manage accountant capacity and access",
+      section: "Management",
+      icon: "accountants",
+    },
+    {
       label: "Assignments",
       to: "/firm/admin/assignments",
       description: "Assign accountants to clients",
@@ -200,6 +207,13 @@ export const navigationByRole: Record<Role, NavigationItem[]> = {
       description: "Manage request state transitions, reminders, and escalations",
       section: "Configuration",
       icon: "policies",
+    },
+    {
+      label: "System Settings",
+      to: "/firm/admin/system-settings",
+      description: "Manage users, roles, firm rules, and system controls",
+      section: "Configuration",
+      icon: "settings",
     },
   ],
 };
