@@ -29,8 +29,7 @@ export type NavigationIcon =
   | "assignments"
   | "templates"
   | "deadlines"
-  | "policies"
-  | "exceptions";
+  | "policies";
 
 export interface NavigationItem {
   label: string;
@@ -139,37 +138,58 @@ export const navigationByRole: Record<Role, NavigationItem[]> = {
   ],
   admin: [
     {
-      label: "Dashboard",
+      label: "Admin Dashboard",
       to: "/firm/dashboard",
-      description: "See firm-wide operational health",
+      description: "Control firm health, risk, access, and workload",
       section: "Main",
       icon: "dashboard",
     },
     {
+      label: "Users & Access",
+      to: "/firm/admin/users",
+      description: "Create users, change roles, and control account access",
+      section: "Management",
+      icon: "users",
+    },
+    {
       label: "Clients",
       to: "/firm/clients",
-      description: "Manage client coverage and pack ownership",
+      description: "Manage client ownership, status, and risk",
       section: "Management",
       icon: "clients",
     },
     {
+      label: "Accountants",
+      to: "/firm/admin/accountants",
+      description: "Manage accountant capacity and workload",
+      section: "Management",
+      icon: "accountants",
+    },
+    {
+      label: "Assignments",
+      to: "/firm/admin/assignments",
+      description: "Assign and rebalance accountants across clients",
+      section: "Management",
+      icon: "assignments",
+    },
+    {
       label: "Work Queue",
       to: "/firm/review",
-      description: "Triage the full firm review workload",
+      description: "Oversee the full firm review workload",
       section: "Main",
       icon: "review",
     },
     {
       label: "Documents",
       to: "/firm/documents",
-      description: "Search all records across the full firm",
+      description: "Search records across the full firm",
       section: "Documents",
       icon: "documents",
     },
     {
       label: "Filing Register",
       to: "/firm/filing",
-      description: "Read-only register of accountant-accepted filed records",
+      description: "Monitor accepted and filed records",
       section: "Documents",
       icon: "documents",
     },
@@ -183,46 +203,28 @@ export const navigationByRole: Record<Role, NavigationItem[]> = {
     {
       label: "Compliance Calendar",
       to: "/firm/compliance/calendar",
-      description: "Track filings and expiring compliance deadlines",
+      description: "Track firm deadlines and expiries",
       section: "Compliance",
       icon: "deadlines",
     },
     {
-      label: "Accountants",
-      to: "/firm/admin/accountants",
-      description: "Manage accountant capacity and access",
-      section: "Management",
-      icon: "accountants",
-    },
-    {
-      label: "Assignments",
-      to: "/firm/admin/assignments",
-      description: "Assign accountants to clients",
-      section: "Management",
-      icon: "assignments",
-    },
-    {
       label: "Request SLA Rules",
       to: "/firm/admin/request-state-machine",
-      description: "Manage request state transitions, reminders, and escalations",
+      description: "Control request transitions, reminders, and escalations",
       section: "Configuration",
       icon: "policies",
     },
     {
       label: "System Settings",
       to: "/firm/admin/system-settings",
-      description: "Manage users, roles, firm rules, and system controls",
+      description: "Manage firm rules, templates, and system controls",
       section: "Configuration",
       icon: "settings",
     },
   ],
 };
 
-// Component flow: gather data first, then render a focused UI state.
 export function getNavigationForUser(user: SessionUser | null | undefined) {
-  if (!user) {
-    return [];
-  }
-
+  if (!user) return [];
   return navigationByRole[user.role];
 }
