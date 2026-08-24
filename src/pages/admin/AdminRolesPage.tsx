@@ -33,7 +33,6 @@ const permissionGroups: Array<{ label: string; permissions: string[] }> = [
   { label: "Reporting", permissions: ["export:firm_reports", "export:client_reports"] },
 ];
 
-const allPermissions = permissionGroups.flatMap((group) => group.permissions);
 const scopeOptions = [
   { label: "Admin", value: "admin" },
   { label: "Firm / accountant", value: "firm" },
