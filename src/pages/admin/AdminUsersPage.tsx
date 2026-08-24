@@ -30,7 +30,14 @@ interface FeedbackNotice {
   message: string;
 }
 
-const roleOptions = ["admin", "accountant", "client"];
+const roleValues = ["admin", "accountant", "client"];
+const createRoleOptions = roleValues.map((role) => ({ label: role, value: role }));
+const filterRoleOptions = [{ label: "All roles", value: "all" }, ...createRoleOptions];
+const statusOptions = [
+  { label: "All statuses", value: "all" },
+  { label: "Active", value: "active" },
+  { label: "Disabled / restricted", value: "inactive" },
+];
 
 function normalizedStatus(user: AdminUserRecord) {
   return (user.status ?? user.securityStatus ?? "active").trim().toLowerCase();
@@ -194,9 +201,7 @@ export function AdminUsersPage() {
         <div className="grid gap-4 lg:grid-cols-4">
           <TextField label="Full name" onChange={(event) => setNewUserName(event.target.value)} value={newUserName} />
           <TextField label="Email" onChange={(event) => setNewUserEmail(event.target.value)} value={newUserEmail} />
-          <SelectField label="Role" onChange={(event) => setNewUserRole(event.target.value)} value={newUserRole}>
-            {roleOptions.map((role) => <option key={role} value={role}>{role}</option>)}
-          </SelectField>
+          <SelectField label="Role" onChange={(event) => setNewUserRole(event.target.value)} options={createRoleOptions} value={newUserRole} />
           <TextField label="Company" onChange={(event) => setNewUserCompany(event.target.value)} value={newUserCompany} />
         </div>
         <div className="flex justify-end">
@@ -212,15 +217,8 @@ export function AdminUsersPage() {
           </div>
           <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[620px]">
             <TextField label="Search" onChange={(event) => setQuery(event.target.value)} value={query} />
-            <SelectField label="Role" onChange={(event) => setRoleFilter(event.target.value)} value={roleFilter}>
-              <option value="all">All roles</option>
-              {roleOptions.map((role) => <option key={role} value={role}>{role}</option>)}
-            </SelectField>
-            <SelectField label="Status" onChange={(event) => setStatusFilter(event.target.value)} value={statusFilter}>
-              <option value="all">All statuses</option>
-              <option value="active">Active</option>
-              <option value="inactive">Disabled / restricted</option>
-            </SelectField>
+            <SelectField label="Role" onChange={(event) => setRoleFilter(event.target.value)} options={filterRoleOptions} value={roleFilter} />
+            <SelectField label="Status" onChange={(event) => setStatusFilter(event.target.value)} options={statusOptions} value={statusFilter} />
           </div>
         </div>
 
@@ -251,7 +249,7 @@ export function AdminUsersPage() {
                         onChange={(event) => void changeRole(user, event.target.value)}
                         value={user.role.toLowerCase()}
                       >
-                        {roleOptions.map((role) => <option key={role} value={role}>{role}</option>)}
+                        {roleValues.map((role) => <option key={role} value={role}>{role}</option>)}
                       </select>
                     </td>
                     <td className="px-4 py-4 text-slate-600">{user.company || "—"}</td>
@@ -261,11 +259,7 @@ export function AdminUsersPage() {
                       </span>
                     </td>
                     <td className="px-4 py-4 text-right">
-                      <Button
-                        disabled={busyUserId === user.id}
-                        onClick={() => void toggleStatus(user)}
-                        variant="secondary"
-                      >
+                      <Button disabled={busyUserId === user.id} onClick={() => void toggleStatus(user)} variant="secondary">
                         {status === "active" ? "Disable access" : "Enable access"}
                       </Button>
                     </td>
