@@ -1,23 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { usePortal } from "../../app/portal";
 import { Button } from "../../components/ui/Button";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
 import { ApiError, apiGetJson, hasApiBaseUrl } from "../../services/apiClient";
-import type {
-  AdminDashboardData,
-  DocumentPolicy,
-  FirmClientAccount,
-  ManagedAccountant,
-  NotificationItem,
-  SummaryMetric,
-  Tone,
-} from "../../types/portal";
-import { cn } from "../../utils/cn";
+import type { Tone } from "../../types/portal";
 
-interface BackendAdminUserRecord {
+interface AdminUserRecord {
   id: string;
   fullName: string;
   email: string;
@@ -25,39 +15,24 @@ interface BackendAdminUserRecord {
   securityStatus?: string | null;
 }
 
-interface BackendClientRecord {
+interface ClientRecord {
   id: string;
   name: string;
   entityType: string;
   status: string;
   complianceHealth: number;
-  assignedAccountantId: string;
-  primaryContact: string;
-  email: string;
+  assignedAccountantId?: string | null;
 }
 
-interface BackendAssignmentRecord {
+interface AssignmentRecord {
   id: string;
   clientId: string;
-  clientName?: string | null;
   accountantUserId: string;
   accountantName?: string | null;
   isPrimary: boolean;
 }
 
-interface BackendNotificationRecord {
-  id: string;
-  userId: string;
-  clientId?: string | null;
-  type: string;
-  title: string;
-  message: string;
-  linkUrl?: string | null;
-  isRead: boolean;
-  createdAtUtc: string;
-}
-
-interface BackendReviewQueueRecord {
+interface ReviewRecord {
   id: string;
   clientId?: string | null;
   clientName?: string | null;
@@ -66,481 +41,306 @@ interface BackendReviewQueueRecord {
   assignedToName?: string | null;
 }
 
+interface AuditRecord {
+  id: string;
+  actorUserId?: string | null;
+  actorRole: string;
+  action: string;
+  entityType: string;
+  entityId: string;
+  clientId?: string | null;
+  createdAtUtc: string;
+}
+
 interface FeedbackNotice {
   tone: Tone;
   title: string;
   message: string;
 }
 
-const livePolicies: DocumentPolicy[] = [
-  {
-    id: "policy-client-access",
-    name: "Client assignment control",
-    description: "Primary accountant ownership determines who should carry the live client workload.",
-    requiredByDay: "Immediate",
-    gracePeriod: "No grace period",
-    owner: "Admin",
-  },
-  {
-    id: "policy-review-age",
-    name: "Review queue ageing",
-    description: "Review items older than three days should be escalated before the month-end bottleneck grows.",
-    requiredByDay: "3 days",
-    gracePeriod: "4 extra days",
-    owner: "Operations",
-  },
-  {
-    id: "policy-request-sla",
-    name: "Request SLA visibility",
-    description: "Waiting-on-client and overdue requests stay visible in admin oversight until they are resolved.",
-    requiredByDay: "Daily",
-    gracePeriod: "N/A",
-    owner: "Admin",
-  },
-  {
-    id: "policy-compliance-risk",
-    name: "Compliance risk watch",
-    description: "Inactive and low-health clients should surface quickly so assignments and reviews can be rebalanced.",
-    requiredByDay: "Weekly",
-    gracePeriod: "2 days",
-    owner: "Compliance",
-  },
-];
-
-function normalizeAccountantStatus(status?: string | null): ManagedAccountant["status"] {
-  switch ((status ?? "").trim().toLowerCase()) {
-    case "invited":
-      return "capacity_available";
-    case "disabled":
-    case "locked":
-      return "busy";
-    default:
-      return "active";
-  }
+interface DashboardState {
+  users: AdminUserRecord[];
+  clients: ClientRecord[];
+  assignments: AssignmentRecord[];
+  reviews: ReviewRecord[];
+  audit: AuditRecord[];
 }
 
-function mapLiveAccountants(
-  users: BackendAdminUserRecord[],
-  assignments: BackendAssignmentRecord[],
-  reviewQueue: BackendReviewQueueRecord[],
-): ManagedAccountant[] {
-  return users
-    .filter((user) => user.role.trim().toLowerCase() === "accountant")
-    .map((user) => {
-      const assignedClientCount = assignments.filter(
-        (assignment) => assignment.accountantUserId === user.id,
-      ).length;
-      const openReviews = reviewQueue.filter((item) => {
-        const status = (item.status ?? "").trim().toLowerCase();
-        return item.assignedToUserId === user.id && status !== "approved" && status !== "rejected";
-      }).length;
+const emptyState: DashboardState = {
+  users: [],
+  clients: [],
+  assignments: [],
+  reviews: [],
+  audit: [],
+};
 
-      return {
-        id: user.id,
-        name: user.fullName,
-        email: user.email,
-        title: "Accountant",
-        assignedClientCount,
-        openReviews,
-        status:
-          openReviews >= 8
-            ? "busy"
-            : assignedClientCount <= 2
-              ? "capacity_available"
-              : normalizeAccountantStatus(user.securityStatus),
-      };
-    })
-    .sort((left, right) => left.name.localeCompare(right.name));
+function securityStatus(user: AdminUserRecord) {
+  return (user.securityStatus ?? "active").trim().toLowerCase();
 }
 
-function mapLiveClients(
-  clients: BackendClientRecord[],
-  assignments: BackendAssignmentRecord[],
-  accountants: ManagedAccountant[],
-): FirmClientAccount[] {
-  return clients.map((client) => {
-    const clientAssignments = assignments.filter((assignment) => assignment.clientId === client.id);
-    const primaryAssignment = clientAssignments.find((assignment) => assignment.isPrimary) ?? null;
-
-    return {
-      id: client.id,
-      clientName: client.name,
-      industry: client.entityType,
-      assignedAccountant:
-        primaryAssignment?.accountantName ??
-        accountants.find((accountant) => accountant.id === client.assignedAccountantId)?.name ??
-        "Unassigned",
-      assignedAccountantUserId:
-        primaryAssignment?.accountantUserId ?? (client.assignedAccountantId || undefined),
-      requiredPack: "Current month pack",
-      completionRate: client.complianceHealth,
-      deadlinePolicy: "Monthly",
-      status:
-        client.status === "active"
-          ? client.complianceHealth < 60
-            ? "attention"
-            : "on_track"
-          : client.status === "inactive"
-            ? "attention"
-            : "overdue",
-      isActive: client.status === "active",
-    };
-  });
+function isOpenReview(review: ReviewRecord) {
+  const status = (review.status ?? "").trim().toLowerCase();
+  return status !== "approved" && status !== "rejected" && status !== "completed" && status !== "closed";
 }
 
-function mapNotificationTone(type: string): Tone {
-  const value = type.trim().toLowerCase();
-  if (value.includes("rejected") || value.includes("overdue") || value.includes("exception")) {
-    return "danger";
-  }
-
-  if (value.includes("missing") || value.includes("deadline") || value.includes("expiring")) {
-    return "warning";
-  }
-
-  if (value.includes("review") || value.includes("request")) {
-    return "info";
-  }
-
-  return "neutral";
+function formatAction(action: string) {
+  return action.replace(/[._]/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-function mapNotificationKind(type: string): NotificationItem["kind"] {
-  const value = type.trim().toLowerCase();
-  if (value.includes("rejected")) return "rejected_documents";
-  if (value.includes("deadline") || value.includes("expiring")) return "deadline_reminder";
-  if (value.includes("missing")) return "missing_documents";
-  return "expiring_documents";
-}
-
-function buildSummaryMetrics(
-  clients: FirmClientAccount[],
-  accountants: ManagedAccountant[],
-  notifications: NotificationItem[],
-  reviewQueue: BackendReviewQueueRecord[],
-): SummaryMetric[] {
-  const activeClients = clients.filter((client) => client.isActive ?? true).length;
-  const attentionClients = clients.filter((client) => client.status !== "on_track").length;
-  const openReviews = reviewQueue.filter((item) => {
-    const status = (item.status ?? "").trim().toLowerCase();
-    return status !== "approved" && status !== "rejected";
-  }).length;
-  const busyAccountants = accountants.filter((accountant) => accountant.status === "busy").length;
-
-  return [
-    {
-      id: "active-clients",
-      label: "Active clients",
-      value: String(activeClients),
-      helper: `${attentionClients} need attention`,
-      tone: attentionClients > 0 ? "warning" : "success",
-    },
-    {
-      id: "open-reviews",
-      label: "Open reviews",
-      value: String(openReviews),
-      helper: `${reviewQueue.length} total review records loaded`,
-      tone: openReviews >= 5 ? "warning" : "info",
-    },
-    {
-      id: "team-capacity",
-      label: "Busy accountants",
-      value: String(busyAccountants),
-      helper: `${accountants.length - busyAccountants} still have capacity`,
-      tone: busyAccountants > 0 ? "warning" : "success",
-    },
-    {
-      id: "firm-alerts",
-      label: "Recent alerts",
-      value: String(notifications.length),
-      helper: notifications.length > 0 ? "Latest workflow events surfaced" : "No recent firm alerts",
-      tone: notifications.length > 0 ? "info" : "neutral",
-    },
-  ];
-}
-
-function statusTone(status: "on_track" | "attention" | "overdue") {
-  if (status === "on_track") {
-    return "bg-emerald-50 text-emerald-700 ring-emerald-200";
-  }
-
-  if (status === "overdue") {
-    return "bg-rose-50 text-rose-700 ring-rose-200";
-  }
-
-  return "bg-amber-50 text-amber-700 ring-amber-200";
-}
-
-function workloadTone(openReviews: number) {
-  if (openReviews >= 5) {
-    return "text-rose-600";
-  }
-
-  if (openReviews >= 3) {
-    return "text-amber-600";
-  }
-
-  return "text-emerald-600";
+function formatDate(value: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString();
 }
 
 export function AdminDashboardPage() {
   const navigate = useNavigate();
-  const portal = usePortal();
   const backendMode = hasApiBaseUrl();
-  const [liveDashboard, setLiveDashboard] = useState<AdminDashboardData | null>(null);
-  const [liveAccountants, setLiveAccountants] = useState<ManagedAccountant[] | null>(null);
-  const [feedbackNotice, setFeedbackNotice] = useState<FeedbackNotice | null>(null);
+  const [data, setData] = useState<DashboardState>(emptyState);
+  const [loading, setLoading] = useState(false);
+  const [feedback, setFeedback] = useState<FeedbackNotice | null>(null);
 
   useEffect(() => {
     if (!backendMode) {
+      setFeedback({
+        tone: "warning",
+        title: "Backend required",
+        message: "The Admin Dashboard is a live control surface and requires the backend API.",
+      });
       return;
     }
 
-    let isMounted = true;
+    let mounted = true;
 
-    async function loadAdminDashboard() {
+    async function load() {
+      setLoading(true);
       const results = await Promise.allSettled([
-        apiGetJson<BackendAdminUserRecord[]>("/api/admin/users"),
-        apiGetJson<BackendClientRecord[]>("/api/clients"),
-        apiGetJson<BackendAssignmentRecord[]>("/api/assignments"),
-        apiGetJson<BackendNotificationRecord[]>("/api/notifications"),
-        apiGetJson<BackendReviewQueueRecord[]>("/api/review-queue"),
+        apiGetJson<AdminUserRecord[]>("/api/admin/users"),
+        apiGetJson<ClientRecord[]>("/api/clients"),
+        apiGetJson<AssignmentRecord[]>("/api/assignments"),
+        apiGetJson<ReviewRecord[]>("/api/review-queue"),
+        apiGetJson<AuditRecord[]>("/api/audit-logs?limit=50"),
       ]);
 
-      if (!isMounted) {
-        return;
-      }
+      if (!mounted) return;
 
-      const [usersResult, clientsResult, assignmentsResult, notificationsResult, reviewQueueResult] = results;
+      const [users, clients, assignments, reviews, audit] = results;
+      const criticalFailure = users.status === "rejected" || clients.status === "rejected" || assignments.status === "rejected";
 
-      if (
-        usersResult.status !== "fulfilled" ||
-        clientsResult.status !== "fulfilled" ||
-        assignmentsResult.status !== "fulfilled"
-      ) {
-        const firstError = [usersResult, clientsResult, assignmentsResult]
-          .find((result) => result.status === "rejected");
-        const error = firstError?.status === "rejected" ? firstError.reason : null;
-
-        setFeedbackNotice({
-          tone: "warning",
-          title: "Live admin dashboard unavailable",
-          message:
-            error instanceof ApiError
-              ? error.message
-              : "The admin dashboard could not load the live backend data, so the seeded workspace view is still shown.",
+      if (criticalFailure) {
+        const firstError = [users, clients, assignments].find((result) => result.status === "rejected");
+        const reason = firstError?.status === "rejected" ? firstError.reason : null;
+        setFeedback({
+          tone: "danger",
+          title: "Admin dashboard could not load",
+          message: reason instanceof ApiError ? reason.message : "Core administration data could not be loaded.",
         });
-        return;
+      } else {
+        setFeedback(
+          reviews.status === "rejected" || audit.status === "rejected"
+            ? {
+                tone: "warning",
+                title: "Partial admin data",
+                message: "Core administration data loaded, but one secondary feed is currently unavailable.",
+              }
+            : null,
+        );
       }
 
-      const users = usersResult.value;
-      const clients = clientsResult.value;
-      const assignments = assignmentsResult.value;
-      const reviewQueue = reviewQueueResult.status === "fulfilled" ? reviewQueueResult.value : [];
-      const notifications = notificationsResult.status === "fulfilled" ? notificationsResult.value : [];
-      const mappedAccountants = mapLiveAccountants(users, assignments, reviewQueue);
-      const mappedClients = mapLiveClients(clients, assignments, mappedAccountants);
-      const mappedNotifications: NotificationItem[] = notifications
-        .slice(0, 8)
-        .map((item) => ({
-          id: item.id,
-          kind: mapNotificationKind(item.type),
-          title: item.title,
-          message: item.message,
-          createdAt: item.createdAtUtc,
-          tone: mapNotificationTone(item.type),
-          actionLabel: item.linkUrl ? "Open" : "Review",
-          actionHref: item.linkUrl ?? "/admin/assignments",
-          state: item.isRead ? "reviewed" : "unread",
-          activity: [],
-        }));
-
-      setLiveAccountants(mappedAccountants);
-      setLiveDashboard({
-        summaryMetrics: buildSummaryMetrics(mappedClients, mappedAccountants, mappedNotifications, reviewQueue),
-        clients: mappedClients,
-        policies: livePolicies,
-        notifications: mappedNotifications,
+      setData({
+        users: users.status === "fulfilled" ? users.value : [],
+        clients: clients.status === "fulfilled" ? clients.value : [],
+        assignments: assignments.status === "fulfilled" ? assignments.value : [],
+        reviews: reviews.status === "fulfilled" ? reviews.value : [],
+        audit: audit.status === "fulfilled" ? audit.value : [],
       });
-      setFeedbackNotice(
-        notificationsResult.status === "rejected" || reviewQueueResult.status === "rejected"
-          ? {
-              tone: "warning",
-              title: "Partial live dashboard",
-              message: "Some secondary dashboard feeds could not be loaded, so a few admin tiles are using limited live data.",
-            }
-          : null,
-      );
+      setLoading(false);
     }
 
-    void loadAdminDashboard();
-
-    return () => {
-      isMounted = false;
-    };
+    void load();
+    return () => { mounted = false; };
   }, [backendMode]);
 
-  const dashboard = backendMode && liveDashboard ? liveDashboard : portal.adminDashboard;
-  const managedAccountants = backendMode && liveAccountants ? liveAccountants : portal.managedAccountants;
-
-  const criticalClients = useMemo(
-    () =>
-      [...dashboard.clients]
-        .sort((left, right) => {
-          const leftRank =
-            left.status === "overdue" ? 3 : left.status === "attention" ? 2 : 1;
-          const rightRank =
-            right.status === "overdue" ? 3 : right.status === "attention" ? 2 : 1;
-          return rightRank - leftRank || left.completionRate - right.completionRate;
-        })
-        .slice(0, 5),
-    [dashboard.clients],
+  const accountants = useMemo(
+    () => data.users.filter((user) => user.role.trim().toLowerCase() === "accountant"),
+    [data.users],
   );
 
-  const capacityRows = useMemo(
-    () =>
-      [...managedAccountants].sort(
-        (left, right) =>
-          right.assignedClientCount - left.assignedClientCount ||
-          right.openReviews - left.openReviews,
-      ),
-    [managedAccountants],
+  const restrictedUsers = useMemo(
+    () => data.users.filter((user) => ["disabled", "locked", "reset_pending", "password_reset_required"].includes(securityStatus(user))),
+    [data.users],
   );
 
-  const recentAlerts = useMemo(
-    () => dashboard.notifications.slice(0, 4),
-    [dashboard.notifications],
+  const unassignedClients = useMemo(() => {
+    return data.clients.filter((client) => {
+      const hasAssignment = data.assignments.some((assignment) => assignment.clientId === client.id);
+      return !hasAssignment && !client.assignedAccountantId;
+    });
+  }, [data.assignments, data.clients]);
+
+  const atRiskClients = useMemo(
+    () => [...data.clients]
+      .filter((client) => client.status.toLowerCase() !== "active" || client.complianceHealth < 60)
+      .sort((left, right) => left.complianceHealth - right.complianceHealth),
+    [data.clients],
   );
 
-  const systemRules = useMemo(() => dashboard.policies.slice(0, 4), [dashboard.policies]);
+  const openReviews = useMemo(() => data.reviews.filter(isOpenReview), [data.reviews]);
+
+  const capacityRows = useMemo(() => {
+    return accountants
+      .map((accountant) => {
+        const assignedClients = data.assignments.filter((assignment) => assignment.accountantUserId === accountant.id).length;
+        const reviews = openReviews.filter((review) => review.assignedToUserId === accountant.id).length;
+        const score = assignedClients + reviews * 2;
+        return { accountant, assignedClients, reviews, score };
+      })
+      .sort((left, right) => right.score - left.score);
+  }, [accountants, data.assignments, openReviews]);
+
+  const overloadedAccountants = useMemo(
+    () => capacityRows.filter((row) => row.assignedClients >= 8 || row.reviews >= 5),
+    [capacityRows],
+  );
+
+  const recentAudit = useMemo(
+    () => [...data.audit]
+      .sort((left, right) => new Date(right.createdAtUtc).getTime() - new Date(left.createdAtUtc).getTime())
+      .slice(0, 6),
+    [data.audit],
+  );
+
+  const actorName = (actorUserId?: string | null) =>
+    data.users.find((user) => user.id === actorUserId)?.fullName ?? "System";
+
+  const interventionCount = unassignedClients.length + restrictedUsers.length + overloadedAccountants.length + atRiskClients.length;
+
+  const summaryCards = [
+    {
+      label: "Admin interventions",
+      value: interventionCount,
+      helper: interventionCount === 0 ? "No immediate admin exceptions" : "Items requiring administrative attention",
+      action: () => navigate("/firm/admin/audit"),
+    },
+    {
+      label: "Unassigned clients",
+      value: unassignedClients.length,
+      helper: "Clients without accountant ownership",
+      action: () => navigate("/firm/admin/assignments"),
+    },
+    {
+      label: "Restricted users",
+      value: restrictedUsers.length,
+      helper: "Disabled, locked, or reset-pending accounts",
+      action: () => navigate("/firm/admin/users"),
+    },
+    {
+      label: "Open reviews",
+      value: openReviews.length,
+      helper: `${overloadedAccountants.length} accountants currently over threshold`,
+      action: () => navigate("/firm/review"),
+    },
+  ];
 
   return (
     <div className="space-y-6">
       <PageHeader
         actions={
           <>
-            <Button onClick={() => navigate("/admin/assignments")} variant="secondary">
-              Open assignments
-            </Button>
-            <Button onClick={() => navigate("/admin/system-settings")}>
-              Open system settings
-            </Button>
+            <Button onClick={() => navigate("/firm/admin/users")} variant="secondary">Manage users</Button>
+            <Button onClick={() => navigate("/firm/admin/assignments")}>Manage assignments</Button>
           </>
         }
-        description="See firm health, team capacity, client risk, and governance actions from one admin-first home."
-        eyebrow="Admin workspace"
-        title="Firm dashboard"
+        description="Monitor firm-wide access, ownership, workload, compliance risk, and security activity from one administration control centre."
+        eyebrow="Administration"
+        title="Admin control centre"
       />
 
-      {feedbackNotice ? (
-        <FeedbackBanner
-          message={feedbackNotice.message}
-          onDismiss={() => setFeedbackNotice(null)}
-          title={feedbackNotice.title}
-          tone={feedbackNotice.tone}
-        />
+      {feedback ? (
+        <FeedbackBanner message={feedback.message} onDismiss={() => setFeedback(null)} title={feedback.title} tone={feedback.tone} />
       ) : null}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {dashboard.summaryMetrics.map((metric) => (
-          <SurfaceCard className="space-y-3" key={metric.id}>
-            <p className="text-sm font-semibold text-slate-500">{metric.label}</p>
-            <p className="text-[2rem] font-semibold tracking-tight text-slate-950">
-              {metric.value}
-            </p>
-            <p className="text-sm leading-6 text-slate-500">{metric.helper}</p>
-          </SurfaceCard>
+        {summaryCards.map((card) => (
+          <button className="text-left" key={card.label} onClick={card.action} type="button">
+            <SurfaceCard className="h-full space-y-2 transition hover:-translate-y-0.5 hover:shadow-md">
+              <p className="text-sm font-medium text-slate-500">{card.label}</p>
+              <p className="text-[2rem] font-semibold tracking-tight text-slate-950">{card.value}</p>
+              <p className="text-sm leading-6 text-slate-500">{card.helper}</p>
+            </SurfaceCard>
+          </button>
         ))}
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
         <SurfaceCard className="space-y-5">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-xl font-semibold text-slate-950">Clients needing attention</h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Prioritise the client relationships most likely to affect firm delivery.
-              </p>
+              <h2 className="portal-section-title text-slate-950">Needs admin intervention</h2>
+              <p className="mt-1 text-sm text-slate-500">Exceptions that require ownership, access, or workload decisions.</p>
             </div>
-            <Button onClick={() => navigate("/admin/system-settings")} size="sm" variant="secondary">
-              Manage clients
-            </Button>
+            <Button onClick={() => navigate("/firm/admin/assignments")} size="sm" variant="secondary">Open assignments</Button>
           </div>
 
           <div className="space-y-3">
-            {criticalClients.map((client) => (
-              <div
-                className="grid gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 md:grid-cols-[minmax(0,1.1fr)_0.75fr_0.7fr_auto] md:items-center"
-                key={client.id}
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-slate-950">
-                    {client.clientName}
-                  </p>
-                  <p className="mt-1 truncate text-xs text-slate-500">
-                    {client.industry} / {client.requiredPack}
-                  </p>
-                </div>
+            {unassignedClients.slice(0, 4).map((client) => (
+              <button className="flex w-full items-center justify-between gap-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-left" key={`unassigned-${client.id}`} onClick={() => navigate("/firm/admin/assignments")} type="button">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
-                    Accountant
-                  </p>
-                  <p className="mt-1 text-sm text-slate-700">
-                    {client.assignedAccountant || "Unassigned"}
-                  </p>
+                  <p className="text-sm font-semibold text-slate-950">{client.name}</p>
+                  <p className="mt-1 text-xs text-slate-600">No accountant assigned</p>
                 </div>
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.08em] text-slate-400">
-                    Completion
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-slate-900">
-                    {client.completionRate}%
-                  </p>
-                </div>
-                <span
-                  className={cn(
-                    "inline-flex w-fit rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset",
-                    statusTone(client.status),
-                  )}
-                >
-                  {client.status.replace("_", " ")}
-                </span>
-              </div>
+                <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-amber-700">Assign</span>
+              </button>
             ))}
+
+            {restrictedUsers.slice(0, 3).map((user) => (
+              <button className="flex w-full items-center justify-between gap-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-4 text-left" key={`restricted-${user.id}`} onClick={() => navigate("/firm/admin/users")} type="button">
+                <div>
+                  <p className="text-sm font-semibold text-slate-950">{user.fullName}</p>
+                  <p className="mt-1 text-xs text-slate-600">{user.email} · {securityStatus(user).replace(/_/g, " ")}</p>
+                </div>
+                <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-rose-700">Review access</span>
+              </button>
+            ))}
+
+            {overloadedAccountants.slice(0, 3).map((row) => (
+              <button className="flex w-full items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-left" key={`capacity-${row.accountant.id}`} onClick={() => navigate("/firm/admin/accountants")} type="button">
+                <div>
+                  <p className="text-sm font-semibold text-slate-950">{row.accountant.fullName}</p>
+                  <p className="mt-1 text-xs text-slate-600">{row.assignedClients} clients · {row.reviews} open reviews</p>
+                </div>
+                <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-700">Rebalance</span>
+              </button>
+            ))}
+
+            {!loading && interventionCount === 0 ? (
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-5">
+                <p className="text-sm font-semibold text-emerald-800">No immediate admin intervention required.</p>
+                <p className="mt-1 text-sm text-emerald-700">Ownership, access, and workload thresholds are currently clear.</p>
+              </div>
+            ) : null}
           </div>
         </SurfaceCard>
 
         <SurfaceCard className="space-y-5">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-xl font-semibold text-slate-950">Worker capacity</h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Check who is carrying the heaviest portfolio and review load.
-              </p>
+              <h2 className="portal-section-title text-slate-950">Team capacity</h2>
+              <p className="mt-1 text-sm text-slate-500">Firm-wide assignment and review pressure by accountant.</p>
             </div>
-            <Button onClick={() => navigate("/admin/accountants")} size="sm" variant="secondary">
-              Open team view
-            </Button>
+            <Button onClick={() => navigate("/firm/admin/accountants")} size="sm" variant="secondary">Manage team</Button>
           </div>
 
           <div className="space-y-3">
-            {capacityRows.map((accountant) => (
-              <div
-                className="rounded-2xl border border-slate-200 bg-white px-4 py-4"
-                key={accountant.id}
-              >
-                <div className="flex items-start justify-between gap-3">
+            {capacityRows.slice(0, 6).map((row) => (
+              <div className="rounded-2xl border border-slate-200 px-4 py-3" key={row.accountant.id}>
+                <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-sm font-semibold text-slate-950">{accountant.name}</p>
-                    <p className="mt-1 text-xs text-slate-500">{accountant.title}</p>
+                    <p className="text-sm font-semibold text-slate-950">{row.accountant.fullName}</p>
+                    <p className="mt-1 text-xs text-slate-500">{row.assignedClients} clients · {row.reviews} reviews</p>
                   </div>
-                  <span className={cn("text-sm font-semibold", workloadTone(accountant.openReviews))}>
-                    {accountant.openReviews} open reviews
+                  <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${row.assignedClients >= 8 || row.reviews >= 5 ? "bg-rose-50 text-rose-700" : row.assignedClients <= 2 && row.reviews <= 2 ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+                    {row.assignedClients >= 8 || row.reviews >= 5 ? "Overloaded" : row.assignedClients <= 2 && row.reviews <= 2 ? "Capacity" : "Balanced"}
                   </span>
-                </div>
-                <div className="mt-3 flex items-center justify-between text-sm text-slate-600">
-                  <span>{accountant.assignedClientCount} assigned clients</span>
-                  <span className="capitalize">{accountant.status.replace("_", " ")}</span>
                 </div>
               </div>
             ))}
@@ -552,32 +352,20 @@ export function AdminDashboardPage() {
         <SurfaceCard className="space-y-5">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-xl font-semibold text-slate-950">Recent firm alerts</h2>
-              <p className="mt-1 text-sm text-slate-500">
-                Issues and changes that should stay visible at the admin layer.
-              </p>
+              <h2 className="portal-section-title text-slate-950">Client risk watch</h2>
+              <p className="mt-1 text-sm text-slate-500">Lowest compliance health and inactive client records.</p>
             </div>
-            <Button onClick={() => navigate("/firm/notifications")} size="sm" variant="secondary">
-              Open notifications
-            </Button>
+            <Button onClick={() => navigate("/firm/clients")} size="sm" variant="secondary">Open clients</Button>
           </div>
-
           <div className="space-y-3">
-            {recentAlerts.map((alert) => (
-              <div
-                className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4"
-                key={alert.id}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-slate-950">{alert.title}</p>
-                    <p className="mt-1 text-sm leading-6 text-slate-500">{alert.message}</p>
-                  </div>
-                  <span className="shrink-0 text-xs text-slate-400">
-                    {new Date(alert.createdAt).toLocaleDateString("en-ZA")}
-                  </span>
+            {atRiskClients.slice(0, 6).map((client) => (
+              <button className="flex w-full items-center justify-between gap-4 rounded-2xl border border-slate-200 px-4 py-3 text-left" key={client.id} onClick={() => navigate(`/firm/clients/${client.id}/profile`)} type="button">
+                <div>
+                  <p className="text-sm font-semibold text-slate-950">{client.name}</p>
+                  <p className="mt-1 text-xs text-slate-500">{client.entityType} · {client.status}</p>
                 </div>
-              </div>
+                <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${client.complianceHealth < 60 ? "bg-rose-50 text-rose-700" : "bg-amber-50 text-amber-700"}`}>{client.complianceHealth}% health</span>
+              </button>
             ))}
           </div>
         </SurfaceCard>
@@ -585,74 +373,41 @@ export function AdminDashboardPage() {
         <SurfaceCard className="space-y-5">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-xl font-semibold text-slate-950">Governance shortcuts</h2>
-              <p className="mt-1 text-sm text-slate-500">
-                The controls admins use most often to keep the firm running cleanly.
-              </p>
+              <h2 className="portal-section-title text-slate-950">Recent audit & security activity</h2>
+              <p className="mt-1 text-sm text-slate-500">Latest administrative and system actions.</p>
             </div>
+            <Button onClick={() => navigate("/firm/admin/audit")} size="sm" variant="secondary">View audit</Button>
           </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Button
-              className="justify-start"
-              onClick={() => navigate("/admin/system-settings")}
-              variant="secondary"
-            >
-              Users and roles
-            </Button>
-            <Button
-              className="justify-start"
-              onClick={() => navigate("/admin/accountants")}
-              variant="secondary"
-            >
-              Team capacity
-            </Button>
-            <Button
-              className="justify-start"
-              onClick={() => navigate("/admin/assignments")}
-              variant="secondary"
-            >
-              Client assignments
-            </Button>
-            <Button
-              className="justify-start"
-              onClick={() => navigate("/admin/request-state-machine")}
-              variant="secondary"
-            >
-              Request SLA rules
-            </Button>
-            <Button
-              className="justify-start"
-              onClick={() => navigate("/firm/review")}
-              variant="secondary"
-            >
-              Open review queue
-            </Button>
-            <Button
-              className="justify-start"
-              onClick={() => navigate("/firm/compliance")}
-              variant="secondary"
-            >
-              Open compliance centre
-            </Button>
-          </div>
-
-          <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-            <div>
-              <h3 className="text-sm font-semibold text-slate-950">Active control rules</h3>
-              <p className="mt-1 text-sm text-slate-500">
-                Policy areas shaping the firm’s current operational workflow.
-              </p>
-            </div>
-            {systemRules.map((policy) => (
-              <div key={policy.id}>
-                <p className="text-sm font-semibold text-slate-900">{policy.name}</p>
-                <p className="mt-1 text-sm leading-6 text-slate-500">{policy.description}</p>
+          <div className="space-y-3">
+            {recentAudit.map((item) => (
+              <div className="rounded-2xl border border-slate-200 px-4 py-3" key={item.id}>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-950">{formatAction(item.action)}</p>
+                    <p className="mt-1 text-xs text-slate-500">{actorName(item.actorUserId)} · {item.actorRole} · {item.entityType}</p>
+                  </div>
+                  <span className="text-xs text-slate-400">{formatDate(item.createdAtUtc)}</span>
+                </div>
               </div>
             ))}
+            {!loading && recentAudit.length === 0 ? <p className="text-sm text-slate-500">No recent audit events were returned.</p> : null}
           </div>
         </SurfaceCard>
       </div>
+
+      <SurfaceCard className="space-y-4">
+        <div>
+          <h2 className="portal-section-title text-slate-950">Administration shortcuts</h2>
+          <p className="mt-1 text-sm text-slate-500">Jump directly to the control area you need.</p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <Button onClick={() => navigate("/firm/admin/users")} variant="secondary">Users & access</Button>
+          <Button onClick={() => navigate("/firm/admin/roles")} variant="secondary">Roles & permissions</Button>
+          <Button onClick={() => navigate("/firm/admin/assignments")} variant="secondary">Assignments</Button>
+          <Button onClick={() => navigate("/firm/admin/audit")} variant="secondary">Audit & security</Button>
+          <Button onClick={() => navigate("/firm/admin/system-settings")} variant="secondary">System settings</Button>
+        </div>
+      </SurfaceCard>
     </div>
   );
 }
