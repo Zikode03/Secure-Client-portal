@@ -6,7 +6,9 @@ import { configure } from "@testing-library/react";
 import { cleanup } from "@testing-library/react";
 import { afterEach, vi } from "vitest";
 
-configure({ asyncUtilTimeout: 3000 });
+// Route-level tests lazy-load large workspaces and can exceed the default timeout
+// when Vitest runs multiple files in parallel on development machines.
+configure({ asyncUtilTimeout: 10000 });
 
 Object.defineProperty(URL, "createObjectURL", {
   configurable: true,
