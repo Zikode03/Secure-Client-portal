@@ -6,6 +6,7 @@ import type { MonthlyDocumentSlot, MonthlyPack } from "../../types/portal";
 import { formatDateLabel } from "../../utils/formatters";
 import { Button } from "../ui/Button";
 import { SurfaceCard } from "../ui/SurfaceCard";
+import { useMonthlyPackCustomization } from "./MonthlyPackCustomizationContext";
 
 // Shared shape notes: these types keep UI and data contracts aligned.
 interface MonthlyPackChecklistProps {
@@ -350,6 +351,7 @@ export function MonthlyPackChecklist({
 }: MonthlyPackChecklistProps) {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [expandedReasonId, setExpandedReasonId] = useState<string | null>(null);
+  const customization = useMonthlyPackCustomization();
 
   function toggleMenu(slotId: string) {
     setOpenMenuId((current) => (current === slotId ? null : slotId));
@@ -483,6 +485,17 @@ export function MonthlyPackChecklist({
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <div className="text-sm font-medium text-[#53617f]">Due {formatDateLabel(pack.dueDate)}</div>
+          {customization ? (
+            <Button
+              disabled={Boolean(customization.disabled) || isReadOnly}
+              onClick={customization.onAddItem}
+              size="sm"
+              variant="secondary"
+            >
+              <span aria-hidden="true">+</span>
+              <span>Add to Monthly Pack</span>
+            </Button>
+          ) : null}
           {headerActionLabel && onHeaderAction ? (
             <Button
               disabled={headerActionDisabled}
@@ -640,9 +653,9 @@ export function MonthlyPackChecklist({
                     <td className="border-b border-[#edf0f6] px-2 py-4 text-[0.86rem] text-[#53617f]">
                       {slot.lastSubmission ? (
                         <>
-                        <p>{formatDateLabel(slot.lastSubmission)}</p>
-                        <p className="mt-1 text-slate-400">{updatedBy}</p>
-                      </>
+                          <p>{formatDateLabel(slot.lastSubmission)}</p>
+                          <p className="mt-1 text-slate-400">{updatedBy}</p>
+                        </>
                       ) : (
                         <p className="text-slate-400">{updatedBy}</p>
                       )}
