@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Download, FilePlus2, Paperclip, Plus, Repeat2, UploadCloud, X } from "lucide-react";
+import { Building2, Download, FilePlus2, Paperclip, Plus, Repeat2, UploadCloud, X } from "lucide-react";
 import { useAuth } from "../../app/auth";
 import { MonthlyPackCustomizationProvider } from "../../components/workflow/MonthlyPackCustomizationContext";
 import { Button } from "../../components/ui/Button";
@@ -22,6 +22,13 @@ interface BackendMonthlyPackRecord {
   year: number;
   month: number;
   status: string;
+}
+
+interface ClientRecord {
+  id: string;
+  name: string;
+  entityType: string;
+  industry?: string | null;
 }
 
 interface BackendDocumentRecord {
@@ -101,6 +108,7 @@ export function ClientMonthlyPackWorkspacePage() {
   const clientId = user?.clientIds[0] ?? "";
   const backendMode = hasApiBaseUrl() && Boolean(clientId);
   const [pack, setPack] = useState<BackendMonthlyPackRecord | null>(null);
+  const [client, setClient] = useState<ClientRecord | null>(null);
   const [documents, setDocuments] = useState<BackendDocumentRecord[]>([]);
   const [profile, setProfile] = useState<ClientMonthlyPackProfile | null>(null);
 
@@ -135,7 +143,7 @@ export function ClientMonthlyPackWorkspacePage() {
     if (!backendMode) return;
 
     try {
-      const [packs, allDocuments, packProfile] = await Promise.all([
+      const [packs, allDocuments, packProfile, clientRecord] = await Promise.all([
         apiGetJson<BackendMonthlyPackRecord[]>(
           `/api/monthly-packs?clientId=${encodeURIComponent(clientId)}`,
         ),
@@ -143,11 +151,13 @@ export function ClientMonthlyPackWorkspacePage() {
         apiGetJson<ClientMonthlyPackProfile>(
           `/api/monthly-pack-profiles/${encodeURIComponent(clientId)}`,
         ),
+        apiGetJson<ClientRecord>(`/api/clients/${encodeURIComponent(clientId)}`),
       ]);
 
       const currentPack = packs[0] ?? null;
       setPack(currentPack);
       setProfile(packProfile);
+      setClient(clientRecord);
       setDocuments(
         currentPack
           ? allDocuments
@@ -219,6 +229,15 @@ export function ClientMonthlyPackWorkspacePage() {
         message:
           "New checklist items cannot be added while this pack is already with the accountant or complete.",
       });
+      return;
+    }
+
+    const duplicate = [...(profile?.currentPackItems ?? []), ...(profile?.recurringItems ?? [])].some(
+      (item) =>
+        item.label.trim().toLowerCase() === itemLabel.trim().toLowerCase() ||
+        item.category.trim().toLowerCase() === resolvedCategory.toLowerCase(),
+    );
+    if (duplicate && !window.confirm("A similar monthly-pack item already exists. Add another separate item anyway?")) {
       return;
     }
 
@@ -380,6 +399,27 @@ export function ClientMonthlyPackWorkspacePage() {
       >
         <ClientMonthlyPacksPage key={checklistRevision} />
       </MonthlyPackCustomizationProvider>
+
+      {backendMode && client ? (
+        <section className="portal-page mx-auto max-w-[1280px]">
+          <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-start gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-700"><Building2 className="h-4 w-4" /></div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-slate-950">Your business profile</p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  Your monthly pack is tailored using the company information recorded by your accounting firm. If this information is wrong, ask your accountant to update it.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2 sm:justify-end">
+              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">{client.entityType || "Business"}</span>
+              {client.industry ? <span className="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700">{client.industry}</span> : null}
+              {profile?.templateName ? <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">Pack: {profile.templateName}</span> : null}
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       {feedback ? (
         <section className="portal-page mx-auto max-w-[1280px]">
