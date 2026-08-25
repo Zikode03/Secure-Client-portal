@@ -102,6 +102,9 @@ export function ClientMonthlyPackWorkspacePage() {
   const [pack, setPack] = useState<BackendMonthlyPackRecord | null>(null);
   const [documents, setDocuments] = useState<BackendDocumentRecord[]>([]);
   const [profile, setProfile] = useState<ClientMonthlyPackProfile | null>(null);
+  // The existing checklist owns its own backend load. Incrementing this key remounts it only when
+  // the profile changes, so a newly added row appears immediately without a browser refresh.
+  const [checklistRevision, setChecklistRevision] = useState(0);
 
   // Supporting-document state is separate from checklist-item state on purpose:
   // supporting files never change the pack's required-document completion percentage.
@@ -221,6 +224,7 @@ export function ClientMonthlyPackWorkspacePage() {
       setItemRecurrence("this_month");
       setItemDueDate("");
       await loadWorkspace();
+      setChecklistRevision((current) => current + 1);
 
       setFeedback({
         tone: "success",
@@ -430,7 +434,7 @@ export function ClientMonthlyPackWorkspacePage() {
         </section>
       ) : null}
 
-      <ClientMonthlyPacksPage />
+      <ClientMonthlyPacksPage key={checklistRevision} />
 
       {backendMode ? (
         <section className="portal-page mx-auto max-w-[1280px] pb-8">
