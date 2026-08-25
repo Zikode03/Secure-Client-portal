@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Download, FilePlus2, Paperclip, UploadCloud } from "lucide-react";
+import { Download, FilePlus2, Paperclip, Plus, Repeat2, UploadCloud, X } from "lucide-react";
 import { useAuth } from "../../app/auth";
 import { Button } from "../../components/ui/Button";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
@@ -9,6 +9,7 @@ import {
   apiGetBlob,
   apiGetJson,
   apiPostForm,
+  apiPostJson,
   hasApiBaseUrl,
 } from "../../services/apiClient";
 import { formatDateLabel, formatStatusLabel } from "../../utils/formatters";
@@ -35,16 +36,50 @@ interface BackendDocumentRecord {
   uploadedAtUtc: string;
 }
 
+interface PendingRecurringItem {
+  id: string;
+  category: string;
+  label: string;
+  isRequired: boolean;
+  requestedAtUtc: string;
+  requestedByUserId: string;
+}
+
+interface ClientMonthlyPackProfile {
+  clientId: string;
+  templateId?: string | null;
+  templateName?: string | null;
+  recurringItems: Array<{
+    id: string;
+    category: string;
+    label: string;
+    isRequired: boolean;
+    source: string;
+  }>;
+  pendingRecurringItems: PendingRecurringItem[];
+  currentPackItems: Array<{
+    slotId: string;
+    category: string;
+    label: string;
+    isRequired: boolean;
+    status: string;
+    source: string;
+    dueDateUtc?: string | null;
+  }>;
+  updatedAtUtc: string;
+}
+
 const categoryOptions = [
-  { label: "Invoice", value: "invoices" },
   { label: "Bank statement", value: "bank_statement" },
-  { label: "Proof of payment", value: "proof_of_payment" },
+  { label: "Sales / purchase invoices", value: "invoices" },
   { label: "Supplier statement", value: "supplier_statement" },
-  { label: "Receipt / expense", value: "receipt" },
+  { label: "Proof of payment", value: "proof_of_payment" },
+  { label: "Payroll / PAYE", value: "payroll_document" },
+  { label: "VAT / tax document", value: "tax_document" },
+  { label: "Expense receipts", value: "receipt" },
+  { label: "Credit notes", value: "credit_notes" },
   { label: "Contract / agreement", value: "contract" },
-  { label: "Tax document", value: "tax_document" },
-  { label: "Payroll document", value: "payroll_document" },
-  { label: "Spreadsheet", value: "spreadsheet" },
+  { label: "Supporting spreadsheet", value: "spreadsheet" },
   { label: "Other", value: "other" },
 ];
 
@@ -66,22 +101,39 @@ export function ClientMonthlyPackWorkspacePage() {
   const backendMode = hasApiBaseUrl() && Boolean(clientId);
   const [pack, setPack] = useState<BackendMonthlyPackRecord | null>(null);
   const [documents, setDocuments] = useState<BackendDocumentRecord[]>([]);
+  const [profile, setProfile] = useState<ClientMonthlyPackProfile | null>(null);
+
+  // Supporting-document state is separate from checklist-item state on purpose:
+  // supporting files never change the pack's required-document completion percentage.
   const [category, setCategory] = useState("proof_of_payment");
   const [customCategory, setCustomCategory] = useState("");
   const [files, setFiles] = useState<File[]>([]);
+
+  // Clients can add a one-off checklist item themselves. If they select "Every month",
+  // the backend records a recurring request that the accountant/admin must approve.
+  const [showAddItem, setShowAddItem] = useState(false);
+  const [itemLabel, setItemLabel] = useState("");
+  const [itemCategory, setItemCategory] = useState("other");
+  const [itemCustomCategory, setItemCustomCategory] = useState("");
+  const [itemRequired, setItemRequired] = useState(false);
+  const [itemRecurrence, setItemRecurrence] = useState<"this_month" | "every_month">("this_month");
+  const [itemDueDate, setItemDueDate] = useState("");
+
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<{ tone: "success" | "warning" | "danger"; title: string; message: string } | null>(null);
 
-  async function loadSupportingDocuments() {
+  async function loadWorkspace() {
     if (!backendMode) return;
 
     try {
-      const [packs, allDocuments] = await Promise.all([
+      const [packs, allDocuments, packProfile] = await Promise.all([
         apiGetJson<BackendMonthlyPackRecord[]>(`/api/monthly-packs?clientId=${encodeURIComponent(clientId)}`),
         apiGetJson<BackendDocumentRecord[]>("/api/documents"),
+        apiGetJson<ClientMonthlyPackProfile>(`/api/monthly-pack-profiles/${encodeURIComponent(clientId)}`),
       ]);
       const currentPack = packs[0] ?? null;
       setPack(currentPack);
+      setProfile(packProfile);
       setDocuments(
         currentPack
           ? allDocuments
@@ -100,23 +152,93 @@ export function ClientMonthlyPackWorkspacePage() {
     } catch (error) {
       setFeedback({
         tone: "danger",
-        title: "Supporting documents unavailable",
+        title: "Monthly pack workspace unavailable",
         message:
           error instanceof ApiError
             ? error.message
-            : "The additional documents for this monthly pack could not be loaded.",
+            : "The monthly pack configuration and supporting documents could not be loaded.",
       });
     }
   }
 
   useEffect(() => {
-    void loadSupportingDocuments();
+    void loadWorkspace();
   }, [backendMode, clientId]);
 
   const uploadLocked = useMemo(
     () => !pack || ["under_review", "complete", "closed"].includes(pack.status.trim().toLowerCase()),
     [pack],
   );
+
+  async function addMonthlyPackItem() {
+    const resolvedCategory = itemCategory === "other" ? itemCustomCategory.trim() : itemCategory;
+    if (!itemLabel.trim() || !resolvedCategory) {
+      setFeedback({
+        tone: "warning",
+        title: "Item details required",
+        message: "Enter a document name and choose a category before adding it to the pack.",
+      });
+      return;
+    }
+
+    if (uploadLocked) {
+      setFeedback({
+        tone: "warning",
+        title: "Monthly pack is locked",
+        message: "New checklist items cannot be added while this pack is already with the accountant or complete.",
+      });
+      return;
+    }
+
+    setBusy(true);
+    try {
+      const response = await apiPostJson<{
+        slotId: string;
+        monthlyPackId: string;
+        recurringRequestId?: string | null;
+        recurrence: string;
+        source: string;
+      }, {
+        category: string;
+        label: string;
+        isRequired: boolean;
+        recurrence: string;
+        dueDateUtc: string | null;
+      }>(`/api/monthly-pack-profiles/${encodeURIComponent(clientId)}/items`, {
+        category: resolvedCategory,
+        label: itemLabel.trim(),
+        isRequired: itemRequired,
+        recurrence: itemRecurrence,
+        dueDateUtc: itemDueDate ? new Date(`${itemDueDate}T23:59:59`).toISOString() : null,
+      });
+
+      const addedLabel = itemLabel.trim();
+      setShowAddItem(false);
+      setItemLabel("");
+      setItemCategory("other");
+      setItemCustomCategory("");
+      setItemRequired(false);
+      setItemRecurrence("this_month");
+      setItemDueDate("");
+      await loadWorkspace();
+
+      setFeedback({
+        tone: "success",
+        title: "Added to monthly pack",
+        message: response.recurringRequestId
+          ? `${addedLabel} is in this month's checklist. Your request to include it every month is waiting for accountant approval.`
+          : `${addedLabel} was added to this month's checklist.`,
+      });
+    } catch (error) {
+      setFeedback({
+        tone: "danger",
+        title: "Could not add monthly-pack item",
+        message: error instanceof ApiError ? error.message : "The new checklist item could not be saved.",
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function uploadSupportingDocuments() {
     if (!pack || !clientId || files.length === 0) {
@@ -158,15 +280,16 @@ export function ClientMonthlyPackWorkspacePage() {
         await apiPostForm("/api/documents/upload", form);
       }
 
+      const uploadedCount = files.length;
       setFiles([]);
       const input = document.getElementById("supporting-document-files") as HTMLInputElement | null;
       if (input) input.value = "";
       setFeedback({
         tone: "success",
         title: "Supporting documents uploaded",
-        message: `${files.length} file${files.length === 1 ? "" : "s"} added to ${monthLabel(pack.year, pack.month)} without changing the required-document checklist.`,
+        message: `${uploadedCount} file${uploadedCount === 1 ? "" : "s"} added to ${monthLabel(pack.year, pack.month)} without changing the required-document checklist.`,
       });
-      await loadSupportingDocuments();
+      await loadWorkspace();
     } catch (error) {
       setFeedback({
         tone: "danger",
@@ -178,13 +301,13 @@ export function ClientMonthlyPackWorkspacePage() {
     }
   }
 
-  async function downloadDocument(document: BackendDocumentRecord) {
+  async function downloadDocument(record: BackendDocumentRecord) {
     try {
-      const { blob } = await apiGetBlob(`/api/documents/${encodeURIComponent(document.id)}/download`);
+      const { blob } = await apiGetBlob(`/api/documents/${encodeURIComponent(record.id)}/download`);
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = document.name;
+      link.download = record.name;
       link.click();
       window.URL.revokeObjectURL(url);
     } catch (error) {
@@ -198,6 +321,115 @@ export function ClientMonthlyPackWorkspacePage() {
 
   return (
     <div className="space-y-5">
+      {backendMode ? (
+        <section className="portal-page mx-auto max-w-[1280px] pt-1">
+          <SurfaceCard className="rounded-2xl border border-[#dce6ef] bg-white p-4 shadow-[0_10px_28px_rgba(4,24,52,0.06)]">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold text-slate-950">Your monthly pack can match your business</p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">
+                  Add something relevant to this month, or request that it becomes part of every future monthly pack.
+                </p>
+              </div>
+              <Button disabled={uploadLocked} onClick={() => setShowAddItem((current) => !current)}>
+                {showAddItem ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                {showAddItem ? "Close" : "Add to Monthly Pack"}
+              </Button>
+            </div>
+
+            {showAddItem ? (
+              <div className="mt-4 grid gap-4 rounded-2xl border border-brand-100 bg-brand-50/40 p-4 lg:grid-cols-2">
+                <label className="block">
+                  <span className="text-xs font-semibold text-slate-600">Document / item name</span>
+                  <input
+                    className="mt-1 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-brand-300 focus:ring-4 focus:ring-brand-50"
+                    onChange={(event) => setItemLabel(event.target.value)}
+                    placeholder="e.g. Fuel card statement"
+                    value={itemLabel}
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="text-xs font-semibold text-slate-600">Category</span>
+                  <select
+                    className="mt-1 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-brand-300 focus:ring-4 focus:ring-brand-50"
+                    onChange={(event) => setItemCategory(event.target.value)}
+                    value={itemCategory}
+                  >
+                    {categoryOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                  </select>
+                </label>
+
+                {itemCategory === "other" ? (
+                  <label className="block">
+                    <span className="text-xs font-semibold text-slate-600">Custom category</span>
+                    <input
+                      className="mt-1 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-brand-300 focus:ring-4 focus:ring-brand-50"
+                      onChange={(event) => setItemCustomCategory(event.target.value)}
+                      placeholder="e.g. vehicle finance"
+                      value={itemCustomCategory}
+                    />
+                  </label>
+                ) : null}
+
+                <label className="block">
+                  <span className="text-xs font-semibold text-slate-600">Due date (optional)</span>
+                  <input
+                    className="mt-1 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-brand-300 focus:ring-4 focus:ring-brand-50"
+                    onChange={(event) => setItemDueDate(event.target.value)}
+                    type="date"
+                    value={itemDueDate}
+                  />
+                </label>
+
+                <div className="rounded-xl border border-slate-200 bg-white p-3">
+                  <p className="text-xs font-semibold text-slate-600">How often?</p>
+                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                    <button
+                      className={`rounded-xl border px-3 py-2 text-left text-sm ${itemRecurrence === "this_month" ? "border-brand-300 bg-brand-50 text-brand-800" : "border-slate-200 text-slate-600"}`}
+                      onClick={() => setItemRecurrence("this_month")}
+                      type="button"
+                    >
+                      <span className="block font-semibold">Just this month</span>
+                      <span className="mt-0.5 block text-xs opacity-80">Only this pack</span>
+                    </button>
+                    <button
+                      className={`rounded-xl border px-3 py-2 text-left text-sm ${itemRecurrence === "every_month" ? "border-brand-300 bg-brand-50 text-brand-800" : "border-slate-200 text-slate-600"}`}
+                      onClick={() => setItemRecurrence("every_month")}
+                      type="button"
+                    >
+                      <span className="flex items-center gap-1.5 font-semibold"><Repeat2 className="h-3.5 w-3.5" /> Every month</span>
+                      <span className="mt-0.5 block text-xs opacity-80">Accountant approval required</span>
+                    </button>
+                  </div>
+                </div>
+
+                <label className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white p-3">
+                  <input checked={itemRequired} className="mt-1" onChange={(event) => setItemRequired(event.target.checked)} type="checkbox" />
+                  <span>
+                    <span className="block text-sm font-semibold text-slate-800">Treat this as required</span>
+                    <span className="mt-0.5 block text-xs leading-5 text-slate-500">Required items must be completed before the month can be submitted.</span>
+                  </span>
+                </label>
+
+                <div className="lg:col-span-2 flex justify-end">
+                  <Button disabled={busy} onClick={() => void addMonthlyPackItem()}>
+                    <Plus className="h-4 w-4" /> {busy ? "Adding…" : "Add item"}
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+
+            {profile?.pendingRecurringItems.length ? (
+              <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                <span className="font-semibold">Recurring request pending:</span>{" "}
+                {profile.pendingRecurringItems.map((item) => item.label).join(", ")}. Your accountant will decide whether these should appear automatically in future months.
+              </div>
+            ) : null}
+          </SurfaceCard>
+        </section>
+      ) : null}
+
       <ClientMonthlyPacksPage />
 
       {backendMode ? (
@@ -210,7 +442,7 @@ export function ClientMonthlyPackWorkspacePage() {
                   <h2 className="portal-section-title text-slate-950">Additional & supporting documents</h2>
                 </div>
                 <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">
-                  Add records that are relevant to this month even when they are not part of the required checklist. These files do not affect pack completion, but they travel with the pack to accountant review.
+                  Add records that are relevant to this month even when they are not part of the checklist. These files do not affect pack completion, but they travel with the pack to accountant review.
                 </p>
               </div>
               {pack ? (
@@ -325,17 +557,17 @@ export function ClientMonthlyPackWorkspacePage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 bg-white">
-                        {documents.map((document) => (
-                          <tr key={document.id}>
+                        {documents.map((record) => (
+                          <tr key={record.id}>
                             <td className="px-4 py-4">
-                              <p className="max-w-[280px] truncate font-semibold text-slate-950">{document.name}</p>
-                              <p className="mt-1 text-xs text-slate-500">{formatFileSize(document.sizeBytes)}</p>
+                              <p className="max-w-[280px] truncate font-semibold text-slate-950">{record.name}</p>
+                              <p className="mt-1 text-xs text-slate-500">{formatFileSize(record.sizeBytes)}</p>
                             </td>
-                            <td className="px-4 py-4 capitalize text-slate-600">{document.category.replace(/_/g, " ")}</td>
-                            <td className="px-4 py-4 text-slate-600">{formatStatusLabel(document.status)}</td>
-                            <td className="whitespace-nowrap px-4 py-4 text-slate-500">{formatDateLabel(document.uploadedAtUtc)}</td>
+                            <td className="px-4 py-4 capitalize text-slate-600">{record.category.replace(/_/g, " ")}</td>
+                            <td className="px-4 py-4 text-slate-600">{formatStatusLabel(record.status)}</td>
+                            <td className="whitespace-nowrap px-4 py-4 text-slate-500">{formatDateLabel(record.uploadedAtUtc)}</td>
                             <td className="px-4 py-4 text-right">
-                              <Button onClick={() => void downloadDocument(document)} size="sm" variant="secondary">
+                              <Button onClick={() => void downloadDocument(record)} size="sm" variant="secondary">
                                 <Download className="h-4 w-4" /> Download
                               </Button>
                             </td>
@@ -347,7 +579,7 @@ export function ClientMonthlyPackWorkspacePage() {
                 ) : (
                   <div className="mt-4 rounded-2xl border border-dashed border-slate-300 px-5 py-10 text-center">
                     <p className="text-sm font-semibold text-slate-900">No additional documents yet</p>
-                    <p className="mt-1 text-sm text-slate-500">Use this area for useful records that are not part of the required checklist.</p>
+                    <p className="mt-1 text-sm text-slate-500">Use this area for useful records that are not part of the checklist.</p>
                   </div>
                 )}
               </div>
