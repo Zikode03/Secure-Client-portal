@@ -189,6 +189,8 @@ export function AdminClientsPage() {
                   <td className="px-4 py-4 text-slate-600">{client.assignmentCount} assignment{client.assignmentCount === 1 ? "" : "s"}</td>
                   <td className="px-4 py-4"><div className="flex flex-wrap justify-end gap-2">
                     <Button disabled={busy} onClick={() => navigate(`/firm/clients/${client.id}/profile`)} size="sm" variant="secondary">Profile</Button>
+                    {/* Admin and Accountant share the same pack-profile workspace so they see one source of truth. */}
+                    <Button disabled={busy} onClick={() => navigate(`/firm/clients/${client.id}/packs`)} size="sm" variant="secondary">Monthly pack</Button>
                     <Button disabled={busy} onClick={() => navigate("/firm/admin/assignments")} size="sm" variant="secondary">Assign</Button>
                     <Button disabled={busy} onClick={() => void toggleStatus(client)} size="sm" variant="secondary">{active ? "Deactivate" : "Activate"}</Button>
                     <Button disabled={busy} onClick={() => void deleteClient(client)} size="sm" variant="danger">Delete</Button>
