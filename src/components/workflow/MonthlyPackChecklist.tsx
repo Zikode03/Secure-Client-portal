@@ -351,7 +351,21 @@ export function MonthlyPackChecklist({
 }: MonthlyPackChecklistProps) {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [expandedReasonId, setExpandedReasonId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<"all" | "needs_attention" | "ready">("all");
+  const [showOptional, setShowOptional] = useState(false);
   const customization = useMonthlyPackCustomization();
+
+  const needsAttention = (slot: MonthlyDocumentSlot) =>
+    ["missing", "rejected", "partial", "pending", "pending_signature"].includes(slot.status);
+  const isReady = (slot: MonthlyDocumentSlot) =>
+    ["draft", "uploaded", "under_review", "accepted", "filed"].includes(slot.status);
+  const matchesFilter = (slot: MonthlyDocumentSlot) =>
+    filter === "all" || (filter === "needs_attention" ? needsAttention(slot) : isReady(slot));
+  const requiredSlots = pack.slots.filter((slot) => slot.isRequired && matchesFilter(slot));
+  const optionalSlots = pack.slots.filter((slot) => !slot.isRequired && matchesFilter(slot));
+  const visibleSlots = [...requiredSlots, ...(showOptional ? optionalSlots : [])];
+  const attentionCount = pack.slots.filter((slot) => slot.isRequired && needsAttention(slot)).length;
+  const readyCount = pack.slots.filter(isReady).length;
 
   function toggleMenu(slotId: string) {
     setOpenMenuId((current) => (current === slotId ? null : slotId));
@@ -367,6 +381,15 @@ export function MonthlyPackChecklist({
 
   function canDownload(slot: MonthlyDocumentSlot) {
     return Boolean(slot.acceptedFiles.length || slot.lastSubmission);
+  }
+
+  function runPrimaryAction(slot: MonthlyDocumentSlot) {
+    const intent = slotActionIntent(slot);
+    if (intent === "view" && onView) {
+      onView(slot);
+      return;
+    }
+    onUpload(slot);
   }
 
   function renderActionMenu(slot: MonthlyDocumentSlot) {
@@ -479,7 +502,7 @@ export function MonthlyPackChecklist({
           <h2 className="text-base font-semibold text-[#091333]">Monthly Pack Checklist</h2>
           {showSlotCount ? (
             <span className="rounded-full bg-[#eef4fa] px-2.5 py-1 text-[0.68rem] font-semibold text-brand-700 ring-1 ring-[#d7e3ee]">
-              {pack.slots.length} slots
+              {pack.slots.filter((slot) => slot.isRequired).length} required · {pack.slots.filter((slot) => !slot.isRequired).length} optional
             </span>
           ) : null}
         </div>
@@ -520,8 +543,28 @@ export function MonthlyPackChecklist({
         </div>
       ) : null}
 
+      <div className="flex flex-col gap-3 border-b border-[#edf0f6] px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap gap-2" aria-label="Checklist filters" role="group">
+          {([
+            ["all", "All required", pack.slots.filter((slot) => slot.isRequired).length],
+            ["needs_attention", "Needs attention", attentionCount],
+            ["ready", "Ready", readyCount],
+          ] as const).map(([value, label, count]) => (
+            <button
+              className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${filter === value ? "bg-brand-700 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+              key={value}
+              onClick={() => setFilter(value)}
+              type="button"
+            >
+              {label} <span className="opacity-75">{count}</span>
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-slate-500">Only documents relevant to this business and period are shown.</p>
+      </div>
+
       <div className="divide-y divide-[#edf0f6] lg:hidden">
-        {pack.slots.map((slot) => {
+        {visibleSlots.map((slot) => {
           const status = statusMeta(slot);
           const updatedBy =
             slot.status === "rejected"
@@ -531,17 +574,20 @@ export function MonthlyPackChecklist({
                 : "-";
 
           return (
-            <div className="space-y-4 px-5 py-4" key={slot.id}>
+            <div className="space-y-3 px-5 py-3" key={slot.id}>
               <div className="flex items-start gap-3">
                 <SlotIcon documentType={slot.documentType} />
-                <div className="space-y-1">
+                <div className="min-w-0 flex-1">
                   <h3 className="text-[0.98rem] font-semibold leading-6 text-[#091333]">
                     {slot.documentType}
                   </h3>
-                  <p className="text-[0.9rem] text-[#53617f]">
-                    {slot.month} {slot.year}
-                  </p>
+                  {slot.description ? <p className="mt-0.5 line-clamp-1 text-xs text-[#53617f]">{slot.description}</p> : null}
                 </div>
+                {!isReadOnly ? (
+                  <Button onClick={() => runPrimaryAction(slot)} size="sm" variant={needsAttention(slot) ? "primary" : "secondary"}>
+                    {actionLabel(slot)}
+                  </Button>
+                ) : null}
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">
@@ -616,7 +662,7 @@ export function MonthlyPackChecklist({
             </tr>
           </thead>
           <tbody>
-            {pack.slots.map((slot) => {
+            {visibleSlots.map((slot) => {
               const status = statusMeta(slot);
               const updatedBy =
                 slot.status === "rejected"
@@ -628,29 +674,27 @@ export function MonthlyPackChecklist({
               return (
                 <Fragment key={slot.id}>
                   <tr className="align-top">
-                    <td className="border-b border-[#edf0f6] px-3 py-4">
+                    <td className="border-b border-[#edf0f6] px-3 py-3">
                       <div className="flex items-start gap-3">
                         <SlotIcon documentType={slot.documentType} />
-                        <div className="space-y-1">
+                        <div className="min-w-0">
                           <h3 className="text-[0.92rem] font-semibold leading-6 text-[#091333]">
                             {slot.documentType}
                           </h3>
-                          <p className="text-[0.82rem] text-[#53617f]">
-                            {slot.month} {slot.year}
-                          </p>
+                          {slot.description ? <p className="mt-0.5 truncate text-[0.76rem] text-[#53617f]">{slot.description}</p> : null}
                         </div>
                       </div>
                     </td>
-                    <td className="border-b border-[#edf0f6] px-2 py-4">
+                    <td className="border-b border-[#edf0f6] px-2 py-3">
                       <RequirementBadge isRequired={slot.isRequired} />
                     </td>
-                    <td className="border-b border-[#edf0f6] px-2 py-4">
+                    <td className="border-b border-[#edf0f6] px-2 py-3">
                       <div className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-[0.82rem] font-semibold ring-1 ring-inset ${status.classes}`}>
                         <span className={`h-2.5 w-2.5 rounded-full ${status.dot}`} />
                         <span>{status.label}</span>
                       </div>
                     </td>
-                    <td className="border-b border-[#edf0f6] px-2 py-4 text-[0.86rem] text-[#53617f]">
+                    <td className="border-b border-[#edf0f6] px-2 py-3 text-[0.86rem] text-[#53617f]">
                       {slot.lastSubmission ? (
                         <>
                           <p>{formatDateLabel(slot.lastSubmission)}</p>
@@ -660,7 +704,16 @@ export function MonthlyPackChecklist({
                         <p className="text-slate-400">{updatedBy}</p>
                       )}
                     </td>
-                    <td className="border-b border-[#edf0f6] px-2 py-4">{renderActionMenu(slot)}</td>
+                    <td className="border-b border-[#edf0f6] px-2 py-3">
+                      <div className="flex items-center gap-2">
+                        {!isReadOnly ? (
+                          <Button onClick={() => runPrimaryAction(slot)} size="sm" variant={needsAttention(slot) ? "primary" : "secondary"}>
+                            {actionLabel(slot)}
+                          </Button>
+                        ) : null}
+                        {renderActionMenu(slot)}
+                      </div>
+                    </td>
                   </tr>
                   {slot.rejectionReason && expandedReasonId === slot.id ? (
                     <tr className="border-b border-slate-100">
@@ -678,6 +731,20 @@ export function MonthlyPackChecklist({
           </tbody>
         </table>
       </div>
+
+      {optionalSlots.length > 0 || (filter === "all" && pack.slots.some((slot) => !slot.isRequired)) ? (
+        <div className="border-t border-[#edf0f6] px-5 py-3">
+          <button
+            aria-expanded={showOptional}
+            className="flex w-full items-center justify-between rounded-xl bg-slate-50 px-4 py-3 text-left text-sm font-semibold text-slate-700 hover:bg-slate-100"
+            onClick={() => setShowOptional((current) => !current)}
+            type="button"
+          >
+            <span>Optional documents</span>
+            <span className="text-xs font-medium text-slate-500">{showOptional ? "Hide" : `Show ${pack.slots.filter((slot) => !slot.isRequired).length}`}</span>
+          </button>
+        </div>
+      ) : null}
 
       {showFooterMeta ? (
         <>

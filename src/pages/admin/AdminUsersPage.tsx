@@ -149,10 +149,28 @@ export function AdminUsersPage() {
   }
 
   async function changeRole(user: AdminUserRecord, role: string) {
+    const currentRole = user.role.trim().toLowerCase();
+    const nextRole = role.trim().toLowerCase();
+    if (currentRole === nextRole) return;
+
+    const confirmed = window.confirm(
+      `Change ${user.fullName}'s role from ${currentRole} to ${nextRole}? Their active sessions will be revoked and they will need to sign in again.`,
+    );
+    if (!confirmed) {
+      // Force the controlled select back to the role currently stored by the API.
+      setUsers((current) => [...current]);
+      return;
+    }
+
     setBusyUserId(user.id);
     try {
-      await apiPutJson<AdminUserRecord, { role: string }>(`/api/admin/users/${user.id}/role`, { role });
+      await apiPutJson<AdminUserRecord, { role: string }>(`/api/admin/users/${user.id}/role`, { role: nextRole });
       await loadUsers();
+      setFeedback({
+        tone: "success",
+        title: "Role updated",
+        message: `${user.fullName} is now a ${nextRole}. Their active sessions were revoked.`,
+      });
     } catch (error) {
       setFeedback({ tone: "danger", title: "Role update failed", message: error instanceof ApiError ? error.message : "The user's role could not be changed." });
     } finally {

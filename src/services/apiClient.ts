@@ -46,8 +46,8 @@ function readAuthToken() {
   }
 
   return (
-    window.localStorage.getItem(AUTH_TOKEN_KEY)?.trim() ??
     window.sessionStorage.getItem(AUTH_TOKEN_KEY)?.trim() ??
+    window.localStorage.getItem(AUTH_TOKEN_KEY)?.trim() ??
     ""
   );
 }
@@ -301,8 +301,8 @@ export function getRefreshToken() {
   }
 
   return (
-    window.localStorage.getItem(AUTH_REFRESH_TOKEN_KEY)?.trim() ??
     window.sessionStorage.getItem(AUTH_REFRESH_TOKEN_KEY)?.trim() ??
+    window.localStorage.getItem(AUTH_REFRESH_TOKEN_KEY)?.trim() ??
     ""
   );
 }

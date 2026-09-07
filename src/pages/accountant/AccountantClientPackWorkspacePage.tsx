@@ -34,6 +34,10 @@ interface ClientPackProfile {
     label: string;
     isRequired: boolean;
     source: "firm_default" | "client_specific" | string;
+    cadence?: string;
+    effectiveFromUtc?: string | null;
+    effectiveToUtc?: string | null;
+    reason?: string | null;
   }>;
   pendingRecurringItems: Array<{
     id: string;
@@ -51,9 +55,84 @@ interface ClientPackProfile {
     status: string;
     source: "firm_default" | "client_specific" | "client_added" | string;
     dueDateUtc?: string | null;
+    reason?: string | null;
   }>;
   updatedAtUtc: string;
+  operatingProfile?: OperatingProfile | null;
+  recommendations?: RequirementRecommendation[] | null;
+  recommendedTemplateId?: string | null;
+  recommendedTemplateReason?: string | null;
 }
+
+interface OperatingProfile {
+  effectiveFromUtc?: string;
+  vatRegistered: boolean | null;
+  vatCycleMonths: number;
+  vatAnchorMonth: number;
+  hasEmployees: boolean | null;
+  holdsInventory: boolean | null;
+  usesSupplierAccounts: boolean | null;
+  usesPos: boolean | null;
+  operatesFleet: boolean | null;
+  usesSubcontractors: boolean | null;
+  usesPaymentCertificates: boolean | null;
+  tracksProjectCosts: boolean | null;
+  usesBookingPlatforms: boolean | null;
+  usesFoodSuppliers: boolean | null;
+  manufacturesGoods: boolean | null;
+  bankFeedConnected: boolean;
+  salesInvoicesSynced: boolean;
+  purchaseInvoicesSynced: boolean;
+  isComplete?: boolean;
+}
+
+interface RequirementRecommendation {
+  category: string;
+  label: string;
+  isRequired: boolean;
+  cadence: string;
+  decision: "include" | "connected" | "not_applicable" | "not_due" | "needs_answer" | string;
+  reason: string;
+}
+
+type OperatingFactKey = Exclude<keyof OperatingProfile,
+  "effectiveFromUtc" | "vatCycleMonths" | "vatAnchorMonth" | "bankFeedConnected" |
+  "salesInvoicesSynced" | "purchaseInvoicesSynced" | "isComplete">;
+
+const emptyOperatingProfile: OperatingProfile = {
+  vatRegistered: null,
+  vatCycleMonths: 2,
+  vatAnchorMonth: 1,
+  hasEmployees: null,
+  holdsInventory: null,
+  usesSupplierAccounts: null,
+  usesPos: null,
+  operatesFleet: null,
+  usesSubcontractors: null,
+  usesPaymentCertificates: null,
+  tracksProjectCosts: null,
+  usesBookingPlatforms: null,
+  usesFoodSuppliers: null,
+  manufacturesGoods: null,
+  bankFeedConnected: false,
+  salesInvoicesSynced: false,
+  purchaseInvoicesSynced: false,
+};
+
+const operatingFacts: Array<{ key: OperatingFactKey; label: string; help: string }> = [
+  { key: "vatRegistered", label: "VAT registered", help: "VAT documents only appear in filing months." },
+  { key: "hasEmployees", label: "Has employees", help: "Controls Payroll / PAYE." },
+  { key: "holdsInventory", label: "Holds or sells stock", help: "Controls the inventory report." },
+  { key: "usesSupplierAccounts", label: "Uses supplier accounts", help: "Controls supplier statements." },
+  { key: "usesPos", label: "Uses POS/card settlements", help: "Controls merchant statements." },
+  { key: "operatesFleet", label: "Operates vehicles or a fleet", help: "Controls fuel, tracking and vehicle records." },
+  { key: "usesSubcontractors", label: "Uses subcontractors", help: "Controls subcontractor invoices." },
+  { key: "usesPaymentCertificates", label: "Uses payment certificates", help: "For construction/project billing." },
+  { key: "tracksProjectCosts", label: "Tracks project costs", help: "Controls project expense support." },
+  { key: "usesBookingPlatforms", label: "Uses booking platforms", help: "Controls platform statements." },
+  { key: "usesFoodSuppliers", label: "Uses food/beverage suppliers", help: "For hospitality purchasing." },
+  { key: "manufacturesGoods", label: "Manufactures goods", help: "Controls production reports." },
+];
 
 const categoryOptions = [
   { label: "Bank statement", value: "bank_statement" },
@@ -92,20 +171,24 @@ function sourceClasses(source: string) {
   }
 }
 
-// Template recommendations deliberately use broad business keywords. The suggestion is advisory:
-// Accountant/Admin still reviews and saves the template, so a guessed industry never changes compliance silently.
-function templateKeywords(client: ClientRecord | null) {
-  const text = `${client?.industry ?? ""} ${client?.entityType ?? ""}`.toLowerCase();
-  if (/transport|logistic|fleet|courier|freight|taxi/.test(text)) return ["transport", "logistic", "fleet"];
-  if (/retail|shop|store|wholesale|ecommerce|e-commerce/.test(text)) return ["retail", "trading", "sales"];
-  if (/construction|building|engineering|contractor/.test(text)) return ["construction", "contractor", "project"];
-  if (/manufactur|factory|production/.test(text)) return ["manufactur", "production", "inventory"];
-  if (/hospitality|hotel|restaurant|catering/.test(text)) return ["hospitality", "restaurant", "hotel"];
-  if (/property|real estate|rental/.test(text)) return ["property", "rental", "real estate"];
-  if (/health|medical|clinic|pharma/.test(text)) return ["health", "medical", "clinic"];
-  if (/agric|farm/.test(text)) return ["agriculture", "farm"];
-  if (/consult|professional|legal|account|technology|software|service/.test(text)) return ["professional", "service", "consult"];
-  return ["standard", "general", "business"];
+function decisionLabel(decision: string) {
+  switch (decision) {
+    case "include": return "Included";
+    case "connected": return "Connected";
+    case "not_applicable": return "Not applicable";
+    case "not_due": return "Not due this month";
+    case "needs_answer": return "Needs confirmation";
+    default: return formatStatusLabel(decision);
+  }
+}
+
+function decisionClasses(decision: string) {
+  switch (decision) {
+    case "include": return "bg-emerald-50 text-emerald-700";
+    case "connected": return "bg-blue-50 text-blue-700";
+    case "needs_answer": return "bg-amber-50 text-amber-700";
+    default: return "bg-slate-100 text-slate-600";
+  }
 }
 
 export function AccountantClientPackWorkspacePage() {
@@ -115,6 +198,7 @@ export function AccountantClientPackWorkspacePage() {
   const [client, setClient] = useState<ClientRecord | null>(null);
   const [profile, setProfile] = useState<ClientPackProfile | null>(null);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [operatingDraft, setOperatingDraft] = useState<OperatingProfile>(emptyOperatingProfile);
 
   // Requirement editor state. Accountant/Admin can choose one month or future recurring behavior.
   const [category, setCategory] = useState("other");
@@ -138,6 +222,7 @@ export function AccountantClientPackWorkspacePage() {
       setProfile(packProfile);
       setClient(clientRecord);
       setSelectedTemplateId(packProfile.templateId ?? "");
+      setOperatingDraft({ ...emptyOperatingProfile, ...(packProfile.operatingProfile ?? {}) });
     } catch (error) {
       setFeedback({
         tone: "danger",
@@ -157,28 +242,47 @@ export function AccountantClientPackWorkspacePage() {
   );
 
   const recommendedTemplate = useMemo(() => {
-    if (!profile || !client) return null;
-    const keywords = templateKeywords(client);
-    return profile.availableTemplates.find((template) => {
-      const haystack = `${template.name} ${template.description}`.toLowerCase();
-      return keywords.some((keyword) => haystack.includes(keyword));
-    }) ?? null;
-  }, [client, profile]);
+    if (!profile?.recommendedTemplateId) return null;
+    return profile.availableTemplates.find((template) => template.id === profile.recommendedTemplateId) ?? null;
+  }, [profile]);
 
   async function persistProfile(
-    recurringItems: Array<{ category: string; label: string; isRequired: boolean }>,
+    recurringItems: Array<{
+      category: string;
+      label: string;
+      isRequired: boolean;
+      cadence?: string;
+      effectiveFromUtc?: string | null;
+      effectiveToUtc?: string | null;
+    }>,
     successTitle: string,
     successMessage: string,
     templateId = selectedTemplateId || null,
+    options?: { includeOperatingProfile?: boolean; reconcileCurrentPack?: boolean },
   ) {
     setBusy(true);
     try {
       await apiPutJson<ClientPackProfile, {
         templateId: string | null;
-        recurringItems: Array<{ category: string; label: string; isRequired: boolean }>;
+        recurringItems: Array<{
+          category: string;
+          label: string;
+          isRequired: boolean;
+          cadence?: string;
+          effectiveFromUtc?: string | null;
+          effectiveToUtc?: string | null;
+        }>;
+        operatingProfile?: OperatingProfile;
+        effectiveFromUtc?: string;
+        reconcileCurrentPack?: boolean;
       }>(`/api/monthly-pack-profiles/${encodeURIComponent(clientId)}`, {
         templateId,
         recurringItems,
+        ...(options?.includeOperatingProfile ? {
+          operatingProfile: operatingDraft,
+          effectiveFromUtc: new Date().toISOString(),
+          reconcileCurrentPack: options.reconcileCurrentPack ?? false,
+        } : {}),
       });
       await loadPackProfile();
       setFeedback({ tone: "success", title: successTitle, message: successMessage });
@@ -195,10 +299,37 @@ export function AccountantClientPackWorkspacePage() {
 
   async function saveTemplate(templateId = selectedTemplateId) {
     await persistProfile(
-      clientSpecificRecurringItems.map((item) => ({ category: item.category, label: item.label, isRequired: item.isRequired })),
+      recurringProfilePayload(),
       "Client monthly-pack profile saved",
       "The selected firm template will be used as the baseline for future monthly packs. Historical packs are unchanged.",
       templateId || null,
+    );
+  }
+
+  function recurringProfilePayload() {
+    return clientSpecificRecurringItems.map((item) => ({
+      category: item.category,
+      label: item.label,
+      isRequired: item.isRequired,
+      cadence: item.cadence ?? "monthly",
+      effectiveFromUtc: item.effectiveFromUtc,
+      effectiveToUtc: item.effectiveToUtc,
+    }));
+  }
+
+  async function saveOperatingProfile(reconcileCurrentPack: boolean) {
+    if (reconcileCurrentPack && !window.confirm(
+      "Update the current open monthly pack using these business facts?\n\nEmpty items that no longer apply will be removed. Items with existing uploads or drafts will be preserved as optional.",
+    )) return;
+
+    await persistProfile(
+      recurringProfilePayload(),
+      reconcileCurrentPack ? "Business profile and current pack updated" : "Business profile saved",
+      reconcileCurrentPack
+        ? "The current open pack now contains only applicable requirements. Existing evidence was preserved."
+        : "These effective-dated facts will control future monthly packs. The current pack was not changed.",
+      selectedTemplateId || null,
+      { includeOperatingProfile: true, reconcileCurrentPack },
     );
   }
 
@@ -212,6 +343,9 @@ export function AccountantClientPackWorkspacePage() {
       category: candidate.category,
       label: candidate.id === itemId ? nextLabel : candidate.label,
       isRequired: candidate.id === itemId ? nextRequired : candidate.isRequired,
+      cadence: candidate.cadence,
+      effectiveFromUtc: candidate.effectiveFromUtc,
+      effectiveToUtc: candidate.effectiveToUtc,
     }));
     await persistProfile(nextItems, "Recurring requirement updated", `${nextLabel} was updated for future monthly packs. Existing months were not changed.`);
   }
@@ -221,7 +355,14 @@ export function AccountantClientPackWorkspacePage() {
     if (!item || !window.confirm(`Remove '${item.label}' from future monthly packs? Existing monthly packs will stay unchanged.`)) return;
     const nextItems = clientSpecificRecurringItems
       .filter((candidate) => candidate.id !== itemId)
-      .map((candidate) => ({ category: candidate.category, label: candidate.label, isRequired: candidate.isRequired }));
+      .map((candidate) => ({
+        category: candidate.category,
+        label: candidate.label,
+        isRequired: candidate.isRequired,
+        cadence: candidate.cadence,
+        effectiveFromUtc: candidate.effectiveFromUtc,
+        effectiveToUtc: candidate.effectiveToUtc,
+      }));
     await persistProfile(nextItems, "Recurring requirement removed", `${item.label} will no longer be added to future monthly packs.`);
   }
 
@@ -252,7 +393,7 @@ export function AccountantClientPackWorkspacePage() {
       }
 
       const futureItems = [
-        ...clientSpecificRecurringItems.map((item) => ({ category: item.category, label: item.label, isRequired: item.isRequired })),
+        ...recurringProfilePayload(),
         { category: resolvedCategory, label: label.trim(), isRequired },
       ];
       const addedLabel = label.trim();
@@ -366,14 +507,14 @@ export function AccountantClientPackWorkspacePage() {
                       {client?.industry ? <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-brand-700 ring-1 ring-brand-100">{client.industry}</span> : null}
                     </div>
                     <p className="mt-1 text-xs leading-5 text-slate-600">
-                      Company type and industry help choose a stronger starting checklist. The recommendation remains advisory and must be confirmed by Accountant/Admin.
+                      Confirm the operating facts below. They determine what this business actually submits; unknown answers never create required uploads.
                     </p>
                     {recommendedTemplate ? (
                       <div className="mt-3 flex flex-col gap-2 rounded-xl border border-brand-100 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                           <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">Recommended template</p>
                           <p className="mt-1 text-sm font-semibold text-slate-900">{recommendedTemplate.name}</p>
-                          <p className="mt-0.5 text-xs text-slate-500">{recommendedTemplate.description}</p>
+                          <p className="mt-0.5 text-xs text-slate-500">{profile?.recommendedTemplateReason ?? recommendedTemplate.description}</p>
                         </div>
                         <Button disabled={busy} onClick={() => { setSelectedTemplateId(recommendedTemplate.id); void saveTemplate(recommendedTemplate.id); }} size="sm">Use recommendation</Button>
                       </div>
@@ -383,6 +524,80 @@ export function AccountantClientPackWorkspacePage() {
                   </div>
                 </div>
               </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <h3 className="text-sm font-semibold text-slate-950">Operating facts</h3>
+                    <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500">
+                      These answers are effective-dated business facts, not a generic industry checklist. Choose Not confirmed when the accountant still needs to verify an answer.
+                    </p>
+                  </div>
+                  <span className={`w-fit rounded-full px-2.5 py-1 text-xs font-semibold ${profile?.operatingProfile?.isComplete ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
+                    {profile?.operatingProfile?.isComplete ? "Profile complete" : "Confirmation needed"}
+                  </span>
+                </div>
+
+                <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  {operatingFacts.map((fact) => (
+                    <label className="rounded-xl border border-slate-200 bg-slate-50/60 p-3" key={fact.key}>
+                      <span className="block text-sm font-semibold text-slate-800">{fact.label}</span>
+                      <span className="mt-0.5 block min-h-8 text-xs leading-4 text-slate-500">{fact.help}</span>
+                      <select
+                        className="mt-2 h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm outline-none focus:border-brand-300 focus:ring-4 focus:ring-brand-50"
+                        onChange={(event) => setOperatingDraft((current) => ({
+                          ...current,
+                          [fact.key]: event.target.value === "unknown" ? null : event.target.value === "yes",
+                        }))}
+                        value={operatingDraft[fact.key] === null ? "unknown" : operatingDraft[fact.key] ? "yes" : "no"}
+                      >
+                        <option value="unknown">Not confirmed</option>
+                        <option value="yes">Yes</option>
+                        <option value="no">No</option>
+                      </select>
+                    </label>
+                  ))}
+                </div>
+
+                {operatingDraft.vatRegistered ? (
+                  <div className="mt-3 grid gap-3 rounded-xl border border-brand-100 bg-brand-50/35 p-3 sm:grid-cols-2">
+                    <label><span className="text-xs font-semibold text-slate-600">VAT filing cycle</span><select className="mt-1 h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm" onChange={(event) => setOperatingDraft((current) => ({ ...current, vatCycleMonths: Number(event.target.value) }))} value={operatingDraft.vatCycleMonths}><option value={1}>Monthly</option><option value={2}>Every 2 months</option><option value={3}>Quarterly</option><option value={6}>Every 6 months</option></select></label>
+                    <label><span className="text-xs font-semibold text-slate-600">First filing month in cycle</span><select className="mt-1 h-9 w-full rounded-lg border border-slate-200 bg-white px-2.5 text-sm" onChange={(event) => setOperatingDraft((current) => ({ ...current, vatAnchorMonth: Number(event.target.value) }))} value={operatingDraft.vatAnchorMonth}>{Array.from({ length: 12 }, (_, index) => <option key={index + 1} value={index + 1}>{new Intl.DateTimeFormat("en-ZA", { month: "long" }).format(new Date(2026, index, 1))}</option>)}</select></label>
+                  </div>
+                ) : null}
+
+                <div className="mt-3 grid gap-2 md:grid-cols-3">
+                  {([
+                    ["bankFeedConnected", "Bank feed connected"],
+                    ["salesInvoicesSynced", "Sales invoices synced"],
+                    ["purchaseInvoicesSynced", "Purchase invoices synced"],
+                  ] as const).map(([key, text]) => (
+                    <label className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-700" key={key}>
+                      <input checked={operatingDraft[key]} onChange={(event) => setOperatingDraft((current) => ({ ...current, [key]: event.target.checked }))} type="checkbox" />
+                      {text}
+                    </label>
+                  ))}
+                </div>
+
+                <div className="mt-4 flex flex-col gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">
+                  <Button disabled={busy || !profile} onClick={() => void saveOperatingProfile(false)} variant="secondary">Save for future packs</Button>
+                  <Button disabled={busy || !profile || !pack || ["under_review", "complete", "closed"].includes(pack.status.toLowerCase())} onClick={() => void saveOperatingProfile(true)}>Save &amp; update current pack</Button>
+                </div>
+              </div>
+
+              {profile?.recommendations?.length ? (
+                <details className="rounded-2xl border border-slate-200 bg-slate-50/60 p-4">
+                  <summary className="cursor-pointer text-sm font-semibold text-slate-950">Review requirement recommendations ({profile.recommendations.filter((item) => item.decision === "include").length} included)</summary>
+                  <div className="mt-3 grid gap-2 lg:grid-cols-2">
+                    {profile.recommendations.map((item) => (
+                      <div className="rounded-xl border border-slate-200 bg-white p-3" key={item.category}>
+                        <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm font-semibold text-slate-900">{item.label}</p><span className={`rounded-full px-2 py-0.5 text-[0.68rem] font-semibold ${decisionClasses(item.decision)}`}>{decisionLabel(item.decision)}</span></div>
+                        <p className="mt-1 text-xs leading-5 text-slate-500">{item.reason}</p>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              ) : null}
 
               <div className="grid gap-5 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
                 <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
@@ -409,6 +624,7 @@ export function AccountantClientPackWorkspacePage() {
                           <div className="mt-1 flex flex-wrap gap-1.5">
                             <span className={`rounded-full px-2 py-0.5 text-[0.68rem] font-semibold ${sourceClasses(item.source)}`}>{sourceLabel(item.source)}</span>
                             <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[0.68rem] font-semibold text-slate-600">{item.isRequired ? "Required" : "Optional"}</span>
+                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[0.68rem] font-semibold capitalize text-slate-600">{(item.cadence ?? "monthly").replace(/_/g, " ")}</span>
                           </div>
                         </div>
                         {item.source === "client_specific" ? (
@@ -471,7 +687,7 @@ export function AccountantClientPackWorkspacePage() {
                         <tbody className="divide-y divide-slate-100 bg-white">
                           {profile.currentPackItems.map((item) => (
                             <tr key={item.slotId}>
-                              <td className="px-4 py-4"><p className="font-semibold text-slate-950">{item.label}</p><p className="mt-1 text-xs capitalize text-slate-500">{item.category.replace(/_/g, " ")}</p></td>
+                              <td className="px-4 py-4"><p className="font-semibold text-slate-950">{item.label}</p><p className="mt-1 text-xs capitalize text-slate-500">{item.category.replace(/_/g, " ")}</p>{item.reason ? <p className="mt-1 max-w-sm text-xs leading-5 text-slate-500">{item.reason}</p> : null}</td>
                               <td className="px-4 py-4"><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${sourceClasses(item.source)}`}>{sourceLabel(item.source)}</span></td>
                               <td className="px-4 py-4"><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${item.isRequired ? "bg-brand-50 text-brand-700" : "bg-slate-100 text-slate-600"}`}>{item.isRequired ? "Required" : "Optional"}</span></td>
                               <td className="px-4 py-4 text-slate-600">{formatStatusLabel(item.status)}</td>

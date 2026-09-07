@@ -1,15 +1,10 @@
 // Friendly guide: this module (ClientMonthlyPacksPage) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
-import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import {
   CalendarDays,
-  ChevronRight,
-  ClipboardList,
   CloudUpload,
-  FileText,
-  Inbox,
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../app/auth";
@@ -83,9 +78,6 @@ const blockingStatuses = new Set<MonthlyDocumentSlot["status"]>([
 
 const panelClass =
   "rounded-2xl border border-[#dce6ef] bg-white shadow-[0_16px_38px_rgba(4,24,52,0.08)]";
-
-const monthlyPackActionButtonClass =
-  "monthly-pack-action-button h-10 rounded-xl border-0 px-4 text-sm font-semibold ring-0";
 
 interface BackendMonthlyPackResponse {
   id: string;
@@ -179,41 +171,6 @@ function buildLivePreviousMonthComparison(
 
 function comparisonOptionId(value: string) {
   return normaliseDocumentType(value).replace(/\s+/g, "-") || "documents";
-}
-
-function PriorityAction({
-  action,
-  helper,
-  icon,
-  label,
-  onClick,
-}: {
-  action: string;
-  helper: string;
-  icon: ReactNode;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <div className="grid min-h-[76px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-[#e8ecf5] bg-white px-4 py-3 shadow-[0_8px_20px_rgba(4,24,52,0.04)]">
-      <div className="flex min-w-0 items-center gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#eef4fa] text-brand-700 ring-1 ring-[#d7e3ee]">
-          {icon}
-        </span>
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-[#091333]">{label}</p>
-          <p className="mt-0.5 truncate text-[0.78rem] text-[#53617f]">{helper}</p>
-        </div>
-      </div>
-      <button
-        className="client-dashboard-action-button h-9 min-w-16 shrink-0 rounded-lg px-3 text-[0.78rem] font-semibold"
-        onClick={onClick}
-        type="button"
-      >
-        {action}
-      </button>
-    </div>
-  );
 }
 
 function blockerSummaryText(missingCount: number, rejectedCount: number) {
@@ -652,10 +609,6 @@ export function ClientMonthlyPacksPage() {
     uploadModal.open();
   }
 
-  function handleOpenChecklist() {
-    document.getElementById("pack-checklist")?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-
   async function handleSubmitAction() {
     if (!backendMode) {
       submitMonth();
@@ -827,110 +780,34 @@ export function ClientMonthlyPacksPage() {
 
       <section className="space-y-5">
         <SurfaceCard
-          className={`${panelClass} h-full overflow-hidden p-0`}
+          className={`${panelClass} overflow-hidden p-0`}
           id="submission-readiness"
         >
-          <div className="flex items-center justify-between gap-3 bg-brand-700 px-5 py-4 text-white">
-            <h2 className="text-[1.05rem] font-semibold">{effectiveMonthPack.monthLabel} Monthly Pack</h2>
-            <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-[0.72rem] font-semibold text-emerald-100 ring-1 ring-emerald-300/30">
-              {submissionState.label}
-            </span>
-          </div>
-          <div className="grid gap-6 p-5 md:grid-cols-[220px_minmax(0,1fr)] md:items-center">
-            <div
-              aria-label={`${progressPercent}% complete`}
-              className="mx-auto flex h-48 w-48 items-center justify-center rounded-full"
-              style={{
-                background: `conic-gradient(#062b61 ${progressPercent * 3.6}deg, #e5ebf3 0deg)`,
-              }}
-            >
-              <div className="flex h-[152px] w-[152px] flex-col items-center justify-center rounded-full bg-white shadow-inner">
-                <span className="text-[1.85rem] font-medium tracking-tight text-[#091333]">{progressPercent}%</span>
-                <span className="text-[0.78rem] font-semibold text-[#53617f]">Complete</span>
+          <div className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700">{submissionState.label}</span>
+                <span className="text-sm font-semibold text-[#091333]">{submissionState.bannerTitle}</span>
+              </div>
+              <p className="mt-1 max-w-2xl text-sm text-[#53617f]">{submissionState.bannerMessage}</p>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100" aria-label={`${progressPercent}% complete`}>
+                <div className="h-full rounded-full bg-brand-700 transition-all" style={{ width: `${progressPercent}%` }} />
               </div>
             </div>
-            <div className="space-y-5">
-              <div className="rounded-2xl border border-[#e8ecf5] bg-[#fbfcff] p-4">
-                <p className="text-[0.74rem] font-semibold uppercase tracking-[0.12em] text-[#53617f]">
-                  Monthly pack summary
-                </p>
-                <h3 className="mt-2 text-[1.08rem] font-semibold text-[#091333]">
-                  {submissionState.bannerTitle}
-                </h3>
-                <p className="mt-1 text-[0.88rem] leading-6 text-[#53617f]">
-                  {submissionState.bannerMessage}
-                </p>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-xl border border-[#e8ecf5] bg-white px-4 py-3">
-                    <p className="text-[0.72rem] font-semibold text-[#53617f]">Required documents</p>
-                    <p className="mt-1 text-[1.15rem] font-semibold text-[#091333]">
-                      {readyRequiredCount} of {effectiveMonthPack.totalCount}
-                    </p>
-                  </div>
-                  <div className="rounded-xl border border-[#e8ecf5] bg-white px-4 py-3">
-                    <p className="text-[0.72rem] font-semibold text-[#53617f]">Submission deadline</p>
-                    <p className="mt-1 text-[1rem] font-semibold text-[#091333]">
-                      {formatDateLabel(effectiveMonthPack.dueDate)}
-                    </p>
-                    <p className="mt-0.5 text-[0.76rem] text-[#53617f]">{dueDaysRemaining} days remaining</p>
-                  </div>
-                </div>
+            <div className="grid shrink-0 grid-cols-3 gap-2 text-center">
+              <div className="rounded-xl bg-slate-50 px-4 py-3">
+                <p className="text-lg font-semibold text-[#091333]">{progressPercent}%</p>
+                <p className="text-[0.68rem] text-slate-500">Complete</p>
               </div>
-              <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-[auto_auto] xl:grid-cols-[auto_auto]">
-                <Button
-                  className={monthlyPackActionButtonClass}
-                  onClick={handleOpenChecklist}
-                >
-                  <span>Continue Pack</span>
-                  <ChevronRight aria-hidden="true" className="h-4 w-4" />
-                </Button>
-                {highlightedSlot ? (
-                  <Button
-                    className={monthlyPackActionButtonClass}
-                    disabled={isPackReadOnly || isSyncingBackendPack}
-                    onClick={() => handleOpenUpload(highlightedSlot)}
-                  >
-                    <span>
-                      {submissionState.tone === "warning"
-                        ? `Fix: ${highlightedSlot.documentType}`
-                        : `Update: ${highlightedSlot.documentType}`}
-                    </span>
-                  </Button>
-                ) : null}
+              <div className="rounded-xl bg-slate-50 px-4 py-3">
+                <p className="text-lg font-semibold text-[#091333]">{readyRequiredCount}/{effectiveMonthPack.totalCount}</p>
+                <p className="text-[0.68rem] text-slate-500">Required ready</p>
+              </div>
+              <div className="rounded-xl bg-slate-50 px-4 py-3">
+                <p className="text-sm font-semibold text-[#091333]">{formatDateLabel(effectiveMonthPack.dueDate)}</p>
+                <p className="text-[0.68rem] text-slate-500">{dueDaysRemaining} days left</p>
               </div>
             </div>
-          </div>
-        </SurfaceCard>
-
-        <SurfaceCard className={`${panelClass} p-5`}>
-          <div className="mb-4 flex items-center justify-between gap-3">
-            <h2 className="text-base font-semibold text-[#091333]">Priority Actions</h2>
-            <button className="client-dashboard-link text-[0.78rem] font-semibold" onClick={handleOpenChecklist} type="button">
-              View All
-            </button>
-          </div>
-          <div className="grid gap-3 lg:grid-cols-3">
-            <PriorityAction
-              action="Open"
-              helper={`Confirm required files for ${effectiveMonthPack.monthLabel}`}
-              icon={<ClipboardList aria-hidden="true" className="h-5 w-5" strokeWidth={1.8} />}
-              label="Review checklist requirements"
-              onClick={handleOpenChecklist}
-            />
-            <PriorityAction
-              action="View"
-              helper="View uploaded files and supporting records"
-              icon={<FileText aria-hidden="true" className="h-5 w-5" strokeWidth={1.8} />}
-              label="Open document library"
-              onClick={() => navigate("/client/documents")}
-            />
-            <PriorityAction
-              action="Open"
-              helper="Review follow-ups or clarification requests"
-              icon={<Inbox aria-hidden="true" className="h-5 w-5" strokeWidth={1.8} />}
-              label="Check accountant messages"
-              onClick={() => navigate("/client/inbox")}
-            />
           </div>
         </SurfaceCard>
       </section>

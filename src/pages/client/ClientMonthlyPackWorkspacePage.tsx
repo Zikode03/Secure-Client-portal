@@ -73,8 +73,10 @@ interface ClientMonthlyPackProfile {
     status: string;
     source: string;
     dueDateUtc?: string | null;
+    reason?: string | null;
   }>;
   updatedAtUtc: string;
+  operatingProfile?: { isComplete?: boolean } | null;
 }
 
 const categoryOptions = [
@@ -416,8 +418,17 @@ export function ClientMonthlyPackWorkspacePage() {
               <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">{client.entityType || "Business"}</span>
               {client.industry ? <span className="rounded-full bg-brand-50 px-2.5 py-1 text-xs font-semibold text-brand-700">{client.industry}</span> : null}
               {profile?.templateName ? <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">Pack: {profile.templateName}</span> : null}
+              {profile?.operatingProfile && !profile.operatingProfile.isComplete ? <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700">Business facts being confirmed</span> : null}
             </div>
           </div>
+          {profile?.currentPackItems.some((item) => item.reason) ? (
+            <details className="mt-2 rounded-xl border border-slate-200 bg-white px-4 py-3">
+              <summary className="cursor-pointer text-xs font-semibold text-brand-700">Why these documents are requested</summary>
+              <div className="mt-2 space-y-2">
+                {profile.currentPackItems.map((item) => <p className="text-xs leading-5 text-slate-500" key={item.slotId}><span className="font-semibold text-slate-700">{item.label}:</span> {item.reason}</p>)}
+              </div>
+            </details>
+          ) : null}
         </section>
       ) : null}
 
@@ -446,6 +457,14 @@ export function ClientMonthlyPackWorkspacePage() {
 
       {backendMode ? (
         <section className="portal-page mx-auto max-w-[1280px] pb-8">
+          <details className="group rounded-2xl border border-[#dce6ef] bg-white p-4 shadow-[0_12px_28px_rgba(4,24,52,0.06)]">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-4">
+              <span>
+                <span className="flex items-center gap-2 text-sm font-semibold text-slate-950"><Paperclip className="h-4 w-4 text-brand-700" /> Additional &amp; supporting documents</span>
+                <span className="mt-1 block text-xs text-slate-500">Optional records outside the required checklist</span>
+              </span>
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">{documents.length} file{documents.length === 1 ? "" : "s"} · Open</span>
+            </summary>
           <SurfaceCard className="overflow-hidden rounded-2xl border border-[#dce6ef] bg-white p-0 shadow-[0_16px_38px_rgba(4,24,52,0.08)]">
             <div className="flex flex-col gap-3 border-b border-slate-200 px-5 py-5 sm:flex-row sm:items-start sm:justify-between">
               <div>
@@ -616,6 +635,7 @@ export function ClientMonthlyPackWorkspacePage() {
               </div>
             </div>
           </SurfaceCard>
+          </details>
         </section>
       ) : null}
 
