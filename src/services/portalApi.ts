@@ -1,6 +1,5 @@
 import { apiGetJson, apiPatchJson, apiPostJson, apiPutJson, hasApiBaseUrl } from "./apiClient";
 import { portalService } from "./portalData";
-import { getAccountantComplianceCentreData, getClientComplianceCentreData } from "./complianceData";
 import type {
   DocumentComment,
   FirmClientAccount,
@@ -121,33 +120,7 @@ async function getOrFallback<T>(path: string, fallback: () => T): Promise<T> {
     return fallback();
   }
 
-  if (shouldSkipBackendRoute(path)) {
-    return fallback();
-  }
-
-  try {
-    return await apiGetJson<T>(path);
-  } catch {
-    return fallback();
-  }
-}
-
-const backendFallbackOnlyMatchers: Array<(path: string) => boolean> = [
-  (path) => path.startsWith("/api/session/demo-user"),
-  (path) => path === "/api/client/workflow-seed",
-  (path) => path === "/api/client/notifications",
-  (path) => path === "/api/client/compliance-centre",
-  (path) => path === "/api/client/document-centre",
-  (path) => path === "/api/accountant/dashboard",
-  (path) => path === "/api/accountant/compliance-centre",
-  (path) => path === "/api/accountant/notifications",
-  (path) => path === "/api/accountant/review-workspace",
-  (path) => path === "/api/admin/dashboard",
-  (path) => path === "/api/admin/policies",
-];
-
-function shouldSkipBackendRoute(path: string) {
-  return backendFallbackOnlyMatchers.some((matches) => matches(path));
+  return apiGetJson<T>(path);
 }
 
 export const portalServiceApi = {
@@ -163,7 +136,7 @@ export const portalServiceApi = {
     return getOrFallback("/api/client/notifications", () => portalService.getClientNotifications());
   },
   getClientComplianceCentre() {
-    return getOrFallback("/api/client/compliance-centre", getClientComplianceCentreData);
+    return getOrFallback("/api/client/compliance-centre", () => portalService.getClientComplianceCentre());
   },
   getClientDocumentCenter() {
     return getOrFallback("/api/client/document-centre", () => portalService.getClientDocumentCenter());
@@ -172,7 +145,7 @@ export const portalServiceApi = {
     return getOrFallback("/api/accountant/dashboard", () => portalService.getAccountantDashboard());
   },
   getAccountantComplianceCentre() {
-    return getOrFallback("/api/accountant/compliance-centre", getAccountantComplianceCentreData);
+    return getOrFallback("/api/accountant/compliance-centre", () => portalService.getAccountantComplianceCentre());
   },
   getAccountantNotifications() {
     return getOrFallback("/api/accountant/notifications", () =>
@@ -220,10 +193,8 @@ export const portalServiceApi = {
         mapBackendClientRecord(client, assignmentsByClientId.get(client.id) ?? []),
       );
     } catch (error) {
-      if (options.allowFallback === false) {
-        throw error;
-      }
-      return portalService.getAdminClients();
+      void options;
+      throw error;
     }
   },
   async updateClientAssignment(
@@ -292,11 +263,7 @@ export const portalServiceApi = {
         >(`/api/assignments/${encodeURIComponent(existingTarget.id)}/make-primary`, {});
       }
 
-      return portalService.updateClientAssignment(
-        clientId,
-        assignedAccountant,
-        assignedAccountantUserId,
-      );
+      return { ok: true, message: "Accountant assignment updated." };
     } catch {
       return {
         ok: false,

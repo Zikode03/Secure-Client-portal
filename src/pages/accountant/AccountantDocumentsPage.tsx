@@ -2,10 +2,10 @@
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
-import { ApiError, apiGetBlob, apiGetJson, hasApiBaseUrl } from "../../services/apiClient";
+import { ApiError, apiGetBlob, apiGetJson, apiPostJson, hasApiBaseUrl } from "../../services/apiClient";
 import { portalServiceApi } from "../../services/portalApi";
 import { AuditTrail } from "../../components/workflow/AuditTrail";
 import { Button } from "../../components/ui/Button";
@@ -18,6 +18,8 @@ import {
 } from "../../services/workflowEngine";
 import type {
   DocumentRecord,
+  DocumentComment,
+  DocumentVersionRecord,
   FirmClientAccount,
   UnifiedSearchFilters,
   UnifiedSearchResult,
@@ -46,12 +48,32 @@ const defaultFilters: UnifiedSearchFilters = {
   reviewedBy: "",
 };
 
+function mapBackendComment(comment: BackendDocumentComment): DocumentComment {
+  const role = comment.authorRole.trim().toLowerCase() === "client" ? "client" : "accountant";
+  return {
+    id: comment.id,
+    author: role === "client" ? "Client user" : "Accountant reviewer",
+    role,
+    message: comment.message,
+    createdAt: comment.createdAtUtc,
+  };
+}
+
 const previewReferenceDate = new Date("2026-05-08T08:00:00.000Z");
 const resultsPerPage = 7;
 
 // Shared shape notes: these types keep UI and data contracts aligned.
 type ResultTab = "all" | "documents" | "invoices" | "compliance";
-type ViewerTab = "details" | "history" | "related";
+type ViewerTab = "details" | "comments" | "history" | "related";
+
+interface BackendDocumentComment {
+  id: string;
+  documentId: string;
+  authorUserId: string;
+  authorRole: string;
+  message: string;
+  createdAtUtc: string;
+}
 
 interface BackendDocumentRecord {
   id: string;
@@ -841,10 +863,12 @@ function Pagination({
 
 export function AccountantDocumentsPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const portal = usePortal();
   const backendMode = hasApiBaseUrl();
   const [searchParams] = useSearchParams();
   const [filters, setFilters] = useState<UnifiedSearchFilters>(defaultFilters);
+  const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
   const [activeResultTab, setActiveResultTab] = useState<ResultTab>("all");
 // Local UI state: keeps track of what the user is seeing or editing right now.
   const [selectedResultId, setSelectedResultId] = useState("");
@@ -856,6 +880,10 @@ export function AccountantDocumentsPage() {
   const [previewZoom, setPreviewZoom] = useState(100);
   const [liveClients, setLiveClients] = useState<FirmClientAccount[] | null>(null);
   const [liveDocuments, setLiveDocuments] = useState<DocumentRecord[]>([]);
+  const [versionsByDocumentId, setVersionsByDocumentId] = useState<Record<string, DocumentVersionRecord[]>>({});
+  const [commentsByDocumentId, setCommentsByDocumentId] = useState<Record<string, DocumentComment[]>>({});
+  const [commentDraft, setCommentDraft] = useState("");
+  const [commentError, setCommentError] = useState("");
   const [liveLoadStatus, setLiveLoadStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [liveRefreshKey, setLiveRefreshKey] = useState(0);
   const hasLoadedLiveDocuments = useRef(false);
@@ -909,6 +937,9 @@ export function AccountantDocumentsPage() {
             comments: [],
             auditTrail: [],
             fileMimeType: record.fileType,
+            versionNumber: record.currentVersionNumber,
+            monthlyPackId: record.monthlyPackId,
+            documentSlotId: record.documentSlotId ?? undefined,
           } satisfies DocumentRecord;
         });
 
@@ -1066,6 +1097,55 @@ export function AccountantDocumentsPage() {
     return resolveDocumentForResult(selectedResult);
   }, [portal, selectedResult]);
 
+  const selectedVersions = useMemo<DocumentVersionRecord[]>(() => {
+    if (!selectedDocument) return [];
+    return versionsByDocumentId[selectedDocument.id] ?? [{
+      id: `${selectedDocument.id}-current`,
+      documentId: selectedDocument.id,
+      versionNumber: selectedDocument.versionNumber ?? 1,
+      name: selectedDocument.fileName,
+      originalFileName: selectedDocument.fileName,
+      fileType: selectedDocument.fileMimeType ?? "Document",
+      sizeBytes: 0,
+      uploadedByUserId: selectedDocument.uploadedBy,
+      createdAtUtc: selectedDocument.uploadedAt,
+      isCurrent: true,
+    }];
+  }, [selectedDocument, versionsByDocumentId]);
+
+  const selectedComments = useMemo(() => {
+    if (!selectedDocument) return [];
+    return commentsByDocumentId[selectedDocument.id] ?? selectedDocument.comments;
+  }, [commentsByDocumentId, selectedDocument]);
+
+  useEffect(() => {
+    if (!backendMode || !selectedDocument || versionsByDocumentId[selectedDocument.id]) return;
+    let isActive = true;
+    const documentId = selectedDocument.id;
+    void apiGetJson<DocumentVersionRecord[]>(`/api/documents/${encodeURIComponent(documentId)}/versions`)
+      .then((versions) => {
+        if (isActive) setVersionsByDocumentId((current) => ({ ...current, [documentId]: versions }));
+      })
+      .catch(() => {
+        if (isActive) setVersionsByDocumentId((current) => ({ ...current, [documentId]: [] }));
+      });
+    return () => { isActive = false; };
+  }, [backendMode, selectedDocument, versionsByDocumentId]);
+
+  useEffect(() => {
+    if (!backendMode || !selectedDocument || commentsByDocumentId[selectedDocument.id]) return;
+    let isActive = true;
+    const documentId = selectedDocument.id;
+    void apiGetJson<BackendDocumentComment[]>(`/api/documents/${encodeURIComponent(documentId)}/comments`)
+      .then((comments) => {
+        if (isActive) setCommentsByDocumentId((current) => ({ ...current, [documentId]: comments.map(mapBackendComment) }));
+      })
+      .catch(() => {
+        if (isActive) setCommentsByDocumentId((current) => ({ ...current, [documentId]: [] }));
+      });
+    return () => { isActive = false; };
+  }, [backendMode, commentsByDocumentId, selectedDocument]);
+
   const tabCounts = useMemo(
     () => ({
       all: filteredResults.length,
@@ -1160,10 +1240,11 @@ export function AccountantDocumentsPage() {
   const viewerTabs = useMemo(
     () => [
       { id: "details" as const, label: "Details" },
+      { id: "comments" as const, label: `Comments (${selectedComments.length})` },
       { id: "history" as const, label: "Workflow log" },
       { id: "related" as const, label: "Related" },
     ],
-    [],
+    [selectedComments.length],
   );
 
   const relatedResults = useMemo(() => {
@@ -1299,6 +1380,55 @@ export function AccountantDocumentsPage() {
     setOpenMenuResultId("");
   }
 
+  function handleSubmitComment() {
+    if (!selectedDocument || !user) return;
+    const message = commentDraft.trim();
+    if (!message) {
+      setCommentError("Write a comment before sending it.");
+      return;
+    }
+
+    if (backendMode) {
+      void apiPostJson<BackendDocumentComment, { message: string }>(
+        `/api/documents/${encodeURIComponent(selectedDocument.id)}/comments`,
+        { message },
+      )
+        .then((comment) => {
+          setCommentsByDocumentId((current) => ({
+            ...current,
+            [selectedDocument.id]: [...(current[selectedDocument.id] ?? []), mapBackendComment(comment)],
+          }));
+          setCommentDraft("");
+          setCommentError("");
+        })
+        .catch((error: unknown) => {
+          setCommentError(error instanceof ApiError ? error.message : "The comment could not be saved.");
+        });
+      return;
+    }
+
+    const result = portal.addDocumentComment(selectedDocument.id, user.fullName, user.role, message);
+    if (!result.ok) {
+      setCommentError(result.message);
+      return;
+    }
+    setCommentsByDocumentId((current) => ({
+      ...current,
+      [selectedDocument.id]: [
+        ...(current[selectedDocument.id] ?? selectedDocument.comments),
+        {
+          id: `comment-${Date.now()}`,
+          author: user.fullName,
+          role: user.role,
+          message,
+          createdAt: new Date().toISOString(),
+        },
+      ],
+    }));
+    setCommentDraft("");
+    setCommentError("");
+  }
+
   function handleClearFilters() {
     setFilters(defaultFilters);
     setActiveResultTab("all");
@@ -1336,24 +1466,51 @@ export function AccountantDocumentsPage() {
       className="mx-auto max-w-[1280px] space-y-6"
       onClick={() => setOpenMenuResultId("")}
     >
-      <section className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="space-y-1.5">
-          <h1 className="text-[2.05rem] font-medium text-slate-950">
-            Document Centre
-          </h1>
-          <p className="max-w-3xl text-[0.96rem] leading-7 text-slate-500">
-            Search all client document records across every status, period, and document type.
-          </p>
+      <section className="border-b border-slate-200 pb-7">
+        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+          <div className="max-w-2xl">
+            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-brand-600">
+              Accountant workspace
+            </p>
+            <h1 className="mt-2 text-[2.15rem] font-semibold tracking-[-0.035em] text-slate-950">
+              Client documents
+            </h1>
+            <p className="mt-2 text-[0.95rem] leading-7 text-slate-500">
+              Review, trace and organise every client record from one controlled document register.
+            </p>
+          </div>
+
+          <div className="flex w-full flex-col gap-3 sm:flex-row xl:w-auto">
+            <label className="relative block min-w-0 flex-1 xl:w-[22rem]">
+              <span className="sr-only">Search client documents</span>
+              <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                <SearchIcon />
+              </span>
+              <input
+                className="h-11 w-full rounded-xl border border-slate-300 bg-white pl-11 pr-4 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-brand-400 focus:ring-4 focus:ring-brand-100"
+                onChange={(event) => setFilters((current) => ({ ...current, query: event.target.value }))}
+                placeholder="Search client, file or reference"
+                value={filters.query}
+              />
+            </label>
+            <Button
+              className="h-11 whitespace-nowrap rounded-xl px-5"
+              onClick={() => navigate("/firm/inbox")}
+            >
+              Request documents
+            </Button>
+            {backendMode ? (
+              <Button
+                aria-label="Refresh documents"
+                className="h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-700 hover:bg-slate-50"
+                onClick={() => setLiveRefreshKey((current) => current + 1)}
+                variant="secondary"
+              >
+                Refresh
+              </Button>
+            ) : null}
+          </div>
         </div>
-        {backendMode ? (
-          <Button
-            className="h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-700 hover:bg-slate-50"
-            onClick={() => setLiveRefreshKey((current) => current + 1)}
-            variant="secondary"
-          >
-            Refresh documents
-          </Button>
-        ) : null}
       </section>
 
       {feedbackMessage ? (
@@ -1362,37 +1519,33 @@ export function AccountantDocumentsPage() {
         </div>
       ) : null}
 
-      <div className={cn("grid gap-6", viewerOpen ? "lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,430px)]" : "")}>
-        <div className="space-y-6">
-          <SurfaceCard className="rounded-[1.7rem] border border-slate-200/90 bg-white p-5 shadow-[0_18px_48px_rgba(15,23,42,0.06)]">
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-3 lg:flex-row">
-                <div className="relative flex-1">
-                  <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-                    <SearchIcon />
-                  </span>
-                  <input
-                    className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-brand-300 focus:ring-4 focus:ring-brand-100"
-                    onChange={(event) =>
-                      setFilters((current) => ({ ...current, query: event.target.value }))
-                    }
-                    placeholder="Search documents, clients, reference numbers..."
-                    value={filters.query}
-                  />
-                </div>
-
-                <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
+      <div>
+        <div className="space-y-5">
+          <section aria-label="Document filters" className="border-b border-slate-200 pb-5">
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.1em] text-slate-500">Filter documents</p>
+                <div className="flex items-center gap-2">
                   <button
-                    className="text-sm font-medium text-brand-600 transition hover:text-brand-700"
-                    onClick={handleClearFilters}
+                    className={cn(
+                      "inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-xs font-semibold transition",
+                      advancedFiltersOpen
+                        ? "border-brand-200 bg-brand-50 text-brand-700"
+                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
+                    )}
+                    onClick={() => setAdvancedFiltersOpen((current) => !current)}
                     type="button"
                   >
+                    More filters
+                    <span className={cn("transition", advancedFiltersOpen ? "rotate-180" : "")}><ChevronDownIcon /></span>
+                  </button>
+                  <button className="h-9 px-2 text-xs font-semibold text-brand-700" onClick={handleClearFilters} type="button">
                     Clear all
                   </button>
                 </div>
               </div>
 
-              <div className="grid gap-4 lg:grid-cols-4">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <ResultFilterSelect
                   label="Client"
                   onChange={(value) => {
@@ -1428,7 +1581,8 @@ export function AccountantDocumentsPage() {
                 />
               </div>
 
-              <div className="grid gap-4 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto] lg:items-end">
+              {advancedFiltersOpen ? (
+              <div className="grid gap-3 border-t border-slate-200 bg-slate-50/70 px-3 py-3 sm:grid-cols-2 lg:grid-cols-4">
                 <ResultFilterSelect
                   label="Uploaded by"
                   onChange={(value) =>
@@ -1463,28 +1617,17 @@ export function AccountantDocumentsPage() {
                   options={yearOptions}
                   value={filters.year}
                 />
-                <button
-                  className="inline-flex h-10 items-center gap-1.5 rounded-xl px-1 text-sm font-medium text-brand-600 transition hover:text-brand-700"
-                  onClick={() => {
-                    setFilters((current) => ({
-                      ...current,
-                      requiredFlag: "required",
-                      expiryStatus: "expiring",
-                      status: current.status || "uploaded",
-                    }));
-                    setFeedbackMessage("Applied priority filter preset for required and expiring items.");
-                  }}
-                  type="button"
-                >
-                  <span>More filters</span>
-                  <ChevronRightIcon />
-                </button>
               </div>
+              ) : null}
             </div>
-          </SurfaceCard>
+          </section>
 
-          <SurfaceCard className="overflow-hidden rounded-[1.7rem] border border-slate-200/90 bg-white p-0 shadow-[0_18px_48px_rgba(15,23,42,0.06)]">
-            <div className="border-b border-slate-100 px-5 pt-4">
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <div className="flex flex-col gap-3 border-b border-slate-100 px-5 pt-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="pb-3">
+                <h2 className="text-base font-semibold text-slate-950">Document register</h2>
+                <p className="mt-1 text-sm text-slate-500">A controlled record of files across your assigned clients.</p>
+              </div>
               <div className="flex flex-nowrap items-center gap-6 overflow-x-auto pb-1">
                 {[
                   { id: "all" as const, label: "All results", count: tabCounts.all },
@@ -1535,27 +1678,32 @@ export function AccountantDocumentsPage() {
               </div>
             ) : (
               <>
-                <div className="hidden border-b border-slate-100 px-5 py-4 text-[0.72rem] font-medium uppercase tracking-[0.12em] text-slate-400 lg:grid lg:grid-cols-[minmax(0,1.85fr)_0.9fr_0.72fr_3.5rem] lg:gap-4">
+                <div className="hidden border-b border-slate-100 bg-slate-50/70 px-5 py-3 text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-slate-500 lg:grid lg:grid-cols-[minmax(220px,1.7fr)_minmax(120px,0.9fr)_0.7fr_0.45fr_0.75fr_0.85fr_3rem] lg:gap-4">
                   <div>Document</div>
-                  <div>Uploaded</div>
+                  <div>Client</div>
+                  <div>Period</div>
+                  <div>Ver.</div>
                   <div>Status</div>
+                  <div>Updated</div>
                   <div aria-hidden="true" />
                 </div>
 
                 <div className="divide-y divide-slate-100">
                   {pagedResults.map((result) => {
-                    const fileLabel = inferFileLabel(result, selectedResultId === result.id ? selectedDocument : null);
+                    const rowDocument = resolveDocumentForResult(result);
+                    const fileLabel = inferFileLabel(result, rowDocument);
                     const selected = viewerOpen && result.id === selectedResultId;
 
                     return (
                       <div
                         className={cn(
-                          "border-l-[3px] px-5 py-4 transition lg:grid lg:grid-cols-[minmax(0,1.85fr)_0.9fr_0.72fr_3.5rem] lg:items-center lg:gap-4",
+                          "cursor-pointer border-l-[3px] px-5 py-4 transition lg:grid lg:grid-cols-[minmax(220px,1.7fr)_minmax(120px,0.9fr)_0.7fr_0.45fr_0.75fr_0.85fr_3rem] lg:items-center lg:gap-4",
                           selected
                             ? "border-l-brand-500 bg-brand-50/35"
                             : "border-l-transparent hover:bg-slate-50/80",
                         )}
                         key={result.id}
+                        onClick={() => handleOpenResult(result)}
                       >
                         <div className="flex items-start gap-4">
                           <div
@@ -1580,15 +1728,33 @@ export function AccountantDocumentsPage() {
                             <p className="mt-1 text-[0.84rem] text-slate-500">
                               {resultFamilyLabel(result)} | {result.monthLabel}
                             </p>
-                            <p className="mt-1 truncate text-[0.8rem] text-slate-400">
-                              {result.clientName}
-                            </p>
                             {result.amountLabel ? (
                               <p className="mt-1 text-[0.84rem] text-slate-400">
                                 {result.amountLabel}
                               </p>
                             ) : null}
                           </div>
+                        </div>
+
+                        <div className="mt-3 min-w-0 lg:mt-0">
+                          <p className="truncate text-sm font-medium text-slate-800">{result.clientName}</p>
+                        </div>
+
+                        <div className="mt-3 text-sm text-slate-600 lg:mt-0">{result.monthLabel}</div>
+
+                        <div className="mt-3 text-sm font-medium text-slate-600 lg:mt-0">
+                          v{rowDocument?.versionNumber ?? 1}
+                        </div>
+
+                        <div className="mt-3 lg:mt-0">
+                          <span
+                            className={cn(
+                              "inline-flex rounded-full px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.04em] ring-1 ring-inset",
+                              toneToAccentClass(statusToTone(result.status)),
+                            )}
+                          >
+                            {formatStatusLabel(result.status)}
+                          </span>
                         </div>
 
                         <div className="mt-3 lg:mt-0">
@@ -1602,17 +1768,6 @@ export function AccountantDocumentsPage() {
                             }).format(new Date(result.date))}{" "}
                             by {result.uploadedBy ?? "Client"}
                           </p>
-                        </div>
-
-                        <div className="mt-3 lg:mt-0">
-                          <span
-                            className={cn(
-                              "inline-flex rounded-full px-2.5 py-1 text-[0.7rem] font-medium uppercase tracking-[0.04em] ring-1 ring-inset",
-                              toneToAccentClass(statusToTone(result.status)),
-                            )}
-                          >
-                            {formatStatusLabel(result.status)}
-                          </span>
                         </div>
 
                         <div className="relative mt-3 flex items-center lg:mt-0 lg:justify-end">
@@ -1671,16 +1826,16 @@ export function AccountantDocumentsPage() {
                 </div>
               </>
             )}
-          </SurfaceCard>
+          </div>
         </div>
 
         {viewerOpen && selectedResult && selectedDocument ? (
           <div
-            className="fixed inset-0 z-50 bg-slate-950/55 px-3 py-4 sm:px-6 sm:py-6"
+            className="fixed inset-0 z-50 bg-slate-950/30"
             onClick={() => setViewerOpen(false)}
           >
             <SurfaceCard
-              className="mx-auto h-full w-full max-w-[1080px] overflow-y-auto rounded-[1.7rem] border border-slate-200/90 bg-white p-5 shadow-[0_22px_56px_rgba(15,23,42,0.22)]"
+              className="ml-auto h-full w-full max-w-[680px] overflow-y-auto rounded-none border-0 border-l border-slate-200 bg-white p-6 shadow-[-18px_0_50px_rgba(15,23,42,0.16)] sm:p-8"
               onClick={(event) => event.stopPropagation()}
             >
             <div className="flex items-start justify-between gap-4">
@@ -1727,7 +1882,7 @@ export function AccountantDocumentsPage() {
                 <span>Open in new tab</span>
               </Button>
               <Button
-                className="h-10 flex-1 rounded-xl bg-[linear-gradient(135deg,#4f46e5,#4338ca)] px-4 hover:bg-[linear-gradient(135deg,#4338ca,#3730a3)]"
+                className="h-10 flex-1 rounded-xl px-4"
                 onClick={() => downloadDocumentFile(selectedDocument)}
               >
                 <DownloadIcon />
@@ -1771,7 +1926,7 @@ export function AccountantDocumentsPage() {
                 </div>
               </div>
 
-              <div className="mt-3 overflow-hidden rounded-[1rem] border border-slate-200 bg-[linear-gradient(180deg,#eef2ff_0%,#ffffff_22%)]">
+              <div className="mt-3 overflow-hidden rounded-[1rem] border border-slate-200 bg-slate-100">
                 <div className="h-[24rem] overflow-y-auto px-4 py-5">
                   <PreviewShell
                     document={selectedDocument}
@@ -1881,15 +2036,94 @@ export function AccountantDocumentsPage() {
                 </div>
               ) : null}
 
+              {viewerTab === "comments" ? (
+                <div className="space-y-5">
+                  <div className="divide-y divide-slate-100 border-y border-slate-200">
+                    {selectedComments.length > 0 ? (
+                      [...selectedComments].reverse().map((comment) => (
+                        <article className="py-4" key={comment.id}>
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2">
+                              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-[0.68rem] font-semibold text-white">
+                                {comment.author.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase()}
+                              </span>
+                              <div>
+                                <p className="text-sm font-semibold text-slate-900">{comment.author}</p>
+                                <p className="text-xs capitalize text-slate-500">{comment.role}</p>
+                              </div>
+                            </div>
+                            <time className="text-xs text-slate-400">{formatDateTimeLabel(comment.createdAt)}</time>
+                          </div>
+                          <p className="mt-3 text-sm leading-6 text-slate-700">{comment.message}</p>
+                        </article>
+                      ))
+                    ) : (
+                      <p className="py-5 text-sm text-slate-500">No comments yet. Start the document-specific review thread below.</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold uppercase tracking-[0.1em] text-slate-500" htmlFor="accountant-document-comment">
+                      Add review note
+                    </label>
+                    <textarea
+                      className="mt-2 min-h-28 w-full resize-y rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm leading-6 text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-brand-400 focus:ring-4 focus:ring-brand-100"
+                      id="accountant-document-comment"
+                      onChange={(event) => {
+                        setCommentDraft(event.target.value);
+                        setCommentError("");
+                      }}
+                      placeholder="Add context, ask a question, or explain a requested change..."
+                      value={commentDraft}
+                    />
+                    {commentError ? <p className="mt-2 text-sm text-rose-600">{commentError}</p> : null}
+                    <div className="mt-3 flex justify-end">
+                      <Button className="h-10 rounded-xl px-5" onClick={handleSubmitComment}>Send comment</Button>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
               {viewerTab === "history" ? (
-                selectedDocument.auditTrail.length > 0 ? (
-                  <AuditTrail entries={selectedDocument.auditTrail} />
-                ) : (
-                  <EmptyState
-                    description="Workflow events appear here as this item moves through review and approval."
-                    title="No history yet"
-                  />
-                )
+                <div className="space-y-7">
+                  <section>
+                    <div className="flex items-center justify-between border-b border-slate-200 pb-3">
+                      <h3 className="text-sm font-semibold text-slate-950">Version history</h3>
+                      <span className="text-xs font-medium text-slate-500">{selectedVersions.length} versions</span>
+                    </div>
+                    {selectedVersions.length > 0 ? (
+                      <div className="divide-y divide-slate-100">
+                        {selectedVersions.map((version) => (
+                          <div className="flex items-center justify-between gap-4 py-3" key={version.id}>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <p className="truncate text-sm font-medium text-slate-900">Version {version.versionNumber}</p>
+                                {version.isCurrent ? (
+                                  <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[0.66rem] font-semibold uppercase tracking-wide text-brand-700">Current</span>
+                                ) : null}
+                              </div>
+                              <p className="mt-1 truncate text-xs text-slate-500">{version.originalFileName}</p>
+                            </div>
+                            <p className="shrink-0 text-xs text-slate-500">{formatDateLabel(version.createdAtUtc)}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="py-4 text-sm text-slate-500">No saved versions are available.</p>
+                    )}
+                  </section>
+
+                  <section>
+                    <h3 className="border-b border-slate-200 pb-3 text-sm font-semibold text-slate-950">Activity trail</h3>
+                    <div className="pt-4">
+                      {selectedDocument.auditTrail.length > 0 ? (
+                        <AuditTrail entries={selectedDocument.auditTrail} />
+                      ) : (
+                        <p className="text-sm text-slate-500">Workflow events will appear here as this item moves through review.</p>
+                      )}
+                    </div>
+                  </section>
+                </div>
               ) : null}
 
               {viewerTab === "related" ? (

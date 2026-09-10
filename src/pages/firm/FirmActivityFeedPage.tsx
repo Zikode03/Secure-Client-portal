@@ -122,7 +122,7 @@ export function FirmActivityFeedPage() {
           message:
             error instanceof ApiError
               ? error.message
-              : "The live activity feed could not be loaded, so the seeded view is still shown.",
+              : "The live activity feed could not be loaded. No demo records are being shown.",
         });
       }
     }
@@ -173,7 +173,7 @@ export function FirmActivityFeedPage() {
       .slice(0, 200);
   }, [portal]);
 
-  const visibleFeed = backendMode && liveFeed ? liveFeed : feed;
+  const visibleFeed = backendMode ? liveFeed ?? [] : feed;
 
   return (
     <>

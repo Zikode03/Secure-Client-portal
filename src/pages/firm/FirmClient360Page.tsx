@@ -288,7 +288,7 @@ export function FirmClient360Page() {
           message:
             error instanceof ApiError || error instanceof Error
               ? error.message
-              : "The live client profile could not be loaded, so the seeded workspace view is still shown.",
+              : "The live client profile could not be loaded. No demo records are being shown.",
         });
       }
     }
@@ -308,7 +308,9 @@ export function FirmClient360Page() {
     );
   }
 
-  const activeClient = liveWorkspace?.client ?? fallbackWorkspace?.client ?? null;
+  const activeClient = backendMode
+    ? liveWorkspace?.client ?? null
+    : fallbackWorkspace?.client ?? null;
 
   if (!activeClient) {
     return (
@@ -318,8 +320,15 @@ export function FirmClient360Page() {
     );
   }
 
-  const compliance = liveWorkspace
-    ? liveWorkspace.compliance
+  const compliance = backendMode
+    ? liveWorkspace?.compliance ?? {
+        score: 0,
+        expiredCount: 0,
+        expiringCount: 0,
+        missingRequiredCount: 0,
+        approvedRequiredCount: 0,
+        requiredCount: 0,
+      }
     : {
         score: fallbackWorkspace?.compliance?.score ?? activeClient.completionRate,
         expiredCount: fallbackWorkspace?.compliance?.expiredCount ?? 0,
@@ -329,7 +338,9 @@ export function FirmClient360Page() {
         requiredCount: 0,
       };
 
-  const openRequests = liveWorkspace?.openRequests ?? fallbackWorkspace?.requests.filter((request) => !["resolved", "closed"].includes(request.status)) ?? [];
+  const openRequests = backendMode
+    ? liveWorkspace?.openRequests ?? []
+    : fallbackWorkspace?.requests.filter((request) => !["resolved", "closed"].includes(request.status)) ?? [];
   const latestPack = liveWorkspace?.latestPack ?? null;
   const slots = liveWorkspace?.slots ?? [];
   const latestPackDueDate = latestPack ? buildPackDueDate(latestPack, slots) : null;

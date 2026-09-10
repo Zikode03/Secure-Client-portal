@@ -32,10 +32,17 @@ Connect the frontend to the backend:
 
 Notes:
 - `src/services/portalApi.ts` is the backend-connected service wrapper.
-- It falls back to local mock data from `src/services/portalData.ts` if backend is disabled or unavailable.
+- Backend failures are surfaced as errors. Mock data is available only in local development/test mode with the backend disabled.
 
 Build:
 
 ```bash
 npm run build
 ```
+
+Deployable builds (including custom staging modes) require `VITE_USE_BACKEND=true`
+and an absolute non-local HTTPS `VITE_API_BASE_URL`. Missing configuration, HTTP,
+localhost URLs, and demo mode fail the build. CI environment variables override
+local `.env` values. Use `npm run dev` for the existing localhost setup.
+
+See [Phase 1 production configuration](docs/phase-1-production.md) for the backend settings and startup checks.

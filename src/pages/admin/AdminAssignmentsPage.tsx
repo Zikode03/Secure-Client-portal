@@ -8,7 +8,7 @@ import { Button } from "../../components/ui/Button";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { SelectField } from "../../components/ui/SelectField";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
-import { ApiError, apiGetJson, apiPostJson, hasApiBaseUrl } from "../../services/apiClient";
+import { ApiError, apiDelete, apiGetJson, apiPostJson, hasApiBaseUrl } from "../../services/apiClient";
 import type { FirmClientAccount, ManagedAccountant } from "../../types/portal";
 
 interface BackendClientRecord {
@@ -156,7 +156,7 @@ export function AdminAssignmentsPage() {
         setFeedbackMessage(
           error instanceof ApiError
             ? error.message
-            : "The live assignments view could not be loaded, so the seeded workspace is still shown.",
+            : "The live assignments view could not be loaded. No demo records are being shown.",
         );
       }
     }
@@ -168,8 +168,8 @@ export function AdminAssignmentsPage() {
     };
   }, [backendMode]);
 
-  const clients = backendMode && liveClients ? liveClients : portal.adminClients;
-  const accountants = backendMode && liveAccountants ? liveAccountants : portal.managedAccountants;
+  const clients = backendMode ? liveClients ?? [] : portal.adminClients;
+  const accountants = backendMode ? liveAccountants ?? [] : portal.managedAccountants;
   const assignments = liveAssignments ?? [];
 
   const accountantOptions = useMemo(
@@ -270,6 +270,46 @@ export function AdminAssignmentsPage() {
     }
   }
 
+  async function handleBackupAssignmentChange(client: FirmClientAccount, accountantUserId: string) {
+    const currentBackup = assignments.find(
+      (assignment) => assignment.clientId === client.id && !assignment.isPrimary,
+    );
+    const selectedAssignment = assignments.find(
+      (assignment) =>
+        assignment.clientId === client.id && assignment.accountantUserId === accountantUserId,
+    );
+
+    if (selectedAssignment?.isPrimary) {
+      setFeedbackMessage("The primary accountant cannot also be selected as the backup accountant.");
+      return;
+    }
+
+    try {
+      if (currentBackup && currentBackup.accountantUserId !== accountantUserId) {
+        await apiDelete(`/api/assignments/${encodeURIComponent(currentBackup.id)}`);
+      }
+
+      if (accountantUserId && !selectedAssignment) {
+        await apiPostJson("/api/assignments", {
+          accountantUserId,
+          clientId: client.id,
+          isPrimary: false,
+        });
+      }
+
+      await reloadLiveAssignments();
+      setFeedbackMessage(
+        accountantUserId
+          ? `Backup accountant updated for ${client.clientName}.`
+          : `Backup accountant removed from ${client.clientName}.`,
+      );
+    } catch (error) {
+      setFeedbackMessage(
+        error instanceof ApiError ? error.message : "Could not update the backup accountant.",
+      );
+    }
+  }
+
 // Render output: this is the visual state users interact with.
   return (
     <div className="space-y-6">
@@ -340,12 +380,11 @@ export function AdminAssignmentsPage() {
               }
             />
             <SelectField
-              disabled={backendMode}
-              hint={backendMode ? "Backup accountant assignment is still using seeded demo behavior." : undefined}
+              hint={backendMode ? "Saved to the live backend assignment service." : undefined}
               label="Backup accountant"
               onChange={(event) => {
                 if (backendMode) {
-                  setFeedbackMessage("Backup accountant updates are not exposed by the live backend yet.");
+                  void handleBackupAssignmentChange(client, event.target.value);
                   return;
                 }
 

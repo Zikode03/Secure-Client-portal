@@ -161,7 +161,7 @@ describe("role-based route access", () => {
   it("legacy client invoices route redirects to the document workspace", async () => {
     renderAppAt("/client/invoices", createUser("client"));
 
-    expect(await screen.findByText("Document workspace")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "Documents" })).toBeInTheDocument();
   });
 
   it("legacy firm request detail route redirects to inbox detail view", async () => {

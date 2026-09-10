@@ -22,6 +22,7 @@ import { DocumentUploadModal } from "../../components/workflow/DocumentUploadMod
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
+import { KpiCard } from "../../components/ui/KpiCard";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
 import { useDisclosure } from "../../hooks/useDisclosure";
 import { useClientWorkflow } from "../../hooks/useClientWorkflow";
@@ -75,9 +76,6 @@ const blockingStatuses = new Set<MonthlyDocumentSlot["status"]>([
 
 const panelClass =
   "h-full rounded-2xl border border-[#dce6ef] bg-white shadow-[0_16px_38px_rgba(4,24,52,0.08)]";
-
-const iconTileClass =
-  "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#eef4fa] text-brand-700 ring-1 ring-[#d7e3ee]";
 
 const dashboardLinkClass =
   "client-dashboard-link font-semibold transition";
@@ -351,41 +349,18 @@ function SectionHeader({
 
 function MetricTile({
   accent = false,
-  helper,
   icon,
   label,
   progress,
   value,
 }: {
   accent?: boolean;
-  helper: string;
   icon: ReactNode;
   label: string;
   progress?: number;
   value: ReactNode;
 }) {
-  return (
-    <div className={cn(panelClass, "flex min-h-[152px] flex-col justify-between p-5")}>
-      <div className="flex items-start gap-4">
-        <div className={iconTileClass}>{icon}</div>
-        <div className="min-w-0 flex-1">
-          <p className="text-[0.82rem] font-semibold text-[#091333]">{label}</p>
-          <p className={cn("mt-2 text-[1.7rem] font-semibold tracking-tight", accent ? "text-brand-700" : "text-[#091333]")}>
-            {value}
-          </p>
-          <p className="mt-1 text-[0.78rem] leading-5 text-[#53617f]">{helper}</p>
-        </div>
-      </div>
-      {typeof progress === "number" ? (
-        <div className="client-dashboard-progress-track mt-4 h-1.5 rounded-full">
-          <div
-            className="client-dashboard-progress-fill h-1.5 rounded-full"
-            style={{ width: `${Math.max(0, Math.min(progress, 100))}%` }}
-          />
-        </div>
-      ) : null}
-    </div>
-  );
+  return <KpiCard accent={accent} icon={icon} label={label} progress={progress} value={value} />;
 }
 
 function PriorityIcon({ tone }: { tone: Tone }) {
@@ -1013,11 +988,6 @@ export function ClientDashboardPage() {
     [blockingSlots],
   );
 
-  const rejectedRequiredCount = useMemo(
-    () => blockingSlots.filter((slot) => slot.status === "rejected").length,
-    [blockingSlots],
-  );
-
   const highlightedEffectiveSlot = useMemo(
     () => getHighlightedSlot(effectiveMonthPack),
     [effectiveMonthPack],
@@ -1162,24 +1132,10 @@ export function ClientDashboardPage() {
     [effectiveRequests],
   );
 
-  const waitingOnClientCount = useMemo(
-    () => effectiveRequests.filter((request) => request.status === "awaiting_client").length,
-    [effectiveRequests],
-  );
-
   const complianceHealth =
     backendMode && liveDashboardData
       ? liveDashboardData.complianceScore
       : portal.clientComplianceCentre.overallScore;
-  const expiredComplianceCount =
-    backendMode && liveDashboardData
-      ? liveDashboardData.expiredComplianceCount
-      : portal.clientComplianceCentre.expiredDocuments.length;
-  const expiringComplianceCount =
-    backendMode && liveDashboardData
-      ? liveDashboardData.expiringComplianceCount
-      : portal.clientComplianceCentre.expiringDocuments.length;
-
   function handleOpenUpload(slot: MonthlyDocumentSlot | null) {
     if (!slot) {
       showFeedbackNotice("danger", "No slot selected", "Choose a checklist slot before uploading.");
@@ -1403,24 +1359,21 @@ export function ClientDashboardPage() {
         />
       ) : null}
 
-      <div className="grid items-stretch gap-5 md:grid-cols-2">
+      <div className="grid items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <MetricTile
           accent
-          helper={`${expiredComplianceCount} expired / ${expiringComplianceCount} expiring soon`}
           icon={<ShieldCheck aria-hidden="true" className="h-6 w-6" strokeWidth={1.8} />}
           label="Compliance Health"
           progress={complianceHealth}
           value={`${complianceHealth}%`}
         />
         <MetricTile
-          helper={waitingOnClientCount > 0 ? `${waitingOnClientCount} waiting on you` : "No requests waiting on you"}
           icon={<FileText aria-hidden="true" className="h-6 w-6" strokeWidth={1.8} />}
           label="Open Requests"
           progress={openRequestsCount > 0 ? Math.min(openRequestsCount * 18, 100) : 0}
           value={openRequestsCount}
         />
         <MetricTile
-          helper={rejectedRequiredCount > 0 ? `${rejectedRequiredCount} rejected` : "Required checklist blockers"}
           icon={<FileCheck2 aria-hidden="true" className="h-6 w-6" strokeWidth={1.8} />}
           label="Missing Documents"
           progress={missingRequiredCount > 0 ? Math.min(missingRequiredCount * 22, 100) : 0}
@@ -1428,7 +1381,6 @@ export function ClientDashboardPage() {
         />
         <MetricTile
           accent
-          helper={`${effectiveMonthPack.progressPercent}% complete`}
           icon={<FolderOpen aria-hidden="true" className="h-6 w-6" strokeWidth={1.8} />}
           label="Pack Progress"
           progress={effectiveMonthPack.progressPercent}

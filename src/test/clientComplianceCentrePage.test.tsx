@@ -39,11 +39,8 @@ describe("ClientComplianceCentrePage", () => {
     renderPage();
 
     expect(screen.getByText("Compliance Centre")).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Track compliance readiness, expiry risk, and audit activity across all regulated records.",
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Compliance calendar")).toBeInTheDocument();
+    expect(screen.getByText("Priority Items")).toBeInTheDocument();
   });
 
   it("renders summary insight widgets", () => {
@@ -95,13 +92,13 @@ describe("ClientComplianceCentrePage", () => {
   it("lets the user dismiss feedback", () => {
     renderPage();
 
-    fireEvent.click(screen.getByRole("button", { name: "Secure storage" }));
+    fireEvent.click(screen.getByRole("button", { name: "Download compliance report" }));
 
-    expect(screen.getByText("Secure storage active")).toBeInTheDocument();
+    expect(screen.getByText("Compliance report downloaded")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
 
-    expect(screen.queryByText("Secure storage active")).not.toBeInTheDocument();
+    expect(screen.queryByText("Compliance report downloaded")).not.toBeInTheDocument();
   });
 
   it("renders the compliance report preview", () => {

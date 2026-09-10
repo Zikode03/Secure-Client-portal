@@ -21,12 +21,12 @@ export function FirmWorkflowWorkspacePage({ defaultTab }: FirmWorkflowWorkspaceP
   const backendMode = hasApiBaseUrl();
   const [liveReviewCount, setLiveReviewCount] = useState<number | null>(null);
   const [liveOpenRequestCount, setLiveOpenRequestCount] = useState<number | null>(null);
-  const reviewCount = liveReviewCount ?? portal.getReviewQueue().length;
-  const openRequestCount =
-    liveOpenRequestCount ??
-    portal.clientWorkflow.requests.filter(
-      (request) => request.status !== "resolved" && request.status !== "closed",
-    ).length;
+  const reviewCount = backendMode ? liveReviewCount ?? 0 : portal.getReviewQueue().length;
+  const openRequestCount = backendMode
+    ? liveOpenRequestCount ?? 0
+    : portal.clientWorkflow.requests.filter(
+        (request) => request.status !== "resolved" && request.status !== "closed",
+      ).length;
 
   useEffect(() => {
     if (!backendMode) {

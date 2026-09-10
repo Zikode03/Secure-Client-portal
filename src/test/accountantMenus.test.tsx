@@ -59,6 +59,9 @@ describe("accountant overflow menus", () => {
     const actionButtons = await screen.findAllByRole("button", {
       name: "Open result actions",
     });
+    expect(screen.getByRole("heading", { name: "Client documents" })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Search client documents" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Request documents" })).toBeInTheDocument();
     fireEvent.click(actionButtons[0]);
 
     expect(screen.getByRole("button", { name: "Preview file" })).toBeInTheDocument();

@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
+import { AlertTriangle, BriefcaseBusiness, ClipboardCheck, ShieldX } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/Button";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
+import { KpiCard } from "../../components/ui/KpiCard";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
 import { ApiError, apiGetJson, hasApiBaseUrl } from "../../services/apiClient";
@@ -218,25 +220,29 @@ export function AdminDashboardPage() {
     {
       label: "Admin interventions",
       value: interventionCount,
-      helper: interventionCount === 0 ? "No immediate admin exceptions" : "Items requiring administrative attention",
+      icon: <AlertTriangle />,
+      progress: Math.min(interventionCount * 12, 100),
       action: () => navigate("/firm/admin/audit"),
     },
     {
       label: "Unassigned clients",
       value: unassignedClients.length,
-      helper: "Clients without accountant ownership",
+      icon: <BriefcaseBusiness />,
+      progress: Math.min(unassignedClients.length * 15, 100),
       action: () => navigate("/firm/admin/assignments"),
     },
     {
       label: "Restricted users",
       value: restrictedUsers.length,
-      helper: "Disabled, locked, or reset-pending accounts",
+      icon: <ShieldX />,
+      progress: Math.min(restrictedUsers.length * 15, 100),
       action: () => navigate("/firm/admin/users"),
     },
     {
       label: "Open reviews",
       value: openReviews.length,
-      helper: `${overloadedAccountants.length} accountants currently over threshold`,
+      icon: <ClipboardCheck />,
+      progress: Math.min(openReviews.length * 12, 100),
       action: () => navigate("/firm/review"),
     },
   ];
@@ -259,15 +265,9 @@ export function AdminDashboardPage() {
         <FeedbackBanner message={feedback.message} onDismiss={() => setFeedback(null)} title={feedback.title} tone={feedback.tone} />
       ) : null}
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {summaryCards.map((card) => (
-          <button className="text-left" key={card.label} onClick={card.action} type="button">
-            <SurfaceCard className="h-full space-y-2 transition hover:-translate-y-0.5 hover:shadow-md">
-              <p className="text-sm font-medium text-slate-500">{card.label}</p>
-              <p className="text-[2rem] font-semibold tracking-tight text-slate-950">{card.value}</p>
-              <p className="text-sm leading-6 text-slate-500">{card.helper}</p>
-            </SurfaceCard>
-          </button>
+          <KpiCard accent={card.value > 0} icon={card.icon} key={card.label} label={card.label} onClick={card.action} progress={card.progress} value={card.value} />
         ))}
       </div>
 

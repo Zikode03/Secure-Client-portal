@@ -751,6 +751,7 @@ interface ClientRequestPayload {
   priority: WorkflowRequest["priority"];
   actor: SessionUser;
   assignedAccountant: string;
+  requestType?: ComplianceRequestType;
 }
 
 interface ComplianceRequestPayload {
@@ -1407,16 +1408,16 @@ function buildTemplateWorkspace(client: FirmClientAccount, source: ClientWorkspa
 }
 
 export function PortalProvider({ children }: { children: ReactNode }) {
-  const [clientSeed, setClientSeed] = useState(() => portalService.getClientWorkflowSeed());
-  const [baseAccountantDashboard, setBaseAccountantDashboard] = useState(() =>
+  const [clientSeed] = useState(() => portalService.getClientWorkflowSeed());
+  const [baseAccountantDashboard] = useState(() =>
     portalService.getAccountantDashboard(),
   );
   const [baseAdminClients, setBaseAdminClients] = useState(() => portalService.getAdminClients());
-  const [baseAdminPolicies, setBaseAdminPolicies] = useState(() => portalService.getAdminPolicies());
-  const [baseClientComplianceCentre, setBaseClientComplianceCentre] = useState(() =>
+  const [baseAdminPolicies] = useState(() => portalService.getAdminPolicies());
+  const [baseClientComplianceCentre] = useState(() =>
     portalService.getClientComplianceCentre(),
   );
-  const [seededAccountantComplianceCentre, setSeededAccountantComplianceCentre] = useState(() =>
+  const [seededAccountantComplianceCentre] = useState(() =>
     portalService.getAccountantComplianceCentre(),
   );
   const initialClientState = useMemo(
@@ -1468,77 +1469,43 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     let isActive = true;
 
     const hydrateFromApi = async () => {
-      const [
-        nextClientSeed,
-        nextAccountantDashboard,
-        nextAdminClients,
-        nextAdminUsers,
-        nextAdminPolicies,
-        nextClientCompliance,
-        nextAccountantCompliance,
-      ] = await Promise.all([
-        portalServiceApi.getClientWorkflowSeed(),
-        portalServiceApi.getAccountantDashboard(),
-        portalServiceApi.getAdminClients(),
-        portalServiceApi.getAdminUsers(),
-        portalServiceApi.getAdminPolicies(),
-        portalServiceApi.getClientComplianceCentre(),
-        portalServiceApi.getAccountantComplianceCentre(),
-      ]);
+      if (!hasApiBaseUrl()) {
+        return;
+      }
 
+      // Composite demo endpoints are intentionally not used in backend mode. Pages load their
+      // live domain APIs directly; this provider only hydrates shared administration records.
+      const [clientsResult, usersResult] = await Promise.allSettled([
+        portalServiceApi.getAdminClients({ allowFallback: false }),
+        portalServiceApi.getAdminUsers(),
+      ]);
       if (!isActive) return;
 
-      setClientSeed(nextClientSeed);
-      setBaseAccountantDashboard(nextAccountantDashboard);
+      const nextAdminClients = clientsResult.status === "fulfilled" ? clientsResult.value : [];
+      const nextAdminUsers = usersResult.status === "fulfilled" ? usersResult.value : [];
       setBaseAdminClients(nextAdminClients);
-      setBaseAdminPolicies(nextAdminPolicies);
-      setBaseClientComplianceCentre(nextClientCompliance);
-      setSeededAccountantComplianceCentre(nextAccountantCompliance);
+      setAdminClients(clone(nextAdminClients));
+      setUserAccounts(clone(nextAdminUsers));
+
       if (nextAdminUsers.length > 0) {
-        setUserAccounts((current) => mergeUserAccounts(current, clone(nextAdminUsers)));
-        setManagedAccountants((current) => {
-          const currentByEmail = new Map(
-            current.map((accountant) => [accountant.email.toLowerCase(), accountant]),
-          );
-          const mergedAccountants = nextAdminUsers
+        setManagedAccountants(
+          nextAdminUsers
             .filter((user) => user.role === "accountant")
-            .map((user) => {
-              const existing = currentByEmail.get(user.email.toLowerCase());
-              const assignedClientCount = nextAdminClients.filter(
+            .map((user) => ({
+              id: user.id,
+              name: user.name,
+              email: user.email,
+              title: "Accountant",
+              assignedClientCount: nextAdminClients.filter(
                 (client) =>
                   client.assignedAccountantUserId === user.id ||
                   client.backupAccountantUserId === user.id,
-              ).length;
-              return existing
-                ? {
-                    ...existing,
-                    id: user.id,
-                    name: user.name,
-                    email: user.email,
-                    assignedClientCount,
-                  }
-                : {
-                    id: user.id,
-                    name: user.name,
-                    email: user.email,
-                    title: "Accountant",
-                    assignedClientCount,
-                    openReviews: 0,
-                    status: "capacity_available" as const,
-                  };
-            });
-
-          const mergedEmails = new Set(
-            mergedAccountants.map((accountant) => accountant.email.toLowerCase()),
-          );
-          const preserved = current.filter(
-            (accountant) => !mergedEmails.has(accountant.email.toLowerCase()),
-          );
-          return [...mergedAccountants, ...preserved];
-        });
+              ).length,
+              openReviews: 0,
+              status: "capacity_available" as const,
+            })),
+        );
       }
-      setAdminClients(clone(nextAdminClients));
-      setComplianceClients(clone(nextAccountantCompliance.clientStatuses ?? []));
     };
 
     void hydrateFromApi();
@@ -2728,6 +2695,7 @@ const assignedAccountantForApex =
         requestedByRole: payload.actor.role,
         assignedTo: payload.assignedAccountant,
         dueDate: payload.dueDate,
+        requestType: payload.requestType ?? "clarification_request",
         createdAt,
         comments: [
           {

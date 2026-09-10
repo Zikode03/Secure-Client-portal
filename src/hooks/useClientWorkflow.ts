@@ -116,7 +116,7 @@ export function useClientWorkflow(options: ClientWorkflowOptions = {}) {
   }
 
   function createClientRequest(
-    payload: Pick<WorkflowRequest, "title" | "description" | "dueDate" | "priority" | "monthLabel">,
+    payload: Pick<WorkflowRequest, "title" | "description" | "dueDate" | "priority" | "monthLabel" | "requestType">,
     actor: SessionUser,
   ) {
     const result = portal.createClientRequest({
@@ -127,6 +127,7 @@ export function useClientWorkflow(options: ClientWorkflowOptions = {}) {
       description: payload.description,
       dueDate: payload.dueDate,
       priority: payload.priority,
+      requestType: payload.requestType,
       actor,
       assignedAccountant: assignedAccountantName,
     });

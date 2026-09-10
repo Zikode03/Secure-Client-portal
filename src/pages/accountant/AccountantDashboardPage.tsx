@@ -8,6 +8,7 @@ import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
+import { KpiCard } from "../../components/ui/KpiCard";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
 import { ApiError, apiGetJson, hasApiBaseUrl } from "../../services/apiClient";
 import { portalServiceApi } from "../../services/portalApi";
@@ -18,8 +19,6 @@ import { getScopedClients, getScopedReviewQueue } from "../../utils/permissions"
 
 const panelClass =
   "h-full rounded-2xl border border-[#dce6ef] bg-white shadow-[0_16px_38px_rgba(4,24,52,0.08)]";
-const iconTileClass =
-  "flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#eef4fa] text-brand-700 ring-1 ring-[#d7e3ee]";
 const dashboardLinkClass =
   "client-dashboard-link font-medium transition";
 const dashboardActionButtonClass =
@@ -896,10 +895,10 @@ export function AccountantDashboardPage() {
   const portal = usePortal();
   const backendMode = hasApiBaseUrl();
   const [liveDashboardData, setLiveDashboardData] = useState<typeof portal.accountantDashboard | null>(null);
-  const [liveClients, setLiveClients] = useState(portal.adminClients);
+  const [liveClients, setLiveClients] = useState<typeof portal.adminClients>([]);
   const [dashboardNotice, setDashboardNotice] = useState<string>("");
   const data = backendMode && liveDashboardData ? liveDashboardData : portal.accountantDashboard;
-  const clientAccounts = backendMode && liveClients.length > 0 ? liveClients : portal.adminClients;
+  const clientAccounts = backendMode ? liveClients : portal.adminClients;
   const navigate = useNavigate();
   const [activeQueueTab, setActiveQueueTab] = useState<QueueTab>("reviews");
 // Local UI state: keeps track of what the user is seeing or editing right now.
@@ -1067,7 +1066,7 @@ export function AccountantDashboardPage() {
         setDashboardNotice(
           error instanceof ApiError
             ? error.message
-            : "The live dashboard could not be loaded, so the fallback workspace view is still being shown.",
+            : "The live dashboard could not be loaded. No demo records are being shown.",
         );
       }
     })();
@@ -1390,6 +1389,22 @@ export function AccountantDashboardPage() {
     );
   }
 
+  if (backendMode && !liveDashboardData) {
+    return (
+      <SurfaceCard className="rounded-2xl border border-slate-200 bg-white p-8 shadow-none">
+        {dashboardNotice ? (
+          <div className="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            {dashboardNotice}
+          </div>
+        ) : null}
+        <EmptyState
+          description={dashboardNotice || "Your live firm data is being loaded securely."}
+          title={dashboardNotice ? "Dashboard unavailable" : "Loading dashboard"}
+        />
+      </SurfaceCard>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-[1280px] space-y-6">
       {dashboardNotice ? (
@@ -1576,36 +1591,16 @@ export function AccountantDashboardPage() {
       </section>
 
       <section aria-label="Today's focus">
-        <div className="grid items-stretch gap-5 md:grid-cols-2">
+        <div className="grid items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {focusMetrics.map((metric) => (
-            <article
-              className={cn(panelClass, "flex min-h-[152px] flex-col justify-between p-5")}
+            <KpiCard
+              accent={metric.tone === "emerald" || metric.tone === "brand"}
+              icon={<FocusGlyph tone={metric.tone} />}
               key={metric.id}
-            >
-              <div className="flex items-start gap-4">
-                <div className={iconTileClass}>
-                  <FocusGlyph tone={metric.tone} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-[0.82rem] font-medium text-[#091333]">{metric.label}</p>
-                  <p
-                    className={cn(
-                      "mt-2 text-[1.7rem] font-medium tracking-tight",
-                      metric.tone === "emerald" || metric.tone === "brand" ? "text-brand-700" : "text-[#091333]",
-                    )}
-                  >
-                    {metric.value}
-                  </p>
-                  <p className="mt-1 text-[0.78rem] leading-5 text-[#53617f]">{metric.helper}</p>
-                </div>
-              </div>
-              <div className="client-dashboard-progress-track mt-4 h-1.5 rounded-full">
-                <div
-                  className="client-dashboard-progress-fill h-1.5 rounded-full"
-                  style={{ width: `${Math.max(0, Math.min(metric.progress, 100))}%` }}
-                />
-              </div>
-            </article>
+              label={metric.label}
+              progress={metric.progress}
+              value={metric.value}
+            />
           ))}
         </div>
       </section>

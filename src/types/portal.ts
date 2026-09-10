@@ -179,6 +179,9 @@ export interface DocumentRecord {
   rejectionReason?: string;
   comments: DocumentComment[];
   auditTrail: AuditTrailEntry[];
+  versionNumber?: number;
+  monthlyPackId?: string;
+  documentSlotId?: string;
   fileDataUrl?: string;
   fileMimeType?: string;
 }
@@ -404,6 +407,19 @@ export interface UploadSubmission {
   file?: File;
   fileDataUrl?: string;
   fileMimeType?: string;
+}
+
+export interface DocumentVersionRecord {
+  id: string;
+  documentId: string;
+  versionNumber: number;
+  name: string;
+  originalFileName: string;
+  fileType: string;
+  sizeBytes: number;
+  uploadedByUserId: string;
+  createdAtUtc: string;
+  isCurrent: boolean;
 }
 
 export interface ClientWorkflowSeed {

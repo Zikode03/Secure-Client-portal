@@ -44,8 +44,10 @@ describe("client page smoke coverage", () => {
 
   it("renders the document workspace", () => {
     renderClientPage(<ClientDocumentsPage />);
-    expect(screen.getByRole("heading", { name: "Document workspace" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Search results" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Documents" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Document register" })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Search documents" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Upload document" })).toBeInTheDocument();
   });
 
   it("keeps the document workspace open when a client selects a different result", async () => {

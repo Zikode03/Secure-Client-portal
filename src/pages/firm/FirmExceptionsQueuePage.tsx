@@ -127,7 +127,7 @@ export function FirmExceptionsQueuePage() {
           message:
             error instanceof ApiError
               ? error.message
-              : "The live exception queue could not be loaded, so the seeded view is still shown.",
+              : "The live exception queue could not be loaded. No demo records are being shown.",
         });
       }
     }
@@ -178,7 +178,7 @@ export function FirmExceptionsQueuePage() {
     );
   }, [portal]);
 
-  const visibleQueue = backendMode && liveQueue ? liveQueue : queue;
+  const visibleQueue = backendMode ? liveQueue ?? [] : queue;
 
   return (
     <>

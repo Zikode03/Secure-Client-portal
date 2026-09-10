@@ -2,6 +2,7 @@
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { AlertTriangle, Clock3, FileText, ShieldCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
@@ -9,6 +10,7 @@ import { ApiError, apiGetJson, hasApiBaseUrl } from "../../services/apiClient";
 import { portalServiceApi } from "../../services/portalApi";
 import { Button } from "../../components/ui/Button";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
+import { KpiCard } from "../../components/ui/KpiCard";
 import { SelectField } from "../../components/ui/SelectField";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
 import { TextField } from "../../components/ui/TextField";
@@ -275,7 +277,7 @@ export function AccountantComplianceCentrePage() {
         setFeedbackNotice({
           tone: "warning",
           title: "Live compliance workspace unavailable",
-          message: error instanceof ApiError ? error.message : "The live compliance workspace could not be loaded, so the seeded view is still shown.",
+          message: error instanceof ApiError ? error.message : "The live compliance workspace could not be loaded. No demo records are being shown.",
         });
       }
     }
@@ -288,8 +290,8 @@ export function AccountantComplianceCentrePage() {
   }, [backendMode, user]);
 
   const supplierRows = useMemo<SupplierRow[]>(() => {
-    if (backendMode && liveSupplierRows) {
-      return liveSupplierRows;
+    if (backendMode) {
+      return liveSupplierRows ?? [];
     }
 
     return clientStatuses.map((item, index) => {
@@ -554,77 +556,45 @@ export function AccountantComplianceCentrePage() {
           </div>
         </div>
 
-        <div className="grid gap-5 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
             {
               label: "Total Items",
               value: totalStatusCount,
-              helper: "12% from last month",
-              tone: "brand",
-              ring: "border-t-brand-600",
-              icon: "text-brand-600 bg-brand-50",
+              accent: true,
+              progress: 100,
+              icon: <FileText />,
             },
             {
               label: "Expiring Soon",
               value: expiringSoonCount,
-              helper: "0% from last month",
-              tone: "amber",
-              ring: "border-t-amber-500",
-              icon: "text-amber-600 bg-amber-50",
+              accent: expiringSoonCount > 0,
+              progress: expiringPercent,
+              icon: <Clock3 />,
             },
             {
               label: "Expired",
               value: expiredCount,
-              helper: "20% from last month",
-              tone: "rose",
-              ring: "border-t-rose-500",
-              icon: "text-rose-600 bg-rose-50",
+              accent: expiredCount > 0,
+              progress: expiredPercent,
+              icon: <AlertTriangle />,
             },
             {
               label: "Compliant",
               value: compliantCount,
-              helper: "8% from last month",
-              tone: "emerald",
-              ring: "border-t-emerald-500",
-              icon: "text-emerald-600 bg-emerald-50",
+              accent: true,
+              progress: compliantPercent,
+              icon: <ShieldCheck />,
             },
           ].map((metric) => (
-            <div
-              className={`rounded-2xl border border-[#dce6ef] ${metric.ring} border-t-[4px] bg-white px-6 py-5 shadow-[0_18px_38px_rgba(4,24,52,0.06)]`}
+            <KpiCard
+              accent={metric.accent}
+              icon={metric.icon}
               key={metric.label}
-            >
-              <div className="flex items-center gap-5">
-                <div className={`flex h-16 w-16 items-center justify-center rounded-full ${metric.icon}`}>
-                  {metric.tone === "brand" ? (
-                    <svg aria-hidden="true" className="h-8 w-8" fill="none" viewBox="0 0 24 24">
-                      <path d="M7.5 4.5h6l3 3v12h-9a2 2 0 0 1-2-2v-11a2 2 0 0 1 2-2Z" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.8" />
-                      <path d="M13.5 4.5v3h3M9 12h6M9 15.5h4" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
-                    </svg>
-                  ) : metric.tone === "amber" ? (
-                    <svg aria-hidden="true" className="h-8 w-8" fill="none" viewBox="0 0 24 24">
-                      <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.8" />
-                      <path d="M12 7.5v5l3 2" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
-                    </svg>
-                  ) : metric.tone === "rose" ? (
-                    <svg aria-hidden="true" className="h-8 w-8" fill="none" viewBox="0 0 24 24">
-                      <path d="M12 8v5m0 3h.01M5 20h14L12 4 5 20Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
-                    </svg>
-                  ) : (
-                    <svg aria-hidden="true" className="h-8 w-8" fill="none" viewBox="0 0 24 24">
-                      <path d="M12 3.75 18.25 6v5.25c0 4.1-2.55 7.25-6.25 9-3.7-1.75-6.25-4.9-6.25-9V6L12 3.75Z" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.8" />
-                      <path d="m9 12 2 2 4-4" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
-                    </svg>
-                  )}
-                </div>
-                <div>
-                  <p className="text-[0.86rem] font-medium text-[#061848]">{metric.label}</p>
-                  <p className="mt-1 text-[2rem] font-medium leading-none text-[#061848]">{metric.value}</p>
-                  <p className={`mt-2 text-[0.78rem] font-medium ${metric.tone === "rose" ? "text-rose-600" : metric.tone === "amber" ? "text-amber-600" : "text-emerald-600"}`}>
-                    {metric.tone === "amber" ? "- " : "↑ "}{metric.helper}
-                  </p>
-                </div>
-              </div>
-            </div>
+              label={metric.label}
+              progress={metric.progress}
+              value={metric.value}
+            />
           ))}
         </div>
 

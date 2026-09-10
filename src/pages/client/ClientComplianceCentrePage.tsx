@@ -989,7 +989,7 @@ function PrioritySection({
   onAction: (kind: PriorityKind, item: ComplianceDocumentRecord) => void;
 }) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <div className={cn("flex items-center gap-2 text-[0.95rem] font-semibold", titleClassName)}>
         <span>{icon}</span>
         <span>{title}</span>
@@ -997,7 +997,7 @@ function PrioritySection({
       </div>
 
       {items.length > 0 ? (
-        <div className="space-y-4">
+        <div className="divide-y divide-slate-100 border-y border-slate-100">
           {items.map((item) => {
             const badge = getPriorityBadge(kind, item);
             const category = getCategoryLabelForDocument(item);
@@ -1010,15 +1010,15 @@ function PrioritySection({
 
             return (
               <div
-                className={cn("relative overflow-hidden rounded-[1.4rem] px-5 py-5", navyInnerCardClass)}
+                className="relative px-1 py-3"
                 key={item.id}
               >
-                <span className={cn("absolute left-0 top-6 h-[4.6rem] w-1.5 rounded-r-full", accentClass)} />
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                  <div className="space-y-2 pl-4">
+                <span className={cn("absolute left-0 top-3 h-[3.2rem] w-1 rounded-r-full", accentClass)} />
+                <div className="flex flex-col gap-3 pl-3 md:flex-row md:items-center md:justify-between">
+                  <div className="space-y-1.5">
                     <div className="flex flex-wrap items-center gap-3">
-                      <h3 className="text-[1.05rem] font-semibold text-[#062044]">{titleText}</h3>
-                      <span className={cn("rounded-full px-3 py-1 text-[0.76rem] font-semibold ring-1", badge.className)}>
+                      <h3 className="text-sm font-semibold text-slate-950">{titleText}</h3>
+                      <span className={cn("rounded-full px-2 py-0.5 text-[0.68rem] font-semibold ring-1", badge.className)}>
                         {badge.label}
                       </span>
                     </div>
@@ -1037,7 +1037,7 @@ function PrioritySection({
                     ) : null}
                   </div>
 
-                  <div className="flex items-center gap-2 pl-4 md:pl-0">
+                  <div className="flex items-center gap-2">
                     <Button
                       className="client-dashboard-action-button h-10 rounded-xl border-0 px-4 text-sm font-semibold ring-0 hover:-translate-y-0.5 active:translate-y-px"
                       onClick={() => onAction(kind, item)}
@@ -1516,43 +1516,27 @@ export function ClientComplianceCentrePage() {
 
   return (
     <div className="client-compliance-centre portal-page mx-auto max-w-[1280px] space-y-6">
-      <section className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="space-y-1.5">
-          <h1 className="portal-page-title text-slate-950">
-            Compliance Centre
-          </h1>
-          <p className="max-w-3xl text-[0.96rem] leading-7 text-slate-500">
-            Track compliance readiness, expiry risk, and audit activity across all regulated records.
-          </p>
+      <section className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="sr-only">Compliance Centre</h1>
+        <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-slate-600">
+          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-emerald-800"><strong>{effectiveData.overallScore}%</strong> compliant</span>
+          <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-rose-700"><strong>{effectiveData.expiredDocuments.length}</strong> expired</span>
+          <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-amber-800"><strong>{effectiveData.expiringDocuments.length}</strong> expiring soon</span>
+          <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5"><strong>{effectiveData.missingRequiredDocuments.length}</strong> missing</span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 lg:justify-end">
+        <div className="flex items-center gap-2">
           <Button
             aria-label="Download compliance report"
-            className="client-dashboard-action-button h-12 rounded-2xl border-0 px-5 text-[0.95rem] font-semibold ring-0 hover:-translate-y-0.5 active:translate-y-px"
+            className="h-10 rounded-lg px-4 text-sm"
             onClick={downloadComplianceReport}
           >
             <DownloadIcon />
-            <span>Download Report</span>
-          </Button>
-          <Button
-            aria-label="Secure storage"
-            className="h-12 rounded-2xl border border-emerald-200 bg-emerald-50 px-5 text-[0.95rem] text-emerald-700 shadow-none hover:bg-emerald-100"
-            onClick={() =>
-              showNotice(
-                "info",
-                "Secure storage active",
-                "Compliance records remain encrypted, role-controlled, and retained without automatic deletion of expired versions.",
-              )
-            }
-            variant="secondary"
-          >
-            <ShieldIcon />
-            <span>Secure</span>
+            <span>Export report</span>
           </Button>
           <button
             aria-label="Open compliance alerts"
-            className="relative inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-transparent text-slate-700 transition hover:bg-white"
+            className="relative inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50"
             onClick={() =>
               showNotice(
                 "warning",
@@ -1563,7 +1547,7 @@ export function ClientComplianceCentrePage() {
             type="button"
           >
             <BellIcon />
-            <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-rose-500" />
+            <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-rose-500" />
           </button>
         </div>
       </section>
@@ -1586,22 +1570,25 @@ export function ClientComplianceCentrePage() {
         />
       ) : null}
 
-      <section className="grid gap-2.5 md:grid-cols-2 lg:grid-cols-5">
+      <section className="hidden">
         {insightCards.map((card) => (
-          <InsightCard
-            helper={card.helper}
-            icon={card.icon}
-            key={card.id}
-            label={card.label}
-            sparkline={card.sparkline}
-            tone={card.tone}
-            value={card.value}
-          />
+          <InsightCard helper={card.helper} icon={card.icon} key={card.id} label={card.label} sparkline={card.sparkline} tone={card.tone} value={card.value} />
         ))}
       </section>
 
       <section>
-        <SurfaceCard className={cn("rounded-[1.5rem] p-5", navyCardClass)}>
+        <details className="group rounded-xl border border-slate-200 bg-white">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3">
+            <div className="flex items-center gap-3">
+              <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-50 text-brand-700"><ClockIcon /></span>
+              <div>
+                <h2 className="text-sm font-semibold text-slate-950">Compliance calendar</h2>
+                <p className="text-xs text-slate-500">Deadlines, expiries and filing obligations</p>
+              </div>
+            </div>
+            <span className="flex items-center gap-2 text-xs font-semibold text-brand-700">Open calendar <span className="text-base transition group-open:rotate-180">⌄</span></span>
+          </summary>
+          <div className="border-t border-slate-200 p-5">
           <div>
             <div>
               <h2 className="text-[1.08rem] font-semibold text-[#062044]">Compliance Calendar</h2>
@@ -1830,7 +1817,8 @@ export function ClientComplianceCentrePage() {
               </div>
             </aside>
           </div>
-        </SurfaceCard>
+          </div>
+        </details>
 
         <SurfaceCard className="hidden rounded-[1.35rem] border-slate-200/90 p-5 shadow-[0_12px_30px_rgba(15,23,42,0.045)]">
           <div className="flex items-center justify-between gap-3">
@@ -1897,12 +1885,12 @@ export function ClientComplianceCentrePage() {
       </section>
 
       <section>
-        <SurfaceCard className={cn("overflow-hidden rounded-[1.9rem] p-0", navyCardClass)}>
-          <div className="border-b border-[#d7e1ef] px-6 py-6 lg:px-8">
+        <SurfaceCard className="overflow-hidden rounded-xl border border-slate-200 bg-white p-0 shadow-none">
+          <div className="border-b border-slate-200 px-5 py-4">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div>
-                <h2 className="text-[1.12rem] font-semibold text-[#062044]">Compliance Priorities</h2>
-                <p className="mt-1 text-[0.86rem] text-[#53617f]">Documents requiring immediate attention</p>
+                <h2 className="text-base font-semibold text-slate-950">Records needing attention</h2>
+                <p className="mt-1 text-sm text-slate-500">Expired, expiring and missing compliance evidence.</p>
               </div>
               <Button
                 className="client-dashboard-action-button h-10 rounded-2xl border-0 px-4 text-[0.9rem] font-semibold ring-0 hover:-translate-y-0.5 active:translate-y-px"
@@ -1918,7 +1906,7 @@ export function ClientComplianceCentrePage() {
               </Button>
             </div>
 
-            <div className="mt-5 flex flex-wrap gap-2">
+            <div className="mt-4 flex flex-wrap gap-2">
               {[
                 { id: "all" as const, label: "All priorities" },
                 { id: "expired" as const, label: "Expired" },
@@ -1928,10 +1916,10 @@ export function ClientComplianceCentrePage() {
                 <button
                   aria-pressed={priorityFilter === filterOption.id}
                   className={cn(
-                    "inline-flex h-9 items-center justify-center rounded-full px-4 text-[0.82rem] font-semibold transition hover:-translate-y-0.5 active:translate-y-px",
+                    "inline-flex h-8 items-center justify-center rounded-lg border px-3 text-xs font-semibold transition",
                     priorityFilter === filterOption.id
-                      ? "client-dashboard-action-button"
-                      : "client-dashboard-action-button",
+                      ? "border-brand-700 bg-brand-700 text-white"
+                      : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
                   )}
                   key={filterOption.id}
                   onClick={() => setPriorityFilter(filterOption.id)}
@@ -1943,7 +1931,7 @@ export function ClientComplianceCentrePage() {
             </div>
           </div>
 
-          <div className="space-y-7 px-6 py-6 lg:px-8">
+          <div className="space-y-5 px-5 py-4">
             {visiblePrioritySections.map((section) => (
               <PrioritySection
                 count={section.count}

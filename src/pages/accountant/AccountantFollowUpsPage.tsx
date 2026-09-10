@@ -18,6 +18,17 @@ import {
 import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
+import { inboxAttachmentAccept, validateInboxAttachment } from "../../components/inbox/attachmentPolicy";
+import { InboxContextDrawer } from "../../components/inbox/InboxContextDrawer";
+import { InboxStatusBadge } from "../../components/inbox/InboxStatusBadge";
+import { useInboxDraft } from "../../components/inbox/useInboxDraft";
+import { useInboxReadState } from "../../components/inbox/useInboxReadState";
+import {
+  inboxRequestKindOptions,
+  requestTitleForKind,
+  requestTypeForKind,
+  type InboxRequestKind,
+} from "../../components/inbox/requestKinds";
 import { Button } from "../../components/ui/Button";
 import { Modal } from "../../components/ui/Modal";
 import { SelectField } from "../../components/ui/SelectField";
@@ -31,6 +42,8 @@ import { getScopedClients, getScopedRequests } from "../../utils/permissions";
 import { toBackendRequestType, toFrontendRequestType } from "../../utils/requestTypeMapping";
 
 type ThreadFilter = "all" | "unread" | "resolved" | "unresolved";
+type ThreadSort = "activity" | "priority" | "due";
+const THREADS_PER_PAGE = 10;
 const ATTACHMENT_PREFIX = "[[attachment:";
 const ATTACHMENT_SUFFIX = "]]";
 
@@ -74,6 +87,11 @@ interface BackendRequestComment {
 interface BackendRequestWorkspace {
   request: BackendRequestRecord;
   comments: BackendRequestComment[];
+}
+
+interface BackendRequestReadState {
+  requestId: string;
+  lastReadAtUtc: string;
 }
 
 function defaultFollowUpDueDate() {
@@ -285,30 +303,67 @@ function ThreadListPane({
   requests,
   selectedRequestId,
   onSelectRequest,
+  filter,
+  onChangeFilter,
+  sortMode,
+  onChangeSort,
+  currentPage,
+  totalPages,
+  onNextPage,
+  onPrevPage,
+  readThreadIds,
   searchValue,
   onChangeSearch,
 }: {
   requests: WorkflowRequest[];
   selectedRequestId: string;
   onSelectRequest: (requestId: string) => void;
+  filter: ThreadFilter;
+  onChangeFilter: (value: ThreadFilter) => void;
+  sortMode: ThreadSort;
+  onChangeSort: (value: ThreadSort) => void;
+  currentPage: number;
+  totalPages: number;
+  onNextPage: () => void;
+  onPrevPage: () => void;
+  readThreadIds: ReadonlySet<string>;
   searchValue: string;
   onChangeSearch: (value: string) => void;
 }) {
-  const totalUnread = requests.reduce((sum, request) => sum + trailingClientUnreadCount(request), 0);
+  const totalUnread = requests.reduce(
+    (sum, request) => sum + (readThreadIds.has(request.id) ? 0 : trailingClientUnreadCount(request)),
+    0,
+  );
+  const filterOptions: Array<{ label: string; value: ThreadFilter }> = [
+    { label: "All", value: "all" },
+    { label: "Unread", value: "unread" },
+    { label: "Needs action", value: "unresolved" },
+    { label: "Resolved", value: "resolved" },
+  ];
 
   return (
-    <section
-      className={`${inboxPanelClass} flex h-full min-h-[660px] flex-col overflow-hidden rounded-[20px] border-0 bg-white/96 shadow-[0_18px_42px_rgba(15,23,42,0.07)] min-[1080px]:min-h-0`}
-    >
-      <div className="border-b border-slate-100/80 bg-[linear-gradient(180deg,#f7f8fb_0%,#f1f2f5_100%)] px-4 py-3 sm:px-4 lg:px-4 lg:py-3.5">
+    <section className="flex h-full min-h-[660px] flex-col overflow-hidden bg-white min-[1080px]:min-h-0 min-[1080px]:border-r min-[1080px]:border-slate-200">
+      <div className="border-b border-slate-200 bg-slate-50/70 px-4 py-3.5">
         <div className="mb-2 flex items-center justify-between gap-3 px-1">
           <div>
             <p className="text-[0.72rem] font-medium uppercase tracking-[0.12em] text-[#7b879e]">Threads</p>
             <p className="text-[0.88rem] font-medium text-[#091333]">{requests.length} active conversations</p>
           </div>
-          <span className="rounded-full bg-[#edf6f2] px-2.5 py-1 text-[0.68rem] font-medium text-[#087d69]">
-            {totalUnread} unread
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="rounded-full bg-[#edf6f2] px-2.5 py-1 text-[0.68rem] font-medium text-[#087d69]">
+              {totalUnread} unread
+            </span>
+            <select
+              aria-label="Sort conversations"
+              className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-[0.68rem] font-semibold text-slate-600 outline-none"
+              onChange={(event) => onChangeSort(event.target.value as ThreadSort)}
+              value={sortMode}
+            >
+              <option value="activity">Latest</option>
+              <option value="priority">Priority</option>
+              <option value="due">Due date</option>
+            </select>
+          </div>
         </div>
         <div className="flex h-10 items-center gap-3 rounded-xl border border-slate-200/80 bg-white px-3 shadow-[0_8px_18px_rgba(15,23,42,0.05)]">
           <Search aria-hidden="true" className="h-4 w-4 text-slate-500" />
@@ -319,13 +374,27 @@ function ThreadListPane({
             value={searchValue}
           />
         </div>
+        <div className="mt-3 grid grid-cols-4 gap-1 rounded-xl bg-slate-100 p-1">
+          {filterOptions.map((option) => (
+            <button
+              className={`min-w-0 rounded-lg px-2 py-2 text-[0.68rem] font-semibold transition ${
+                filter === option.value ? "bg-white text-[#091333] shadow-sm" : "text-[#64748b] hover:text-[#091333]"
+              }`}
+              key={option.value}
+              onClick={() => onChangeFilter(option.value)}
+              type="button"
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="inbox-scroll-region min-h-0 flex-1 bg-white pb-3 pr-1">
         {requests.map((request, index) => {
           const selected = request.id === selectedRequestId;
           const lastComment = request.comments[request.comments.length - 1];
-          const unread = trailingClientUnreadCount(request);
+          const unread = readThreadIds.has(request.id) ? 0 : trailingClientUnreadCount(request);
           const sectionLabel = inboxSectionLabel(lastActivity(request));
           const previousRequest = requests[index - 1];
           const previousSection = previousRequest ? inboxSectionLabel(lastActivity(previousRequest)) : "";
@@ -361,17 +430,7 @@ function ThreadListPane({
                   </p>
                 </div>
                 <div className="flex min-h-12 shrink-0 flex-col items-end justify-between gap-1 pt-0.5">
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-[0.58rem] font-medium uppercase tracking-[0.08em] ${
-                      request.status === "awaiting_client"
-                        ? "bg-amber-50 text-amber-700"
-                        : request.status === "resolved" || request.status === "closed"
-                          ? "bg-emerald-50 text-emerald-700"
-                          : "bg-slate-100 text-slate-600"
-                    }`}
-                  >
-                    {request.status.replace(/_/g, " ")}
-                  </span>
+                  <InboxStatusBadge audience="firm" className="max-w-[112px] justify-center text-center text-[0.6rem]" status={request.status} />
                   {unread > 0 ? (
                     <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-[#087d69] px-1.5 text-[0.58rem] font-semibold leading-none text-white">
                       {unread}
@@ -382,6 +441,13 @@ function ThreadListPane({
             </div>
           );
         })}
+      </div>
+      <div className="flex min-h-[58px] items-center justify-between border-t border-slate-200 px-4 py-3 text-xs text-slate-500">
+        <span>Page {currentPage} of {totalPages}</span>
+        <div className="flex items-center gap-4">
+          <button disabled={currentPage <= 1} onClick={onPrevPage} type="button" className="font-semibold text-slate-700 disabled:opacity-35">Prev</button>
+          <button disabled={currentPage >= totalPages} onClick={onNextPage} type="button" className="font-semibold text-slate-700 disabled:opacity-35">Next</button>
+        </div>
       </div>
     </section>
   );
@@ -429,8 +495,10 @@ function ConversationPane({
   const [addAuditNote, setAddAuditNote] = useState(false);
   const [isStarred, setIsStarred] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
-  const [isSummaryExpanded, setIsSummaryExpanded] = useState(true);
+  const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
   const [attachedFile, setAttachedFile] = useState<ParsedAttachment | null>(null);
+  const [attachmentError, setAttachmentError] = useState("");
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const replyInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -453,6 +521,12 @@ function ConversationPane({
       return;
     }
 
+    const validationError = validateInboxAttachment(file);
+    if (validationError) {
+      setAttachmentError(validationError);
+      return;
+    }
+
     const dataUrl = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : "");
@@ -466,6 +540,7 @@ function ConversationPane({
       size: file.size,
       dataUrl,
     });
+    setAttachmentError("");
   }
 
   function handleComposerSend() {
@@ -482,14 +557,15 @@ function ConversationPane({
   }
 
   return (
-    <section className="flex h-full min-h-[720px] flex-col bg-transparent min-[1080px]:min-h-0">
-      <div className={`${inboxPanelClass} flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white`}>
+    <section className="flex h-full min-h-[720px] flex-col overflow-y-auto bg-white min-[1080px]:min-h-0">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white">
         <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 px-4 py-4 sm:px-5 lg:px-6">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2.5">
               <p className={`inline-flex rounded-full px-3 py-1 text-[0.62rem] font-medium ${priorityBadgeClass(request.priority)}`}>
                 {request.priority.toUpperCase()} PRIORITY
               </p>
+              <InboxStatusBadge audience="firm" status={request.status} />
               <p className="text-xs font-medium text-[#6f7d96]">
                 {formatDateLabel(lastActivity(request))}, {formatThreadTime(lastActivity(request))}
               </p>
@@ -501,13 +577,19 @@ function ConversationPane({
               {request.title}
             </h2>
             <div className="mt-2 space-y-1 text-sm text-[#6c7b94]">
-              <p>
-                Client: <span className="text-[#4b5f7c]">{request.assignedTo}</span>
-              </p>
-              <p>{request.clientName}</p>
+              <p>Client: <span className="font-medium text-[#4b5f7c]">{request.clientName}</span></p>
+              <p>Assigned to: <span className="text-[#4b5f7c]">{request.assignedTo}</span></p>
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1 rounded-full border border-slate-200/80 bg-white px-2 py-1 shadow-[0_8px_20px_rgba(15,23,42,0.06)]">
+            <button
+              aria-label="Open conversation details"
+              className="h-9 rounded-full px-3 text-xs font-semibold text-[#315b9c] transition hover:bg-slate-50"
+              onClick={() => setDetailsOpen(true)}
+              type="button"
+            >
+              Details
+            </button>
             <button
               aria-label={isStarred ? "Unstar thread" : "Star thread"}
               aria-pressed={isStarred}
@@ -533,13 +615,6 @@ function ConversationPane({
             >
               <Forward aria-hidden="true" className="h-4 w-4" />
             </button>
-          </div>
-        </div>
-
-        <div className="border-b border-slate-100 bg-[#fbfcfe] px-4 py-3 sm:px-5 lg:px-6">
-          <div className="flex flex-wrap items-center gap-2 text-[0.72rem] font-medium text-[#6f7d96]">
-            <span className="rounded-full bg-white px-2.5 py-1 shadow-[0_4px_10px_rgba(15,23,42,0.04)]">Client and accountant conversation</span>
-            <span className="rounded-full bg-[#eef6f2] px-2.5 py-1 text-[#087d69]">Reply here to continue the thread</span>
           </div>
         </div>
 
@@ -621,12 +696,18 @@ function ConversationPane({
               Attached: {attachedFile.name}
             </div>
           ) : null}
+          {attachmentError ? (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              {attachmentError}
+            </div>
+          ) : null}
           <div className="flex flex-wrap items-center gap-3">
             <div className="flex h-[52px] min-w-[240px] flex-1 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 ring-brand-300 transition focus-within:ring-2">
               <label className="inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-md text-[#061b41] transition hover:bg-[#0a2f66]/10">
                 <Paperclip aria-hidden="true" className="h-4.5 w-4.5" />
                 <span className="sr-only">Attach</span>
                 <input
+                  accept={inboxAttachmentAccept}
                   className="hidden"
                   onChange={(event) => void handleAttachmentSelected(event.target.files?.[0] ?? null)}
                   type="file"
@@ -812,6 +893,7 @@ function ConversationPane({
           </>
         ) : null}
       </section>
+      <InboxContextDrawer audience="firm" isOpen={detailsOpen} onClose={() => setDetailsOpen(false)} request={request} />
     </section>
   );
 }
@@ -832,13 +914,16 @@ export function AccountantFollowUpsPage() {
 
   const [selectedClientId, setSelectedClientId] = useState(scopedClients[0]?.id ?? "");
   const [selectedRequestId, setSelectedRequestId] = useState("");
-  const [messageDraft, setMessageDraft] = useState("");
+  const { hydrateRead, markRead, readThreadIds } = useInboxReadState("firm", user?.id);
   const [sendAsInternal, setSendAsInternal] = useState(false);
   const [inboxNotice, setInboxNotice] = useState("");
   const [threadSearch, setThreadSearch] = useState("");
   const [threadFilter, setThreadFilter] = useState<ThreadFilter>("all");
+  const [threadSort, setThreadSort] = useState<ThreadSort>("activity");
+  const [currentPage, setCurrentPage] = useState(1);
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   const [requestTitle, setRequestTitle] = useState("");
+  const [requestKind, setRequestKind] = useState<InboxRequestKind>("document");
   const [requestDetails, setRequestDetails] = useState("");
   const [requestDueDate, setRequestDueDate] = useState(defaultFollowUpDueDate());
   const [requestPriority, setRequestPriority] = useState<WorkflowRequest["priority"]>("high");
@@ -857,12 +942,17 @@ export function AccountantFollowUpsPage() {
 
   const scopedRequests = useMemo(() => {
     if (backendMode) {
-      return selectedClient ? liveRequests.filter((request) => request.clientId === selectedClient.id) : liveRequests;
+      return liveRequests;
     }
 
-    if (!selectedWorkspace) return [] as WorkflowRequest[];
-    return getScopedRequests(user, selectedWorkspace.requests, portal.adminClients);
-  }, [backendMode, liveRequests, portal.adminClients, selectedClient, selectedWorkspace, user]);
+    return scopedClients.flatMap((client) =>
+      getScopedRequests(
+        user,
+        portal.getClientWorkspace(client.id).requests,
+        portal.adminClients,
+      ),
+    );
+  }, [backendMode, liveRequests, portal, scopedClients, user]);
 
   async function loadLiveInbox() {
     if (!backendMode || !user) {
@@ -872,10 +962,12 @@ export function AccountantFollowUpsPage() {
     setLiveLoading(true);
 
     try {
-      const [clients, requests] = await Promise.all([
+      const [clients, requests, readStates] = await Promise.all([
         portalServiceApi.getAdminClients(),
         apiGetJson<BackendRequestRecord[]>("/api/requests"),
+        apiGetJson<BackendRequestReadState[]>("/api/requests/read-state").catch(() => []),
       ]);
+      hydrateRead(readStates.map((state) => state.requestId));
 
       const workspaces = await Promise.all(
         requests.map((request) =>
@@ -912,6 +1004,8 @@ export function AccountantFollowUpsPage() {
     }
 
     void loadLiveInbox();
+    const refreshTimer = window.setInterval(() => void loadLiveInbox(), 20_000);
+    return () => window.clearInterval(refreshTimer);
   }, [backendMode, user?.id]);
 
   useEffect(() => {
@@ -966,7 +1060,7 @@ export function AccountantFollowUpsPage() {
     const normalizedSearch = threadSearch.trim().toLowerCase();
     const filtered = scopedRequests.filter((request) => {
       const unreadCount = trailingClientUnreadCount(request);
-      if (threadFilter === "unread" && unreadCount === 0) return false;
+      if (threadFilter === "unread" && (readThreadIds.has(request.id) || unreadCount === 0)) return false;
       if (threadFilter === "resolved" && !["resolved", "closed"].includes(request.status)) return false;
       if (threadFilter === "unresolved" && ["resolved", "closed"].includes(request.status)) return false;
       if (!normalizedSearch) return true;
@@ -978,24 +1072,53 @@ export function AccountantFollowUpsPage() {
       const leftOpen = ["resolved", "closed"].includes(left.status) ? 1 : 0;
       const rightOpen = ["resolved", "closed"].includes(right.status) ? 1 : 0;
       if (leftOpen !== rightOpen) return leftOpen - rightOpen;
+      if (threadSort === "priority") {
+        const rank = { high: 0, medium: 1, low: 2 } as const;
+        if (rank[left.priority] !== rank[right.priority]) return rank[left.priority] - rank[right.priority];
+      }
+      if (threadSort === "due") return left.dueDate.localeCompare(right.dueDate);
       return lastActivity(right).localeCompare(lastActivity(left));
     });
-  }, [scopedRequests, threadFilter, threadSearch]);
+  }, [readThreadIds, scopedRequests, threadFilter, threadSearch, threadSort]);
+
+  const totalPages = Math.max(1, Math.ceil(visibleRequests.length / THREADS_PER_PAGE));
+  const pagedRequests = useMemo(() => {
+    const page = Math.min(currentPage, totalPages);
+    const start = (page - 1) * THREADS_PER_PAGE;
+    return visibleRequests.slice(start, start + THREADS_PER_PAGE);
+  }, [currentPage, totalPages, visibleRequests]);
+
+  function handleSelectRequest(requestId: string) {
+    setSelectedRequestId(requestId);
+    markRead(requestId);
+    if (backendMode) {
+      void apiPostJson(`/api/requests/${encodeURIComponent(requestId)}/read`, {}).catch(() => undefined);
+    }
+  }
 
   const activeRequest = useMemo(
-    () => visibleRequests.find((request) => request.id === selectedRequestId) ?? visibleRequests[0] ?? null,
-    [selectedRequestId, visibleRequests],
+    () => pagedRequests.find((request) => request.id === selectedRequestId) ?? pagedRequests[0] ?? null,
+    [pagedRequests, selectedRequestId],
   );
+  const [messageDraft, setMessageDraft] = useInboxDraft("firm", activeRequest?.id ?? "new-thread");
 
   useEffect(() => {
-    if (!visibleRequests.length) {
+    if (!pagedRequests.length) {
       setSelectedRequestId("");
       return;
     }
-    if (!visibleRequests.some((request) => request.id === selectedRequestId)) {
-      setSelectedRequestId(visibleRequests[0].id);
+    if (!pagedRequests.some((request) => request.id === selectedRequestId)) {
+      setSelectedRequestId(pagedRequests[0].id);
     }
-  }, [selectedRequestId, visibleRequests]);
+  }, [pagedRequests, selectedRequestId]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [threadFilter, threadSearch, threadSort]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
 
   function addLifecycleNote(note: string) {
     if (!activeRequest || !user) return;
@@ -1177,8 +1300,8 @@ export function AccountantFollowUpsPage() {
             relatedDocumentId: string | null;
           }>("/api/requests", {
             clientId: selectedClient.id,
-            requestType: toBackendRequestType("missing_document_request"),
-            title: `Document request: ${title}`,
+            requestType: toBackendRequestType(requestTypeForKind(requestKind)),
+            title: requestTitleForKind(requestKind, title),
             description,
             priority: requestPriority,
             dueDateUtc: new Date(`${requestDueDate}T17:00:00.000Z`).toISOString(),
@@ -1189,6 +1312,7 @@ export function AccountantFollowUpsPage() {
           setRequestFormError("");
           setIsRequestModalOpen(false);
           setRequestTitle("");
+          setRequestKind("document");
           setRequestDetails("");
           setRequestDueDate(defaultFollowUpDueDate());
           setRequestPriority("high");
@@ -1207,11 +1331,12 @@ export function AccountantFollowUpsPage() {
       clientId: selectedClient.id,
       clientName: selectedClient.clientName,
       monthLabel: activeRequest?.monthLabel ?? selectedWorkspace?.monthPack.monthLabel ?? formatMonthLabel(new Date().toISOString()),
-      title: `Document request: ${title}`,
+      title: requestTitleForKind(requestKind, title),
       description,
       dueDate: new Date(`${requestDueDate}T17:00:00.000Z`).toISOString(),
       priority: requestPriority,
       relatedDocumentId: activeRequest?.relatedDocumentId,
+      requestType: requestTypeForKind(requestKind),
     });
 
     setInboxNotice(result.message);
@@ -1223,6 +1348,7 @@ export function AccountantFollowUpsPage() {
     setRequestFormError("");
     setIsRequestModalOpen(false);
     setRequestTitle("");
+    setRequestKind("document");
     setRequestDetails("");
     setRequestDueDate(defaultFollowUpDueDate());
     setRequestPriority("high");
@@ -1256,24 +1382,30 @@ export function AccountantFollowUpsPage() {
   }
 
   return (
-    <div className="accountant-inbox-page mx-auto flex w-full max-w-[1680px] flex-col gap-4 pb-8 min-[1080px]:h-full min-[1080px]:min-h-0 min-[1080px]:overflow-hidden min-[1080px]:pb-0">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="accountant-inbox-page mx-auto flex w-full max-w-[1440px] flex-col gap-5 pb-8 min-[1080px]:h-full min-[1080px]:min-h-0 min-[1080px]:overflow-hidden min-[1080px]:pb-0">
+      <header className="flex flex-wrap items-end justify-between gap-4 border-b border-slate-200 pb-5">
         <div>
-          <p className="text-[0.72rem] font-medium uppercase tracking-[0.12em] text-[#7b879e]">Client workflow</p>
-          <p className="text-[0.92rem] font-medium text-[#091333]">
-            Request documents from {selectedClient.clientName}
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">Firm workspace</p>
+          <h1 className="mt-1 text-3xl font-semibold tracking-tight text-[#091333]">Inbox</h1>
+          <p className="mt-1 max-w-2xl text-[0.95rem] leading-6 text-[#53617f]">
+            Requests and conversations across all clients assigned to you.
           </p>
+          <span className="sr-only">Request documents from {selectedClient.clientName}</span>
         </div>
-        <Button
-          className="client-inbox-primary-button h-11 rounded-xl border-0 px-4 text-sm font-medium ring-0"
-          onClick={() => {
-            setRequestFormError("");
-            setIsRequestModalOpen(true);
-          }}
-        >
-          Request document
-        </Button>
-      </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="text-sm font-medium text-slate-500">{visibleRequests.length} conversations</span>
+          <Button
+            aria-label="Request document"
+            className="client-inbox-primary-button h-11 rounded-xl border-0 px-4 text-sm font-medium ring-0"
+            onClick={() => {
+              setRequestFormError("");
+              setIsRequestModalOpen(true);
+            }}
+          >
+            New request
+          </Button>
+        </div>
+      </header>
 
       {inboxNotice ? (
         <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-[#53617f] shadow-[0_8px_18px_rgba(4,24,52,0.05)]">
@@ -1282,11 +1414,20 @@ export function AccountantFollowUpsPage() {
       ) : null}
 
       {visibleRequests.length > 0 && activeRequest ? (
-        <div className="grid grid-cols-1 items-start gap-4 min-[1080px]:min-h-0 min-[1080px]:flex-1 min-[1080px]:items-stretch min-[1080px]:grid-cols-[minmax(280px,320px)_minmax(0,1fr)] min-[1400px]:grid-cols-[minmax(300px,350px)_minmax(0,1.52fr)] xl:gap-5">
+        <div className="grid grid-cols-1 items-start overflow-hidden rounded-2xl border border-slate-200 bg-white min-[1080px]:min-h-0 min-[1080px]:flex-1 min-[1080px]:items-stretch min-[1080px]:grid-cols-[minmax(300px,340px)_minmax(0,1fr)]">
           <ThreadListPane
+            filter={threadFilter}
+            onChangeFilter={setThreadFilter}
+            sortMode={threadSort}
+            onChangeSort={setThreadSort}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onNextPage={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
+            onPrevPage={() => setCurrentPage((page) => Math.max(1, page - 1))}
             onChangeSearch={setThreadSearch}
-            onSelectRequest={setSelectedRequestId}
-            requests={visibleRequests}
+            onSelectRequest={handleSelectRequest}
+            readThreadIds={readThreadIds}
+            requests={pagedRequests}
             searchValue={threadSearch}
             selectedRequestId={activeRequest.id}
           />
@@ -1464,9 +1605,23 @@ export function AccountantFollowUpsPage() {
               </div>
             </div>
             <div className="space-y-4">
+              <SelectField
+                id="accountant-request-client"
+                label="Client"
+                onChange={(event) => setSelectedClientId(event.target.value)}
+                options={scopedClients.map((client) => ({ label: client.clientName, value: client.id }))}
+                value={selectedClient.id}
+              />
+              <SelectField
+                id="accountant-request-kind"
+                label="Message type"
+                onChange={(event) => setRequestKind(event.target.value as InboxRequestKind)}
+                options={inboxRequestKindOptions}
+                value={requestKind}
+              />
               <TextField
                 id="accountant-request-title"
-                label="Document needed"
+                label="Subject"
                 onChange={(event) => setRequestTitle(event.target.value)}
                 placeholder="e.g. Signed annual financial statements"
                 value={requestTitle}

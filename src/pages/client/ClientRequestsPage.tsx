@@ -12,6 +12,17 @@ import {
   Star,
 } from "lucide-react";
 import { useAuth } from "../../app/auth";
+import { inboxAttachmentAccept, validateInboxAttachment } from "../../components/inbox/attachmentPolicy";
+import { InboxContextDrawer } from "../../components/inbox/InboxContextDrawer";
+import { InboxStatusBadge } from "../../components/inbox/InboxStatusBadge";
+import { useInboxDraft } from "../../components/inbox/useInboxDraft";
+import { useInboxReadState } from "../../components/inbox/useInboxReadState";
+import {
+  inboxRequestKindOptions,
+  requestTitleForKind,
+  requestTypeForKind,
+  type InboxRequestKind,
+} from "../../components/inbox/requestKinds";
 import { Button } from "../../components/ui/Button";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
 import { Modal } from "../../components/ui/Modal";
@@ -73,6 +84,11 @@ interface BackendRequestComment {
 interface BackendRequestWorkspace {
   request: BackendRequestRecord;
   comments: BackendRequestComment[];
+}
+
+interface BackendRequestReadState {
+  requestId: string;
+  lastReadAtUtc: string;
 }
 
 interface BackendAssignmentRecord {
@@ -333,6 +349,7 @@ function ThreadListPane({
   onPrevPage,
   onToggleSort,
   sortDirection,
+  readThreadIds,
 }: {
   requests: WorkflowRequest[];
   selectedRequestId: string;
@@ -348,10 +365,14 @@ function ThreadListPane({
   onPrevPage: () => void;
   onToggleSort: () => void;
   sortDirection: SortDirection;
+  readThreadIds: ReadonlySet<string>;
 }) {
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
   const filterMenuRef = useRef<HTMLDivElement | null>(null);
-  const unreadTotal = requests.reduce((sum, request) => sum + unreadFromAccountantCount(request), 0);
+  const unreadTotal = requests.reduce(
+    (sum, request) => sum + (readThreadIds.has(request.id) ? 0 : unreadFromAccountantCount(request)),
+    0,
+  );
   const filterOptions: Array<{ label: string; value: ThreadFilter; count?: number }> = [
     { label: "Inbox", value: "all" },
     { label: "Unread", value: "unread", count: unreadTotal },
@@ -375,8 +396,8 @@ function ThreadListPane({
   }, [isFilterMenuOpen]);
 
   return (
-    <section className={`${inboxPanelClass} flex h-full min-h-[660px] flex-col overflow-hidden rounded-[20px] border-0 bg-white/96 shadow-[0_18px_42px_rgba(15,23,42,0.07)] min-[1080px]:min-h-0`}>
-      <div className="border-b border-slate-100/80 bg-[linear-gradient(180deg,#f7f8fb_0%,#f1f2f5_100%)] px-4 py-3 sm:px-4 lg:px-4 lg:py-3.5">
+    <section className="flex h-full min-h-[660px] flex-col overflow-hidden bg-white min-[1080px]:min-h-0 min-[1080px]:border-r min-[1080px]:border-slate-200">
+      <div className="border-b border-slate-200 bg-slate-50/70 px-4 py-3.5">
         <div className="mb-2 flex items-center justify-between gap-3 px-1">
           <div>
             <p className="text-[0.72rem] font-medium uppercase tracking-[0.12em] text-[#7b879e]">Threads</p>
@@ -386,7 +407,7 @@ function ThreadListPane({
               <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[#087d69] px-1 text-[0.56rem] font-semibold leading-none text-white">
                 {unreadTotal}
               </span>
-              New from accountant
+              Unread
             </span>
             <div className="relative flex shrink-0 items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[#061b41]" ref={filterMenuRef}>
             <button
@@ -454,12 +475,26 @@ function ThreadListPane({
             value={searchValue}
           />
         </div>
+        <div className="mt-3 grid grid-cols-4 gap-1 rounded-xl bg-slate-100 p-1">
+          {filterOptions.map((option) => (
+            <button
+              className={`min-w-0 rounded-lg px-2 py-2 text-[0.68rem] font-semibold transition ${
+                filter === option.value ? "bg-white text-[#091333] shadow-sm" : "text-[#64748b] hover:text-[#091333]"
+              }`}
+              key={option.value}
+              onClick={() => onChangeFilter(option.value)}
+              type="button"
+            >
+              {option.value === "all" ? "All" : option.value === "unresolved" ? "Needs action" : option.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="inbox-scroll-region min-h-0 flex-1 bg-white pb-3 pr-1">
         {requests.map((request, index) => {
           const selected = request.id === selectedRequestId;
-          const unread = unreadFromAccountantCount(request);
+          const unread = readThreadIds.has(request.id) ? 0 : unreadFromAccountantCount(request);
           const lastComment = request.comments[request.comments.length - 1];
           const preview = plainMessageText(lastComment?.message ?? request.description);
           const sectionLabel = inboxSectionLabel(lastActivity(request));
@@ -494,17 +529,7 @@ function ThreadListPane({
                   <p className="mt-1 line-clamp-1 text-[0.78rem] font-medium leading-5 text-[#5f7090]">{preview}</p>
                 </div>
                 <div className="flex min-h-12 shrink-0 flex-col items-end justify-between gap-1 pt-0.5">
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-[0.58rem] font-medium uppercase tracking-[0.08em] ${
-                      request.status === "awaiting_client"
-                        ? "bg-amber-50 text-amber-700"
-                        : request.status === "resolved" || request.status === "closed"
-                          ? "bg-emerald-50 text-emerald-700"
-                          : "bg-slate-100 text-slate-600"
-                    }`}
-                  >
-                    {request.status.replace(/_/g, " ")}
-                  </span>
+                  <InboxStatusBadge audience="client" className="max-w-[112px] justify-center text-center text-[0.6rem]" status={request.status} />
                   {unread > 0 ? (
                     <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-[#087d69] px-1.5 text-[0.58rem] font-semibold leading-none text-white">
                       {unread}
@@ -548,13 +573,15 @@ function ConversationPane({
   canStar = true,
 }: {
   request: WorkflowRequest;
-  onReply: (requestId: string, message: string) => ActionResult;
+  onReply: (requestId: string, message: string) => ActionResult | Promise<ActionResult>;
   onToggleStar: (requestId: string) => void;
   canStar?: boolean;
 }) {
-  const [replyMessage, setReplyMessage] = useState("");
+  const [replyMessage, setReplyMessage] = useInboxDraft("client", request.id);
   const [attachedFile, setAttachedFile] = useState<ParsedAttachment | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [sendError, setSendError] = useState("");
+  const [deliveryState, setDeliveryState] = useState<"idle" | "sending" | "sent" | "failed">("idle");
   const [lastFailedPayload, setLastFailedPayload] = useState<{ requestId: string; message: string } | null>(null);
   const [messageContextMenu, setMessageContextMenu] = useState<MessageContextMenuState | null>(null);
   const replyInputRef = useRef<HTMLInputElement | null>(null);
@@ -583,6 +610,12 @@ function ConversationPane({
       return;
     }
 
+    const validationError = validateInboxAttachment(file);
+    if (validationError) {
+      setSendError(validationError);
+      return;
+    }
+
     const dataUrl = await new Promise<string>((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => resolve(String(reader.result ?? ""));
@@ -596,19 +629,33 @@ function ConversationPane({
       size: file.size,
       dataUrl,
     });
+    setSendError("");
   }
 
   function submitPayload(payload: { requestId: string; message: string }) {
+    setDeliveryState("sending");
+    const applyResult = (result: ActionResult) => {
+      if (!result.ok) {
+        setSendError(result.message);
+        setLastFailedPayload(payload);
+        setDeliveryState("failed");
+        return;
+      }
+      setSendError("");
+      setLastFailedPayload(null);
+      setReplyMessage("");
+      setAttachedFile(null);
+      setDeliveryState("sent");
+      window.setTimeout(() => setDeliveryState("idle"), 2200);
+    };
     const result = onReply(payload.requestId, payload.message);
-    if (!result.ok) {
-      setSendError(result.message);
-      setLastFailedPayload(payload);
+    if (result instanceof Promise) {
+      void result.then(applyResult).catch(() =>
+        applyResult({ ok: false, message: "Message could not be delivered. Please try again." }),
+      );
       return;
     }
-    setSendError("");
-    setLastFailedPayload(null);
-    setReplyMessage("");
-    setAttachedFile(null);
+    applyResult(result);
   }
 
   function handleSend() {
@@ -619,7 +666,7 @@ function ConversationPane({
     const composedMessage = attachedFile
       ? `${value || "Attached file for review."}\n\n${encodeAttachment(attachedFile)}`
       : value;
-    submitPayload({ requestId: request.id, message: composedMessage });
+    void submitPayload({ requestId: request.id, message: composedMessage });
   }
 
   function focusReplyInput() {
@@ -649,13 +696,14 @@ function ConversationPane({
   }
 
   return (
-    <section className={`${inboxPanelClass} flex h-full min-h-[720px] flex-col overflow-hidden rounded-2xl border border-slate-200/80 bg-white min-[1080px]:min-h-0`} onClick={() => setMessageContextMenu(null)}>
+    <section className="flex h-full min-h-[720px] flex-col overflow-hidden bg-white min-[1080px]:min-h-0" onClick={() => setMessageContextMenu(null)}>
       <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 px-4 py-4 sm:px-5 lg:px-6">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2.5">
             <p className={`inline-flex rounded-full px-3 py-1 text-[0.62rem] font-medium ${priorityBadgeClass(request.priority)}`}>
               {request.priority.toUpperCase()} PRIORITY
             </p>
+            <InboxStatusBadge audience="client" status={request.status} />
             <p className="text-xs font-medium text-[#6f7d96]">
               {formatDateLabel(lastActivity(request))}, {formatThreadTime(lastActivity(request))}
             </p>
@@ -668,12 +716,20 @@ function ConversationPane({
           </h2>
           <div className="mt-2 space-y-1 text-sm text-[#6c7b94]">
             <p>
-              Assigned accountant: <span className="text-[#4b5f7c]">{request.requestedBy}</span>
-            </p>
-            <p>{accountantEmail(request.requestedBy)}</p>
+                Assigned accountant: <span className="text-[#4b5f7c]">{request.assignedTo}</span>
+              </p>
+            <p>{accountantEmail(request.assignedTo)}</p>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1 rounded-full border border-slate-200/80 bg-white px-2 py-1 shadow-[0_8px_20px_rgba(15,23,42,0.06)]">
+          <button
+            aria-label="Open conversation details"
+            className="h-9 rounded-full px-3 text-xs font-semibold text-[#315b9c] transition hover:bg-slate-50"
+            onClick={() => setDetailsOpen(true)}
+            type="button"
+          >
+            Details
+          </button>
           {canStar ? (
             <button
               aria-label={request.isStarred ? "Unstar thread" : "Star thread"}
@@ -695,13 +751,6 @@ function ConversationPane({
           >
             <Reply aria-hidden="true" className="h-4 w-4" />
           </button>
-        </div>
-      </div>
-
-      <div className="border-b border-slate-100 bg-[#fbfcfe] px-4 py-3 sm:px-5 lg:px-6">
-        <div className="flex flex-wrap items-center gap-2 text-[0.72rem] font-medium text-[#6f7d96]">
-          <span className="rounded-full bg-white px-2.5 py-1 shadow-[0_4px_10px_rgba(15,23,42,0.04)]">Client and accountant conversation</span>
-          <span className="rounded-full bg-[#eef6f2] px-2.5 py-1 text-[#087d69]">Reply here to continue the thread</span>
         </div>
       </div>
 
@@ -786,7 +835,7 @@ function ConversationPane({
                 {lastFailedPayload ? (
                   <button
                     className="ml-2 rounded-md border border-rose-300 px-2 py-1 text-xs font-semibold"
-                    onClick={() => submitPayload(lastFailedPayload)}
+                    onClick={() => void submitPayload(lastFailedPayload)}
                     type="button"
                   >
                     Retry
@@ -794,12 +843,20 @@ function ConversationPane({
                 ) : null}
               </div>
             ) : null}
+            {deliveryState !== "idle" ? (
+              <p className={`text-xs font-semibold ${deliveryState === "failed" ? "text-rose-600" : "text-slate-500"}`}>
+                {deliveryState === "sending" ? "Sending…" : deliveryState === "sent" ? "Sent" : "Delivery failed"}
+              </p>
+            ) : replyMessage.trim() ? (
+              <p className="text-xs font-medium text-slate-400">Draft saved</p>
+            ) : null}
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex h-[52px] min-w-[240px] flex-1 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 transition focus-within:ring-2 focus-within:ring-[#0a2f66]/20">
                 <label className="inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-md text-[#061b41] transition hover:bg-[#0a2f66]/10">
                   <Paperclip aria-hidden="true" className="h-4.5 w-4.5" />
                   <span className="sr-only">Attach</span>
                   <input
+                    accept={inboxAttachmentAccept}
                     className="hidden"
                     onChange={(event) => void handleAttachmentSelected(event.target.files?.[0] ?? null)}
                     type="file"
@@ -828,6 +885,7 @@ function ConversationPane({
             </div>
           </div>
       </div>
+      <InboxContextDrawer audience="client" isOpen={detailsOpen} onClose={() => setDetailsOpen(false)} request={request} />
     </section>
   );
 }
@@ -846,10 +904,12 @@ export function ClientRequestsPage() {
   const backendMode = hasApiBaseUrl();
 
   const [selectedRequestId, setSelectedRequestId] = useState("");
+  const { hydrateRead, markRead, readThreadIds } = useInboxReadState("client", user?.id);
   const [searchValue, setSearchValue] = useState("");
   const [filter, setFilter] = useState<ThreadFilter>("all");
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
   const [requestTitle, setRequestTitle] = useState("");
+  const [requestKind, setRequestKind] = useState<InboxRequestKind>("general");
   const [requestDetails, setRequestDetails] = useState("");
   const [requestPriority, setRequestPriority] = useState<WorkflowRequest["priority"]>("medium");
   const [requestDueDate, setRequestDueDate] = useState("");
@@ -877,14 +937,16 @@ export function ClientRequestsPage() {
 
     try {
       const clientId = user.clientIds[0];
-      const [items, assignments] = await Promise.all([
+      const [items, assignments, readStates] = await Promise.all([
         apiGetJson<BackendRequestRecord[]>("/api/requests"),
         clientId
           ? apiGetJson<BackendAssignmentRecord[]>(
               `/api/assignments?clientId=${encodeURIComponent(clientId)}`,
             ).catch(() => [])
           : Promise.resolve([] as BackendAssignmentRecord[]),
+        apiGetJson<BackendRequestReadState[]>("/api/requests/read-state").catch(() => []),
       ]);
+      hydrateRead(readStates.map((state) => state.requestId));
 
       const accountantName =
         assignments.find((assignment) => assignment.isPrimary)?.accountantName?.trim() ||
@@ -922,6 +984,8 @@ export function ClientRequestsPage() {
     }
 
     void loadBackendRequests();
+    const refreshTimer = window.setInterval(() => void loadBackendRequests(), 20_000);
+    return () => window.clearInterval(refreshTimer);
   }, [backendMode, user?.id]);
 
   const orderedRequests = useMemo(
@@ -937,7 +1001,7 @@ export function ClientRequestsPage() {
   const visibleRequests = useMemo(() => {
     const normalizedSearch = searchValue.trim().toLowerCase();
     return orderedRequests.filter((request) => {
-      if (filter === "unread" && unreadFromAccountantCount(request) === 0) {
+      if (filter === "unread" && (readThreadIds.has(request.id) || unreadFromAccountantCount(request) === 0)) {
         return false;
       }
       if (filter === "resolved" && request.status !== "resolved" && request.status !== "closed") {
@@ -952,7 +1016,7 @@ export function ClientRequestsPage() {
       const blob = `${request.title} ${request.description} ${request.requestedBy} ${request.clientName}`.toLowerCase();
       return blob.includes(normalizedSearch);
     });
-  }, [filter, orderedRequests, searchValue]);
+  }, [filter, orderedRequests, readThreadIds, searchValue]);
 
   const totalPages = Math.max(1, Math.ceil(visibleRequests.length / THREADS_PER_PAGE));
   const pagedRequests = useMemo(() => {
@@ -998,6 +1062,10 @@ export function ClientRequestsPage() {
 
   function handleSelectInboxRequest(requestId: string) {
     setSelectedRequestId(requestId);
+    markRead(requestId);
+    if (backendMode) {
+      void apiPostJson(`/api/requests/${encodeURIComponent(requestId)}/read`, {}).catch(() => undefined);
+    }
   }
 
   function handleCreateRequest() {
@@ -1013,11 +1081,12 @@ export function ClientRequestsPage() {
 
     const monthLabel = activeRequest?.monthLabel ?? requests[0]?.monthLabel ?? formatDateLabel(new Date().toISOString());
     const payload = {
-      title: `Document request: ${title}`,
+      title: requestTitleForKind(requestKind, title),
       description,
       dueDate: new Date(`${requestDueDate}T17:00:00.000Z`).toISOString(),
       priority: requestPriority,
       monthLabel,
+      requestType: requestTypeForKind(requestKind),
     };
 
     if (backendMode) {
@@ -1039,7 +1108,7 @@ export function ClientRequestsPage() {
             relatedDocumentId: string | null;
           }>("/api/requests", {
             clientId,
-            requestType: toBackendRequestType("clarification_request"),
+            requestType: toBackendRequestType(payload.requestType),
             title: payload.title,
             description: payload.description,
             priority: payload.priority,
@@ -1052,6 +1121,7 @@ export function ClientRequestsPage() {
           setLastFailedRequestPayload(null);
           setIsRequestModalOpen(false);
           setRequestTitle("");
+          setRequestKind("general");
           setRequestDetails("");
           setRequestPriority("medium");
           setRequestDueDate("");
@@ -1077,20 +1147,21 @@ export function ClientRequestsPage() {
     setLastFailedRequestPayload(null);
     setIsRequestModalOpen(false);
     setRequestTitle("");
+    setRequestKind("general");
     setRequestDetails("");
     setRequestPriority("medium");
     setRequestDueDate("");
   }
 
   return (
-    <div className="client-inbox-page portal-page mx-auto flex h-auto w-full max-w-[1680px] flex-col gap-5 pb-8 min-[1080px]:h-full min-[1080px]:min-h-0 min-[1080px]:overflow-hidden min-[1080px]:pb-0">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div className="space-y-2">
-          <h1 className="portal-page-title text-[#091333]">
-            Client communications
-          </h1>
+    <div className="client-inbox-page portal-page mx-auto flex h-auto w-full max-w-[1440px] flex-col gap-5 pb-8 min-[1080px]:h-full min-[1080px]:min-h-0 min-[1080px]:overflow-hidden min-[1080px]:pb-0">
+      <header className="flex flex-wrap items-end justify-between gap-4 border-b border-slate-200 pb-5">
+        <div className="space-y-1.5">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">Client workspace</p>
+          <h1 className="portal-page-title text-[#091333]">Inbox</h1>
+          <span className="sr-only">Client communications</span>
           <p className="max-w-2xl text-[0.95rem] leading-6 text-[#53617f]">
-            Review accountant follow-ups, reply with context, and keep document requests moving.
+            Messages, document requests and monthly pack follow-ups with your accountant.
           </p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-3">
@@ -1098,7 +1169,7 @@ export function ClientRequestsPage() {
             className="client-inbox-primary-button h-11 rounded-xl border-0 px-4 text-sm font-semibold ring-0"
             onClick={() => setIsRequestModalOpen(true)}
           >
-            Request document
+            New request
           </Button>
           <div className="inline-flex items-center rounded-full bg-white px-3 py-1.5 text-[0.78rem] font-semibold text-[#41506f] shadow-[0_10px_24px_rgba(4,24,52,0.06)] ring-1 ring-slate-200">
             {visibleRequests.length} active thread{visibleRequests.length === 1 ? "" : "s"}
@@ -1116,7 +1187,7 @@ export function ClientRequestsPage() {
       ) : null}
 
       {visibleRequests.length > 0 && activeRequest ? (
-        <div className="client-inbox-layout grid grid-cols-1 items-start gap-4 min-[1080px]:min-h-0 min-[1080px]:flex-1 min-[1080px]:items-stretch min-[1080px]:grid-cols-[minmax(280px,320px)_minmax(0,1fr)] min-[1400px]:grid-cols-[minmax(300px,350px)_minmax(0,1.52fr)]">
+        <div className="client-inbox-layout grid grid-cols-1 items-start overflow-hidden rounded-2xl border border-slate-200 bg-white min-[1080px]:min-h-0 min-[1080px]:flex-1 min-[1080px]:items-stretch min-[1080px]:grid-cols-[minmax(300px,340px)_minmax(0,1fr)]">
           <ThreadListPane
             currentPage={currentPage}
             filter={filter}
@@ -1131,6 +1202,7 @@ export function ClientRequestsPage() {
             searchValue={searchValue}
             selectedRequestId={activeRequest.id}
             sortDirection={sortDirection}
+            readThreadIds={readThreadIds}
             totalPages={totalPages}
           />
           <ConversationPane
@@ -1143,7 +1215,7 @@ export function ClientRequestsPage() {
               const attachment = decodeAttachment(message);
               const plainText = plainMessageText(message);
 
-              void (async () => {
+              return (async () => {
                 try {
                   if (attachment) {
                     const file = await dataUrlToFile(attachment);
@@ -1161,14 +1233,14 @@ export function ClientRequestsPage() {
 
                   showFeedbackNotice("success", "Reply added", "The request conversation has been updated.");
                   await loadBackendRequests();
+                  return { ok: true, message: "Reply sent." };
                 } catch (error) {
                   const replyMessage =
                     error instanceof ApiError ? error.message : "The reply could not be sent right now.";
                   showFeedbackNotice("danger", "Reply blocked", replyMessage);
+                  return { ok: false, message: replyMessage };
                 }
               })();
-
-              return { ok: true, message: "Sending..." };
             }}
             onToggleStar={toggleRequestStar}
             request={activeRequest}
@@ -1259,9 +1331,16 @@ export function ClientRequestsPage() {
               </div>
             </div>
             <div className="space-y-4">
+              <SelectField
+                id="client-request-kind"
+                label="Message type"
+                onChange={(event) => setRequestKind(event.target.value as InboxRequestKind)}
+                options={inboxRequestKindOptions}
+                value={requestKind}
+              />
               <TextField
                 id="client-request-title"
-                label="Document needed"
+                label="Subject"
                 onChange={(event) => setRequestTitle(event.target.value)}
                 placeholder="e.g. Signed annual financial statements"
                 value={requestTitle}

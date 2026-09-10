@@ -145,7 +145,7 @@ export function AdminAccountantsPage() {
           message:
             error instanceof ApiError
               ? error.message
-              : "The accountant management page could not load live backend data. The seeded workspace is shown only as a temporary fallback.",
+              : "The accountant management page could not load live backend data. No demo records are being shown.",
         });
       }
     }
@@ -155,7 +155,7 @@ export function AdminAccountantsPage() {
   }, [backendMode]);
 
   const accountants = useMemo(
-    () => (backendMode && liveAccountants ? liveAccountants : portal.managedAccountants),
+    () => (backendMode ? liveAccountants ?? [] : portal.managedAccountants),
     [backendMode, liveAccountants, portal.managedAccountants],
   );
 

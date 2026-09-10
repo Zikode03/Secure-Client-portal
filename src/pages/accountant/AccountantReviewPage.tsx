@@ -960,7 +960,7 @@ export function AccountantReviewPage() {
                   liveWorkspaceByDocumentId[item.id],
                   liveFileUrlsByDocumentId[item.id],
                 )
-              : liveQueueRecordsByDocumentId[item.id] ?? portal.getReviewRecord(item.id)
+              : liveQueueRecordsByDocumentId[item.id]
             : portal.getReviewRecord(item.id),
         statusMeta: queueStatusMeta(item),
         dueMeta: queueDueMeta(item),
@@ -1560,6 +1560,23 @@ export function AccountantReviewPage() {
 
   return (
     <div className="mx-auto max-w-[1500px] space-y-5">
+      <header className="border-b border-slate-200 pb-5">
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
+          {user?.role === "admin" ? "Firm operations" : "Accountant workspace"}
+        </p>
+        <div className="mt-1 flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight text-slate-950">Work Queue</h1>
+            <p className="mt-1 text-sm leading-6 text-slate-500">
+              Review submitted documents, resolve exceptions, and keep client work moving.
+            </p>
+          </div>
+          <p className="text-sm font-medium text-slate-600">
+            <span className="font-semibold text-slate-950">{queueRows.length}</span> active items
+          </p>
+        </div>
+      </header>
+
       {reviewMessage ? (
         <div className="rounded-[1.05rem] border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-700">
           {reviewMessage}
@@ -1567,7 +1584,7 @@ export function AccountantReviewPage() {
       ) : null}
 
       {queueRows.length === 0 ? (
-        <SurfaceCard className="space-y-5">
+        <section className="space-y-5 border-y border-slate-200 bg-white px-5 py-10">
           <EmptyState
             description={
               user?.role === "admin"
@@ -1585,12 +1602,12 @@ export function AccountantReviewPage() {
               Reload demo queue
             </Button>
           </div>
-        </SurfaceCard>
+        </section>
       ) : (
         <>
           <div className="grid gap-6">
-          <SurfaceCard className="overflow-hidden rounded-[1.55rem] border border-slate-200/90 bg-white p-0 shadow-[0_16px_36px_rgba(15,23,42,0.05)]">
-            <div className="space-y-4 border-b border-[#e6edf4] bg-[#fbfdff] px-5 pb-5 pt-5">
+          <section className="overflow-hidden border-y border-slate-200 bg-white">
+            <div className="space-y-4 border-b border-[#e6edf4] bg-white px-1 pb-5 pt-2 sm:px-5 sm:pt-5">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -1839,7 +1856,7 @@ export function AccountantReviewPage() {
                 ) : null}
               </div>
             )}
-          </SurfaceCard>
+          </section>
 
           {viewerOpen && activeDocument && activeRow ? (
             <div

@@ -1,7 +1,7 @@
 const RAW_API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim();
 const RAW_USE_BACKEND = (import.meta.env.VITE_USE_BACKEND as string | undefined)?.trim();
-const AUTH_TOKEN_KEY = "accounting-document-control-auth-token";
-const AUTH_REFRESH_TOKEN_KEY = "accounting-document-control-refresh-token";
+declare const __PORTAL_DEPLOYMENT_BUILD__: boolean;
+const IS_DEPLOYMENT_BUILD = typeof __PORTAL_DEPLOYMENT_BUILD__ !== "undefined" && __PORTAL_DEPLOYMENT_BUILD__;
 
 interface ApiErrorBody {
   code?: string;
@@ -30,47 +30,22 @@ function normalizeBaseUrl(url?: string) {
 
 const API_BASE_URL = normalizeBaseUrl(RAW_API_BASE_URL);
 const USE_BACKEND =
+  IS_DEPLOYMENT_BUILD ||
   RAW_USE_BACKEND === "1" ||
   RAW_USE_BACKEND?.toLowerCase() === "true" ||
   Boolean(API_BASE_URL);
 
 function buildUrl(path: string) {
-  if (/^https?:\/\//.test(path)) return path;
-  if (!path.startsWith("/")) return `${API_BASE_URL}/${path}`;
-  return `${API_BASE_URL}${path}`;
-}
-
-function readAuthToken() {
-  if (typeof window === "undefined") {
-    return "";
+  const origin = new URL(API_BASE_URL || window.location.origin).origin;
+  const candidate = /^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(path)
+    ? path
+    : `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
+  // Resolve exactly as the browser does, including backslash normalization.
+  const target = new URL(candidate, window.location.origin);
+  if (target.origin !== origin || target.username || target.password) {
+    throw new ApiError(0, "Requests must use the configured API origin.", "UNTRUSTED_API_URL");
   }
-
-  return (
-    window.sessionStorage.getItem(AUTH_TOKEN_KEY)?.trim() ??
-    window.localStorage.getItem(AUTH_TOKEN_KEY)?.trim() ??
-    ""
-  );
-}
-
-function writeStoredValue(key: string, value: string, persistent: boolean) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  const target = persistent ? window.localStorage : window.sessionStorage;
-  const alternate = persistent ? window.sessionStorage : window.localStorage;
-
-  alternate.removeItem(key);
-  target.setItem(key, value.trim());
-}
-
-function clearStoredValue(key: string) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  window.localStorage.removeItem(key);
-  window.sessionStorage.removeItem(key);
+  return candidate;
 }
 
 function buildHeaders(init?: RequestInit) {
@@ -80,12 +55,51 @@ function buildHeaders(init?: RequestInit) {
     headers.set("Accept", "application/json");
   }
 
-  const token = readAuthToken();
-  if (token && !headers.has("Authorization")) {
-    headers.set("Authorization", `Bearer ${token}`);
-  }
-
   return headers;
+}
+
+let csrfTokenPromise: Promise<string> | undefined;
+
+function getCsrfToken() {
+  if (!csrfTokenPromise) {
+    const pending = (async () => {
+      const response = await fetch(buildUrl("/api/auth/csrf"), {
+        credentials: "include",
+        cache: "no-store",
+        headers: { Accept: "application/json" },
+      });
+      if (!response.ok) await throwApiError(response, "/api/auth/csrf");
+      const body = await readJsonResponse<{ requestToken?: string }>(response);
+      if (!body?.requestToken) throw new ApiError(0, "Could not establish a secure session.", "CSRF_UNAVAILABLE");
+      return body.requestToken;
+    })();
+    csrfTokenPromise = pending;
+    void pending.catch(() => { if (csrfTokenPromise === pending) csrfTokenPromise = undefined; });
+  }
+  return csrfTokenPromise;
+}
+
+async function apiMutation(path: string, init: RequestInit): Promise<Response> {
+  const url = buildUrl(path);
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const pending = getCsrfToken();
+    const token = await pending;
+    const headers = new Headers(init.headers);
+    headers.set("X-CSRF-Token", token);
+    const response = await fetch(url, { ...init, credentials: "include", headers });
+    if (attempt === 0 && response.status === 403) {
+      const body = await response.clone().json().catch(() => null) as ApiErrorBody | null;
+      if (body?.code === "CSRF_INVALID") {
+        if (csrfTokenPromise === pending) csrfTokenPromise = undefined;
+        continue; // The middleware rejected the request before its action executed.
+      }
+    }
+    if (response.ok && /\/api\/auth\/(login|logout|complete-invite|refresh|change-password)(?:\?|$)/.test(url)) {
+      csrfTokenPromise = undefined;
+    }
+    return response;
+  }
+  throw new ApiError(403, "Could not validate the security token.", "CSRF_INVALID");
 }
 
 async function readJsonResponse<T>(response: Response): Promise<T> {
@@ -133,6 +147,7 @@ export async function apiGetJson<T>(path: string, init?: RequestInit): Promise<T
   const response = await fetch(buildUrl(path), {
     ...init,
     method: "GET",
+    credentials: "include",
     headers: buildHeaders(init),
   });
 
@@ -150,6 +165,7 @@ export async function apiGetBlob(
   const response = await fetch(buildUrl(path), {
     ...init,
     method: "GET",
+    credentials: "include",
     headers: buildHeaders(init),
   });
 
@@ -173,9 +189,10 @@ export async function apiPutJson<TResponse, TBody>(
     headers.set("Content-Type", "application/json");
   }
 
-  const response = await fetch(buildUrl(path), {
+  const response = await apiMutation(path, {
     ...init,
     method: "PUT",
+    credentials: "include",
     headers,
     body: JSON.stringify(body),
   });
@@ -197,9 +214,10 @@ export async function apiPostJson<TResponse, TBody>(
     headers.set("Content-Type", "application/json");
   }
 
-  const response = await fetch(buildUrl(path), {
+  const response = await apiMutation(path, {
     ...init,
     method: "POST",
+    credentials: "include",
     headers,
     body: JSON.stringify(body),
   });
@@ -221,9 +239,10 @@ export async function apiPatchJson<TResponse, TBody>(
     headers.set("Content-Type", "application/json");
   }
 
-  const response = await fetch(buildUrl(path), {
+  const response = await apiMutation(path, {
     ...init,
     method: "PATCH",
+    credentials: "include",
     headers,
     body: JSON.stringify(body),
   });
@@ -243,9 +262,10 @@ export async function apiPostForm<TResponse>(
   const headers = buildHeaders(init);
   headers.delete("Content-Type");
 
-  const response = await fetch(buildUrl(path), {
+  const response = await apiMutation(path, {
     ...init,
     method: "POST",
+    credentials: "include",
     headers,
     body,
   });
@@ -258,9 +278,10 @@ export async function apiPostForm<TResponse>(
 }
 
 export async function apiDelete<TResponse = void>(path: string, init?: RequestInit): Promise<TResponse> {
-  const response = await fetch(buildUrl(path), {
+  const response = await apiMutation(path, {
     ...init,
     method: "DELETE",
+    credentials: "include",
     headers: buildHeaders(init),
   });
 
@@ -273,36 +294,4 @@ export async function apiDelete<TResponse = void>(path: string, init?: RequestIn
 
 export function hasApiBaseUrl() {
   return USE_BACKEND;
-}
-
-export function setAuthToken(token: string, persistent = true) {
-  writeStoredValue(AUTH_TOKEN_KEY, token, persistent);
-}
-
-export function setRefreshToken(token: string, persistent = true) {
-  writeStoredValue(AUTH_REFRESH_TOKEN_KEY, token, persistent);
-}
-
-export function clearAuthToken() {
-  clearStoredValue(AUTH_TOKEN_KEY);
-}
-
-export function clearRefreshToken() {
-  clearStoredValue(AUTH_REFRESH_TOKEN_KEY);
-}
-
-export function getAuthToken() {
-  return readAuthToken();
-}
-
-export function getRefreshToken() {
-  if (typeof window === "undefined") {
-    return "";
-  }
-
-  return (
-    window.sessionStorage.getItem(AUTH_REFRESH_TOKEN_KEY)?.trim() ??
-    window.localStorage.getItem(AUTH_REFRESH_TOKEN_KEY)?.trim() ??
-    ""
-  );
 }

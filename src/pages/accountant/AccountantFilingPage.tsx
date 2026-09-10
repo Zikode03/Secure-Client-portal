@@ -2,7 +2,7 @@
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
 import { Button } from "../../components/ui/Button";
@@ -24,7 +24,6 @@ import {
   formatDateLabel,
   formatDateTimeLabel,
   formatStatusLabel,
-  statusToTone,
   toneToAccentClass,
 } from "../../utils/formatters";
 import { getScopedClients } from "../../utils/permissions";
@@ -48,6 +47,18 @@ const resultsPerPage = 7;
 // Shared shape notes: these types keep UI and data contracts aligned.
 type ResultTab = "all" | "documents" | "invoices" | "requests" | "compliance";
 type ViewerTab = "details" | "history" | "related";
+type FilingStatus = "Draft" | "Ready to file" | "Submitted" | "Accepted" | "Rejected" | "Overdue";
+type FilingRecord = {
+  authority: "SARS" | "CIPC" | "UIF" | "Compensation Fund";
+  dueDate: string;
+  filedAt?: string;
+  filingType: string;
+  paymentStatus: "Not applicable" | "Not recorded" | "Recorded";
+  proofAvailable: boolean;
+  reference: string;
+  result: UnifiedSearchResult;
+  status: FilingStatus;
+};
 type FiledHistoryEntry = {
   id: string;
   actionLabel: string;
@@ -68,6 +79,65 @@ const allowedFilingTypeLabels = new Set([
   "credit notes",
   "debit notes",
 ]);
+
+function buildFilingRecord(result: UnifiedSearchResult): FilingRecord {
+  const searchable = `${result.title} ${result.typeLabel}`.toLowerCase();
+  const authority = searchable.includes("company") || searchable.includes("signed")
+    ? "CIPC"
+    : searchable.includes("payroll") || searchable.includes("paye")
+      ? "UIF"
+      : searchable.includes("coida") || searchable.includes("compensation")
+        ? "Compensation Fund"
+        : "SARS";
+  const workflowStatus: FilingStatus = result.status === "accepted" || result.status === "filed" || result.status === "finalised"
+    ? "Accepted"
+    : result.status === "rejected"
+      ? "Rejected"
+      : result.status === "draft"
+        ? "Ready to file"
+        : result.status === "uploaded" || result.status === "under_review"
+          ? "Submitted"
+          : "Draft";
+  const filingType = searchable.includes("payroll")
+    ? "Payroll declaration"
+    : searchable.includes("invoice") || searchable.includes("vat")
+      ? "VAT supporting submission"
+      : searchable.includes("bank")
+        ? "Bank evidence submission"
+        : searchable.includes("signed")
+          ? "Company filing support"
+          : result.typeLabel;
+  const filedAt = workflowStatus === "Accepted" || workflowStatus === "Submitted" || workflowStatus === "Rejected"
+    ? result.date
+    : undefined;
+  const year = new Date(result.date).getFullYear();
+  const suffix = result.id.replace(/[^a-z0-9]/gi, "").slice(-7).toUpperCase() || "PENDING";
+  const dueDate = result.expiryDate ?? new Date(new Date(result.date).getTime() + 14 * 86_400_000).toISOString();
+  const status = (workflowStatus === "Draft" || workflowStatus === "Ready to file")
+    && new Date(dueDate).getTime() < Date.now()
+    ? "Overdue"
+    : workflowStatus;
+
+  return {
+    authority,
+    dueDate,
+    filedAt,
+    filingType,
+    paymentStatus: searchable.includes("proof of payment") ? "Recorded" : authority === "SARS" ? "Not recorded" : "Not applicable",
+    proofAvailable: Boolean(filedAt),
+    reference: filedAt ? `${authority.replace(/\s/g, "")}-${year}-${suffix}` : "Pending",
+    result,
+    status,
+  };
+}
+
+function filingStatusTone(status: FilingStatus) {
+  if (status === "Accepted") return "success" as const;
+  if (status === "Rejected" || status === "Overdue") return "danger" as const;
+  if (status === "Submitted") return "info" as const;
+  if (status === "Ready to file") return "warning" as const;
+  return "neutral" as const;
+}
 
 // Component flow: gather data first, then render a focused UI state.
 function SearchIcon() {
@@ -870,10 +940,15 @@ function Pagination({
 
 export function AccountantFilingPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const portal = usePortal();
   const [searchParams] = useSearchParams();
   const [filters, setFilters] = useState<UnifiedSearchFilters>(defaultFilters);
-  const [activeResultTab, setActiveResultTab] = useState<ResultTab>("documents");
+  const [authorityFilter, setAuthorityFilter] = useState("");
+  const [filingStatusFilter, setFilingStatusFilter] = useState("");
+  const [filingTypeFilter, setFilingTypeFilter] = useState("");
+  const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
+  const [activeResultTab, setActiveResultTab] = useState<ResultTab>("all");
 // Local UI state: keeps track of what the user is seeing or editing right now.
   const [selectedResultId, setSelectedResultId] = useState("");
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -911,12 +986,31 @@ export function AccountantFilingPage() {
   );
 
   const filteredResults = useMemo(
-    () =>
-      portal
-        .filterSearchResults(allResults, filters)
-        .filter((result) => result.status === "accepted")
-        .filter((result) => isAllowedFilingType(result)),
-    [allResults, filters, portal],
+    () => {
+      const query = filters.query.trim().toLowerCase();
+      const genericFilters = { ...filters, documentType: "", query: "", status: "" };
+
+      return portal
+        .filterSearchResults(allResults, genericFilters)
+        .filter((result) => isAllowedFilingType(result))
+        .filter((result) => {
+          const filing = buildFilingRecord(result);
+          const matchesQuery = !query || [
+            result.title,
+            result.clientName,
+            result.monthLabel,
+            filing.authority,
+            filing.filingType,
+            filing.reference,
+          ].some((value) => value.toLowerCase().includes(query));
+
+          return matchesQuery
+            && (!authorityFilter || filing.authority === authorityFilter)
+            && (!filingStatusFilter || filing.status === filingStatusFilter)
+            && (!filingTypeFilter || filing.filingType === filingTypeFilter);
+        });
+    },
+    [allResults, authorityFilter, filingStatusFilter, filingTypeFilter, filters, portal],
   );
 
   const visibleResults = useMemo(
@@ -939,6 +1033,10 @@ export function AccountantFilingPage() {
     () => filteredResults.find((result) => result.id === selectedResultId) ?? null,
     [filteredResults, selectedResultId],
   );
+  const selectedFiling = useMemo(
+    () => (selectedResult ? buildFilingRecord(selectedResult) : null),
+    [selectedResult],
+  );
 
   const selectedDocument = useMemo<DocumentRecord | null>(() => {
     if (!selectedResult) {
@@ -950,21 +1048,6 @@ export function AccountantFilingPage() {
   const filedHistoryEntries = useMemo(
     () => (selectedDocument ? buildFiledHistoryEntries(selectedDocument) : []),
     [selectedDocument],
-  );
-
-  const tabCounts = useMemo(
-    () => ({
-      all: filteredResults.length,
-      documents: filteredResults.filter((result) => belongsToResultTab(result, "documents"))
-        .length,
-      invoices: filteredResults.filter((result) => belongsToResultTab(result, "invoices"))
-        .length,
-      requests: filteredResults.filter((result) => belongsToResultTab(result, "requests"))
-        .length,
-      compliance: filteredResults.filter((result) => belongsToResultTab(result, "compliance"))
-        .length,
-    }),
-    [filteredResults],
   );
 
   const clientOptions = useMemo(
@@ -983,37 +1066,46 @@ export function AccountantFilingPage() {
     [allResults],
   );
 
-  const documentTypeOptions = useMemo(
-    () =>
-      buildSelectOptions(
-        Array.from(new Set(allResults.map((result) => result.typeLabel))).sort((left, right) =>
-          left.localeCompare(right),
-        ),
-        "All types",
-      ),
-    [allResults],
-  );
-
-  const statusOptions = useMemo(
-    () => [
-      { label: "All statuses", value: "" },
-      { label: formatStatusLabel("accepted"), value: "accepted" },
-    ],
-    [],
-  );
-
-  const uploadedByOptions = useMemo(
+  const filingTypeOptions = useMemo(
     () =>
       buildSelectOptions(
         Array.from(
           new Set(
             allResults
-              .map((result) => result.uploadedBy)
-              .filter((value): value is string => Boolean(value)),
+              .filter(isAllowedFilingType)
+              .map((result) => buildFilingRecord(result).filingType),
           ),
         ).sort((left, right) => left.localeCompare(right)),
-        "All",
+        "All filing types",
       ),
+    [allResults],
+  );
+
+  const statusOptions = useMemo(
+    () => buildSelectOptions(
+      Array.from(
+        new Set(
+          allResults
+            .filter(isAllowedFilingType)
+            .map((result) => buildFilingRecord(result).status),
+        ),
+      ),
+      "All statuses",
+    ),
+    [allResults],
+  );
+
+  const authorityOptions = useMemo(
+    () => buildSelectOptions(
+      Array.from(
+        new Set(
+          allResults
+            .filter(isAllowedFilingType)
+            .map((result) => buildFilingRecord(result).authority),
+        ),
+      ).sort((left, right) => left.localeCompare(right)),
+      "All authorities",
+    ),
     [allResults],
   );
 
@@ -1046,7 +1138,7 @@ export function AccountantFilingPage() {
   const viewerTabs = useMemo(
     () => [
       { id: "details" as const, label: "Filing details" },
-      { id: "history" as const, label: "Version history" },
+      { id: "history" as const, label: "Submission history" },
       { id: "related" as const, label: "Related filings" },
     ],
     [],
@@ -1085,7 +1177,7 @@ export function AccountantFilingPage() {
 // Reactive sync: this block responds when dependencies change.
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeResultTab, filters]);
+  }, [activeResultTab, authorityFilter, filingStatusFilter, filingTypeFilter, filters]);
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -1157,6 +1249,15 @@ export function AccountantFilingPage() {
     setFeedbackMessage(`Opened version history for ${displayResultTitle(result)}.`);
   }
 
+  function handleCopyReference(result: UnifiedSearchResult) {
+    const reference = buildFilingRecord(result).reference;
+    if (reference !== "Pending" && navigator.clipboard) {
+      void navigator.clipboard.writeText(reference);
+    }
+    setFeedbackMessage(reference === "Pending" ? "A filing reference has not been issued yet." : `Copied filing reference ${reference}.`);
+    setOpenMenuResultId("");
+  }
+
   function handleDownloadResult(result: UnifiedSearchResult) {
     const document = resolveDocumentForResult(result);
     downloadDocumentFile(document);
@@ -1166,7 +1267,10 @@ export function AccountantFilingPage() {
 
   function handleClearFilters() {
     setFilters(defaultFilters);
-    setActiveResultTab("documents");
+    setAuthorityFilter("");
+    setFilingStatusFilter("");
+    setFilingTypeFilter("");
+    setActiveResultTab("all");
     setSelectedResultId("");
     setViewerOpen(false);
     setViewerTab("details");
@@ -1178,15 +1282,15 @@ export function AccountantFilingPage() {
       className="mx-auto max-w-[1280px] space-y-6"
       onClick={() => setOpenMenuResultId("")}
     >
-      <section className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="space-y-1.5">
-          <h1 className="text-[2.05rem] font-medium text-slate-950">
-            Document Filing Register
-          </h1>
-          <p className="max-w-3xl text-[0.96rem] leading-7 text-slate-500">
-            Archive-only register of accepted records. Use this page for retrieval, audit trace, and version reference.
+      <section className="flex flex-col gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">Accountant workspace</p>
+          <h1 className="mt-1 text-3xl font-semibold tracking-tight text-slate-950">Filing Register</h1>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">
+            Track statutory submissions, references, proof and filing history across every client.
           </p>
         </div>
+        <Button className="h-11 rounded-xl px-5" onClick={() => navigate("/firm/review")}>Prepare filing</Button>
       </section>
 
       {feedbackMessage ? (
@@ -1195,9 +1299,9 @@ export function AccountantFilingPage() {
         </div>
       ) : null}
 
-      <div className={cn("grid gap-6", viewerOpen ? "lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,430px)]" : "")}>
-        <div className="space-y-6">
-          <SurfaceCard className="rounded-[1.7rem] border border-slate-200/90 bg-white p-5 shadow-[0_18px_48px_rgba(15,23,42,0.06)]">
+      <div>
+        <div className="space-y-5">
+          <section aria-label="Filing filters" className="border-b border-slate-200 pb-5">
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-3 lg:flex-row">
                 <div className="relative flex-1">
@@ -1215,9 +1319,9 @@ export function AccountantFilingPage() {
                 </div>
 
                 <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
-                  <Button className="h-11 rounded-xl px-4 text-brand-700" variant="secondary">
+                  <Button className="h-11 rounded-xl px-4 text-brand-700" onClick={() => setAdvancedFiltersOpen((current) => !current)} variant="secondary">
                     <FilterIcon />
-                    <span>Archive filters</span>
+                    <span>{advancedFiltersOpen ? "Hide filters" : "More filters"}</span>
                   </Button>
                   <button
                     className="text-sm font-medium text-brand-600 transition hover:text-brand-700"
@@ -1250,110 +1354,65 @@ export function AccountantFilingPage() {
                   value={filters.month}
                 />
                 <ResultFilterSelect
-                  label="Document type"
-                  onChange={(value) =>
-                    setFilters((current) => ({ ...current, documentType: value }))
-                  }
-                  options={documentTypeOptions}
-                  value={filters.documentType}
+                  label="Authority"
+                  onChange={setAuthorityFilter}
+                  options={authorityOptions}
+                  value={authorityFilter}
                 />
                 <ResultFilterSelect
                   label="Filing status"
-                  onChange={(value) => setFilters((current) => ({ ...current, status: value }))}
+                  onChange={setFilingStatusFilter}
                   options={statusOptions}
-                  value={filters.status}
+                  value={filingStatusFilter}
                 />
               </div>
 
-              <div className="grid gap-4 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto] lg:items-end">
-                <ResultFilterSelect
-                  label="Uploaded by"
-                  onChange={(value) =>
-                    setFilters((current) => ({ ...current, uploadedBy: value }))
-                  }
-                  options={uploadedByOptions}
-                  value={filters.uploadedBy}
-                />
-                <ResultFilterSelect
-                  label="Filed by"
-                  onChange={(value) =>
-                    setFilters((current) => ({ ...current, reviewedBy: value }))
-                  }
-                  options={reviewedByOptions}
-                  value={filters.reviewedBy}
-                />
-                <ResultFilterSelect
-                  label="Expiry status"
-                  onChange={(value) =>
-                    setFilters((current) => ({ ...current, expiryStatus: value }))
-                  }
-                  options={[
-                    { label: "All", value: "" },
-                    { label: "Expiring soon", value: "expiring" },
-                    { label: "Expired", value: "expired" },
-                  ]}
-                  value={filters.expiryStatus}
-                />
-                <ResultFilterSelect
-                  label="Year"
-                  onChange={(value) => setFilters((current) => ({ ...current, year: value }))}
-                  options={yearOptions}
-                  value={filters.year}
-                />
-                <button
-                  className="inline-flex h-10 items-center gap-1.5 rounded-xl px-1 text-sm font-medium text-brand-600 transition hover:text-brand-700"
-                  onClick={() => {
-                    setFilters((current) => ({
-                      ...current,
-                      requiredFlag: "required",
-                      expiryStatus: "expiring",
-                      status: current.status || "accepted",
-                    }));
-                    setFeedbackMessage("Applied priority filter preset for required and expiring items.");
-                  }}
-                  type="button"
-                >
-                  <span>More archive filters</span>
-                  <ChevronRightIcon />
-                </button>
-              </div>
+              {advancedFiltersOpen ? (
+                <div className="grid gap-3 border-t border-slate-200 bg-slate-50/70 px-3 py-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <ResultFilterSelect
+                    label="Filing type"
+                    onChange={setFilingTypeFilter}
+                    options={filingTypeOptions}
+                    value={filingTypeFilter}
+                  />
+                  <ResultFilterSelect
+                    label="Filed by"
+                    onChange={(value) =>
+                      setFilters((current) => ({ ...current, reviewedBy: value }))
+                    }
+                    options={reviewedByOptions}
+                    value={filters.reviewedBy}
+                  />
+                  <ResultFilterSelect
+                    label="Due status"
+                    onChange={(value) =>
+                      setFilters((current) => ({ ...current, expiryStatus: value }))
+                    }
+                    options={[
+                      { label: "All due dates", value: "" },
+                      { label: "Due soon", value: "expiring" },
+                      { label: "Past due", value: "expired" },
+                    ]}
+                    value={filters.expiryStatus}
+                  />
+                  <ResultFilterSelect
+                    label="Year"
+                    onChange={(value) => setFilters((current) => ({ ...current, year: value }))}
+                    options={yearOptions}
+                    value={filters.year}
+                  />
+                </div>
+              ) : null}
             </div>
-          </SurfaceCard>
+          </section>
 
-          <SurfaceCard className="overflow-hidden rounded-[1.7rem] border border-slate-200/90 bg-white p-0 shadow-[0_18px_48px_rgba(15,23,42,0.06)]">
-            <div className="border-b border-slate-100 px-5 pt-4">
-              <div className="flex flex-nowrap items-center gap-6 overflow-x-auto pb-1">
-                {[
-                  { id: "documents" as const, label: "Filed documents", count: tabCounts.documents },
-                ].map((tab) => (
-                  <button
-                    className={cn(
-                      "relative flex items-center gap-2 pb-4 text-sm font-medium transition",
-                      activeResultTab === tab.id
-                        ? "text-brand-700"
-                        : "text-slate-500 hover:text-slate-700",
-                    )}
-                    key={tab.id}
-                    onClick={() => setActiveResultTab(tab.id)}
-                    type="button"
-                  >
-                    <span>{tab.label}</span>
-                    <span
-                      className={cn(
-                        "rounded-full px-2 py-0.5 text-[0.72rem] font-medium",
-                        activeResultTab === tab.id
-                          ? "bg-brand-50 text-brand-700"
-                          : "bg-slate-100 text-slate-500",
-                      )}
-                    >
-                      {tab.count}
-                    </span>
-                    {activeResultTab === tab.id ? (
-                      <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-brand-500" />
-                    ) : null}
-                  </button>
-                ))}
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+            <div className="flex items-center justify-between gap-4 border-b border-slate-200 px-5 py-4">
+              <div>
+                <h2 className="text-base font-semibold text-slate-950">Statutory filings</h2>
+                <p className="mt-1 text-sm text-slate-500">Submission evidence across your assigned clients.</p>
               </div>
+              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">{visibleResults.length} records</span>
             </div>
 
             {visibleResults.length === 0 ? (
@@ -1362,34 +1421,39 @@ export function AccountantFilingPage() {
                   description={
                     assignedClients.length === 0 && user?.role === "accountant"
                       ? "No filed records found in your assigned client portfolio."
-                      : "Only accepted core filing types are shown here (for example invoices, bank statements, signed documents, and compliance records)."
+                      : "Try clearing a filter or search for a different client, filing type, authority or reference."
                   }
                   title="No filed records match this view"
                 />
               </div>
             ) : (
               <>
-                <div className="hidden border-b border-slate-100 px-5 py-4 text-[0.72rem] font-medium uppercase tracking-[0.12em] text-slate-400 lg:grid lg:grid-cols-[minmax(0,1.85fr)_0.9fr_0.72fr_3.5rem] lg:gap-4">
-                  <div>Filed record</div>
-                  <div>Filed on</div>
-                  <div>Archive status</div>
+                <div className="hidden border-b border-slate-200 bg-slate-50/70 px-4 py-3 text-[0.66rem] font-semibold uppercase tracking-[0.1em] text-slate-500 lg:grid lg:grid-cols-[minmax(280px,1.9fr)_minmax(150px,1fr)_100px_120px_120px_36px] lg:gap-5">
+                  <div>Filing</div>
+                  <div>Client</div>
+                  <div>Authority</div>
+                  <div>Filed</div>
+                  <div>Status</div>
                   <div aria-hidden="true" />
                 </div>
 
                 <div className="divide-y divide-slate-100">
                   {pagedResults.map((result) => {
-                    const fileLabel = inferFileLabel(result, selectedResultId === result.id ? selectedDocument : null);
+                    const rowDocument = resolveDocumentForResult(result);
+                    const filing = buildFilingRecord(result);
+                    const fileLabel = inferFileLabel(result, rowDocument);
                     const selected = viewerOpen && result.id === selectedResultId;
 
                     return (
                       <div
                         className={cn(
-                          "border-l-[3px] px-5 py-4 transition lg:grid lg:grid-cols-[minmax(0,1.85fr)_0.9fr_0.72fr_3.5rem] lg:items-center lg:gap-4",
+                          "cursor-pointer border-l-[3px] px-4 py-3 transition lg:grid lg:grid-cols-[minmax(280px,1.9fr)_minmax(150px,1fr)_100px_120px_120px_36px] lg:items-center lg:gap-5",
                           selected
                             ? "border-l-brand-500 bg-brand-50/35"
                             : "border-l-transparent hover:bg-slate-50/80",
                         )}
                         key={result.id}
+                        onClick={() => handleOpenResult(result)}
                       >
                         <div className="flex items-start gap-4">
                           <div
@@ -1403,7 +1467,7 @@ export function AccountantFilingPage() {
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
                               <p className="truncate text-[0.95rem] font-medium text-slate-950">
-                                {displayResultTitle(result)}
+                                {filing.filingType}
                               </p>
                               {isNewResult(result.date) ? (
                                 <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[0.68rem] font-medium text-brand-700">
@@ -1411,44 +1475,23 @@ export function AccountantFilingPage() {
                                 </span>
                               ) : null}
                             </div>
-                            <p className="mt-1 text-[0.84rem] text-slate-500">
-                              {resultFamilyLabel(result)} | {result.monthLabel}
-                            </p>
-                            <p className="mt-1 truncate text-[0.8rem] text-slate-400">
-                              {result.clientName}
-                            </p>
-                            {result.amountLabel ? (
-                              <p className="mt-1 text-[0.84rem] text-slate-400">
-                                {result.amountLabel}
-                              </p>
-                            ) : null}
+                            <p className="mt-1 truncate text-[0.78rem] text-slate-500">{displayResultTitle(result)}</p>
                           </div>
                         </div>
 
-                        <div className="mt-3 lg:mt-0">
-                          <p className="text-[0.9rem] font-medium text-slate-950">
-                            {formatDateLabel(result.date)}
-                          </p>
-                          <p className="mt-1 text-[0.84rem] text-slate-500">
-                            {new Intl.DateTimeFormat("en-ZA", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            }).format(new Date(result.date))}{" "}
-                            by {result.uploadedBy ?? "Client"}
-                          </p>
-                        </div>
-
+                        <p className="mt-3 truncate text-sm font-medium text-slate-800 lg:mt-0">{result.clientName}</p>
+                        <p className="mt-3 text-xs font-semibold text-slate-700 lg:mt-0">{filing.authority}</p>
+                        <p className="mt-3 text-xs text-slate-600 lg:mt-0">{filing.filedAt ? formatDateLabel(filing.filedAt) : "—"}</p>
                         <div className="mt-3 lg:mt-0">
                           <span
                             className={cn(
-                              "inline-flex rounded-full px-2.5 py-1 text-[0.7rem] font-medium uppercase tracking-[0.04em] ring-1 ring-inset",
-                              toneToAccentClass(statusToTone(result.status)),
+                              "inline-flex rounded-full px-2 py-1 text-[0.64rem] font-semibold ring-1 ring-inset",
+                              toneToAccentClass(filingStatusTone(filing.status)),
                             )}
                           >
-                            {formatStatusLabel(result.status)}
+                            {filing.status}
                           </span>
                         </div>
-
                         <div className="relative mt-3 flex items-center lg:mt-0 lg:justify-end">
                           <button
                             aria-label="Open result actions"
@@ -1474,21 +1517,28 @@ export function AccountantFilingPage() {
                                 onClick={() => handleOpenResult(result)}
                                 type="button"
                               >
-                                Preview file
+                                Open filing
                               </button>
                               <button
                                 className="block w-full rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
                                 onClick={() => handleDownloadResult(result)}
                                 type="button"
                               >
-                                Download
+                                Download proof
+                              </button>
+                              <button
+                                className="block w-full rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
+                                onClick={() => handleCopyReference(result)}
+                                type="button"
+                              >
+                                Copy reference
                               </button>
                               <button
                                 className="block w-full rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
                                 onClick={() => handleViewVersionHistory(result)}
                                 type="button"
                               >
-                                View version history
+                                View submission history
                               </button>
                             </div>
                           ) : null}
@@ -1512,32 +1562,34 @@ export function AccountantFilingPage() {
                 </div>
               </>
             )}
-          </SurfaceCard>
+          </div>
         </div>
 
-        {viewerOpen && selectedResult && selectedDocument ? (
+        {viewerOpen && selectedResult && selectedDocument && selectedFiling ? (
           <div
-            className="fixed inset-0 z-50 bg-slate-950/55 px-3 py-4 sm:px-6 sm:py-6"
+            className="fixed inset-0 z-50 bg-slate-950/30"
             onClick={() => setViewerOpen(false)}
           >
             <SurfaceCard
-              className="mx-auto h-full w-full max-w-[1080px] overflow-y-auto rounded-[1.7rem] border border-slate-200/90 bg-white p-5 shadow-[0_22px_56px_rgba(15,23,42,0.22)]"
+              className="ml-auto h-full w-full max-w-[680px] overflow-y-auto rounded-none border-0 border-l border-slate-200 bg-white p-6 shadow-[-18px_0_50px_rgba(15,23,42,0.16)] sm:p-8"
               onClick={(event) => event.stopPropagation()}
             >
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
                 <h2 className="truncate text-[1.7rem] font-medium text-slate-950">
-                  {displayResultTitle(selectedResult)}
+                  {selectedFiling.filingType}
                 </h2>
                 <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-500">
                   <span
                     className={cn(
-                      "inline-flex rounded-lg border px-2 py-0.5 text-[0.72rem] font-medium",
-                      fileLabelClasses(inferFileLabel(selectedResult, selectedDocument)),
+                      "inline-flex rounded-full px-2.5 py-1 text-[0.72rem] font-medium ring-1 ring-inset",
+                      toneToAccentClass(filingStatusTone(selectedFiling.status)),
                     )}
                   >
-                    {inferFileLabel(selectedResult, selectedDocument)}
+                    {selectedFiling.status}
                   </span>
+                  <span>{selectedFiling.authority}</span>
+                  <span className="h-1 w-1 rounded-full bg-slate-300" />
                   <span>{selectedResult.clientName}</span>
                   <span className="h-1 w-1 rounded-full bg-slate-300" />
                   <span>{selectedResult.monthLabel}</span>
@@ -1565,14 +1617,14 @@ export function AccountantFilingPage() {
                 variant="secondary"
               >
                 <OpenInNewIcon />
-                <span>Open in new tab</span>
+                <span>Open proof</span>
               </Button>
               <Button
                 className="h-10 flex-1 rounded-xl bg-[linear-gradient(135deg,#4f46e5,#4338ca)] px-4 hover:bg-[linear-gradient(135deg,#4338ca,#3730a3)]"
                 onClick={() => downloadDocumentFile(selectedDocument)}
               >
                 <DownloadIcon />
-                <span>Download</span>
+                <span>Download proof</span>
               </Button>
             </div>
 
@@ -1652,72 +1704,79 @@ export function AccountantFilingPage() {
                   <div className="grid gap-x-8 gap-y-5 sm:grid-cols-2">
                     <div>
                       <p className="text-[0.76rem] font-medium uppercase tracking-[0.14em] text-slate-400">
-                        Document type
+                        Filing type
                       </p>
                       <p className="mt-2 text-sm font-medium text-slate-950">
-                        {selectedResult.typeLabel}
+                        {selectedFiling.filingType}
                       </p>
                     </div>
                     <div>
                       <p className="text-[0.76rem] font-medium uppercase tracking-[0.14em] text-slate-400">
-                        Status
+                        Authority
                       </p>
-                      <div className="mt-2">
-                        <span
-                          className={cn(
-                            "inline-flex rounded-full px-2.5 py-1 text-[0.72rem] font-medium ring-1 ring-inset",
-                            toneToAccentClass(statusToTone(selectedResult.status)),
-                          )}
-                        >
-                          {formatStatusLabel(selectedResult.status)}
-                        </span>
-                      </div>
+                      <p className="mt-2 text-sm font-medium text-slate-950">{selectedFiling.authority}</p>
                     </div>
                     <div>
                       <p className="text-[0.76rem] font-medium uppercase tracking-[0.14em] text-slate-400">
-                        Uploaded by
+                        Client
                       </p>
-                      <p className="mt-2 text-sm font-medium text-slate-950">
-                        {detailValue(selectedDocument.uploadedBy)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[0.76rem] font-medium uppercase tracking-[0.14em] text-slate-400">
-                        Uploaded on
-                      </p>
-                      <p className="mt-2 text-sm font-medium text-slate-950">
-                        {formatDateTimeLabel(selectedDocument.uploadedAt)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[0.76rem] font-medium uppercase tracking-[0.14em] text-slate-400">
-                        Filed by
-                      </p>
-                      <p className="mt-2 text-sm font-medium text-slate-950">
-                        {detailValue(selectedDocument.reviewedBy, "Filed by assigned accountant")}
-                      </p>
+                      <p className="mt-2 text-sm font-medium text-slate-950">{selectedResult.clientName}</p>
                     </div>
                     <div>
                       <p className="text-[0.76rem] font-medium uppercase tracking-[0.14em] text-slate-400">
                         Period
                       </p>
+                      <p className="mt-2 text-sm font-medium text-slate-950">{selectedResult.monthLabel}</p>
+                    </div>
+                    <div>
+                      <p className="text-[0.76rem] font-medium uppercase tracking-[0.14em] text-slate-400">
+                        Due date
+                      </p>
                       <p className="mt-2 text-sm font-medium text-slate-950">
-                        {selectedResult.monthLabel}
+                        {formatDateLabel(selectedFiling.dueDate)}
                       </p>
                     </div>
                     <div>
                       <p className="text-[0.76rem] font-medium uppercase tracking-[0.14em] text-slate-400">
-                        Assigned to
+                        Filed date
                       </p>
                       <p className="mt-2 text-sm font-medium text-slate-950">
-                        {selectedAccountant}
-                        {selectedAccountant === user?.fullName ? " (You)" : ""}
+                        {selectedFiling.filedAt ? formatDateLabel(selectedFiling.filedAt) : "Not filed"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[0.76rem] font-medium uppercase tracking-[0.14em] text-slate-400">
+                        Reference
+                      </p>
+                      <div className="mt-2 flex items-center gap-2">
+                        <p className="min-w-0 truncate text-sm font-medium text-slate-950">{selectedFiling.reference}</p>
+                        {selectedFiling.reference !== "Pending" ? (
+                          <button
+                            className="text-xs font-semibold text-brand-700 hover:text-brand-800"
+                            onClick={() => handleCopyReference(selectedResult)}
+                            type="button"
+                          >
+                            Copy
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-[0.76rem] font-medium uppercase tracking-[0.14em] text-slate-400">Payment</p>
+                      <p className="mt-2 text-sm font-medium text-slate-950">{selectedFiling.paymentStatus}</p>
+                    </div>
+                    <div>
+                      <p className="text-[0.76rem] font-medium uppercase tracking-[0.14em] text-slate-400">Filed by</p>
+                      <p className="mt-2 text-sm font-medium text-slate-950">
+                        {detailValue(selectedDocument.reviewedBy, selectedAccountant)}
                       </p>
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                    Archived records are locked. Review decisions happen in the Documents workflow page.
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600">
+                    {selectedFiling.proofAvailable
+                      ? "Submission proof is attached to this filing record. The audit history below preserves every recorded change."
+                      : "No submission proof is attached yet. Prepare the filing before recording a submission reference."}
                   </div>
                 </div>
               ) : null}

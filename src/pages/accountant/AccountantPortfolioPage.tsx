@@ -208,8 +208,8 @@ export function AccountantPortfolioPage() {
   const [feedbackNotice, setFeedbackNotice] = useState<FeedbackNotice | null>(null);
   const actionMenuRef = useRef<HTMLTableCellElement | null>(null);
 
-const sourceClients = backendMode && liveClients ? liveClients : portal.adminClients;
-  const sourcePortfolio = backendMode && livePortfolio ? livePortfolio : portal.accountantDashboard.portfolio;
+  const sourceClients = backendMode ? liveClients ?? [] : portal.adminClients;
+  const sourcePortfolio = backendMode ? livePortfolio ?? [] : portal.accountantDashboard.portfolio;
   const accountById = useMemo(() => new Map(sourceClients.map((client) => [client.id, client])), [sourceClients]);
   const scopedClients = useMemo(() => getScopedClients(user, sourceClients), [sourceClients, user]);
   const scopedClientIds = useMemo(() => new Set(scopedClients.map((client) => client.id)), [scopedClients]);
@@ -307,7 +307,7 @@ const sourceClients = backendMode && liveClients ? liveClients : portal.adminCli
           message:
             error instanceof ApiError
               ? error.message
-              : "The live accountant portfolio could not be loaded, so the seeded workspace view is still shown.",
+              : "The live accountant portfolio could not be loaded. No demo records are being shown.",
         });
       }
     }

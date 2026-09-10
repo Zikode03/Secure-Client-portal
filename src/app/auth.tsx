@@ -16,17 +16,16 @@ import {
   ApiError,
   apiGetJson,
   apiPostJson,
-  clearAuthToken,
-  clearRefreshToken,
-  getRefreshToken,
   hasApiBaseUrl,
-  setAuthToken,
-  setRefreshToken,
 } from "../services/apiClient";
 
 const STORAGE_KEY = "accounting-document-control-session";
-const CREDENTIALS_KEY = "accounting-document-control-credentials";
 const AUTH_NOTICE_KEY = "accounting-document-control-auth-notice";
+const LEGACY_TOKEN_KEYS = [
+  "accounting-document-control-auth-token",
+  "accounting-document-control-refresh-token",
+  "accounting-document-control-credentials",
+];
 
 interface LoginPayload {
   email: string;
@@ -107,8 +106,8 @@ const defaultCredentialsByEmail: Record<string, string> = {
 };
 
 interface BackendLoginResponse {
-  token: string;
-  refreshToken: string;
+  expiresAtUtc?: string;
+  refreshExpiresAtUtc?: string;
 }
 
 interface BackendMeResponse {
@@ -143,22 +142,21 @@ function buildUserName(fullName: string) {
 }
 
 function mapBackendUser(payload: BackendMeResponse["user"]): SessionUser {
-  const fallbackUser = getMockUserByEmail(payload.email);
   const clientIds = payload.clientIds ?? [];
 
-  return applyPermissionOverride({
+  return {
     id: payload.id,
     name: buildUserName(payload.fullName),
     fullName: payload.fullName,
     email: payload.email,
     role: payload.role,
-    title: fallbackUser?.title ?? (payload.role === "client" ? "Client user" : "Portal user"),
-    company: fallbackUser?.company ?? "",
+    title: payload.role === "client" ? "Client user" : "Portal user",
+    company: "",
     initials: createInitials(payload.fullName),
     clientIds,
     assignedClientIds: payload.role === "client" ? [] : clientIds,
     permissions: payload.permissions,
-  });
+  };
 }
 
 function readStoredValue(key: string) {
@@ -207,16 +205,6 @@ function readAuthNotice() {
   return value || null;
 }
 
-function persistBackendTokens(response: BackendLoginResponse, persistent: boolean) {
-  setAuthToken(response.token, persistent);
-  setRefreshToken(response.refreshToken, persistent);
-}
-
-function clearStoredBackendSession() {
-  clearAuthToken();
-  clearRefreshToken();
-}
-
 function clearStoredFrontendSession() {
   clearStoredValue(STORAGE_KEY);
 }
@@ -235,16 +223,10 @@ async function loadBackendSessionUser() {
 }
 
 async function refreshBackendSession() {
-  const refreshToken = getRefreshToken();
-  if (!refreshToken) {
-    throw new Error("Refresh token missing");
-  }
-
-  const response = await apiPostJson<BackendLoginResponse, { refreshToken: string }>(
+  return apiPostJson<BackendLoginResponse, Record<string, never>>(
     "/api/auth/refresh",
-    { refreshToken },
+    {},
   );
-  return response;
 }
 
 function getApiErrorMessage(error: unknown, fallback: string) {
@@ -290,36 +272,6 @@ function getApiErrorMessage(error: unknown, fallback: string) {
   }
 }
 
-function readCredentials() {
-  if (typeof window === "undefined") {
-    return defaultCredentialsByEmail;
-  }
-
-  const storedCredentials = window.localStorage.getItem(CREDENTIALS_KEY);
-  if (!storedCredentials) {
-    window.localStorage.setItem(CREDENTIALS_KEY, JSON.stringify(defaultCredentialsByEmail));
-    return defaultCredentialsByEmail;
-  }
-
-  try {
-    return {
-      ...defaultCredentialsByEmail,
-      ...(JSON.parse(storedCredentials) as Record<string, string>),
-    };
-  } catch {
-    window.localStorage.setItem(CREDENTIALS_KEY, JSON.stringify(defaultCredentialsByEmail));
-    return defaultCredentialsByEmail;
-  }
-}
-
-function writeCredentials(credentials: Record<string, string>) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  window.localStorage.setItem(CREDENTIALS_KEY, JSON.stringify(credentials));
-}
-
 export function defaultPathForRole(role: Role) {
   switch (role) {
     case "accountant":
@@ -337,6 +289,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [authNotice, setAuthNotice] = useState<string | null>(readAuthNotice);
   const [persistSession, setPersistSession] = useState(() => !hasSessionValue(STORAGE_KEY));
+  const [mockCredentials, setMockCredentials] = useState(defaultCredentialsByEmail);
 
   function updateAuthNotice(message: string | null) {
     setAuthNotice(message);
@@ -353,6 +306,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let isMounted = true;
 
     async function restoreSession() {
+      LEGACY_TOKEN_KEYS.forEach((key) => {
+        window.localStorage.removeItem(key);
+        window.sessionStorage.removeItem(key);
+      });
       if (hasApiBaseUrl()) {
         try {
           const nextUser = await loadBackendSessionUser();
@@ -361,18 +318,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser(nextUser);
           }
         } catch (error) {
-          if (error instanceof ApiError && error.status === 401 && getRefreshToken()) {
+          if (error instanceof ApiError && error.status === 401) {
             try {
-              const refreshResponse = await refreshBackendSession();
+              await refreshBackendSession();
               const nextPersistent = !hasSessionValue(STORAGE_KEY);
-              persistBackendTokens(refreshResponse, nextPersistent);
               const nextUser = await loadBackendSessionUser();
               if (isMounted) {
                 setPersistSession(nextPersistent);
                 setUser(nextUser);
               }
             } catch {
-              clearStoredBackendSession();
               clearStoredFrontendSession();
               if (isMounted) {
                 updateAuthNotice("Your session expired. Please sign in again.");
@@ -386,7 +341,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return;
           }
 
-          clearStoredBackendSession();
           clearStoredFrontendSession();
           if (isMounted) {
             updateAuthNotice(getApiErrorMessage(error, "Please sign in again to continue."));
@@ -467,7 +421,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               "/api/auth/login",
               { email: trimmedEmail, password, rememberMe },
             );
-            persistBackendTokens(loginResponse, rememberMe);
+            void loginResponse;
             setPersistSession(rememberMe);
 
             const nextUser = await loadBackendSessionUser();
@@ -475,7 +429,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser(nextUser);
             return { ok: true, user: nextUser };
           } catch (error) {
-            clearStoredBackendSession();
             clearStoredFrontendSession();
             return {
               ok: false,
@@ -488,8 +441,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         const matchedUser = getMockUserByEmail(trimmedEmail);
-        const credentials = readCredentials();
-
         if (!matchedUser) {
           return {
             ok: false,
@@ -498,7 +449,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           };
         }
 
-        if (credentials[trimmedEmail] !== password) {
+        if (mockCredentials[trimmedEmail] !== password) {
           return {
             ok: false,
             message: "The password does not match this portal account.",
@@ -533,7 +484,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 password,
               },
             );
-            persistBackendTokens(inviteResponse, true);
+            void inviteResponse;
             setPersistSession(true);
 
             const nextUser = await loadBackendSessionUser();
@@ -541,7 +492,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser(nextUser);
             return { ok: true, user: nextUser };
           } catch (error) {
-            clearStoredBackendSession();
             clearStoredFrontendSession();
             return {
               ok: false,
@@ -573,9 +523,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           name: fullName.trim().split(/\s+/)[0] ?? matchedUser.name,
           initials: createInitials(fullName.trim()),
         };
-        const credentials = readCredentials();
-        credentials[trimmedEmail] = password.trim();
-        writeCredentials(credentials);
+        setMockCredentials((current) => ({
+          ...current,
+          [trimmedEmail]: password.trim(),
+        }));
         const resolvedUser = applyPermissionOverride(nextUser);
         setPersistSession(true);
         updateAuthNotice(null);
@@ -630,7 +581,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               "/api/auth/change-password",
               { currentPassword, nextPassword },
             );
-            persistBackendTokens(response, persistSession);
+            void response;
             const nextUser = await loadBackendSessionUser();
             setUser(nextUser);
             return { ok: true, message: "Password updated. Your current session has been refreshed." };
@@ -650,15 +601,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return { ok: false, message: "Choose a new password that is different from the current one." };
         }
 
-        const credentials = readCredentials();
-        const currentCredential = credentials[user.email.toLowerCase()];
+        const currentCredential = mockCredentials[user.email.toLowerCase()];
 
         if (currentCredential !== currentPassword) {
           return { ok: false, message: "Your current password is incorrect." };
         }
 
-        credentials[user.email.toLowerCase()] = nextPassword.trim();
-        writeCredentials(credentials);
+        setMockCredentials((current) => ({
+          ...current,
+          [user.email.toLowerCase()]: nextPassword.trim(),
+        }));
         return { ok: true, message: "Password updated for this portal account." };
       },
       async logout() {
@@ -668,7 +620,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           } catch {
             // Clear the local session even if the backend is already unavailable.
           }
-          clearStoredBackendSession();
         }
 
         clearStoredFrontendSession();
@@ -676,7 +627,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
       },
     }),
-    [authNotice, persistSession, ready, user],
+    [authNotice, mockCredentials, persistSession, ready, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

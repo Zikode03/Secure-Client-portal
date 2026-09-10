@@ -23,6 +23,7 @@ import { buildReviewDocumentFromInvoice } from "../../services/workflowEngine";
 import type {
   DocumentRecord,
   DocumentComment,
+  DocumentVersionRecord,
   MonthlyDocumentSlot,
   Tone,
   UnifiedSearchFilters,
@@ -39,7 +40,7 @@ import {
 const pageSize = 8;
 
 // Shared shape notes: these types keep UI and data contracts aligned.
-type DocumentWorkspaceTab = "overview" | "comments" | "audit" | "related";
+type DocumentWorkspaceTab = "overview" | "comments" | "versions" | "audit" | "related";
 type SortDirection = "newest" | "oldest";
 
 interface BackendDocumentRecord {
@@ -497,6 +498,7 @@ export function ClientDocumentsPage() {
   const [livePackId, setLivePackId] = useState("");
   const [liveDocumentsBase, setLiveDocumentsBase] = useState<DocumentRecord[] | null>(null);
   const [liveCommentsByDocumentId, setLiveCommentsByDocumentId] = useState<Record<string, DocumentComment[]>>({});
+  const [liveVersionsByDocumentId, setLiveVersionsByDocumentId] = useState<Record<string, DocumentVersionRecord[]>>({});
   const [liveSlots, setLiveSlots] = useState<MonthlyDocumentSlot[] | null>(null);
   const [liveSlotDocumentIds, setLiveSlotDocumentIds] = useState<Record<string, string | undefined>>({});
   const [liveDocumentSlotIds, setLiveDocumentSlotIds] = useState<Record<string, string | undefined>>({});
@@ -576,6 +578,9 @@ export function ClientDocumentsPage() {
               comments: [],
               auditTrail: [],
               fileMimeType: document.fileType,
+              versionNumber: document.currentVersionNumber,
+              monthlyPackId: document.monthlyPackId,
+              documentSlotId: document.documentSlotId ?? undefined,
             };
           });
 
@@ -785,7 +790,7 @@ export function ClientDocumentsPage() {
   }, [backendMode, liveDocuments, portal, selectedResult]);
 
   const selectedSlotForAction = useMemo(() => {
-    const slots = backendMode && liveSlots ? liveSlots : portal.clientWorkflow.monthPack.slots;
+    const slots = backendMode ? liveSlots ?? [] : portal.clientWorkflow.monthPack.slots;
     if (backendMode && selectedResult) {
       const slotId = liveDocumentSlotIds[selectedResult.id];
       const directSlot = slots.find((slot) => slot.id === slotId);
@@ -796,14 +801,34 @@ export function ClientDocumentsPage() {
 
     return inferSlotFromResult(selectedResult, slots);
   }, [backendMode, liveDocumentSlotIds, liveSlots, portal.clientWorkflow.monthPack.slots, selectedResult]);
-  const uploadSlots = backendMode && liveSlots ? liveSlots : portal.clientWorkflow.monthPack.slots;
+  const uploadSlots = backendMode ? liveSlots ?? [] : portal.clientWorkflow.monthPack.slots;
+  const preferredUploadSlot = uploadSlots.find((slot) =>
+    ["rejected", "missing", "pending", "partial"].includes(slot.status),
+  ) ?? uploadSlots[0] ?? null;
+  const registerSummary = useMemo(() => {
+    const now = Date.now();
+    return {
+      total: searchableResults.length,
+      awaitingReview: searchableResults.filter((result) => result.status === "uploaded" || result.status === "under_review").length,
+      rejected: searchableResults.filter((result) => result.status === "rejected").length,
+      expiringSoon: searchableResults.filter((result) => {
+        if (!result.expiryDate) return false;
+        const days = (new Date(result.expiryDate).getTime() - now) / 86_400_000;
+        return days >= 0 && days <= 30;
+      }).length,
+      recentlyAccepted: searchableResults.filter((result) => {
+        const days = (now - new Date(result.date).getTime()) / 86_400_000;
+        return result.status === "accepted" && days >= 0 && days <= 30;
+      }).length,
+    };
+  }, [searchableResults]);
   const existingSlotFileNames = useMemo(() => {
     if (!selectedSlot) {
       return [];
     }
 
     const targetMonthLabel = `${selectedSlot.month} ${selectedSlot.year}`;
-    const documentFileNames = (backendMode && liveDocuments ? liveDocuments : portal.clientWorkflow.documents)
+    const documentFileNames = (backendMode ? liveDocuments ?? [] : portal.clientWorkflow.documents)
       .filter(
         (document) =>
           document.documentType === selectedSlot.documentType &&
@@ -827,6 +852,40 @@ export function ClientDocumentsPage() {
 
     return selectedDocument?.comments ?? [];
   }, [selectedDocument, selectedResult]);
+
+  const selectedVersions = useMemo<DocumentVersionRecord[]>(() => {
+    if (!selectedDocument) return [];
+    const liveVersions = liveVersionsByDocumentId[selectedDocument.id];
+    if (liveVersions) return liveVersions;
+    return [{
+      id: `${selectedDocument.id}-current`,
+      documentId: selectedDocument.id,
+      versionNumber: selectedDocument.versionNumber ?? 1,
+      name: selectedDocument.fileName,
+      originalFileName: selectedDocument.fileName,
+      fileType: selectedDocument.fileMimeType ?? "Document",
+      sizeBytes: 0,
+      uploadedByUserId: selectedDocument.uploadedBy,
+      createdAtUtc: selectedDocument.uploadedAt,
+      isCurrent: true,
+    }];
+  }, [liveVersionsByDocumentId, selectedDocument]);
+
+  useEffect(() => {
+    if (!backendMode || !selectedDocument || liveVersionsByDocumentId[selectedDocument.id]) return;
+    let isActive = true;
+    const documentId = selectedDocument.id;
+    void apiGetJson<DocumentVersionRecord[]>(`/api/documents/${encodeURIComponent(documentId)}/versions`)
+      .then((versions) => {
+        if (!isActive) return;
+        setLiveVersionsByDocumentId((current) => ({ ...current, [documentId]: versions }));
+      })
+      .catch(() => {
+        if (!isActive) return;
+        setLiveVersionsByDocumentId((current) => ({ ...current, [documentId]: [] }));
+      });
+    return () => { isActive = false; };
+  }, [backendMode, liveVersionsByDocumentId, selectedDocument]);
 
   useEffect(() => {
     if (!backendMode || !selectedDocument) {
@@ -1278,46 +1337,19 @@ export function ClientDocumentsPage() {
 
   return (
     <div className="portal-page mx-auto max-w-[1320px] space-y-5">
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
-        <div className="space-y-1.5">
-          <div className="text-sm font-semibold uppercase tracking-[0.12em] text-brand-600">
-            Client document centre
+      <header>
+        <h1 className="sr-only">Documents</h1>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="min-w-0 flex-1">
+            <label className="relative min-w-0 flex-1">
+              <span className="sr-only">Search documents</span>
+              <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"><SearchIcon /></span>
+              <input className="h-12 w-full rounded-xl border border-slate-300 bg-white pl-11 pr-4 text-sm text-slate-900 outline-none transition focus:border-brand-400 focus:ring-4 focus:ring-brand-100" onChange={(event) => setFilters((current) => ({ ...current, query: event.target.value }))} placeholder="Search your document register" value={filters.query} />
+            </label>
           </div>
-          <h1 className="portal-page-title text-slate-950">
-            Document workspace
-          </h1>
-          <p className="max-w-3xl text-[0.94rem] leading-7 text-slate-500">
-            Search, inspect, and manage your documents and invoices in one place.
-          </p>
+          <Button className="h-12 rounded-xl px-6" onClick={() => openUploadForSlot(preferredUploadSlot)}>Upload document</Button>
         </div>
-
-        <div className="flex flex-wrap items-center gap-2.5 lg:justify-end">
-          {backendMode ? (
-            <Button
-              className="h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-700 hover:bg-slate-50"
-              onClick={() => setLiveRefreshKey((current) => current + 1)}
-              variant="secondary"
-            >
-              <span>Refresh</span>
-            </Button>
-          ) : null}
-          <Button
-            className="h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-700 hover:bg-slate-50"
-            onClick={handleClearFilters}
-            variant="secondary"
-          >
-            <FilterIcon />
-            <span>Clear filters</span>
-          </Button>
-          <Button
-            className="h-11 rounded-xl bg-[linear-gradient(135deg,#5442ff,#6f59ff)] px-5 text-sm shadow-[0_14px_28px_rgba(84,66,255,0.18)] hover:bg-[linear-gradient(135deg,#4a38ef,#6650ff)]"
-            onClick={handleExportResults}
-          >
-            <DownloadIcon />
-            <span>Export results</span>
-          </Button>
-        </div>
-      </div>
+      </header>
 
       {feedbackNotice ? (
         <FeedbackBanner
@@ -1328,21 +1360,29 @@ export function ClientDocumentsPage() {
         />
       ) : null}
 
-      <SurfaceCard className="rounded-[1.5rem] border border-slate-200/80 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.05)]">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <h2 className="text-[1.08rem] font-semibold text-slate-950">Monthly upload checklist</h2>
-            <p className="mt-1 text-sm leading-6 text-slate-500">
-              Choose the correct slot to upload, replace, or resubmit a document.
-            </p>
+      <section aria-label="Document register summary" className="flex flex-wrap items-center gap-2 text-xs font-medium text-slate-600">
+        <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5"><strong className="font-semibold text-slate-950">{registerSummary.total}</strong> documents</span>
+        <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-amber-800"><strong className="font-semibold">{registerSummary.awaitingReview}</strong> awaiting review</span>
+        {registerSummary.rejected > 0 ? <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-rose-700"><strong className="font-semibold">{registerSummary.rejected}</strong> rejected</span> : null}
+        {registerSummary.expiringSoon > 0 ? <span className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1.5 text-orange-700"><strong className="font-semibold">{registerSummary.expiringSoon}</strong> expiring soon</span> : null}
+      </section>
+
+      <details className="group rounded-xl border border-slate-200 bg-white">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700"><CalendarIcon /></span>
+            <div className="min-w-0">
+              <h2 className="truncate text-sm font-semibold text-slate-950">Monthly requirements</h2>
+              <p className="truncate text-xs text-slate-500">{uploadSlots.filter((slot) => ["rejected", "missing", "pending", "partial"].includes(slot.status)).length} outstanding for the current period</p>
+            </div>
           </div>
-          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
-            {uploadSlots.length} slots
+          <span className="flex items-center gap-2 text-xs font-semibold text-brand-700">
+            View requirements <span className="transition group-open:rotate-180"><ChevronDownIcon /></span>
           </span>
-        </div>
+        </summary>
 
         {uploadSlots.length > 0 ? (
-          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <div className="divide-y divide-slate-100 border-t border-slate-200 px-4">
             {uploadSlots.map((slot) => {
               const tone = statusToTone(slot.status);
               const actionLabel =
@@ -1353,7 +1393,7 @@ export function ClientDocumentsPage() {
                     : "Upload new version";
 
               return (
-                <div className="flex min-h-[150px] flex-col rounded-2xl border border-slate-200 bg-slate-50 p-4" key={slot.id}>
+                <div className="grid gap-3 px-1 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center" key={slot.id}>
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="font-medium text-slate-950">{slot.documentType}</p>
@@ -1364,7 +1404,7 @@ export function ClientDocumentsPage() {
                     </span>
                   </div>
                   <Button
-                    className="mt-auto h-10 w-full rounded-xl"
+                    className="h-9 w-full rounded-lg sm:w-auto"
                     onClick={() => openUploadForSlot(slot)}
                     size="sm"
                     variant={slot.status === "rejected" ? "danger" : "secondary"}
@@ -1383,11 +1423,11 @@ export function ClientDocumentsPage() {
             />
           </div>
         )}
-      </SurfaceCard>
+      </details>
 
-      <SurfaceCard className="rounded-[1.5rem] border border-slate-200/80 bg-white p-4 shadow-[0_18px_40px_rgba(15,23,42,0.05)]">
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,2.2fr)_minmax(150px,1fr)_minmax(170px,1fr)_minmax(170px,1fr)_minmax(170px,1fr)]">
-          <label className="space-y-2">
+      <section>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <label className="hidden">
             <span className="text-sm font-medium text-slate-600">Smart search</span>
             <div className="flex h-12 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 text-slate-500 shadow-sm">
               <SearchIcon />
@@ -1402,9 +1442,9 @@ export function ClientDocumentsPage() {
             </div>
           </label>
 
-          <label className="space-y-2">
-            <span className="text-sm font-medium text-slate-600">Month</span>
-            <div className="flex h-12 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 shadow-sm">
+          <label>
+            <span className="sr-only">Month</span>
+            <div className="flex h-10 items-center gap-3 rounded-lg border border-slate-200 bg-white px-3">
               <select
                 className="w-full appearance-none border-none bg-transparent text-sm text-slate-900 outline-none"
                 onChange={(event) =>
@@ -1423,9 +1463,9 @@ export function ClientDocumentsPage() {
             </div>
           </label>
 
-          <label className="space-y-2">
-            <span className="text-sm font-medium text-slate-600">Status</span>
-            <div className="flex h-12 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 shadow-sm">
+          <label>
+            <span className="sr-only">Status</span>
+            <div className="flex h-10 items-center gap-3 rounded-lg border border-slate-200 bg-white px-3">
               <select
                 className="w-full appearance-none border-none bg-transparent text-sm text-slate-900 outline-none"
                 onChange={(event) =>
@@ -1444,9 +1484,9 @@ export function ClientDocumentsPage() {
             </div>
           </label>
 
-          <label className="space-y-2">
-            <span className="text-sm font-medium text-slate-600">Document type</span>
-            <div className="flex h-12 items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 shadow-sm">
+          <label>
+            <span className="sr-only">Document type</span>
+            <div className="flex h-10 items-center gap-3 rounded-lg border border-slate-200 bg-white px-3">
               <select
                 className="w-full appearance-none border-none bg-transparent text-sm text-slate-900 outline-none"
                 onChange={(event) =>
@@ -1465,15 +1505,14 @@ export function ClientDocumentsPage() {
             </div>
           </label>
 
-          <div className="space-y-2">
-            <span className="text-sm font-medium text-slate-600">More filters</span>
+          <div>
             <button
-              className="flex h-12 w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-4 text-left text-sm text-slate-700 shadow-sm transition hover:bg-slate-50"
+              className="flex h-10 w-full items-center justify-between rounded-lg border border-slate-200 bg-white px-3 text-left text-sm text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
               onClick={() => setAdvancedFiltersOpen((current) => !current)}
               type="button"
             >
               <span className="flex items-center gap-2">
-                <span>Advanced filters</span>
+                <span>More filters</span>
                 <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[0.72rem] font-semibold text-slate-500">
                   {activeAdvancedFilterCount}
                 </span>
@@ -1552,37 +1591,33 @@ export function ClientDocumentsPage() {
             </label>
           </div>
         ) : null}
-      </SurfaceCard>
+      </section>
 
-      <section className="grid gap-5">
-        <SurfaceCard className="overflow-hidden rounded-[1.5rem] border border-slate-200/80 bg-white p-0 shadow-[0_20px_45px_rgba(15,23,42,0.05)]">
-          <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-5 pb-4 pt-5">
+      <section>
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+          <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
-              <h2 className="text-[1.08rem] font-semibold text-slate-950">Search results</h2>
+              <h2 className="text-[1.08rem] font-semibold text-slate-950">Document register</h2>
               <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[0.72rem] font-semibold text-slate-500">
                 {sortedResults.length} results
               </span>
             </div>
 
-            <label className="flex items-center gap-2 text-sm text-slate-500">
-              <span>Sort:</span>
-              <select
-                className="border-none bg-transparent font-medium text-slate-700 outline-none"
-                onChange={(event) => setSortDirection(event.target.value as SortDirection)}
-                value={sortDirection}
-              >
-                <option value="newest">Newest first</option>
-                <option value="oldest">Oldest first</option>
-              </select>
-            </label>
+            <div className="flex items-center gap-2">
+              <label className="flex items-center gap-2 text-sm text-slate-500"><span>Sort</span><select className="rounded-lg border border-slate-200 bg-white px-2 py-1.5 font-medium text-slate-700 outline-none" onChange={(event) => setSortDirection(event.target.value as SortDirection)} value={sortDirection}><option value="newest">Newest first</option><option value="oldest">Oldest first</option></select></label>
+              <Button onClick={handleClearFilters} size="sm" variant="secondary"><FilterIcon /> Clear filters</Button>
+              <Button onClick={handleExportResults} size="sm" variant="secondary"><DownloadIcon /> Export</Button>
+            </div>
           </div>
 
           {sortedResults.length > 0 ? (
             <>
-              <div className="hidden grid-cols-[minmax(0,1.9fr)_0.95fr_0.95fr_24px] gap-4 border-b border-slate-100 px-5 py-3 text-[0.72rem] font-semibold uppercase tracking-[0.16em] text-slate-400 lg:grid">
+              <div className="hidden grid-cols-[minmax(0,1.8fr)_0.8fr_0.55fr_0.85fr_0.8fr_24px] gap-3 border-b border-slate-200 bg-slate-50/80 px-4 py-2.5 text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-slate-500 lg:grid">
                 <span>Document</span>
-                <span>Updated</span>
+                <span>Period</span>
+                <span>Version</span>
                 <span>Status</span>
+                <span>Updated</span>
                 <span />
               </div>
 
@@ -1590,12 +1625,13 @@ export function ClientDocumentsPage() {
                 {visibleResults.map((result) => {
                   const tone = statusToTone(result.status);
                   const isSelected = selectedResult?.id === result.id;
+                  const rowDocument = (backendMode ? liveDocuments ?? [] : portal.clientWorkflow.documents).find((document) => document.id === result.id);
                   const isRecent =
                     (Date.now() - new Date(result.date).getTime()) / (1000 * 60 * 60 * 24) <= 7;
 
                   return (
                     <button
-                      className={`w-full px-4 py-4 text-left transition lg:px-5 ${
+                      className={`w-full px-4 py-3 text-left transition ${
                         isSelected
                           ? "bg-brand-50/35 ring-1 ring-inset ring-brand-200"
                           : "hover:bg-slate-50"
@@ -1607,7 +1643,7 @@ export function ClientDocumentsPage() {
                       }}
                       type="button"
                     >
-                      <div className="grid gap-3 lg:grid-cols-[minmax(0,1.9fr)_0.95fr_0.95fr_24px] lg:items-center lg:gap-4">
+                      <div className="grid gap-2 lg:grid-cols-[minmax(0,1.8fr)_0.8fr_0.55fr_0.85fr_0.8fr_24px] lg:items-center lg:gap-3">
                         <div className="flex items-start gap-3">
                           <ResultTypeIcon result={result} />
                           <div className="min-w-0">
@@ -1615,7 +1651,7 @@ export function ClientDocumentsPage() {
                               {result.title}
                             </p>
                             <p className="mt-0.5 truncate text-[0.82rem] text-slate-500">
-                              {result.typeLabel} | {result.monthLabel}
+                              {result.typeLabel}{rowDocument?.documentSlotId ? " · Monthly pack" : " · Supporting document"}
                             </p>
                             {result.amountLabel ? (
                               <p className="mt-1 text-[0.82rem] font-medium text-slate-400">{result.amountLabel}</p>
@@ -1631,11 +1667,13 @@ export function ClientDocumentsPage() {
                           </div>
                         </div>
 
-                        <div className="text-[0.82rem] text-slate-500">{formatDateLabel(result.date)}</div>
+                        <div className="text-[0.82rem] text-slate-600">{result.monthLabel}</div>
+                        <div className="text-[0.82rem] font-medium text-slate-700">v{rowDocument?.versionNumber ?? 1}</div>
                         <div className="flex items-center gap-2 text-[0.84rem] font-medium text-slate-700">
                           <span className={`h-2.5 w-2.5 rounded-full ${toneDotClass(tone)}`} />
                           <span>{formatStatusLabel(result.status)}</span>
                         </div>
+                        <div className="text-[0.82rem] text-slate-500">{formatDateLabel(result.date)}</div>
 
                         <div className="hidden justify-self-end text-slate-300 lg:block">
                           <ChevronRightIcon />
@@ -1678,15 +1716,15 @@ export function ClientDocumentsPage() {
               />
             </div>
           )}
-        </SurfaceCard>
+        </div>
 
         {viewerOpen && selectedResult ? (
           <div
-            className="fixed inset-0 z-50 bg-slate-950/55 px-3 py-4 sm:px-6 sm:py-6"
+            className="fixed inset-0 z-50 bg-slate-950/30"
             onClick={() => setViewerOpen(false)}
           >
             <SurfaceCard
-              className="mx-auto h-full w-full max-w-[1120px] overflow-y-auto rounded-[1.5rem] border border-slate-200/80 bg-white p-0 shadow-[0_22px_56px_rgba(15,23,42,0.22)]"
+              className="ml-auto h-full w-full max-w-[680px] overflow-y-auto border-l border-slate-200 bg-white p-0 shadow-[-18px_0_48px_rgba(15,23,42,0.16)]"
               onClick={(event) => event.stopPropagation()}
             >
           {selectedResult ? (
@@ -1800,7 +1838,7 @@ export function ClientDocumentsPage() {
                   </div>
                 </div>
 
-                <div className="grid gap-4 rounded-[1.3rem] border border-slate-200 bg-slate-50 p-4 md:grid-cols-2 xl:grid-cols-4">
+                <div className="grid gap-4 border-t border-slate-200 bg-slate-50 px-5 py-4 sm:grid-cols-2">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 text-[0.82rem] font-medium text-slate-500">
                       <DocumentMetaIcon />
@@ -1850,6 +1888,7 @@ export function ClientDocumentsPage() {
                   {[
                     { id: "overview" as const, label: "Overview", count: null },
                     { id: "comments" as const, label: "Comments", count: selectedComments.length },
+                    { id: "versions" as const, label: "Versions", count: selectedVersions.length },
                     {
                       id: "audit" as const,
                       label: "Audit trail",
@@ -2027,6 +2066,18 @@ export function ClientDocumentsPage() {
                       title="No audit trail available"
                     />
                   )
+                ) : null}
+
+                {activeTab === "versions" ? (
+                  <div className="divide-y divide-slate-200 border-y border-slate-200">
+                    {selectedVersions.map((version) => (
+                      <div className="grid gap-2 py-3 text-sm sm:grid-cols-[80px_minmax(0,1fr)_auto] sm:items-center" key={version.id}>
+                        <span className="font-semibold text-slate-900">Version {version.versionNumber}</span>
+                        <span className="min-w-0 truncate text-slate-600">{version.originalFileName || version.name}</span>
+                        <span className="text-xs text-slate-500">{version.isCurrent ? "Current" : formatDateLabel(version.createdAtUtc)}</span>
+                      </div>
+                    ))}
+                  </div>
                 ) : null}
 
                 {activeTab === "related" ? (
