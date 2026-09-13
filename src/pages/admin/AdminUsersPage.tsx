@@ -3,7 +3,7 @@ import { Button } from "../../components/ui/Button";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { SelectField } from "../../components/ui/SelectField";
-import { SurfaceCard } from "../../components/ui/SurfaceCard";
+import { PageSection } from "../../components/ui/PageSection";
 import { TextField } from "../../components/ui/TextField";
 import {
   ApiError,
@@ -34,7 +34,8 @@ interface ResetAccessResponse {
 
 interface ResetPasswordResponse {
   id: string;
-  temporaryPassword: string;
+  delivery: string;
+  deliveryError?: string;
   reset: boolean;
 }
 
@@ -229,16 +230,6 @@ export function AdminUsersPage() {
   }
 
   async function resetPassword(user: AdminUserRecord) {
-    const temporaryPassword = window.prompt(
-      `Temporary password for ${user.fullName}. Leave blank to let the backend generate one:`,
-      "",
-    );
-    if (temporaryPassword === null) return;
-    if (temporaryPassword.trim() && temporaryPassword.trim().length < 8) {
-      setFeedback({ tone: "warning", title: "Password too short", message: "A temporary password must be at least 8 characters long." });
-      return;
-    }
-
     const reason = window.prompt("Reason for the password reset:", "Admin password reset");
     if (reason === null) return;
 
@@ -246,12 +237,12 @@ export function AdminUsersPage() {
     try {
       const result = await apiPostJson<ResetPasswordResponse, { newPassword: string | null; reason: string | null }>(
         `/api/admin/users/${user.id}/reset-password`,
-        { newPassword: temporaryPassword.trim() || null, reason: reason.trim() || null },
+        { newPassword: null, reason: reason.trim() || null },
       );
       setFeedback({
-        tone: "success",
-        title: "Temporary password created",
-        message: `Temporary password for ${user.fullName}: ${result.temporaryPassword}. The account will require a password reset on next access.`,
+        tone: result.delivery === "smtp" ? "success" : "warning",
+        title: result.delivery === "smtp" ? "Reset email sent" : "Email delivery requires attention",
+        message: result.delivery === "smtp" ? `A one-time reset link was emailed to ${user.fullName}. It expires in 30 minutes. MFA remains enabled.` : (result.deliveryError ?? "The reset email was not sent. Check SMTP configuration and retry."),
       });
       await loadUsers();
     } catch (error) {
@@ -273,7 +264,7 @@ export function AdminUsersPage() {
         <FeedbackBanner message={feedback.message} onDismiss={() => setFeedback(null)} title={feedback.title} tone={feedback.tone} />
       ) : null}
 
-      <SurfaceCard className="space-y-5">
+      <PageSection className="space-y-5">
         <div>
           <h2 className="portal-section-title text-slate-950">Add user</h2>
           <p className="mt-1 text-sm text-slate-500">Create a firm administrator, accountant, or client user.</p>
@@ -287,9 +278,9 @@ export function AdminUsersPage() {
         <div className="flex justify-end">
           <Button disabled={loading || !backendMode} onClick={() => void createUser()}>Create user</Button>
         </div>
-      </SurfaceCard>
+      </PageSection>
 
-      <SurfaceCard className="space-y-5">
+      <PageSection className="space-y-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h2 className="portal-section-title text-slate-950">Firm directory</h2>
@@ -359,7 +350,7 @@ export function AdminUsersPage() {
             </tbody>
           </table>
         </div>
-      </SurfaceCard>
+      </PageSection>
     </div>
   );
 }

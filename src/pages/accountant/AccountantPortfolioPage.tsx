@@ -407,7 +407,7 @@ export function AccountantPortfolioPage() {
 
   return (
     <div className="w-full space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-slate-200 pb-6">
+      <div className="portal-page-header flex flex-wrap items-center justify-between gap-5 border-b border-slate-200 pb-6">
         <div className="space-y-2">
           <p className="text-[0.82rem] uppercase tracking-[0.12em] text-brand-700">Accountant Workspace</p>
           <h1 className="text-[1.95rem] tracking-tight text-slate-950">{isAdmin ? "Firm Clients" : "Assigned Clients"}</h1>

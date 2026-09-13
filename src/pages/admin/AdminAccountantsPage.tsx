@@ -5,7 +5,7 @@ import { usePortal } from "../../app/portal";
 import { Button } from "../../components/ui/Button";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
 import { PageHeader } from "../../components/ui/PageHeader";
-import { SurfaceCard } from "../../components/ui/SurfaceCard";
+import { PageSection } from "../../components/ui/PageSection";
 import { ApiError, apiGetJson, hasApiBaseUrl } from "../../services/apiClient";
 import type { ManagedAccountant, Tone } from "../../types/portal";
 import { cn } from "../../utils/cn";
@@ -199,7 +199,7 @@ export function AdminAccountantsPage() {
         />
       ) : null}
 
-      <SurfaceCard className="overflow-hidden p-0">
+      <PageSection className="overflow-hidden">
         <div className="flex flex-col gap-4 border-b border-slate-200 px-5 py-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h2 className="portal-section-title text-slate-950">Team capacity</h2>
@@ -287,7 +287,7 @@ export function AdminAccountantsPage() {
             <p className="mt-1 text-sm text-slate-500">Clear the search or choose a different capacity filter.</p>
           </div>
         )}
-      </SurfaceCard>
+      </PageSection>
     </div>
   );
 }

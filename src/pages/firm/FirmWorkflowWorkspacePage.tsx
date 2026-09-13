@@ -57,7 +57,7 @@ export function FirmWorkflowWorkspacePage({ defaultTab }: FirmWorkflowWorkspaceP
 // Render output: this is the visual state users interact with.
   return (
     <div className="space-y-4">
-      <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+      <section className="portal-page-header border-b border-slate-200 pb-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-xl font-semibold text-slate-950">Workflow Workspace</h1>

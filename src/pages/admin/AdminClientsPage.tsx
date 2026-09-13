@@ -4,8 +4,8 @@ import { Button } from "../../components/ui/Button";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { SelectField } from "../../components/ui/SelectField";
-import { SurfaceCard } from "../../components/ui/SurfaceCard";
-import { TextField } from "../../components/ui/TextField";
+import { RecordActions } from "../../components/ui/RecordActions";
+import { ArrowUpRight, Building2, Search, UsersRound } from "lucide-react";
 import { ApiError, apiDelete, apiGetJson, apiPutJson, hasApiBaseUrl } from "../../services/apiClient";
 import type { Tone } from "../../types/portal";
 
@@ -61,13 +61,14 @@ export function AdminClientsPage() {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [assignmentFilter, setAssignmentFilter] = useState("all");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [busyClientId, setBusyClientId] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [feedback, setFeedback] = useState<FeedbackNotice | null>(null);
 
   async function load() {
     if (!backendMode) {
+      setLoading(false);
       setFeedback({ tone: "warning", title: "Backend required", message: "Client administration requires the live backend API." });
       return;
     }
@@ -114,7 +115,10 @@ export function AdminClientsPage() {
   }, [assignmentFilter, enrichedClients, query, statusFilter]);
 
   const pageCount = Math.max(1, Math.ceil(filteredClients.length / PAGE_SIZE));
-  const pagedClients = filteredClients.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const currentPage = Math.min(page, pageCount);
+  const pagedClients = filteredClients.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const hasFilters = Boolean(query || statusFilter !== "all" || assignmentFilter !== "all");
+  function clearFilters() { setQuery(""); setStatusFilter("all"); setAssignmentFilter("all"); }
   const unassignedCount = enrichedClients.filter((client) => !client.accountantUserId).length;
   const atRiskCount = enrichedClients.filter((client) => client.complianceHealth < 60).length;
 
@@ -155,58 +159,99 @@ export function AdminClientsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader actions={<Button onClick={() => navigate("/firm/admin/assignments")}>Manage assignments</Button>} description="Control client coverage, lifecycle, ownership and risk from an administrator-first register." eyebrow="Administration" title="Client management" />
+      <PageHeader
+        title="Client management"
+        eyebrow="Administration"
+        description="Manage your clients, accountant ownership and compliance."
+        actions={<Button onClick={() => navigate("/firm/admin/assignments")}><UsersRound aria-hidden="true" className="h-4 w-4" />Manage assignments</Button>}
+      />
 
       {feedback ? <FeedbackBanner message={feedback.message} onDismiss={() => setFeedback(null)} title={feedback.title} tone={feedback.tone} /> : null}
 
-      <SurfaceCard className="space-y-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <h2 className="portal-section-title text-slate-950">Firm client register</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              {enrichedClients.length} clients · {unassignedCount} unassigned · {atRiskCount} below 60% compliance health.
-            </p>
+      <section aria-label="Client register" className="space-y-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <h2 className="text-lg font-semibold text-slate-950">All clients</h2>
+            <span className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-xs font-semibold tabular-nums text-slate-600">{loading ? "…" : enrichedClients.length}</span>
           </div>
-          <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[660px]">
-            <TextField label="Search" onChange={(event) => setQuery(event.target.value)} value={query} />
-            <SelectField label="Status" onChange={(event) => setStatusFilter(event.target.value)} options={statusOptions} value={statusFilter} />
-            <SelectField label="Ownership" onChange={(event) => setAssignmentFilter(event.target.value)} options={ownershipOptions} value={assignmentFilter} />
-          </div>
+          {!loading ? <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-slate-500">
+            <span><span className={unassignedCount ? "font-semibold text-amber-700" : "font-semibold text-slate-700"}>{unassignedCount}</span> unassigned</span>
+            <span title="Clients below 60% compliance health"><span className={atRiskCount ? "font-semibold text-rose-700" : "font-semibold text-slate-700"}>{atRiskCount}</span> below 60% health</span>
+          </div> : null}
         </div>
 
-        <div className="overflow-x-auto rounded-2xl border border-slate-200">
-          <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
-            <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-3">Client</th><th className="px-4 py-3">Primary accountant</th><th className="px-4 py-3">Health</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Coverage</th><th className="px-4 py-3 text-right">Actions</th></tr></thead>
-            <tbody className="divide-y divide-slate-100 bg-white">
-              {pagedClients.map((client) => {
+        <div className="grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
+          <label className="block space-y-2 sm:col-span-2 lg:col-span-1">
+            <span className="text-sm font-medium text-slate-700">Search clients</span>
+            <span className="relative block">
+              <Search aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-brand-400 focus:ring-2 focus:ring-brand-100" placeholder="Name, email or accountant" value={query} onChange={(event) => setQuery(event.target.value)} />
+            </span>
+          </label>
+          <SelectField label="Status" onChange={(event) => setStatusFilter(event.target.value)} options={statusOptions} value={statusFilter} />
+          <SelectField label="Ownership" onChange={(event) => setAssignmentFilter(event.target.value)} options={ownershipOptions} value={assignmentFilter} />
+          <button type="button" disabled={!hasFilters} onClick={clearFilters} className="h-11 rounded-lg px-3 text-sm font-medium text-brand-700 transition hover:bg-brand-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500 disabled:text-slate-400 disabled:hover:bg-transparent">Reset filters</button>
+        </div>
+
+        <div className="overflow-x-auto border-y border-slate-200">
+          <table className="w-full min-w-[760px] text-left text-sm">
+            <caption className="sr-only">Client directory with accountant ownership, compliance health and account actions</caption>
+            <thead className="border-b border-slate-200 bg-slate-50 text-[0.68rem] font-semibold uppercase tracking-wider text-slate-500">
+              <tr><th scope="col" className="w-[34%] px-4 py-3">Client</th><th scope="col" className="w-[25%] px-4 py-3">Accountant</th><th scope="col" className="px-4 py-3">Compliance</th><th scope="col" className="px-4 py-3">Status</th><th scope="col" className="px-4 py-3 text-right"><span className="sr-only">Actions</span></th></tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200 bg-white">
+              {!loading && pagedClients.map((client) => {
                 const busy = busyClientId === client.id;
                 const active = client.status.toLowerCase() === "active";
-                return <tr key={client.id}>
-                  <td className="px-4 py-4"><p className="font-semibold text-slate-950">{client.name}</p><p className="mt-1 text-xs text-slate-500">{client.entityType} · {client.email || client.primaryContact || "No contact recorded"}</p></td>
-                  <td className="px-4 py-4 text-slate-700">{client.accountantName}</td>
-                  <td className="px-4 py-4"><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${healthTone(client.complianceHealth)}`}>{client.complianceHealth}%</span></td>
-                  <td className="px-4 py-4 capitalize text-slate-600">{client.status}</td>
-                  <td className="px-4 py-4 text-slate-600">{client.assignmentCount} assignment{client.assignmentCount === 1 ? "" : "s"}</td>
-                  <td className="px-4 py-4"><div className="flex flex-wrap justify-end gap-2">
-                    <Button disabled={busy} onClick={() => navigate(`/firm/clients/${client.id}/profile`)} size="sm" variant="secondary">Profile</Button>
-                    {/* Admin and Accountant share the same pack-profile workspace so they see one source of truth. */}
-                    <Button disabled={busy} onClick={() => navigate(`/firm/clients/${client.id}/packs`)} size="sm" variant="secondary">Monthly pack</Button>
-                    <Button disabled={busy} onClick={() => navigate("/firm/admin/assignments")} size="sm" variant="secondary">Assign</Button>
-                    <Button disabled={busy} onClick={() => void toggleStatus(client)} size="sm" variant="secondary">{active ? "Deactivate" : "Activate"}</Button>
-                    <Button disabled={busy} onClick={() => void deleteClient(client)} size="sm" variant="danger">Delete</Button>
-                  </div></td>
+                return <tr key={client.id} className="transition hover:bg-slate-50/70">
+                  <td className="px-4 py-4">
+                    <div className="flex items-start gap-3">
+                      <span className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-brand-700"><Building2 aria-hidden="true" className="h-5 w-5" /></span>
+                      <div className="min-w-0">
+                        <button type="button" disabled={busy} className="group inline-flex items-center gap-1.5 text-left font-semibold text-slate-950 hover:text-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500" onClick={() => navigate(`/firm/clients/${client.id}/profile`)}>
+                          <span className="break-words">{client.name}</span><ArrowUpRight aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-slate-400 group-hover:text-brand-700" />
+                        </button>
+                        <p className="mt-1 break-all text-xs text-slate-500">{client.email || client.primaryContact || "No contact recorded"}</p>
+                        {client.entityType ? <p className="mt-1 text-xs text-slate-400">{client.entityType}</p> : null}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-4">
+                    <p className={client.accountantUserId ? "font-medium text-slate-700" : "font-medium text-amber-700"}>{client.accountantName}</p>
+                    <p className="mt-1 text-xs text-slate-500">{client.assignmentCount} assignment{client.assignmentCount === 1 ? "" : "s"}</p>
+                  </td>
+                  <td className="px-4 py-4"><span className={`inline-flex items-center rounded-md px-2 py-1 text-xs font-semibold tabular-nums ${healthTone(client.complianceHealth)}`}>{client.complianceHealth}%</span></td>
+                  <td className="px-4 py-4"><span className="inline-flex items-center gap-2 whitespace-nowrap text-xs font-medium capitalize text-slate-700"><span className={`h-1.5 w-1.5 rounded-full ${active ? "bg-emerald-500" : "bg-slate-400"}`} />{client.status}</span></td>
+                  <td className="px-4 py-4 text-right">
+                    <RecordActions label={`Actions for ${client.name}`} disabled={busy} actions={[
+                      { label: "View profile", onSelect: () => navigate(`/firm/clients/${client.id}/profile`) },
+                      { label: "Open monthly pack", onSelect: () => navigate(`/firm/clients/${client.id}/packs`) },
+                      { label: "Manage assignment", onSelect: () => navigate("/firm/admin/assignments") },
+                      { label: active ? "Deactivate client" : "Activate client", onSelect: () => void toggleStatus(client) },
+                      { label: "Delete client", destructive: true, onSelect: () => void deleteClient(client) },
+                    ]} />
+                  </td>
                 </tr>;
               })}
-              {!loading && pagedClients.length === 0 ? <tr><td className="px-4 py-8 text-center text-sm text-slate-500" colSpan={6}>No clients match the current filters.</td></tr> : null}
+              {loading ? <tr><td colSpan={5} className="px-4 py-12 text-center text-sm text-slate-500"><span role="status">Loading clients…</span></td></tr> : null}
+              {!loading && pagedClients.length === 0 ? <tr><td colSpan={5} className="px-4 py-12 text-center">
+                <p className="font-medium text-slate-700">{hasFilters ? "No matching clients" : "No clients to display"}</p>
+                <p className="mt-1 text-sm text-slate-500">{hasFilters ? "Try another name or adjust the filters." : "Client records will appear here when available."}</p>
+                {hasFilters ? <button type="button" onClick={clearFilters} className="mt-3 text-sm font-semibold text-brand-700 hover:underline">Clear filters</button> : <button type="button" onClick={() => void load()} className="mt-3 text-sm font-semibold text-brand-700 hover:underline">Refresh register</button>}
+              </td></tr> : null}
             </tbody>
           </table>
         </div>
 
-        <div className="flex flex-col gap-3 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
-          <span>{filteredClients.length} client{filteredClients.length === 1 ? "" : "s"} · Page {page} of {pageCount}</span>
-          <div className="flex gap-2"><Button disabled={page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))} size="sm" variant="secondary">Previous</Button><Button disabled={page >= pageCount} onClick={() => setPage((current) => Math.min(pageCount, current + 1))} size="sm" variant="secondary">Next</Button></div>
-        </div>
-      </SurfaceCard>
+        {!loading ? <footer className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
+          <span>{filteredClients.length ? `Showing ${(currentPage - 1) * PAGE_SIZE + 1}–${Math.min(currentPage * PAGE_SIZE, filteredClients.length)} of ${filteredClients.length}` : "0"} client{filteredClients.length === 1 ? "" : "s"}</span>
+          {pageCount > 1 ? <nav aria-label="Client pages" className="flex items-center gap-3">
+            <button type="button" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)} className="rounded-lg border border-slate-300 px-3 py-2 font-medium text-slate-700 disabled:opacity-40">Previous</button>
+            <span>Page {currentPage} of {pageCount}</span>
+            <button type="button" disabled={currentPage >= pageCount} onClick={() => setPage(currentPage + 1)} className="rounded-lg border border-slate-300 px-3 py-2 font-medium text-slate-700 disabled:opacity-40">Next</button>
+          </nav> : null}
+        </footer> : null}
+      </section>
     </div>
   );
 }

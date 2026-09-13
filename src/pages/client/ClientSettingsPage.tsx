@@ -5,7 +5,7 @@ import { usePortal } from "../../app/portal";
 import { Button } from "../../components/ui/Button";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
 import { SelectField } from "../../components/ui/SelectField";
-import { SurfaceCard } from "../../components/ui/SurfaceCard";
+import { PageSection } from "../../components/ui/PageSection";
 import { TextField } from "../../components/ui/TextField";
 import { ApiError, apiGetJson, hasApiBaseUrl } from "../../services/apiClient";
 import type { BusinessProfile, Tone } from "../../types/portal";
@@ -349,11 +349,11 @@ export function ClientSettingsPage() {
       return;
     }
 
-    if (nextPassword.trim().length < 8) {
+    if (Array.from(nextPassword).length < 15) {
       setFeedbackNotice({
         tone: "danger",
         title: "Password too short",
-        message: "Use a new password with at least 8 characters.",
+        message: "Use a new password with at least 15 characters.",
       });
       return;
     }
@@ -410,7 +410,7 @@ export function ClientSettingsPage() {
 
   function renderBusinessProfile() {
     return (
-      <SurfaceCard className="overflow-hidden rounded-[1.55rem] border border-slate-200/80 bg-white p-0 shadow-[0_22px_48px_rgba(15,23,42,0.05)]">
+      <PageSection className="overflow-hidden">
         <div className="border-b border-slate-100 px-6 pb-5 pt-6">
           <div className="flex items-start gap-4">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-50 text-brand-600 ring-1 ring-brand-100">
@@ -542,7 +542,7 @@ export function ClientSettingsPage() {
             Save changes
           </Button>
         </div> : null}
-      </SurfaceCard>
+      </PageSection>
     );
   }
 
@@ -550,7 +550,7 @@ export function ClientSettingsPage() {
     const activeSessions = securitySettings.activeSessions ?? [];
 
     return (
-      <SurfaceCard className="rounded-[1.55rem] border border-slate-200/80 bg-white p-6 shadow-[0_22px_48px_rgba(15,23,42,0.05)]">
+      <PageSection className="">
         <div className="flex items-start gap-4">
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
             <ShieldIcon />
@@ -588,7 +588,7 @@ export function ClientSettingsPage() {
               />
               <TextField
                 autoComplete="new-password"
-                hint="Use at least 8 characters."
+                hint="Use at least 15 characters."
                 id="client-next-password"
                 label="New password"
                 onChange={(event) => setNextPassword(event.target.value)}
@@ -669,14 +669,14 @@ export function ClientSettingsPage() {
           </div>
           )}
         </div>
-      </SurfaceCard>
+      </PageSection>
     );
   }
 
   function renderNotifications() {
     if (backendMode) {
       return (
-        <SurfaceCard className="rounded-[1.55rem] border border-slate-200/80 bg-white p-6 shadow-[0_22px_48px_rgba(15,23,42,0.05)]">
+        <PageSection className="">
           <div className="flex items-start gap-4">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-500 ring-1 ring-amber-100">
               <BellIcon />
@@ -691,12 +691,12 @@ export function ClientSettingsPage() {
               </Button>
             </div>
           </div>
-        </SurfaceCard>
+        </PageSection>
       );
     }
 
     return (
-      <SurfaceCard className="rounded-[1.55rem] border border-slate-200/80 bg-white p-6 shadow-[0_22px_48px_rgba(15,23,42,0.05)]">
+      <PageSection className="">
         <div className="flex items-start gap-4">
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-500 ring-1 ring-amber-100">
             <BellIcon />
@@ -752,13 +752,13 @@ export function ClientSettingsPage() {
             Save preferences
           </Button>
         </div>
-      </SurfaceCard>
+      </PageSection>
     );
   }
 
   function renderDocuments() {
     return (
-      <SurfaceCard className="rounded-[1.55rem] border border-slate-200/80 bg-white p-6 shadow-[0_22px_48px_rgba(15,23,42,0.05)]">
+      <PageSection className="">
         <div className="flex items-start gap-4">
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-50 text-sky-600 ring-1 ring-sky-100">
             <DocumentIcon />
@@ -804,13 +804,13 @@ export function ClientSettingsPage() {
             Open compliance centre
           </Button>
         </div>
-      </SurfaceCard>
+      </PageSection>
     );
   }
 
   return (
     <div className="portal-page mx-auto max-w-[1280px] space-y-5">
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+      <div className="portal-page-header grid gap-5 border-b border-slate-200 pb-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
         <div className="space-y-1.5">
           <h1 className="portal-page-title text-slate-950">Settings</h1>
           <p className="text-[0.98rem] text-slate-500">
@@ -857,7 +857,7 @@ export function ClientSettingsPage() {
         />
       ) : null}
 
-      <SurfaceCard className="rounded-[1.55rem] border border-slate-200/80 bg-white p-3 shadow-[0_22px_48px_rgba(15,23,42,0.05)]">
+      <PageSection className="">
         <div className="grid gap-2 md:grid-cols-4">
           {sections.map((section) => {
             const active = activeSection === section.id;
@@ -899,7 +899,7 @@ export function ClientSettingsPage() {
             );
           })}
         </div>
-      </SurfaceCard>
+      </PageSection>
 
       {activeSection === "business"
         ? renderBusinessProfile()

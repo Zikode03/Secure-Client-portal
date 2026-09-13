@@ -1,30 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "../../components/ui/Button";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
-import { PageHeader } from "../../components/ui/PageHeader";
-import { SurfaceCard } from "../../components/ui/SurfaceCard";
+import { PageSection } from "../../components/ui/PageSection";
 import { TextField } from "../../components/ui/TextField";
 import { ApiError, apiGetJson, apiPostJson, apiPutJson, hasApiBaseUrl } from "../../services/apiClient";
 import type { Tone } from "../../types/portal";
 
-type Section = "documents" | "packs" | "requests" | "reminders" | "deadlines" | "escalations";
-
-interface RequiredDocumentTemplate {
-  id: string;
-  name: string;
-  description: string;
-  documentCategory: string;
-  isRequired: boolean;
-  defaultDueDayOfMonth: number | null;
-}
-
-interface MonthlyPackTemplate {
-  id: string;
-  name: string;
-  description: string;
-  requiredDocumentTemplateIds: string[];
-  autoCreateDayOfMonth: number;
-}
+type Section = "requests" | "reminders" | "deadlines" | "escalations";
 
 interface RequestTemplate {
   id: string;
@@ -73,8 +55,6 @@ interface FeedbackNotice {
 }
 
 const sectionLabels: Array<{ key: Section; label: string; description: string }> = [
-  { key: "documents", label: "Required documents", description: "Control the document requirements available to monthly packs." },
-  { key: "packs", label: "Monthly packs", description: "Define which documents belong to each standard monthly pack." },
   { key: "requests", label: "Request templates", description: "Standardise common client follow-up requests and due dates." },
   { key: "reminders", label: "Reminder rules", description: "Control automated reminders before deadlines." },
   { key: "deadlines", label: "Deadline rules", description: "Set due days, grace periods, and priority rules." },
@@ -82,8 +62,6 @@ const sectionLabels: Array<{ key: Section; label: string; description: string }>
 ];
 
 const endpoints: Record<Section, string> = {
-  documents: "/api/admin/firm-management/templates/required-documents",
-  packs: "/api/admin/firm-management/templates/monthly-pack",
   requests: "/api/admin/firm-management/templates/requests",
   reminders: "/api/admin/firm-management/rules/reminders",
   deadlines: "/api/admin/firm-management/rules/deadlines",
@@ -125,9 +103,7 @@ function Toggle({ checked, label, onChange }: { checked: boolean; label: string;
 
 export function AdminSystemConfigurationPage() {
   const backendMode = hasApiBaseUrl();
-  const [activeSection, setActiveSection] = useState<Section>("documents");
-  const [documents, setDocuments] = useState<RequiredDocumentTemplate[]>([]);
-  const [packs, setPacks] = useState<MonthlyPackTemplate[]>([]);
+  const [activeSection, setActiveSection] = useState<Section>("requests");
   const [requests, setRequests] = useState<RequestTemplate[]>([]);
   const [reminders, setReminders] = useState<ReminderRule[]>([]);
   const [deadlines, setDeadlines] = useState<DeadlineRule[]>([]);
@@ -144,16 +120,12 @@ export function AdminSystemConfigurationPage() {
 
     setLoading(true);
     try {
-      const [documentRows, packRows, requestRows, reminderRows, deadlineRows, escalationRows] = await Promise.all([
-        apiGetJson<RequiredDocumentTemplate[]>(endpoints.documents),
-        apiGetJson<MonthlyPackTemplate[]>(endpoints.packs),
+      const [requestRows, reminderRows, deadlineRows, escalationRows] = await Promise.all([
         apiGetJson<RequestTemplate[]>(endpoints.requests),
         apiGetJson<ReminderRule[]>(endpoints.reminders),
         apiGetJson<DeadlineRule[]>(endpoints.deadlines),
         apiGetJson<EscalationRule[]>(endpoints.escalations),
       ]);
-      setDocuments(documentRows);
-      setPacks(packRows);
       setRequests(requestRows);
       setReminders(reminderRows);
       setDeadlines(deadlineRows);
@@ -171,23 +143,19 @@ export function AdminSystemConfigurationPage() {
   }, [backendMode]);
 
   const sectionCount = useMemo<Record<Section, number>>(() => ({
-    documents: documents.length,
-    packs: packs.length,
     requests: requests.length,
     reminders: reminders.length,
     deadlines: deadlines.length,
     escalations: escalations.length,
-  }), [deadlines.length, documents.length, escalations.length, packs.length, reminders.length, requests.length]);
+  }), [deadlines.length, escalations.length, reminders.length, requests.length]);
 
   async function saveSection() {
     setSaving(true);
     try {
-      const payload = activeSection === "documents" ? documents
-        : activeSection === "packs" ? packs
-          : activeSection === "requests" ? requests
-            : activeSection === "reminders" ? reminders
-              : activeSection === "deadlines" ? deadlines
-                : escalations;
+      const payload = activeSection === "requests" ? requests
+        : activeSection === "reminders" ? reminders
+          : activeSection === "deadlines" ? deadlines
+            : escalations;
       await apiPutJson<unknown, typeof payload>(endpoints[activeSection], payload);
       setFeedback({ tone: "success", title: "Configuration saved", message: `${sectionLabels.find((item) => item.key === activeSection)?.label ?? "Configuration"} has been saved to the backend.` });
       await loadAll();
@@ -217,80 +185,53 @@ export function AdminSystemConfigurationPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        actions={
-          <>
-            <Button disabled={loading || saving || !backendMode} onClick={() => void seedDefaults()} variant="secondary">Seed defaults</Button>
-            <Button disabled={loading || saving || !backendMode} onClick={() => void saveSection()}>Save current section</Button>
-          </>
-        }
-        description="Manage the rules and templates that drive document collection, monthly packs, reminders, deadlines, and escalations across the firm."
-        eyebrow="Administration"
-        title="System configuration"
-      />
+      <header className="portal-page-header flex flex-col gap-5 border-b border-slate-200 pb-6 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0 space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Administration / Settings</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">System configuration</h1>
+          <p className="max-w-2xl text-sm leading-6 text-slate-500">Configure firm-wide request templates and automation rules.</p>
+        </div>
+        <div className="flex shrink-0 flex-wrap items-center gap-3" role="group" aria-label="Configuration actions">
+          <Button className="border border-slate-300" disabled={loading || saving || !backendMode} onClick={() => void seedDefaults()} variant="ghost">Seed defaults</Button>
+          <button
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#061b41] bg-[#061b41] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[#09275c] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={loading || saving || !backendMode}
+            onClick={() => void saveSection()}
+            title="Save changes to the selected section"
+            type="button"
+          >
+            <svg aria-hidden="true" className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12l4 4v12a2 2 0 0 1-2 2Z" /><path d="M17 21v-8H7v8M7 3v5h9" /></svg>
+            {saving ? "Saving…" : "Save changes"}
+          </button>
+        </div>
+      </header>
 
       {feedback ? <FeedbackBanner message={feedback.message} onDismiss={() => setFeedback(null)} title={feedback.title} tone={feedback.tone} /> : null}
 
-      <div className="grid gap-5 xl:grid-cols-[300px_minmax(0,1fr)]">
-        <SurfaceCard className="space-y-2 self-start">
+      <div className="space-y-5">
+        <div aria-label="Configuration sections" className="grid grid-cols-2 gap-3 md:grid-cols-4" role="group">
           {sectionLabels.map((section) => (
             <button
-              className={`w-full rounded-xl border px-4 py-3 text-left transition ${activeSection === section.key ? "border-brand-300 bg-brand-50" : "border-transparent hover:border-slate-200 hover:bg-slate-50"}`}
+              aria-controls="configuration-section-editor"
+              aria-pressed={activeSection === section.key}
+              className={`flex min-h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-semibold leading-5 shadow-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 ${activeSection === section.key ? "border-brand-700 bg-brand-700 text-white hover:bg-brand-800" : "border-slate-300 bg-white text-slate-700 hover:border-brand-400 hover:bg-brand-50"}`}
               key={section.key}
               onClick={() => setActiveSection(section.key)}
               type="button"
             >
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-sm font-semibold text-slate-950">{section.label}</span>
-                <span className="rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-slate-500 ring-1 ring-slate-200">{sectionCount[section.key]}</span>
-              </div>
-              <p className="mt-1 text-xs leading-5 text-slate-500">{section.description}</p>
+              <span>{section.label}</span>
+              <span className={`inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full px-1.5 text-xs tabular-nums ${activeSection === section.key ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"}`}>{sectionCount[section.key]}</span>
             </button>
           ))}
-        </SurfaceCard>
+        </div>
 
-        <SurfaceCard className="space-y-5">
+        <PageSection className="space-y-5" id="configuration-section-editor">
           <div>
             <h2 className="portal-section-title text-slate-950">{sectionLabels.find((item) => item.key === activeSection)?.label}</h2>
+            <p className="mt-1 text-sm text-slate-500">{sectionLabels.find((item) => item.key === activeSection)?.description}</p>
             <p className="mt-1 text-sm text-slate-500">Changes only take effect after you save the current section.</p>
           </div>
 
-          {activeSection === "documents" ? (
-            <div className="space-y-4">
-              {documents.map((item, index) => (
-                <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4" key={item.id}>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <TextField label="Name" onChange={(e) => setDocuments(documents.map((row, i) => i === index ? { ...row, name: e.target.value } : row))} value={item.name} />
-                    <TextField label="Category" onChange={(e) => setDocuments(documents.map((row, i) => i === index ? { ...row, documentCategory: e.target.value } : row))} value={item.documentCategory} />
-                    <TextField label="Description" onChange={(e) => setDocuments(documents.map((row, i) => i === index ? { ...row, description: e.target.value } : row))} value={item.description} />
-                    <NumberField label="Default due day" nullable onChange={(value) => setDocuments(documents.map((row, i) => i === index ? { ...row, defaultDueDayOfMonth: value } : row))} value={item.defaultDueDayOfMonth} />
-                  </div>
-                  <div className="flex items-center justify-between gap-3"><Toggle checked={item.isRequired} label="Required document" onChange={(checked) => setDocuments(documents.map((row, i) => i === index ? { ...row, isRequired: checked } : row))} /><Button onClick={() => removeAt(documents, setDocuments, index)} variant="danger">Remove</Button></div>
-                </div>
-              ))}
-              <Button onClick={() => setDocuments([...documents, { id: newId(), name: "", description: "", documentCategory: "general", isRequired: true, defaultDueDayOfMonth: null }])} variant="secondary">Add document template</Button>
-            </div>
-          ) : null}
-
-          {activeSection === "packs" ? (
-            <div className="space-y-4">
-              {packs.map((item, index) => (
-                <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4" key={item.id}>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <TextField label="Name" onChange={(e) => setPacks(packs.map((row, i) => i === index ? { ...row, name: e.target.value } : row))} value={item.name} />
-                    <NumberField label="Auto-create day" onChange={(value) => setPacks(packs.map((row, i) => i === index ? { ...row, autoCreateDayOfMonth: value ?? 1 } : row))} value={item.autoCreateDayOfMonth} />
-                    <TextField label="Description" onChange={(e) => setPacks(packs.map((row, i) => i === index ? { ...row, description: e.target.value } : row))} value={item.description} />
-                  </div>
-                  <div>
-                    <p className="mb-2 text-sm font-medium text-slate-700">Required documents</p>
-                    <div className="grid gap-2 md:grid-cols-2">{documents.map((document) => <Toggle checked={item.requiredDocumentTemplateIds.includes(document.id)} key={document.id} label={document.name || "Unnamed document"} onChange={(checked) => setPacks(packs.map((row, i) => i === index ? { ...row, requiredDocumentTemplateIds: checked ? [...row.requiredDocumentTemplateIds, document.id] : row.requiredDocumentTemplateIds.filter((id) => id !== document.id) } : row))} />)}</div>
-                  </div>
-                  <div className="flex justify-end"><Button onClick={() => removeAt(packs, setPacks, index)} variant="danger">Remove</Button></div>
-                </div>
-              ))}
-              <Button onClick={() => setPacks([...packs, { id: newId(), name: "", description: "", requiredDocumentTemplateIds: [], autoCreateDayOfMonth: 1 }])} variant="secondary">Add monthly pack template</Button>
-            </div>
-          ) : null}
 
           {activeSection === "requests" ? (
             <div className="space-y-4">{requests.map((item, index) => <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4" key={item.id}><div className="grid gap-4 md:grid-cols-2"><TextField label="Name" value={item.name} onChange={(e) => setRequests(requests.map((row, i) => i === index ? { ...row, name: e.target.value } : row))} /><TextField label="Request type" value={item.requestType} onChange={(e) => setRequests(requests.map((row, i) => i === index ? { ...row, requestType: e.target.value } : row))} /><TextField label="Title template" value={item.titleTemplate} onChange={(e) => setRequests(requests.map((row, i) => i === index ? { ...row, titleTemplate: e.target.value } : row))} /><TextField label="Description template" value={item.descriptionTemplate} onChange={(e) => setRequests(requests.map((row, i) => i === index ? { ...row, descriptionTemplate: e.target.value } : row))} /><TextField label="Priority" value={item.priority} onChange={(e) => setRequests(requests.map((row, i) => i === index ? { ...row, priority: e.target.value } : row))} /><NumberField label="Default due in days" nullable value={item.defaultDueInDays} onChange={(value) => setRequests(requests.map((row, i) => i === index ? { ...row, defaultDueInDays: value } : row))} /></div><div className="flex justify-end"><Button onClick={() => removeAt(requests, setRequests, index)} variant="danger">Remove</Button></div></div>)}<Button onClick={() => setRequests([...requests, { id: newId(), name: "", requestType: "document", titleTemplate: "", descriptionTemplate: "", priority: "normal", defaultDueInDays: 3 }])} variant="secondary">Add request template</Button></div>
@@ -307,7 +248,7 @@ export function AdminSystemConfigurationPage() {
           {activeSection === "escalations" ? (
             <div className="space-y-4">{escalations.map((item, index) => <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4" key={item.id}><div className="grid gap-4 md:grid-cols-2"><TextField label="Name" value={item.name} onChange={(e) => setEscalations(escalations.map((row, i) => i === index ? { ...row, name: e.target.value } : row))} /><TextField label="Trigger type" value={item.triggerType} onChange={(e) => setEscalations(escalations.map((row, i) => i === index ? { ...row, triggerType: e.target.value } : row))} /><NumberField label="Days after due" value={item.daysAfterDue} onChange={(value) => setEscalations(escalations.map((row, i) => i === index ? { ...row, daysAfterDue: value ?? 0 } : row))} /><TextField label="Escalate to role" value={item.escalateToRole} onChange={(e) => setEscalations(escalations.map((row, i) => i === index ? { ...row, escalateToRole: e.target.value } : row))} /><TextField label="Action" value={item.action} onChange={(e) => setEscalations(escalations.map((row, i) => i === index ? { ...row, action: e.target.value } : row))} /></div><div className="flex items-center justify-between gap-3"><Toggle checked={item.isEnabled} label="Rule enabled" onChange={(checked) => setEscalations(escalations.map((row, i) => i === index ? { ...row, isEnabled: checked } : row))} /><Button onClick={() => removeAt(escalations, setEscalations, index)} variant="danger">Remove</Button></div></div>)}<Button onClick={() => setEscalations([...escalations, { id: newId(), name: "", triggerType: "overdue", daysAfterDue: 1, escalateToRole: "accountant", action: "notify", isEnabled: true }])} variant="secondary">Add escalation rule</Button></div>
           ) : null}
-        </SurfaceCard>
+        </PageSection>
       </div>
     </div>
   );

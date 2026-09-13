@@ -1,7 +1,7 @@
 // Friendly guide: this module (routing.test) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { AuthProvider } from "../app/auth";
 import App from "../app/App";
@@ -92,6 +92,42 @@ describe("role-based route access", () => {
     renderAppAt("/firm/admin/system-settings", createUser("admin"));
 
     expect(await screen.findByRole("heading", { name: "System configuration" })).toBeInTheDocument();
+    const actions = within(screen.getByRole("group", { name: "Configuration actions" }));
+    expect(actions.getByRole("button", { name: "Seed defaults" })).toBeInTheDocument();
+    expect(actions.getByRole("button", { name: "Save changes" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Required documents/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Monthly packs/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Request templates" })).toBeInTheDocument();
+    const sectionButtons = within(screen.getByRole("group", { name: "Configuration sections" })).getAllByRole("button");
+    expect(sectionButtons).toHaveLength(4);
+    expect(sectionButtons[0]).toHaveAttribute("aria-pressed", "true");
+    for (const [index, name] of ["Request templates", "Reminder rules", "Deadline rules", "Escalation rules"].entries()) {
+      fireEvent.click(sectionButtons[index]);
+      expect(sectionButtons[index]).toHaveAttribute("aria-pressed", "true");
+      expect(screen.getByRole("heading", { name })).toBeInTheDocument();
+      expect(sectionButtons.filter((button) => button.getAttribute("aria-pressed") === "true")).toHaveLength(1);
+    }
+  });
+
+  it("admin can access standalone required documents", async () => {
+    renderAppAt("/firm/admin/required-documents", createUser("admin"));
+    expect(await screen.findByRole("heading", { name: "Required documents", level: 1 })).toBeInTheDocument();
+  });
+
+  it("admin can access standalone monthly packs", async () => {
+    renderAppAt("/firm/admin/monthly-packs", createUser("admin"));
+    expect(await screen.findByRole("heading", { name: "Monthly packs", level: 1 })).toBeInTheDocument();
+  });
+
+  it("accountants cannot access the monthly pack template editor", async () => {
+    renderAppAt("/firm/admin/monthly-packs", createUser("accountant"));
+    expect(await screen.findByText(/You do not have permission/)).toBeInTheDocument();
+  });
+
+  it("accountants cannot access the required documents editor", async () => {
+    renderAppAt("/firm/admin/required-documents", createUser("accountant"));
+    expect(await screen.findByText(/You do not have permission/)).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Required documents", level: 1 })).not.toBeInTheDocument();
   });
 
   it("legacy admin system settings route redirects to the canonical page", async () => {

@@ -1,9 +1,10 @@
+import { PageHeader } from "../../components/ui/PageHeader";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
 import { Button } from "../../components/ui/Button";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
-import { SurfaceCard } from "../../components/ui/SurfaceCard";
+import { PageSection } from "../../components/ui/PageSection";
 import type { Tone } from "../../types/portal";
 
 interface RoleNotificationPreferences {
@@ -164,11 +165,8 @@ export function NotificationPreferencesPage() {
         />
       ) : null}
 
-      <SurfaceCard className="rounded-2xl border border-slate-200 bg-white p-5 shadow-none">
-        <h1 className="text-xl font-semibold text-slate-950">Notification Preferences</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Configure reminders, escalation channels, and quiet hours per role.
-        </p>
+      <PageSection className="">
+        <PageHeader title="Notification Preferences" description="Configure reminders, escalation channels, and quiet hours per role." />
 
         <div className="mt-4 space-y-3">
           <PreferenceToggle
@@ -224,7 +222,7 @@ export function NotificationPreferencesPage() {
         <div className="mt-4">
           <Button onClick={savePreferences}>Save preferences</Button>
         </div>
-      </SurfaceCard>
+      </PageSection>
     </div>
   );
 }

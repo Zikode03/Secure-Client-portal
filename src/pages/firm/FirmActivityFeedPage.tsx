@@ -1,7 +1,8 @@
+import { PageHeader } from "../../components/ui/PageHeader";
 import { useEffect, useMemo, useState } from "react";
 import { usePortal } from "../../app/portal";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
-import { SurfaceCard } from "../../components/ui/SurfaceCard";
+import { PageSection } from "../../components/ui/PageSection";
 import { ApiError, apiGetJson, hasApiBaseUrl } from "../../services/apiClient";
 import { formatDateLabel } from "../../utils/formatters";
 
@@ -186,11 +187,8 @@ export function FirmActivityFeedPage() {
         />
       ) : null}
 
-      <SurfaceCard className="rounded-2xl border border-slate-200 bg-white p-5 shadow-none">
-        <h1 className="text-xl font-semibold text-slate-950">Unified Activity / Audit Feed</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Cross-module timeline for requests, review actions, and compliance events.
-        </p>
+      <PageSection className="">
+        <PageHeader title="Unified Activity / Audit Feed" description="Cross-module timeline for requests, review actions, and compliance events." />
 
         <div className="mt-4 space-y-3">
           {visibleFeed.map((item) => (
@@ -206,7 +204,7 @@ export function FirmActivityFeedPage() {
             </div>
           ))}
         </div>
-      </SurfaceCard>
+      </PageSection>
     </>
   );
 }

@@ -1,3 +1,4 @@
+import { PageHeader } from "../../components/ui/PageHeader";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
 import { usePortal } from "../../app/portal";
@@ -358,12 +359,7 @@ export function FirmClient360Page() {
         />
       ) : null}
 
-      <SurfaceCard className="rounded-2xl border border-slate-200 bg-white p-5 shadow-none">
-        <h1 className="text-xl font-semibold text-slate-950">Client 360 Profile</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Business, monthly packs, compliance, and open requests in one workspace.
-        </p>
-      </SurfaceCard>
+      <PageHeader title="Client 360 Profile" description="Business, monthly packs, compliance, and open requests in one workspace." />
 
       <div className="grid gap-4 lg:grid-cols-3">
         <SurfaceCard className="rounded-2xl border border-slate-200 bg-white p-5 shadow-none lg:col-span-2">

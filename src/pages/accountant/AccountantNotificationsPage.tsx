@@ -543,7 +543,7 @@ export function AccountantNotificationsPage() {
         />
       ) : null}
 
-      <section className="space-y-2">
+      <section className="portal-page-header space-y-2 border-b border-slate-200 pb-6">
         <div>
           <p className="text-[0.82rem] font-semibold uppercase tracking-[0.18em] text-brand-600">Inbox</p>
           <h1 className="mt-2 text-[2.2rem] font-semibold tracking-tight text-slate-950">

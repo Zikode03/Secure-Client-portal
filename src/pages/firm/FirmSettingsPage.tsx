@@ -10,7 +10,7 @@ import { Button } from "../../components/ui/Button";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { SelectField } from "../../components/ui/SelectField";
-import { SurfaceCard } from "../../components/ui/SurfaceCard";
+import { PageSection } from "../../components/ui/PageSection";
 import { TextAreaField } from "../../components/ui/TextAreaField";
 import { TextField } from "../../components/ui/TextField";
 import type { Permission, Role, Tone } from "../../types/portal";
@@ -224,7 +224,6 @@ export function FirmSettingsPage() {
     "Notify admin after 2 missed follow-ups",
   );
   const [retentionRule, setRetentionRule] = useState("5 years after return submission");
-  const [mfaPolicy, setMfaPolicy] = useState("Required for admin only");
 
   const [reviewQueueAlerts, setReviewQueueAlerts] = useState(true);
   const [requestAlerts, setRequestAlerts] = useState(true);
@@ -453,11 +452,11 @@ export function FirmSettingsPage() {
       return;
     }
 
-    if (nextPassword.trim().length < 8) {
+    if (Array.from(nextPassword).length < 15) {
       setFeedbackNotice({
         tone: "danger",
         title: "Password too short",
-        message: "Use a new password with at least 8 characters.",
+        message: "Use a new password with at least 15 characters.",
       });
       return;
     }
@@ -495,7 +494,7 @@ export function FirmSettingsPage() {
   function renderOperations() {
     if (isAdmin) {
       return (
-        <SurfaceCard className="space-y-6">
+        <PageSection className="space-y-6">
           <div className="flex items-start gap-4">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-50 text-brand-600 ring-1 ring-brand-100">
               <OperationsIcon />
@@ -555,16 +554,11 @@ export function FirmSettingsPage() {
               ]}
               value={retentionRule}
             />
-            <SelectField
-              label="MFA policy"
-              onChange={(event) => setMfaPolicy(event.target.value)}
-              options={[
-                { label: "Required for admin only", value: "Required for admin only" },
-                { label: "Required for all internal roles", value: "Required for all internal roles" },
-                { label: "Planned for next phase", value: "Planned for next phase" },
-              ]}
-              value={mfaPolicy}
-            />
+            <div>
+              <p className="text-sm font-medium text-slate-700">MFA policy</p>
+              <p className="mt-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">Required for administrators and accountants</p>
+              <p className="mt-2 text-xs text-slate-500">Enforced by the backend. This policy cannot be disabled here.</p>
+            </div>
           </div>
 
           <div className="grid gap-4 lg:grid-cols-3">
@@ -615,12 +609,12 @@ export function FirmSettingsPage() {
               Save firm operations
             </Button>
           </div>
-        </SurfaceCard>
+        </PageSection>
       );
     }
 
     return (
-      <SurfaceCard className="space-y-6">
+      <PageSection className="space-y-6">
         <div className="flex items-start gap-4">
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-50 text-brand-600 ring-1 ring-brand-100">
             <OperationsIcon />
@@ -731,13 +725,13 @@ export function FirmSettingsPage() {
             Save workflow settings
           </Button>
         </div>
-      </SurfaceCard>
+      </PageSection>
     );
   }
 
   function renderNotifications() {
     return (
-      <SurfaceCard className="space-y-6">
+      <PageSection className="space-y-6">
         <div className="flex items-start gap-4">
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-500 ring-1 ring-amber-100">
             <BellIcon />
@@ -819,13 +813,13 @@ export function FirmSettingsPage() {
             Save notification settings
           </Button>
         </div>
-      </SurfaceCard>
+      </PageSection>
     );
   }
 
   function renderCompliance() {
     return (
-      <SurfaceCard className="space-y-6">
+      <PageSection className="space-y-6">
         <div className="flex items-start gap-4">
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
             <ShieldIcon />
@@ -961,13 +955,13 @@ export function FirmSettingsPage() {
             Save compliance settings
           </Button>
         </div>
-      </SurfaceCard>
+      </PageSection>
     );
   }
 
   function renderProfile() {
     return (
-      <SurfaceCard className="space-y-6">
+      <PageSection className="space-y-6">
         <div className="flex items-start gap-4">
           <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-50 text-sky-600 ring-1 ring-sky-100">
             <ProfileIcon />
@@ -1056,7 +1050,7 @@ export function FirmSettingsPage() {
             />
             <TextField
               autoComplete="new-password"
-              hint="Use at least 8 characters."
+              hint="Use at least 15 characters."
               id="firm-next-password"
               label="New password"
               onChange={(event) => setNextPassword(event.target.value)}
@@ -1119,7 +1113,7 @@ export function FirmSettingsPage() {
             Save workspace profile
           </Button>
         </div>
-      </SurfaceCard>
+      </PageSection>
     );
   }
 
@@ -1147,7 +1141,7 @@ export function FirmSettingsPage() {
 
     return (
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1.55fr)]">
-        <SurfaceCard className="space-y-4">
+        <PageSection className="space-y-4">
           <div>
             <h2 className="text-[1.25rem] font-semibold text-slate-950">User management</h2>
             <p className="mt-1 text-sm text-slate-500">
@@ -1168,9 +1162,9 @@ export function FirmSettingsPage() {
               </div>
             ))}
           </div>
-        </SurfaceCard>
+        </PageSection>
 
-        <SurfaceCard className="space-y-5">
+        <PageSection className="space-y-5">
           <div>
             <h2 className="text-[1.25rem] font-semibold text-slate-950">Role permissions</h2>
             <p className="mt-1 text-sm text-slate-500">
@@ -1224,7 +1218,7 @@ export function FirmSettingsPage() {
               Save role permissions
             </Button>
           </div>
-        </SurfaceCard>
+        </PageSection>
       </div>
     );
   }
@@ -1273,7 +1267,7 @@ export function FirmSettingsPage() {
         />
       ) : null}
 
-      <SurfaceCard className="rounded-[1.55rem] border border-slate-200/80 bg-white p-3 shadow-[0_22px_48px_rgba(15,23,42,0.05)]">
+      <PageSection className="">
         <div className="grid gap-2 md:grid-cols-4">
           {sections.map((section) => {
             const active = activeSection === section.id;
@@ -1315,7 +1309,7 @@ export function FirmSettingsPage() {
             );
           })}
         </div>
-      </SurfaceCard>
+      </PageSection>
 
       {activeSection === "operations"
         ? renderOperations()

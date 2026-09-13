@@ -9,6 +9,7 @@ import { usePortal } from "../../app/portal";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
+import { PageHeader } from "../../components/ui/PageHeader";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
 import { ApiError, apiGetJson, hasApiBaseUrl } from "../../services/apiClient";
 import {
@@ -1516,8 +1517,8 @@ export function ClientComplianceCentrePage() {
 
   return (
     <div className="client-compliance-centre portal-page mx-auto max-w-[1280px] space-y-6">
+      <PageHeader title="Compliance Centre" eyebrow="Client workspace" description="Track your compliance requirements, renewals and outstanding documents." />
       <section className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="sr-only">Compliance Centre</h1>
         <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-slate-600">
           <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-emerald-800"><strong>{effectiveData.overallScore}%</strong> compliant</span>
           <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-rose-700"><strong>{effectiveData.expiredDocuments.length}</strong> expired</span>

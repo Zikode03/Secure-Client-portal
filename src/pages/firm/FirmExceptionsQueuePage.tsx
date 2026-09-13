@@ -1,7 +1,8 @@
+import { PageHeader } from "../../components/ui/PageHeader";
 import { useEffect, useMemo, useState } from "react";
 import { usePortal } from "../../app/portal";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
-import { SurfaceCard } from "../../components/ui/SurfaceCard";
+import { PageSection } from "../../components/ui/PageSection";
 import { ApiError, apiGetJson, hasApiBaseUrl } from "../../services/apiClient";
 import { formatDateLabel } from "../../utils/formatters";
 
@@ -191,11 +192,8 @@ export function FirmExceptionsQueuePage() {
         />
       ) : null}
 
-      <SurfaceCard className="rounded-2xl border border-slate-200 bg-white p-5 shadow-none">
-        <h1 className="text-xl font-semibold text-slate-950">Approval / Exception Queue</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Operational inbox for overdue requests, unresolved review items, and compliance exceptions.
-        </p>
+      <PageSection className="">
+        <PageHeader title="Approval / Exception Queue" description="Operational inbox for overdue requests, unresolved review items, and compliance exceptions." />
 
         <div className="mt-4 space-y-3">
           {visibleQueue.map((item) => (
@@ -214,7 +212,7 @@ export function FirmExceptionsQueuePage() {
           ))}
           {visibleQueue.length === 0 ? <p className="text-sm text-slate-500">No exceptions at this time.</p> : null}
         </div>
-      </SurfaceCard>
+      </PageSection>
     </>
   );
 }

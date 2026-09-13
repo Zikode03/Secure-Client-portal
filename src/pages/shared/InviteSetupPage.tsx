@@ -7,13 +7,15 @@ import { defaultPathForRole, useAuth } from "../../app/auth";
 import { hasApiBaseUrl } from "../../services/apiClient";
 
 // Component flow: gather data first, then render a focused UI state.
+import { MfaChallengePage } from "../../components/auth/MfaChallengePage";
+
 export function InviteSetupPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const inviteEmail = searchParams.get("email") ?? "client@example.com";
   const inviteToken = searchParams.get("token") ?? "";
   const flowMode = searchParams.get("mode") ?? "invite";
-  const { completeInvite } = useAuth();
+  const { completeInvite, pendingMfa } = useAuth();
 // Local UI state: keeps track of what the user is seeing or editing right now.
   const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
@@ -50,8 +52,8 @@ export function InviteSetupPage() {
       return;
     }
 
-    if (password.trim().length < 8) {
-      setError("Use a password with at least 8 characters.");
+    if (Array.from(password).length < 15) {
+      setError("Use a password with at least 15 characters.");
       return;
     }
 
@@ -79,6 +81,7 @@ export function InviteSetupPage() {
       password,
     });
 
+    if (result.mfaRequired) { setPassword(""); setConfirmPassword(""); setIsSubmitting(false); return; }
     if (!result.ok || !result.user) {
       setError(result.message ?? "Unable to complete the invite.");
       setIsSubmitting(false);
@@ -97,6 +100,7 @@ export function InviteSetupPage() {
   }
 
 // Render output: this is the visual state users interact with.
+  if (pendingMfa) return <MfaChallengePage />;
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#273463] px-4 py-8 text-white sm:px-6 lg:px-8">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(24,172,95,0.18),transparent_28%),radial-gradient(circle_at_82%_78%,rgba(14,165,233,0.14),transparent_30%)]" />

@@ -1282,7 +1282,7 @@ export function AccountantFilingPage() {
       className="mx-auto max-w-[1280px] space-y-6"
       onClick={() => setOpenMenuResultId("")}
     >
-      <section className="flex flex-col gap-4 border-b border-slate-200 pb-6 sm:flex-row sm:items-end sm:justify-between">
+      <section className="portal-page-header flex flex-col gap-5 border-b border-slate-200 pb-6 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">Accountant workspace</p>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight text-slate-950">Filing Register</h1>

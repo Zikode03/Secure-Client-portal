@@ -8,7 +8,7 @@ import { usePortal } from "../../app/portal";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
-import { SurfaceCard } from "../../components/ui/SurfaceCard";
+import { PageSection } from "../../components/ui/PageSection";
 import { ApiError, apiGetJson, apiPostJson, hasApiBaseUrl } from "../../services/apiClient";
 import type { NotificationItem, NotificationKind, Tone } from "../../types/portal";
 import { cn } from "../../utils/cn";
@@ -616,7 +616,7 @@ export function ClientNotificationsPage() {
             tone="danger"
           />
         ) : null}
-        <SurfaceCard className="rounded-2xl border border-slate-200 bg-white p-8">
+        <PageSection className="">
           <EmptyState
             description={isLoading ? "Your live notifications are being loaded." : "The notification inbox could not be loaded. No demo notifications are being shown."}
             title={isLoading ? "Loading notifications" : "Notifications unavailable"}
@@ -626,14 +626,14 @@ export function ClientNotificationsPage() {
               <Button onClick={() => void loadNotifications()}>Try again</Button>
             </div>
           ) : null}
-        </SurfaceCard>
+        </PageSection>
       </div>
     );
   }
 
   return (
     <div className="portal-page mx-auto max-w-[1280px] space-y-4">
-      <div className="space-y-1.5">
+      <div className="portal-page-header space-y-2 border-b border-slate-200 pb-6">
         <h1 className="portal-page-title text-slate-950">Notifications</h1>
         <p className="max-w-2xl text-[0.94rem] leading-6 text-slate-500">
           Review updates, required actions, and linked client records.
@@ -649,7 +649,7 @@ export function ClientNotificationsPage() {
       ) : null}
 
       <section className="grid gap-5 xl:grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)] xl:items-start">
-        <SurfaceCard className="rounded-[1.65rem] border border-slate-200/80 bg-white p-0 shadow-[0_24px_50px_rgba(15,23,42,0.06)]">
+        <PageSection className="">
           <div className="border-b border-slate-100 px-5 pb-4 pt-5">
             <div className="flex items-center justify-between gap-3">
               <div className="flex flex-wrap items-center gap-3">
@@ -795,9 +795,9 @@ export function ClientNotificationsPage() {
               <ArrowRightIcon />
             </button>
           </div>
-        </SurfaceCard>
+        </PageSection>
 
-        <SurfaceCard className="overflow-hidden rounded-[1.65rem] border border-slate-200/80 bg-white p-0 shadow-[0_24px_50px_rgba(15,23,42,0.06)]">
+        <PageSection className="overflow-hidden">
           {selectedNotification ? (
             <>
               <div className="border-b border-slate-100 px-6 pb-5 pt-5">
@@ -971,7 +971,7 @@ export function ClientNotificationsPage() {
               />
             </div>
           )}
-        </SurfaceCard>
+        </PageSection>
       </section>
     </div>
   );

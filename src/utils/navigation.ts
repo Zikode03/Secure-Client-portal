@@ -8,6 +8,7 @@ export type NavigationSection =
   | "Documents"
   | "Compliance"
   | "Management"
+  | "Access & Security"
   | "Configuration";
 
 export type NavigationIcon =
@@ -155,14 +156,14 @@ export const navigationByRole: Record<Role, NavigationItem[]> = {
       label: "Users & Access",
       to: "/firm/admin/users",
       description: "Create users, change roles, and control account access",
-      section: "Management",
+      section: "Access & Security",
       icon: "users",
     },
     {
       label: "Roles & Permissions",
       to: "/firm/admin/roles",
       description: "Control role scopes and permissions",
-      section: "Management",
+      section: "Access & Security",
       icon: "policies",
     },
     {
@@ -190,7 +191,7 @@ export const navigationByRole: Record<Role, NavigationItem[]> = {
       label: "Audit & Security",
       to: "/firm/admin/audit",
       description: "Review administrative and security-sensitive activity",
-      section: "Management",
+      section: "Access & Security",
       icon: "review",
     },
     {
@@ -199,6 +200,20 @@ export const navigationByRole: Record<Role, NavigationItem[]> = {
       description: "Search records across the full firm",
       section: "Documents",
       icon: "documents",
+    },
+    {
+      label: "Required Documents",
+      to: "/firm/admin/required-documents",
+      description: "Manage document requirements used by monthly pack templates",
+      section: "Documents",
+      icon: "templates",
+    },
+    {
+      label: "Monthly Packs",
+      to: "/firm/admin/monthly-packs",
+      description: "Configure monthly pack templates and their document requirements",
+      section: "Documents",
+      icon: "packs",
     },
     {
       label: "Filing Register",

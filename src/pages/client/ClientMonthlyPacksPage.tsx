@@ -740,7 +740,7 @@ export function ClientMonthlyPacksPage() {
 
   return (
     <div className="portal-page mx-auto max-w-[1280px] space-y-5 pb-8">
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+      <div className="portal-page-header grid gap-5 border-b border-slate-200 pb-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
         <div className="space-y-2 pt-1">
           <p className="text-[0.78rem] font-semibold uppercase tracking-[0.14em] text-brand-700">
             Monthly Packs

@@ -1155,7 +1155,7 @@ export function ClientRequestsPage() {
 
   return (
     <div className="client-inbox-page portal-page mx-auto flex h-auto w-full max-w-[1440px] flex-col gap-5 pb-8 min-[1080px]:h-full min-[1080px]:min-h-0 min-[1080px]:overflow-hidden min-[1080px]:pb-0">
-      <header className="flex flex-wrap items-end justify-between gap-4 border-b border-slate-200 pb-5">
+      <header className="portal-page-header flex flex-wrap items-center justify-between gap-5 border-b border-slate-200 pb-6">
         <div className="space-y-1.5">
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">Client workspace</p>
           <h1 className="portal-page-title text-[#091333]">Inbox</h1>
@@ -1220,10 +1220,10 @@ export function ClientRequestsPage() {
                   if (attachment) {
                     const file = await dataUrlToFile(attachment);
                     const formData = new FormData();
-                    formData.append("file", file);
                     if (plainText) {
                       formData.append("message", plainText);
                     }
+                    formData.append("file", file);
                     await apiPostForm(`/api/requests/${encodeURIComponent(requestId)}/upload`, formData);
                   } else {
                     await apiPostJson(`/api/requests/${encodeURIComponent(requestId)}/comments`, {

@@ -4,6 +4,7 @@ import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
+import { PageHeader } from "../../components/ui/PageHeader";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
 import { ApiError, apiGetJson, apiPatchJson, apiPostJson, hasApiBaseUrl } from "../../services/apiClient";
 import type { WorkflowRequest } from "../../types/portal";
@@ -320,23 +321,7 @@ export function FirmRequestDetailPage() {
 
   return (
     <div className="space-y-4">
-      <SurfaceCard className="rounded-2xl border border-slate-200 bg-white p-5 shadow-none">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-xs uppercase tracking-wide text-slate-500">Inbox item detail</p>
-            <h1 className="mt-1 text-2xl font-semibold text-slate-950">{request.title}</h1>
-            <p className="mt-1 text-sm text-slate-500">
-              {request.clientName} · {request.monthLabel} · {request.id}
-            </p>
-          </div>
-          <Link
-            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700"
-            to="/firm/inbox"
-          >
-            Back to inbox
-          </Link>
-        </div>
-      </SurfaceCard>
+      <PageHeader title={request.title} eyebrow="Inbox item detail" description={`${request.clientName} · ${request.monthLabel} · ${request.id}`} actions={<Link className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700" to="/firm/inbox">Back to inbox</Link>} />
 
       <SurfaceCard className="rounded-2xl border border-slate-200 bg-white p-5 shadow-none">
         <h2 className="text-sm font-semibold text-slate-900">Summary</h2>

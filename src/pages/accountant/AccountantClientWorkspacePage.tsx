@@ -821,8 +821,7 @@ export function AccountantClientWorkspacePage() {
 // Render output: this is the visual state users interact with.
   return (
     <div className="space-y-6 text-[#091333]">
-      <section className="relative overflow-hidden rounded-[28px] border border-[#dce6ef] bg-[linear-gradient(135deg,#ffffff_0%,#f7faff_62%,#eef5fb_100%)] p-5 text-[#091333] shadow-[0_22px_50px_rgba(4,24,52,0.08)] md:p-6">
-        <div className="pointer-events-none absolute inset-y-0 right-0 w-[34%] bg-[radial-gradient(circle_at_top_right,rgba(160,190,220,0.24),transparent_62%)]" />
+      <section className="portal-page-header relative border-b border-slate-200 pb-6">
         <div className="relative z-10 flex flex-wrap items-start justify-between gap-5">
           <div className="max-w-3xl">
             <p className="text-[0.72rem] font-medium uppercase tracking-[0.16em] text-[#6f7d96]">

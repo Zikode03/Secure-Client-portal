@@ -1466,7 +1466,7 @@ export function AccountantDocumentsPage() {
       className="mx-auto max-w-[1280px] space-y-6"
       onClick={() => setOpenMenuResultId("")}
     >
-      <section className="border-b border-slate-200 pb-7">
+      <section className="portal-page-header border-b border-slate-200 pb-6">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-2xl">
             <p className="text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-brand-600">

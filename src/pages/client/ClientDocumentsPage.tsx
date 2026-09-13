@@ -9,6 +9,7 @@ import { AuditTrail } from "../../components/workflow/AuditTrail";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
+import { PageHeader } from "../../components/ui/PageHeader";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
 import { useDisclosure } from "../../hooks/useDisclosure";
 import { ApiError, apiGetBlob, apiGetJson, apiPostForm, apiPostJson, hasApiBaseUrl } from "../../services/apiClient";
@@ -1337,8 +1338,8 @@ export function ClientDocumentsPage() {
 
   return (
     <div className="portal-page mx-auto max-w-[1320px] space-y-5">
-      <header>
-        <h1 className="sr-only">Documents</h1>
+      <PageHeader title="Documents" eyebrow="Client workspace" description="Upload, find and manage your business records." actions={<Button onClick={() => openUploadForSlot(preferredUploadSlot)}>Upload document</Button>} />
+      <section aria-label="Search documents">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="min-w-0 flex-1">
             <label className="relative min-w-0 flex-1">
@@ -1347,9 +1348,8 @@ export function ClientDocumentsPage() {
               <input className="h-12 w-full rounded-xl border border-slate-300 bg-white pl-11 pr-4 text-sm text-slate-900 outline-none transition focus:border-brand-400 focus:ring-4 focus:ring-brand-100" onChange={(event) => setFilters((current) => ({ ...current, query: event.target.value }))} placeholder="Search your document register" value={filters.query} />
             </label>
           </div>
-          <Button className="h-12 rounded-xl px-6" onClick={() => openUploadForSlot(preferredUploadSlot)}>Upload document</Button>
         </div>
-      </header>
+      </section>
 
       {feedbackNotice ? (
         <FeedbackBanner

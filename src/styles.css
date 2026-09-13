@@ -67,6 +67,50 @@ h1[class] {
   line-height: 2.125rem;
 }
 
+/* Shared workspace chrome: flat headers, quiet actions, and full readable titles. */
+@layer utilities {
+.portal-page-header {
+  min-width: 0;
+}
+
+.portal-page-header h1 {
+  overflow-wrap: anywhere;
+}
+
+.portal-page-header .ui-btn-primary,
+.portal-page-header .ui-btn-secondary,
+.portal-page-header .client-dashboard-action-button,
+html.theme-dark .portal-page-header .ui-btn-primary,
+html.theme-dark .portal-page-header .ui-btn-secondary,
+html.theme-dark .portal-page-header .client-dashboard-action-button {
+  min-height: 2.5rem;
+  height: auto;
+  padding: 0.6rem 1rem;
+  border-radius: 0.75rem;
+  box-shadow: none !important;
+  transform: none !important;
+}
+
+.portal-page-header .ui-btn-secondary {
+  background: transparent !important;
+  color: #0a2f66 !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+.portal-page-header .ui-btn-secondary:hover {
+  background: #eef2f7 !important;
+}
+
+html.theme-dark .portal-page-header .ui-btn-secondary {
+  color: var(--dark-text-secondary) !important;
+  border-color: var(--dark-border) !important;
+}
+
+html.theme-dark .portal-page-header .ui-btn-secondary:hover {
+  background: var(--dark-surface-muted) !important;
+}
+}
+
 h2[class] {
   font-size: 1.125rem;
   font-weight: 600;

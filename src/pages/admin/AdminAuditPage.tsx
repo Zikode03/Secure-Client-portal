@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { SelectField } from "../../components/ui/SelectField";
-import { SurfaceCard } from "../../components/ui/SurfaceCard";
+import { PageSection } from "../../components/ui/PageSection";
 import { TextField } from "../../components/ui/TextField";
 import { ApiError, apiGetJson, hasApiBaseUrl } from "../../services/apiClient";
 import type { Tone } from "../../types/portal";
@@ -97,7 +97,7 @@ export function AdminAuditPage() {
 
       {feedback ? <FeedbackBanner message={feedback.message} onDismiss={() => setFeedback(null)} title={feedback.title} tone={feedback.tone} /> : null}
 
-      <SurfaceCard className="space-y-5">
+      <PageSection className="space-y-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <h2 className="portal-section-title text-slate-950">System audit trail</h2>
@@ -155,7 +155,7 @@ export function AdminAuditPage() {
             </tbody>
           </table>
         </div>
-      </SurfaceCard>
+      </PageSection>
     </div>
   );
 }

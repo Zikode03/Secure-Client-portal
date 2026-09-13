@@ -121,7 +121,7 @@ export function FirmComplianceCalendarPage() {
 // Render output: this is the visual state users interact with.
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="portal-page-header flex flex-wrap items-center justify-between gap-5 border-b border-slate-200 pb-6">
         <div>
           <h1 className="text-2xl font-medium text-slate-950">Compliance Calendar</h1>
           <p className="mt-1 text-sm text-slate-500">Plan filings and renewals with a true calendar view.</p>

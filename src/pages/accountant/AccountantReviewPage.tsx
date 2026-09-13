@@ -1560,7 +1560,7 @@ export function AccountantReviewPage() {
 
   return (
     <div className="mx-auto max-w-[1500px] space-y-5">
-      <header className="border-b border-slate-200 pb-5">
+      <header className="portal-page-header border-b border-slate-200 pb-6">
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
           {user?.role === "admin" ? "Firm operations" : "Accountant workspace"}
         </p>

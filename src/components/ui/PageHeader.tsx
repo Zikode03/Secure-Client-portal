@@ -20,21 +20,21 @@ export function PageHeader({
 }: PageHeaderProps) {
 // Render output: this is the visual state users interact with.
   return (
-    <div className="flex flex-col gap-4 rounded-[1.4rem] border border-slate-200/80 bg-white px-5 py-5 shadow-[0_14px_36px_rgba(15,23,42,0.05)] sm:px-6 sm:py-6 lg:flex-row lg:items-end lg:justify-between">
-      <div className="space-y-2">
+    <header className="portal-page-header flex flex-col gap-5 border-b border-slate-200 pb-6 lg:flex-row lg:items-center lg:justify-between">
+      <div className="min-w-0 space-y-2">
         {eyebrow ? (
-          <span className="inline-flex rounded-full bg-brand-50 px-3 py-1 text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-brand-700">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
             {eyebrow}
-          </span>
+          </p>
         ) : null}
         <div className="space-y-1">
-          <h1 className="text-[1.9rem] font-semibold tracking-tight text-slate-950">
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">
             {title}
           </h1>
-          <p className="max-w-3xl text-[0.96rem] leading-7 text-slate-500">{description}</p>
+          <p className="max-w-2xl text-sm leading-6 text-slate-500">{description}</p>
         </div>
       </div>
-      {actions ? <div className="flex flex-wrap gap-2.5 lg:justify-end">{actions}</div> : null}
-    </div>
+      {actions ? <div className="flex shrink-0 flex-wrap items-center gap-3 lg:max-w-[48%] lg:justify-end">{actions}</div> : null}
+    </header>
   );
 }

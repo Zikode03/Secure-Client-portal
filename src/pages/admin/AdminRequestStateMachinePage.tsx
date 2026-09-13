@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/Button";
 import { PageHeader } from "../../components/ui/PageHeader";
-import { SurfaceCard } from "../../components/ui/SurfaceCard";
+import { PageSection } from "../../components/ui/PageSection";
 import { formatRequestStatus } from "../../utils/formatters";
 
 type RequestState =
@@ -107,7 +107,7 @@ export function AdminRequestStateMachinePage() {
         title="Request SLA rules"
       />
 
-      <SurfaceCard className="space-y-4">
+      <PageSection className="space-y-4">
         <div>
           <h2 className="portal-section-title text-slate-950">Request lifecycle</h2>
           <p className="mt-1 text-sm text-slate-500">
@@ -122,9 +122,9 @@ export function AdminRequestStateMachinePage() {
             </div>
           ))}
         </div>
-      </SurfaceCard>
+      </PageSection>
 
-      <SurfaceCard className="overflow-hidden p-0">
+      <PageSection className="overflow-hidden">
         <div className="border-b border-slate-200 px-5 py-5">
           <h2 className="portal-section-title text-slate-950">Transition reference</h2>
           <p className="mt-1 text-sm text-slate-500">
@@ -160,7 +160,7 @@ export function AdminRequestStateMachinePage() {
             </tbody>
           </table>
         </div>
-      </SurfaceCard>
+      </PageSection>
     </div>
   );
 }

@@ -12,6 +12,12 @@ beforeEach(async () => {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('API CSRF protection', () => {
+  it('refreshes the CSRF token after successful MFA verification', async () => {
+    fetchMock.mockImplementation(async (url: string) => url.endsWith('/csrf') ? json({ requestToken: 'csrf' }) : json({ authenticated: true }));
+    await client.apiPostJson('/api/auth/mfa/verify', { challengeToken: 'test', code: '123456' });
+    await client.apiPostJson('/api/documents', {});
+    expect(fetchMock.mock.calls.filter(([url]) => url.endsWith('/csrf'))).toHaveLength(2);
+  });
   it('shares one token bootstrap across concurrent writes and protects JSON, uploads and delete', async () => {
     fetchMock.mockImplementation(async (url: string) => url.endsWith('/csrf') ? json({ requestToken: 'token-one' }) : json({ ok: true }));
     await Promise.all([

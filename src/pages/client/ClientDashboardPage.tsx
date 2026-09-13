@@ -1252,18 +1252,17 @@ export function ClientDashboardPage() {
 
   return (
     <div className="portal-page mx-auto max-w-[1240px] space-y-5">
-      <section className="relative overflow-visible rounded-2xl border border-[#dce6ef] bg-[linear-gradient(135deg,#062044_0%,#0a2f66_54%,#1d8b66_100%)] p-5 text-white shadow-[0_24px_60px_rgba(4,24,52,0.18)] md:p-6">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(150,224,113,0.22),transparent_32%),radial-gradient(circle_at_bottom_left,rgba(255,255,255,0.16),transparent_34%)]" />
+      <section className="portal-page-header relative border-b border-slate-200 pb-6">
         <div className="relative grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
           <div className="space-y-2">
-            <div className="inline-flex rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-white/80">
+            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
               Client Workspace
             </div>
-            <h1 className="portal-page-title text-white">
+            <h1 className="portal-page-title text-slate-950">
               Welcome back, {user?.name?.split(" ")[0] ?? "John"}
             </h1>
-            <p className="max-w-2xl text-[0.95rem] leading-6 text-white/78">
-              Resolve blockers, upload missing files, and keep each slot moving through review. Pack progress stays visible as a summary while slot actions stay front and centre.
+            <p className="max-w-2xl text-sm leading-6 text-slate-500">
+              Upload missing documents and track your monthly pack progress.
             </p>
           </div>
 
@@ -1296,7 +1295,7 @@ export function ClientDashboardPage() {
           </Button>
           <button
             aria-label="Open dashboard options"
-            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/20 bg-white/10 text-white shadow-sm transition hover:bg-white/15"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-300 bg-white text-slate-700 transition hover:bg-slate-50"
             onClick={() => setOptionsOpen((current) => !current)}
             type="button"
           >

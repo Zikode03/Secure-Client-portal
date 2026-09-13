@@ -40,13 +40,21 @@ interface InviteSetupPayload {
   password: string;
 }
 
+export interface MfaChallenge { mfaRequired: boolean; challengeToken: string; setupKey?: string | null; expiresAtUtc?: string; }
+
 interface AuthResult {
+  mfaRequired?: boolean;
+  recoveryCodes?: string[];
   ok: boolean;
   message?: string;
   user?: SessionUser;
 }
 
 interface AuthContextValue {
+  pendingMfa: MfaChallenge | null;
+  verifyMfa: (code: string, recovery: boolean) => Promise<AuthResult>;
+  finishMfa: () => Promise<AuthResult>;
+  cancelMfa: () => void;
   ready: boolean;
   user: SessionUser | null;
   authNotice: string | null;
@@ -105,7 +113,7 @@ const defaultCredentialsByEmail: Record<string, string> = {
   "admin@example.com": "Admin@2026",
 };
 
-interface BackendLoginResponse {
+interface BackendLoginResponse extends Partial<MfaChallenge> {
   expiresAtUtc?: string;
   refreshExpiresAtUtc?: string;
 }
@@ -256,7 +264,7 @@ function getApiErrorMessage(error: unknown, fallback: string) {
     case "SETUP_NOT_PENDING":
       return "This account does not currently have a pending setup request.";
     case "PASSWORD_TOO_SHORT":
-      return "Use a password with at least 8 characters.";
+      return "Use a password with at least 15 characters.";
     case "PASSWORD_REUSE":
       return "Choose a new password that is different from the current one.";
     case "INVALID_EMAIL":
@@ -285,6 +293,7 @@ export function defaultPathForRole(role: Role) {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
 // Local UI state: keeps track of what the user is seeing or editing right now.
+  const [pendingMfa, setPendingMfa] = useState<MfaChallenge | null>(null);
   const [ready, setReady] = useState(false);
   const [user, setUser] = useState<SessionUser | null>(null);
   const [authNotice, setAuthNotice] = useState<string | null>(readAuthNotice);
@@ -398,6 +407,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ready,
       user,
       authNotice,
+      pendingMfa,
+      cancelMfa() { setPendingMfa(null); },
+      async verifyMfa(code, recovery) {
+        if (!pendingMfa) return { ok: false, message: "Sign in again to start verification." };
+        try {
+          const response = await apiPostJson<BackendLoginResponse & { recoveryCodes?: string[] }, object>(
+            "/api/auth/mfa/verify", { challengeToken: pendingMfa.challengeToken, code, useRecoveryCode: recovery });
+          if (response.mfaRequired) { setPendingMfa(response as MfaChallenge); return { ok: true, mfaRequired: true }; }
+          return { ok: true, recoveryCodes: response.recoveryCodes };
+        } catch (error) { return { ok: false, message: getApiErrorMessage(error, "Verification failed. Try again.") }; }
+      },
+      async finishMfa() {
+        try {
+          const nextUser = await loadBackendSessionUser();
+          setPendingMfa(null); updateAuthNotice(null); setUser(nextUser);
+          return { ok: true, user: nextUser };
+        } catch (error) { return { ok: false, message: getApiErrorMessage(error, "Sign in again to continue.") }; }
+      },
       clearAuthNotice() {
         updateAuthNotice(null);
       },
@@ -408,10 +435,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return { ok: false, message: "Use the email tied to your portal account." };
         }
 
-        if (password.trim().length < 8) {
+        if (!password) {
           return {
             ok: false,
-            message: "Use a password with at least 8 characters to continue.",
+            message: "Enter your password to continue.",
           };
         }
 
@@ -421,8 +448,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               "/api/auth/login",
               { email: trimmedEmail, password, rememberMe },
             );
-            void loginResponse;
             setPersistSession(rememberMe);
+            if (loginResponse.mfaRequired) { setPendingMfa(loginResponse as MfaChallenge); return { ok: true, mfaRequired: true }; }
 
             const nextUser = await loadBackendSessionUser();
             updateAuthNotice(null);
@@ -484,8 +511,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 password,
               },
             );
-            void inviteResponse;
             setPersistSession(true);
+            if (inviteResponse.mfaRequired) { setPendingMfa(inviteResponse as MfaChallenge); return { ok: true, mfaRequired: true }; }
 
             const nextUser = await loadBackendSessionUser();
             updateAuthNotice(null);
@@ -510,10 +537,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           };
         }
 
-        if (password.trim().length < 8) {
+        if (Array.from(password).length < 15) {
           return {
             ok: false,
-            message: "Use a password with at least 8 characters.",
+            message: "Use a password with at least 15 characters.",
           };
         }
 
@@ -593,8 +620,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
 
-        if (nextPassword.trim().length < 8) {
-          return { ok: false, message: "Use a new password with at least 8 characters." };
+        if (Array.from(nextPassword).length < 15) {
+          return { ok: false, message: "Use a new password with at least 15 characters." };
         }
 
         if (currentPassword.trim() === nextPassword.trim()) {
@@ -627,7 +654,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
       },
     }),
-    [authNotice, mockCredentials, persistSession, ready, user],
+    [authNotice, mockCredentials, persistSession, ready, user, pendingMfa],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

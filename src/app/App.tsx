@@ -34,6 +34,12 @@ const AdminAssignmentsPage = lazy(() =>
 const AdminSettingsPage = lazy(() =>
   import("../pages/admin/AdminSettingsPage").then((module) => ({ default: module.AdminSettingsPage })),
 );
+const AdminRequiredDocumentsPage = lazy(() =>
+  import("../pages/admin/AdminRequiredDocumentsPage").then((module) => ({ default: module.AdminRequiredDocumentsPage })),
+);
+const AdminMonthlyPacksPage = lazy(() =>
+  import("../pages/admin/AdminMonthlyPacksPage").then((module) => ({ default: module.AdminMonthlyPacksPage })),
+);
 const ClientComplianceCentrePage = lazy(() =>
   import("../pages/client/ClientComplianceCentrePage").then((module) => ({ default: module.ClientComplianceCentrePage })),
 );
@@ -271,6 +277,8 @@ export default function App() {
           <Route element={<RequirePermission permission="manage:assignments"><AdminAssignmentsPage /></RequirePermission>} path="admin/assignments" />
           <Route element={<RequirePermission permission="manage:system_settings"><AdminAuditPage /></RequirePermission>} path="admin/audit" />
           <Route element={<RequirePermission permission="manage:system_settings"><AdminSettingsPage /></RequirePermission>} path="admin/system-settings" />
+          <Route element={<RequirePermission permission="manage:system_settings"><AdminRequiredDocumentsPage /></RequirePermission>} path="admin/required-documents" />
+          <Route element={<RequirePermission permission="manage:system_settings"><AdminMonthlyPacksPage /></RequirePermission>} path="admin/monthly-packs" />
           <Route element={<RequirePermission permission="manage:system_settings"><AdminRequestStateMachinePage /></RequirePermission>} path="admin/request-state-machine" />
         </Route>
 

@@ -1,3 +1,4 @@
+import { MfaChallengePage } from "../../components/auth/MfaChallengePage";
 import { useState, type ReactNode } from "react";
 import {
   ArrowRight,
@@ -142,7 +143,7 @@ function PopiaNotice({ accepted, onChange }: { accepted: boolean; onChange: (acc
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { clearAuthNotice, login } = useAuth();
+  const { clearAuthNotice, login, pendingMfa } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -165,6 +166,7 @@ export function LoginPage() {
 
     const result = await login({ email, password, rememberMe });
 
+    if (result.mfaRequired) { setPassword(""); setIsSubmitting(false); return; }
     if (!result.ok || !result.user) {
       setError(result.message ?? "Unable to sign in.");
       setIsSubmitting(false);
@@ -175,6 +177,7 @@ export function LoginPage() {
     navigate(defaultPathForRole(result.user.role));
   }
 
+  if (pendingMfa) return <MfaChallengePage />;
   return (
     <main className="relative h-svh overflow-hidden bg-[#eef3f6] text-slate-950">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_8%_10%,rgba(24,172,95,0.12),transparent_28%),radial-gradient(circle_at_92%_90%,rgba(10,47,102,0.12),transparent_30%)]" />

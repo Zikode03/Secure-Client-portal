@@ -1170,10 +1170,10 @@ export function AccountantFollowUpsPage() {
           if (attachment) {
             const file = await dataUrlToFile(attachment);
             const formData = new FormData();
-            formData.append("file", file);
             if (plainText) {
               formData.append("message", plainText);
             }
+                    formData.append("file", file);
             await apiPostForm(`/api/requests/${encodeURIComponent(activeRequest.id)}/upload`, formData);
           } else {
             await apiPostJson(`/api/requests/${encodeURIComponent(activeRequest.id)}/comments`, {
@@ -1383,7 +1383,7 @@ export function AccountantFollowUpsPage() {
 
   return (
     <div className="accountant-inbox-page mx-auto flex w-full max-w-[1440px] flex-col gap-5 pb-8 min-[1080px]:h-full min-[1080px]:min-h-0 min-[1080px]:overflow-hidden min-[1080px]:pb-0">
-      <header className="flex flex-wrap items-end justify-between gap-4 border-b border-slate-200 pb-5">
+      <header className="portal-page-header flex flex-wrap items-center justify-between gap-5 border-b border-slate-200 pb-6">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">Firm workspace</p>
           <h1 className="mt-1 text-3xl font-semibold tracking-tight text-[#091333]">Inbox</h1>

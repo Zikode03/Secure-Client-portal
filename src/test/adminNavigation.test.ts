@@ -13,6 +13,8 @@ describe("admin navigation", () => {
     expect(routes).toContain("/firm/admin/audit");
     expect(routes).toContain("/firm/admin/request-state-machine");
     expect(routes).toContain("/firm/admin/system-settings");
+    expect(routes).toContain("/firm/admin/required-documents");
+    expect(routes).toContain("/firm/admin/monthly-packs");
   });
 
   it("keeps management and configuration controls grouped as admin functions", () => {
@@ -25,14 +27,17 @@ describe("admin navigation", () => {
 
     expect(managementLabels).toEqual(
       expect.arrayContaining([
-        "Users & Access",
-        "Roles & Permissions",
         "Clients",
         "Accountants",
         "Assignments",
-        "Audit & Security",
       ]),
     );
+    expect(navigationByRole.admin.filter((item) => item.section === "Access & Security").map((item) => item.label)).toEqual([
+      "Users & Access", "Roles & Permissions", "Audit & Security",
+    ]);
+    expect(navigationByRole.admin.filter((item) => item.section === "Documents").map((item) => item.label)).toEqual([
+      "Documents", "Required Documents", "Monthly Packs", "Filing Register",
+    ]);
     expect(configurationLabels).toEqual(
       expect.arrayContaining(["Request SLA Rules", "System Settings"]),
     );

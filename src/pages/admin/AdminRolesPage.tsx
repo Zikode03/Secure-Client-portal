@@ -3,7 +3,7 @@ import { Button } from "../../components/ui/Button";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { SelectField } from "../../components/ui/SelectField";
-import { SurfaceCard } from "../../components/ui/SurfaceCard";
+import { PageSection } from "../../components/ui/PageSection";
 import { TextField } from "../../components/ui/TextField";
 import { ApiError, apiGetJson, apiPostJson, apiPutJson, hasApiBaseUrl } from "../../services/apiClient";
 import type { Tone } from "../../types/portal";
@@ -189,37 +189,36 @@ export function AdminRolesPage() {
 
       {feedback ? <FeedbackBanner message={feedback.message} onDismiss={() => setFeedback(null)} title={feedback.title} tone={feedback.tone} /> : null}
 
-      <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
-        <SurfaceCard className="space-y-3">
-          <div>
+      <div className="space-y-5">
+        <section className="space-y-3" aria-label="Role directory">
+          <div className="flex items-center justify-between gap-3">
             <h2 className="portal-section-title text-slate-950">Role directory</h2>
             <p className="mt-1 text-sm text-slate-500">{roles.length} roles configured</p>
           </div>
-          <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3" role="group" aria-label="Select a role">
             {roles.map((role) => (
               <button
-                className={`w-full rounded-xl border px-4 py-3 text-left ${selectedRoleName === role.name ? "border-brand-300 bg-brand-50" : "border-slate-200 bg-white"}`}
+                aria-pressed={selectedRoleName === role.name}
+                aria-controls="role-editor"
+                disabled={busy}
+                className={`inline-flex min-h-11 w-full cursor-pointer items-center justify-center rounded-xl border px-4 py-3 text-sm font-semibold leading-5 shadow-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 disabled:cursor-not-allowed disabled:opacity-50 ${selectedRoleName === role.name ? "border-brand-700 bg-brand-700 text-white hover:bg-brand-800" : "border-slate-300 bg-white text-slate-700 hover:border-brand-400 hover:bg-brand-50"}`}
                 key={role.name}
                 onClick={() => setSelectedRoleName(role.name)}
                 type="button"
               >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm font-semibold text-slate-950">{role.displayName}</span>
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${role.isActive ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>{role.isActive ? "Active" : "Inactive"}</span>
-                </div>
-                <p className="mt-1 text-xs text-slate-500">{role.scope} · {readPermissions(role).length} permissions</p>
+                {role.displayName}
               </button>
             ))}
           </div>
-        </SurfaceCard>
+        </section>
 
-        <SurfaceCard className="space-y-5">
+        <PageSection className="space-y-5" id="role-editor">
           {selectedRole ? (
             <>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h2 className="portal-section-title text-slate-950">Edit {selectedRole.displayName}</h2>
-                  <p className="mt-1 text-sm text-slate-500">{selectedRole.isSystemRole ? "System role" : "Custom role"} · {selectedRole.name}</p>
+                  <p className="mt-1 text-sm text-slate-500">{selectedRole.isSystemRole ? "System role" : "Custom role"} · {selectedRole.isActive ? "Active" : "Inactive"} · {selectedRole.scope} · {permissions.length} permissions</p>
                 </div>
                 <Button disabled={busy} onClick={() => void toggleRoleActivation()} variant={selectedRole.isActive ? "danger" : "secondary"}>
                   {selectedRole.isActive ? "Deactivate" : "Activate"}
@@ -233,10 +232,10 @@ export function AdminRolesPage() {
               <div className="flex justify-end"><Button disabled={busy} onClick={() => void saveRole()}>Save role</Button></div>
             </>
           ) : <p className="text-sm text-slate-500">No roles are available.</p>}
-        </SurfaceCard>
+        </PageSection>
       </div>
 
-      <SurfaceCard className="space-y-5">
+      <PageSection className="space-y-5">
         <div>
           <h2 className="portal-section-title text-slate-950">Create custom role</h2>
           <p className="mt-1 text-sm text-slate-500">Use custom roles only when the standard Admin, Accountant and Client roles do not fit.</p>
@@ -248,7 +247,7 @@ export function AdminRolesPage() {
         </div>
         {renderPermissions(newPermissions, setNewPermissions)}
         <div className="flex justify-end"><Button disabled={busy || !backendMode} onClick={() => void createRole()}>Create role</Button></div>
-      </SurfaceCard>
+      </PageSection>
     </div>
   );
 }

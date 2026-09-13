@@ -173,6 +173,7 @@ function buildWorkflowState(overrides: Record<string, unknown> = {}) {
 
 function renderPage(workflowOverrides: Record<string, unknown> = {}) {
   mockedUseAuth.mockReturnValue({
+    pendingMfa: null, verifyMfa: vi.fn(), finishMfa: vi.fn(), cancelMfa: vi.fn(),
     ready: true,
     user: {
       id: "user-client-1",

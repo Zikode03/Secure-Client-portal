@@ -1413,21 +1413,17 @@ export function AccountantDashboardPage() {
         </div>
       ) : null}
 
-      <section className="relative overflow-visible rounded-2xl border border-[#dce6ef] bg-[linear-gradient(135deg,#062044_0%,#0a2f66_54%,#1d8b66_100%)] p-5 text-white shadow-[0_24px_60px_rgba(4,24,52,0.18)] md:p-6">
-        <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl">
-          <div className="absolute -left-16 top-4 h-44 w-44 rounded-full bg-white/10 blur-3xl" />
-          <div className="absolute bottom-0 right-8 h-40 w-40 rounded-full bg-emerald-300/20 blur-3xl" />
-        </div>
+      <section className="portal-page-header relative border-b border-slate-200 pb-6">
         <div className="relative grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
           <div className="space-y-3">
-            <span className="inline-flex rounded-full bg-white/12 px-3 py-1 text-[0.7rem] font-medium uppercase tracking-[0.14em] text-white/80 ring-1 ring-white/15">
+            <span className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
               Accountant Workspace
             </span>
             <div className="space-y-1.5">
-              <h1 className="text-[2.05rem] font-medium tracking-tight text-white">
+              <h1 className="text-3xl font-semibold tracking-tight text-slate-950">
                 Welcome, {user?.name ?? "Accountant"}
               </h1>
-              <p className="max-w-3xl text-[0.96rem] leading-7 text-white/78">
+              <p className="max-w-2xl text-sm leading-6 text-slate-500">
                 Focus on the clients and tasks that need your attention.
               </p>
             </div>
@@ -1435,7 +1431,7 @@ export function AccountantDashboardPage() {
 
           <div className="flex flex-wrap items-center gap-2.5 lg:justify-end">
             <button
-              className="inline-flex h-12 items-center gap-3 rounded-2xl border border-white/20 bg-white/10 px-4 text-sm font-medium text-white shadow-[0_10px_30px_rgba(2,12,27,0.18)] backdrop-blur transition hover:bg-white/16"
+              className="inline-flex h-10 items-center gap-3 rounded-xl border border-slate-300 bg-white px-4 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
               onClick={() => navigate("/firm/compliance/calendar")}
               type="button"
             >
@@ -1448,7 +1444,7 @@ export function AccountantDashboardPage() {
                 aria-expanded={isNotificationPanelOpen}
                 aria-haspopup="dialog"
                 aria-label="Open accountant alerts"
-                className="relative inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-white/20 bg-white/10 text-white shadow-[0_10px_30px_rgba(2,12,27,0.18)] backdrop-blur transition hover:bg-white/16"
+                className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-300 bg-white text-slate-700 transition hover:bg-slate-50"
                 onClick={() => setIsNotificationPanelOpen((current) => !current)}
                 type="button"
               >

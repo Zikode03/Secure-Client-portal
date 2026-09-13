@@ -71,6 +71,7 @@ function renderPage(
   const toggleRequestStar = vi.fn(() => ({ ok: true, message: "Request starred." }));
 
   mockedUseAuth.mockReturnValue({
+    pendingMfa: null, verifyMfa: vi.fn(), finishMfa: vi.fn(), cancelMfa: vi.fn(),
     ready: true,
     user: {
       id: "user-client-1",

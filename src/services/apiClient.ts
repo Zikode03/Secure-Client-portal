@@ -94,7 +94,7 @@ async function apiMutation(path: string, init: RequestInit): Promise<Response> {
         continue; // The middleware rejected the request before its action executed.
       }
     }
-    if (response.ok && /\/api\/auth\/(login|logout|complete-invite|refresh|change-password)(?:\?|$)/.test(url)) {
+    if (response.ok && /\/api\/auth\/(login|logout|complete-invite|refresh|change-password|mfa\/verify)(?:\?|$)/.test(url)) {
       csrfTokenPromise = undefined;
     }
     return response;

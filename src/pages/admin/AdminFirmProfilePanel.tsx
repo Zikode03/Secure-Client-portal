@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "../../components/ui/Button";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
-import { SurfaceCard } from "../../components/ui/SurfaceCard";
+import { PageSection } from "../../components/ui/PageSection";
 import { TextField } from "../../components/ui/TextField";
 import { ApiError, apiGetJson, apiPutJson, hasApiBaseUrl } from "../../services/apiClient";
 import type { Tone } from "../../types/portal";
@@ -88,7 +88,7 @@ export function AdminFirmProfilePanel() {
   }
 
   return (
-    <SurfaceCard className="space-y-5">
+    <PageSection className="space-y-5">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <h2 className="portal-section-title text-slate-950">Firm profile</h2>
@@ -113,6 +113,6 @@ export function AdminFirmProfilePanel() {
           <TextField label="Business address" onChange={(event) => setProfile({ ...profile, address: event.target.value })} value={profile.address} />
         </div>
       </div>
-    </SurfaceCard>
+    </PageSection>
   );
 }
