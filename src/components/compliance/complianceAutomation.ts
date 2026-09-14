@@ -1,4 +1,4 @@
-import { apiGetJson, apiPostJson, apiPutJson } from "../../services/apiClient";
+import { apiGetJson, apiPostForm, apiPostJson, apiPutJson } from "../../services/apiClient";
 
 export interface ComplianceRuleDefinition {
   code: string;
@@ -103,6 +103,12 @@ export const complianceAutomationApi = {
     apiPostJson<ComplianceObligation, typeof value>(`/api/compliance/automation/obligations/${encodeURIComponent(id)}/payment`, value),
   notApplicable: (id: string, reason: string) =>
     apiPostJson<ComplianceObligation, { reason: string }>(`/api/compliance/automation/obligations/${encodeURIComponent(id)}/not-applicable`, { reason }),
+  uploadEvidence: (id: string, file: File, note: string) => {
+    const form = new FormData();
+    form.append("File", file);
+    if (note.trim()) form.append("Note", note.trim());
+    return apiPostForm<unknown>(`/api/compliance/items/${encodeURIComponent(id)}/evidence`, form);
+  },
 };
 
 export const complianceStatusLabel = (value: string) => value
