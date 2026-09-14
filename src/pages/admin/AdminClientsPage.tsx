@@ -13,6 +13,7 @@ interface ClientRecord {
   id: string;
   name: string;
   entityType: string;
+  industry?: string | null;
   status: string;
   complianceHealth: number;
   assignedAccountantId?: string | null;
@@ -106,7 +107,7 @@ export function AdminClientsPage() {
   const filteredClients = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return enrichedClients.filter((client) => {
-      const matchesQuery = !needle || client.name.toLowerCase().includes(needle) || client.entityType.toLowerCase().includes(needle) || client.accountantName.toLowerCase().includes(needle) || (client.email ?? "").toLowerCase().includes(needle);
+      const matchesQuery = !needle || client.name.toLowerCase().includes(needle) || client.entityType.toLowerCase().includes(needle) || (client.industry ?? "").toLowerCase().includes(needle) || client.accountantName.toLowerCase().includes(needle) || (client.email ?? "").toLowerCase().includes(needle);
       const matchesStatus = statusFilter === "all" || client.status.toLowerCase() === statusFilter;
       const assigned = Boolean(client.accountantUserId);
       const matchesAssignment = assignmentFilter === "all" || (assignmentFilter === "assigned" ? assigned : !assigned);
@@ -185,7 +186,7 @@ export function AdminClientsPage() {
             <span className="text-sm font-medium text-slate-700">Search clients</span>
             <span className="relative block">
               <Search aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-brand-400 focus:ring-2 focus:ring-brand-100" placeholder="Name, email or accountant" value={query} onChange={(event) => setQuery(event.target.value)} />
+              <input className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-brand-400 focus:ring-2 focus:ring-brand-100" placeholder="Name, email, industry or accountant" value={query} onChange={(event) => setQuery(event.target.value)} />
             </span>
           </label>
           <SelectField label="Status" onChange={(event) => setStatusFilter(event.target.value)} options={statusOptions} value={statusFilter} />
@@ -212,7 +213,11 @@ export function AdminClientsPage() {
                           <span className="break-words">{client.name}</span><ArrowUpRight aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-slate-400 group-hover:text-brand-700" />
                         </button>
                         <p className="mt-1 break-all text-xs text-slate-500">{client.email || client.primaryContact || "No contact recorded"}</p>
-                        {client.entityType ? <p className="mt-1 text-xs text-slate-400">{client.entityType}</p> : null}
+                        {client.entityType || client.industry ? (
+                          <p className="mt-1 text-xs text-slate-400">
+                            {[client.entityType, client.industry].filter(Boolean).join(" · ")}
+                          </p>
+                        ) : null}
                       </div>
                     </div>
                   </td>
