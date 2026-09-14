@@ -1,0 +1,30 @@
+/* Documents is a permanent records workspace, not a dashboard.
+   Keep the page visually quiet and send monthly-pack work back to Monthly Packs. */
+
+/* The old status counters read like dashboard KPIs and duplicate information
+   already available in the register filters/status column. */
+.portal-page > section[aria-label="Document register summary"] {
+  display: none;
+}
+
+/* Monthly requirements belong to the Monthly Packs workflow. Hiding this
+   duplicated checklist keeps Documents focused on finding and reviewing files. */
+.portal-page > section[aria-label="Document register summary"] + details.group {
+  display: none;
+}
+
+/* Pull the search, filters and register into one calm vertical rhythm after
+   removing the dashboard-style summary/checklist blocks. */
+.portal-page > section[aria-label="Search documents"] {
+  margin-bottom: 0.25rem;
+}
+
+.portal-page > section[aria-label="Search documents"] input {
+  box-shadow: none;
+}
+
+/* The register itself remains the visual anchor: one bordered surface, subtle
+   row hover states and no decorative card grid around the data. */
+.portal-page [aria-label="Search documents"] ~ section .overflow-hidden.rounded-xl.border.bg-white {
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.03);
+}
