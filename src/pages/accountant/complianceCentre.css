@@ -1,0 +1,40 @@
+.firm-compliance { --compliance-line: #dce5ed; --compliance-panel: #fff; --compliance-ink: #18394c; --compliance-soft: #edf5f2; }
+html.theme-dark .firm-compliance { --compliance-line: #35414b; --compliance-panel: #191d26; --compliance-ink: #e1edf3; --compliance-soft: #20302b; }
+.compliance-help { border-left: 3px solid #519e86; background: var(--compliance-soft); padding: 1rem 1.25rem; border-radius: 0 9px 9px 0; color: var(--compliance-ink); }
+.compliance-help summary { font-size: .85rem; font-weight: 600; cursor: pointer; }
+.compliance-help-grid { display: grid; gap: 1.5rem; margin-top: 1.25rem; }
+.compliance-help strong { font-size: .8rem; }
+.compliance-help p { font-size: .8rem; line-height: 1.7; margin-top: .5rem; }
+.compliance-help-note { border-top: 1px solid var(--compliance-line); padding-top: .8rem; }
+.compliance-register, .compliance-create, .compliance-detail { border: 1px solid var(--compliance-line); border-radius: 12px; background: var(--compliance-panel); padding: 1.5rem; }
+.compliance-register-heading { display: flex; flex-wrap: wrap; align-items: start; justify-content: space-between; gap: 1rem; margin-bottom: 1.25rem; }
+.compliance-filters { display: grid; gap: 1rem; margin-bottom: 1.25rem; }
+.firm-compliance input, .firm-compliance select { border-radius: 8px; }
+.compliance-filter-note { display: flex; gap: 1rem; color: var(--compliance-ink); font-size: .75rem; padding-bottom: 1rem; }
+.compliance-filter-note button { text-decoration: underline; }
+.compliance-table { width: 100%; border-collapse: collapse; font-size: .8rem; text-align: left; color: var(--compliance-ink); }
+.compliance-table thead { background: var(--compliance-soft); }
+.compliance-table thead th { font-size: .65rem; letter-spacing: .05em; text-transform: uppercase; font-weight: 600; }
+.compliance-table td, .compliance-table th { padding: 1rem .8rem; border-bottom: 1px solid var(--compliance-line); vertical-align: top; }
+.compliance-table th[scope="row"] { min-width: 12rem; font-weight: 400; }
+.compliance-table small { display: block; margin-top: .25rem; font-size: .7rem; line-height: 1.5; }
+.compliance-next-step { min-width: 11rem; line-height: 1.6; }
+.compliance-state { display: inline-block; padding: .3rem .55rem; border-radius: 5px; font-size: .7rem; font-weight: 600; }
+.compliance-state.is-attention { background: #fff1df; color: #90531c; }
+.compliance-state.is-review { background: #e9f1fd; color: #335e93; }
+.compliance-state.is-valid { background: #e6f5eb; color: #26714c; }
+.compliance-open { display: inline-flex; align-items: center; gap: .5rem; padding: .35rem; font-weight: 600; }
+.compliance-empty { display: flex; flex-direction: column; align-items: center; gap: .75rem; padding: 2.5rem 1rem; text-align: center; color: var(--compliance-ink); font-size: .85rem; }
+.compliance-pagination { display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 1rem; padding-top: 1rem; color: var(--compliance-ink); font-size: .8rem; }
+.compliance-pagination button { border: 1px solid var(--compliance-line); border-radius: 6px; padding: .5rem .8rem; }
+.compliance-pagination button:disabled { opacity: .4; }
+.compliance-request { margin-top: 1.5rem; display: grid; gap: 1rem; align-items: end; border-top: 1px solid var(--compliance-line); padding-top: 1rem; }
+.firm-compliance button:focus-visible, .compliance-help summary:focus-visible { outline: 2px solid #519e86; outline-offset: 3px; }
+.compliance-metrics .group > div { min-height: 105px; height: auto; }
+.compliance-metrics .group > div > p:first-of-type { position: static; height: auto; min-height: 2rem; margin-left: 3rem; white-space: normal; line-height: 1rem; }
+.compliance-metrics .group > div > p:last-of-type { position: static; height: auto; margin: .35rem 0 0 3rem; font-size: 1.6rem; line-height: 1.8rem; }
+html.theme-dark .compliance-state.is-attention { background: #392d20; color: #f5cf91; }
+html.theme-dark .compliance-state.is-review { background: #25364c; color: #bad4f5; }
+html.theme-dark .compliance-state.is-valid { background: #20392d; color: #b0e0c4; }
+@media (min-width: 768px) { .compliance-help-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .compliance-filters { grid-template-columns: 2fr 1fr 1fr; } .compliance-request { grid-template-columns: 1fr 2fr auto; } }
+@media (max-width: 639px) { .compliance-register, .compliance-create, .compliance-detail { padding: 1rem; } }

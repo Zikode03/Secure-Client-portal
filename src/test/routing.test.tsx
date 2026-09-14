@@ -111,12 +111,12 @@ describe("role-based route access", () => {
 
   it("admin can access standalone required documents", async () => {
     renderAppAt("/firm/admin/required-documents", createUser("admin"));
-    expect(await screen.findByRole("heading", { name: "Required documents", level: 1 })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Document types", level: 1 })).toBeInTheDocument();
   });
 
   it("admin can access standalone monthly packs", async () => {
     renderAppAt("/firm/admin/monthly-packs", createUser("admin"));
-    expect(await screen.findByRole("heading", { name: "Monthly packs", level: 1 })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Pack templates", level: 1 })).toBeInTheDocument();
   });
 
   it("accountants cannot access the monthly pack template editor", async () => {
@@ -127,7 +127,7 @@ describe("role-based route access", () => {
   it("accountants cannot access the required documents editor", async () => {
     renderAppAt("/firm/admin/required-documents", createUser("accountant"));
     expect(await screen.findByText(/You do not have permission/)).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Required documents", level: 1 })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Document types", level: 1 })).not.toBeInTheDocument();
   });
 
   it("legacy admin system settings route redirects to the canonical page", async () => {

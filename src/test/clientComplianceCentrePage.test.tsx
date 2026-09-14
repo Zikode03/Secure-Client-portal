@@ -25,13 +25,15 @@ const clientUser: SessionUser = {
 
 function renderPage(page: ReactNode = <ClientComplianceCentrePage />) {
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(clientUser));
-  return render(
+  const result = render(
     <MemoryRouter>
       <PortalProvider>
         <AuthProvider>{page}</AuthProvider>
       </PortalProvider>
     </MemoryRouter>,
   );
+  fireEvent.click(screen.getByRole("button", { name: "Document records" }));
+  return result;
 }
 
 describe("ClientComplianceCentrePage", () => {
@@ -46,7 +48,7 @@ describe("ClientComplianceCentrePage", () => {
   it("renders summary insight widgets", () => {
     renderPage();
 
-    expect(screen.getAllByText("Compliance Score").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Document readiness").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Expiring Soon").length).toBeGreaterThan(0);
     expect(screen.getByText("Missing Records")).toBeInTheDocument();
     expect(screen.getByText("Audit Activity")).toBeInTheDocument();

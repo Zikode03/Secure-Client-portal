@@ -55,13 +55,15 @@ function renderWithProviders(page: JSX.Element, user: SessionUser) {
   window.localStorage.clear();
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
 
-  return render(
+  const result = render(
     <MemoryRouter>
       <PortalProvider>
         <AuthProvider>{page}</AuthProvider>
       </PortalProvider>
     </MemoryRouter>,
   );
+  fireEvent.click(screen.getByRole("button", { name: "Document records" }));
+  return result;
 }
 
 describe("compliance lifecycle", () => {
@@ -104,22 +106,22 @@ describe("compliance lifecycle", () => {
     expect(calculateComplianceScore(documents)).toBe(data.overallScore);
   });
 
-  it("accountant can see the client compliance overview", () => {
+  it("does not substitute demo clients when the compliance backend is unavailable", async () => {
     renderWithProviders(<AccountantComplianceCentrePage />, accountantUser);
 
-    expect(screen.getByRole("heading", { name: "Compliance Workspace" })).toBeInTheDocument();
-    expect(screen.getAllByText("Total Items").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Apex Trading Ltd").length).toBeGreaterThan(0);
-    expect(screen.getByText("Selected Client")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Compliance Centre" })).toBeInTheDocument();
+    await screen.findByText("Compliance records unavailable");
+    expect(screen.queryByText("Apex Trading Ltd")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Tracked items/ })).toHaveTextContent("—");
   });
 
-  it("selecting a client updates the selected client panel", () => {
+  it("explains how client requirements differ from pack completion", async () => {
     renderWithProviders(<AccountantComplianceCentrePage />, accountantUser);
 
-    fireEvent.click(screen.getByRole("button", { name: /Cloud Nine Retail/i }));
-
-    expect(screen.getAllByText("Cloud Nine Retail").length).toBeGreaterThan(0);
-    expect(screen.getByText("Assigned to Daniel Mokoena")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("How does Compliance Centre work?"));
+    expect(screen.getByText("1. Record the requirement")).toBeVisible();
+    expect(screen.getByText(/An uploaded file or a completed pack is not/)).toBeVisible();
+    await screen.findByText("Compliance records unavailable");
   });
 
   it("compliance item can generate a request", () => {

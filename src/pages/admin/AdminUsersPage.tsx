@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { UserPlus } from "lucide-react";
 import { Button } from "../../components/ui/Button";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
 import { PageHeader } from "../../components/ui/PageHeader";
@@ -46,7 +47,7 @@ interface FeedbackNotice {
 }
 
 const roleValues = ["admin", "accountant", "client"];
-const createRoleOptions = roleValues.map((role) => ({ label: role, value: role }));
+const createRoleOptions = roleValues.map((role) => ({ label: role[0].toUpperCase() + role.slice(1), value: role }));
 const filterRoleOptions = [{ label: "All roles", value: "all" }, ...createRoleOptions];
 const statusOptions = [
   { label: "All statuses", value: "all" },
@@ -264,32 +265,35 @@ export function AdminUsersPage() {
         <FeedbackBanner message={feedback.message} onDismiss={() => setFeedback(null)} title={feedback.title} tone={feedback.tone} />
       ) : null}
 
-      <PageSection className="space-y-5">
-        <div>
-          <h2 className="portal-section-title text-slate-950">Add user</h2>
-          <p className="mt-1 text-sm text-slate-500">Create a firm administrator, accountant, or client user.</p>
-        </div>
-        <div className="grid gap-4 lg:grid-cols-4">
-          <TextField label="Full name" onChange={(event) => setNewUserName(event.target.value)} value={newUserName} />
-          <TextField label="Email" onChange={(event) => setNewUserEmail(event.target.value)} value={newUserEmail} />
-          <SelectField label="Role" onChange={(event) => setNewUserRole(event.target.value)} options={createRoleOptions} value={newUserRole} />
-          <TextField label="Company" onChange={(event) => setNewUserCompany(event.target.value)} value={newUserCompany} />
-        </div>
-        <div className="flex justify-end">
+      <section aria-labelledby="add-user-heading" className="space-y-5 rounded-xl border border-slate-200 bg-white p-5 [&_input]:rounded-lg [&_select]:rounded-lg">
+        <div className="portal-page-header flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700"><UserPlus size={20} aria-hidden="true" /></span>
+            <div>
+              <h2 id="add-user-heading" className="portal-section-title text-slate-950">Add user</h2>
+              <p className="mt-1 text-sm text-slate-500">Set up access for a new team member or client.</p>
+            </div>
+          </div>
           <Button disabled={loading || !backendMode} onClick={() => void createUser()}>Create user</Button>
         </div>
-      </PageSection>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <TextField label="Full name" placeholder="e.g. Alex Smith" autoComplete="name" onChange={(event) => setNewUserName(event.target.value)} value={newUserName} />
+          <TextField label="Email" placeholder="name@company.co.za" type="email" autoComplete="email" onChange={(event) => setNewUserEmail(event.target.value)} value={newUserEmail} />
+          <SelectField label="Role" onChange={(event) => setNewUserRole(event.target.value)} options={createRoleOptions} value={newUserRole} />
+          <TextField label="Company" placeholder="Company name" autoComplete="organization" onChange={(event) => setNewUserCompany(event.target.value)} value={newUserCompany} />
+        </div>
+      </section>
 
       <PageSection className="space-y-5">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-          <div>
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="portal-section-title text-slate-950">Firm directory</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              {users.length} users · {restrictedUsers} disabled or restricted. Account state and security changes apply immediately.
+            <p className="text-xs text-slate-500">
+              {users.length} {users.length === 1 ? "user" : "users"} · {restrictedUsers} disabled or restricted
             </p>
           </div>
-          <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[620px]">
-            <TextField label="Search" onChange={(event) => setQuery(event.target.value)} value={query} />
+          <div className="grid items-end gap-3 sm:grid-cols-[2fr_1fr_1fr] [&_input]:rounded-lg [&_select]:rounded-lg">
+            <TextField label="Search" placeholder="Search name, email or company" onChange={(event) => setQuery(event.target.value)} value={query} />
             <SelectField label="Role" onChange={(event) => setRoleFilter(event.target.value)} options={filterRoleOptions} value={roleFilter} />
             <SelectField label="Status" onChange={(event) => setStatusFilter(event.target.value)} options={statusOptions} value={statusFilter} />
           </div>

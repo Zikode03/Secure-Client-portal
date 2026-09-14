@@ -305,7 +305,7 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
         "min-h-screen",
         isDark
           ? "bg-[#090909]"
-          : "bg-[#eef1f4]",
+          : "bg-canvas",
       )}
     >
       {mobileNavOpen ? (

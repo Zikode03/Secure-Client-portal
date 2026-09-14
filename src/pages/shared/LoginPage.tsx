@@ -179,8 +179,7 @@ export function LoginPage() {
 
   if (pendingMfa) return <MfaChallengePage />;
   return (
-    <main className="relative h-svh overflow-hidden bg-[#eef3f6] text-slate-950">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_8%_10%,rgba(24,172,95,0.12),transparent_28%),radial-gradient(circle_at_92%_90%,rgba(10,47,102,0.12),transparent_30%)]" />
+    <main className="relative h-svh overflow-hidden bg-canvas text-slate-950">
 
       <div className="relative mx-auto flex h-full w-full max-w-[1480px] items-stretch p-0 lg:p-5 xl:p-7">
         <div className="grid h-full min-h-0 w-full overflow-hidden bg-white shadow-[0_30px_90px_rgba(7,25,48,0.16)] lg:grid-cols-[1.08fr_0.92fr] lg:rounded-[30px]">

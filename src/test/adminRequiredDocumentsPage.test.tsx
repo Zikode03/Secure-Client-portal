@@ -21,6 +21,34 @@ beforeEach(() => {
 });
 
 describe("admin required documents", () => {
+  it("keeps edits when switching documents and searching the library", async () => {
+    const second = { ...document, id: "second-id", name: "Payroll report", documentCategory: "payroll" };
+    vi.mocked(apiGetJson).mockResolvedValue([document, second]);
+    renderPage();
+    fireEvent.change(await screen.findByDisplayValue("Bank statement"), { target: { value: "Updated statement" } });
+    fireEvent.click(screen.getByRole("button", { name: /Payroll report/ }));
+    expect(screen.getByLabelText("Document name")).toHaveValue("Payroll report");
+    fireEvent.change(screen.getByLabelText("Find a requirement"), { target: { value: "banking" } });
+    expect(screen.queryByRole("button", { name: /^Payroll report/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Updated statement/ }));
+    expect(screen.getByLabelText("Document name")).toHaveValue("Updated statement");
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await screen.findByText("Required documents saved");
+    expect(apiPutJson).toHaveBeenCalledWith(requiredDocumentsEndpoint, [{ ...document, name: "Updated statement" }, second]);
+  });
+
+  it("does not save an incomplete requirement hidden by selecting another", async () => {
+    renderPage();
+    await screen.findByDisplayValue("Bank statement");
+    fireEvent.click(screen.getByRole("button", { name: "Add requirement" }));
+    expect(screen.getByLabelText("Document name")).toHaveValue("");
+    fireEvent.click(screen.getByRole("button", { name: /Bank statement/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await screen.findByText("Check this requirement");
+    expect(screen.getByLabelText("Document name")).toHaveValue("");
+    expect(apiPutJson).not.toHaveBeenCalled();
+  });
+
   it("keeps existing template IDs and saves through the existing backend endpoint", async () => {
     renderPage();
     const name = await screen.findByDisplayValue("Bank statement");
@@ -55,7 +83,7 @@ describe("admin required documents", () => {
 
   it("only adds the navigation entry to admin Documents", () => {
     const path = "/firm/admin/required-documents";
-    expect(navigationByRole.admin.find((item) => item.to === path)?.section).toBe("Documents");
+    expect(navigationByRole.admin.find((item) => item.to === path)?.section).toBe("Document Setup");
     expect(navigationByRole.client.some((item) => item.to === path)).toBe(false);
     expect(navigationByRole.accountant.some((item) => item.to === path)).toBe(false);
   });

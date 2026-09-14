@@ -1,0 +1,36 @@
+.required-documents-page { --requirements-surface: #fff; --requirements-border: #dce5ed; --requirements-ink: #15344a; --requirements-soft: #edf6f3; }
+html.theme-dark .required-documents-page { --requirements-surface: #191d26; --requirements-border: #343f4b; --requirements-ink: #e1edf3; --requirements-soft: #1d302b; }
+.requirements-guide { display: grid; gap: 1.25rem; padding: 1.1rem 1.25rem; border-left: 3px solid #519e86; border-radius: 0 10px 10px 0; background: var(--requirements-soft); color: var(--requirements-ink); }
+.requirements-guide > div { display: flex; align-items: flex-start; gap: .7rem; }
+.requirements-guide svg { flex-shrink: 0; margin-top: 2px; }
+.requirements-guide strong { display: block; font-size: .8rem; font-weight: 600; }
+.requirements-guide small { display: block; margin-top: .3rem; font-size: .75rem; line-height: 1.5; }
+.requirements-workspace { display: grid; gap: 1.5rem; align-items: start; }
+.requirements-directory { min-width: 0; }
+.requirements-directory-list { margin-top: 1rem; display: grid; gap: .5rem; max-height: 34rem; overflow-y: auto; padding: 3px; }
+.requirements-choice { display: flex; gap: .65rem; align-items: center; width: 100%; padding: .85rem; border: 1px solid var(--requirements-border); border-radius: 9px; background: var(--requirements-surface); color: var(--requirements-ink); text-align: left; cursor: pointer; }
+.requirements-choice span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.requirements-choice svg { flex-shrink: 0; }
+.requirements-choice strong { display: block; font-size: .8rem; font-weight: 600; }
+.requirements-choice small { display: block; margin-top: .3rem; font-size: .7rem; }
+.requirements-choice[aria-pressed="true"] { background: var(--requirements-soft); border-color: #519e86; box-shadow: inset 3px 0 #519e86; }
+.requirements-choice:hover { border-color: #519e86; }
+.requirements-choice:focus-visible, .requirements-pack-link:focus-visible, .requirements-editor textarea:focus-visible { outline: 2px solid #519e86; outline-offset: 2px; }
+.requirements-pack-link { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-top: 1rem; padding: .85rem .25rem; border-top: 1px solid var(--requirements-border); color: var(--requirements-ink); font-size: .8rem; font-weight: 600; }
+.requirements-pack-link:hover { text-decoration: underline; }
+.requirements-editor { min-width: 0; padding: 1.5rem; border: 1px solid var(--requirements-border); border-radius: 14px; background: var(--requirements-surface); }
+.requirements-rule { background: var(--requirements-soft); padding: 1rem; border-radius: 8px; }
+.requirements-rule input { width: 1rem; height: 1rem; accent-color: #287e62; }
+.pack-document-options { display: grid; gap: .5rem; max-height: 24rem; overflow-y: auto; padding: 3px; }
+.pack-document-option { display: flex; align-items: flex-start; gap: .75rem; padding: .85rem; border: 1px solid var(--requirements-border); border-radius: 8px; cursor: pointer; color: var(--requirements-ink); }
+.pack-document-option:has(input:checked) { border-color: #519e86; background: var(--requirements-soft); }
+.pack-document-option:focus-within { outline: 2px solid #519e86; outline-offset: 1px; }
+.pack-document-option input { margin-top: .2rem; width: 1rem; height: 1rem; flex-shrink: 0; accent-color: #287e62; }
+.pack-document-option strong { display: block; font-size: .8rem; font-weight: 600; }
+.pack-document-option small { display: block; margin-top: .25rem; font-size: .7rem; line-height: 1.6; overflow-wrap: anywhere; }
+.pack-checklist-preview { list-style: none; margin: .5rem 0 0; padding: 0; }
+.pack-checklist-preview li { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; padding: .45rem 0; font-size: .75rem; color: var(--requirements-ink); overflow-wrap: anywhere; }
+.pack-checklist-preview li > :last-child { flex-shrink: 0; font-size: .65rem; }
+.required-documents-page input:not([type="checkbox"]) { border-radius: 8px; }
+@media (min-width: 768px) { .requirements-guide { grid-template-columns: repeat(3, minmax(0, 1fr)); } .requirements-workspace { grid-template-columns: minmax(230px, 1fr) minmax(0, 2fr); } }
+@media (max-width: 767px) { .requirements-directory-list { max-height: 15rem; } .requirements-editor { padding: 1rem; } }

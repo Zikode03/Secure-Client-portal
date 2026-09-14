@@ -39,9 +39,7 @@ export function ForgotPasswordPage() {
 
 // Render output: this is the visual state users interact with.
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#273463] px-4 py-8 text-white sm:px-6 lg:px-8">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(24,172,95,0.18),transparent_28%),radial-gradient(circle_at_82%_78%,rgba(14,165,233,0.14),transparent_30%)]" />
-      <div className="absolute inset-x-0 top-0 h-1/2 bg-[linear-gradient(135deg,rgba(7,19,61,0.92)_0%,rgba(6,31,77,0.42)_48%,rgba(2,8,23,0)_100%)]" />
+    <main className="relative min-h-screen overflow-hidden bg-canvas px-4 py-8 text-white sm:px-6 lg:px-8">
 
       <section className="relative z-10 flex min-h-[calc(100vh-4rem)] items-center justify-center">
         <div className="relative w-full max-w-[980px] overflow-hidden rounded-[2rem] border border-[#07142d] bg-[#050b18] shadow-[0_34px_90px_rgba(0,0,0,0.38)] ring-8 ring-[#07142d]/70">

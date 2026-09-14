@@ -13,7 +13,7 @@ export function AccessDeniedPage() {
 
 // Render output: this is the visual state users interact with.
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-100 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-canvas px-4">
       <SurfaceCard className="max-w-xl text-center">
         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-rose-600">
           Access denied

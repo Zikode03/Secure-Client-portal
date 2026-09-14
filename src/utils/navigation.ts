@@ -6,6 +6,7 @@ import type { Role, SessionUser } from "../types/portal";
 export type NavigationSection =
   | "Main"
   | "Documents"
+  | "Document Setup"
   | "Compliance"
   | "Management"
   | "Access & Security"
@@ -202,17 +203,17 @@ export const navigationByRole: Record<Role, NavigationItem[]> = {
       icon: "documents",
     },
     {
-      label: "Required Documents",
+      label: "Document Types",
       to: "/firm/admin/required-documents",
-      description: "Manage document requirements used by monthly pack templates",
-      section: "Documents",
+      description: "Define document types and their default requirements",
+      section: "Document Setup",
       icon: "templates",
     },
     {
-      label: "Monthly Packs",
+      label: "Pack Templates",
       to: "/firm/admin/monthly-packs",
       description: "Configure monthly pack templates and their document requirements",
-      section: "Documents",
+      section: "Document Setup",
       icon: "packs",
     },
     {

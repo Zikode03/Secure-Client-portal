@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, BriefcaseBusiness, ClipboardCheck, ShieldX } from "lucide-react";
+import { AlertTriangle, ArrowRight, BriefcaseBusiness, CheckCircle2, ClipboardCheck, ShieldCheck, ShieldX, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/Button";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
 import { KpiCard } from "../../components/ui/KpiCard";
 import { PageHeader } from "../../components/ui/PageHeader";
-import { SurfaceCard } from "../../components/ui/SurfaceCard";
 import { ApiError, apiGetJson, hasApiBaseUrl } from "../../services/apiClient";
 import type { Tone } from "../../types/portal";
+import "./adminOverview.css";
 
 interface AdminUserRecord {
   id: string;
@@ -98,7 +98,8 @@ export function AdminDashboardPage() {
   const navigate = useNavigate();
   const backendMode = hasApiBaseUrl();
   const [data, setData] = useState<DashboardState>(emptyState);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(backendMode);
+  const [available, setAvailable] = useState({ core: false, reviews: false, audit: false });
   const [feedback, setFeedback] = useState<FeedbackNotice | null>(null);
 
   useEffect(() => {
@@ -127,6 +128,7 @@ export function AdminDashboardPage() {
 
       const [users, clients, assignments, reviews, audit] = results;
       const criticalFailure = users.status === "rejected" || clients.status === "rejected" || assignments.status === "rejected";
+      setAvailable({ core: !criticalFailure, reviews: reviews.status === "fulfilled", audit: audit.status === "fulfilled" });
 
       if (criticalFailure) {
         const firstError = [users, clients, assignments].find((result) => result.status === "rejected");
@@ -218,196 +220,215 @@ export function AdminDashboardPage() {
 
   const summaryCards = [
     {
-      label: "Admin interventions",
+      label: "Needs attention",
       value: interventionCount,
       icon: <AlertTriangle />,
-      progress: Math.min(interventionCount * 12, 100),
-      action: () => navigate("/firm/admin/audit"),
+      available: available.core && available.reviews,
+      action: () => document.getElementById("admin-attention")?.focus(),
     },
     {
       label: "Unassigned clients",
       value: unassignedClients.length,
       icon: <BriefcaseBusiness />,
-      progress: Math.min(unassignedClients.length * 15, 100),
+      available: available.core,
       action: () => navigate("/firm/admin/assignments"),
     },
     {
       label: "Restricted users",
       value: restrictedUsers.length,
       icon: <ShieldX />,
-      progress: Math.min(restrictedUsers.length * 15, 100),
+      available: available.core,
       action: () => navigate("/firm/admin/users"),
     },
     {
       label: "Open reviews",
       value: openReviews.length,
       icon: <ClipboardCheck />,
-      progress: Math.min(openReviews.length * 12, 100),
+      available: available.reviews,
       action: () => navigate("/firm/review"),
     },
   ];
 
+  const allAvailable = available.core && available.reviews;
+  const notice = (ready: boolean, empty: string) => (
+    <p className="admin-overview-empty">{loading ? "Loading live data…" : ready ? empty : "Data unavailable. Please try again later."}</p>
+  );
+  const sectionLink = (label: string, path: string) => (
+    <button className="admin-overview-link" onClick={() => navigate(path)} type="button">
+      {label}<ArrowRight aria-hidden="true" size={15} />
+    </button>
+  );
+  const attentionItems = [
+    ...unassignedClients.map(client => ({
+      id: `unassigned-${client.id}`, name: client.name, detail: "No accountant assigned",
+      action: "Assign owner", path: "/firm/admin/assignments", category: "Ownership",
+    })),
+    ...restrictedUsers.map(user => ({
+      id: `restricted-${user.id}`, name: user.fullName,
+      detail: securityStatus(user).replace(/_/g, " "),
+      action: "Review access", path: "/firm/admin/users", category: "Access",
+    })),
+    ...overloadedAccountants.map(row => ({
+      id: `capacity-${row.accountant.id}`, name: row.accountant.fullName,
+      detail: `${row.assignedClients} clients · ${row.reviews} open reviews`,
+      action: "Review workload", path: "/firm/admin/accountants", category: "Workload",
+    })),
+    ...atRiskClients.map(client => ({
+      id: `risk-${client.id}`, name: client.name,
+      detail: `${client.complianceHealth}% compliance health · ${client.status}`,
+      action: "View client", path: `/firm/clients/${client.id}/profile`, category: "Client risk",
+    })),
+  ];
+
   return (
-    <div className="space-y-6">
+    <div className="admin-overview space-y-6">
+      <div className="admin-overview-hero">
       <PageHeader
-        actions={
-          <>
-            <Button onClick={() => navigate("/firm/admin/users")} variant="secondary">Manage users</Button>
-            <Button onClick={() => navigate("/firm/admin/assignments")}>Manage assignments</Button>
-          </>
-        }
-        description="Monitor firm-wide access, ownership, workload, compliance risk, and security activity from one administration control centre."
-        eyebrow="Administration"
-        title="Admin control centre"
+        actions={<>
+          <Button onClick={() => navigate("/firm/admin/users")} variant="secondary">Manage users</Button>
+          <Button onClick={() => navigate("/firm/admin/assignments")}>Manage assignments</Button>
+        </>}
+        description="A clear view of client ownership, team workload and account access."
+        eyebrow="Firm overview"
+        title="Your firm, at a glance"
       />
+      <div className="admin-overview-hero-footer">
+        <span><ShieldCheck size={16} aria-hidden="true" /> Administration workspace</span>
+        {!loading && available.core && <span>{data.clients.length} {data.clients.length === 1 ? "client" : "clients"}<i aria-hidden="true" />{accountants.length} {accountants.length === 1 ? "accountant" : "accountants"}</span>}
+      </div>
+      </div>
+      {feedback ? <FeedbackBanner message={feedback.message} onDismiss={() => setFeedback(null)} title={feedback.title} tone={feedback.tone} /> : null}
 
-      {feedback ? (
-        <FeedbackBanner message={feedback.message} onDismiss={() => setFeedback(null)} title={feedback.title} tone={feedback.tone} />
-      ) : null}
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {summaryCards.map((card) => (
-          <KpiCard accent={card.value > 0} icon={card.icon} key={card.label} label={card.label} onClick={card.action} progress={card.progress} value={card.value} />
+      <section aria-label="Administration metrics" className="admin-overview-metrics grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {summaryCards.map(card => (
+          <KpiCard key={card.label} accent={card.available && card.value > 0} icon={card.icon}
+            label={card.label} onClick={card.action}
+            value={loading ? "…" : card.available ? card.value : "—"} />
         ))}
-      </div>
+      </section>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
-        <SurfaceCard className="space-y-5">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h2 className="portal-section-title text-slate-950">Needs admin intervention</h2>
-              <p className="mt-1 text-sm text-slate-500">Exceptions that require ownership, access, or workload decisions.</p>
-            </div>
-            <Button onClick={() => navigate("/firm/admin/assignments")} size="sm" variant="secondary">Open assignments</Button>
-          </div>
-
-          <div className="space-y-3">
-            {unassignedClients.slice(0, 4).map((client) => (
-              <button className="flex w-full items-center justify-between gap-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-left" key={`unassigned-${client.id}`} onClick={() => navigate("/firm/admin/assignments")} type="button">
-                <div>
-                  <p className="text-sm font-semibold text-slate-950">{client.name}</p>
-                  <p className="mt-1 text-xs text-slate-600">No accountant assigned</p>
-                </div>
-                <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-amber-700">Assign</span>
-              </button>
-            ))}
-
-            {restrictedUsers.slice(0, 3).map((user) => (
-              <button className="flex w-full items-center justify-between gap-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-4 text-left" key={`restricted-${user.id}`} onClick={() => navigate("/firm/admin/users")} type="button">
-                <div>
-                  <p className="text-sm font-semibold text-slate-950">{user.fullName}</p>
-                  <p className="mt-1 text-xs text-slate-600">{user.email} · {securityStatus(user).replace(/_/g, " ")}</p>
-                </div>
-                <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-rose-700">Review access</span>
-              </button>
-            ))}
-
-            {overloadedAccountants.slice(0, 3).map((row) => (
-              <button className="flex w-full items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-left" key={`capacity-${row.accountant.id}`} onClick={() => navigate("/firm/admin/accountants")} type="button">
-                <div>
-                  <p className="text-sm font-semibold text-slate-950">{row.accountant.fullName}</p>
-                  <p className="mt-1 text-xs text-slate-600">{row.assignedClients} clients · {row.reviews} open reviews</p>
-                </div>
-                <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-700">Rebalance</span>
-              </button>
-            ))}
-
-            {!loading && interventionCount === 0 ? (
-              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-5">
-                <p className="text-sm font-semibold text-emerald-800">No immediate admin intervention required.</p>
-                <p className="mt-1 text-sm text-emerald-700">Ownership, access, and workload thresholds are currently clear.</p>
+      <div className="admin-overview-columns">
+        <div className="admin-overview-workspace min-w-0">
+          <section id="admin-attention" tabIndex={-1} aria-labelledby="admin-attention-heading" className="admin-overview-section">
+            <div className="admin-overview-section-heading">
+              <div>
+                <h2 id="admin-attention-heading" className="admin-overview-section-title text-slate-950"><span className="admin-overview-section-icon is-amber"><AlertTriangle size={18} aria-hidden="true" /></span>Needs attention</h2>
+                <p className="mt-1 text-sm text-slate-500">Ownership, access and risk decisions to follow up.</p>
               </div>
-            ) : null}
-          </div>
-        </SurfaceCard>
-
-        <SurfaceCard className="space-y-5">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h2 className="portal-section-title text-slate-950">Team capacity</h2>
-              <p className="mt-1 text-sm text-slate-500">Firm-wide assignment and review pressure by accountant.</p>
+              {allAvailable && !loading && <span className="admin-overview-count">{interventionCount}</span>}
             </div>
-            <Button onClick={() => navigate("/firm/admin/accountants")} size="sm" variant="secondary">Manage team</Button>
-          </div>
-
-          <div className="space-y-3">
-            {capacityRows.slice(0, 6).map((row) => (
-              <div className="rounded-2xl border border-slate-200 px-4 py-3" key={row.accountant.id}>
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-950">{row.accountant.fullName}</p>
-                    <p className="mt-1 text-xs text-slate-500">{row.assignedClients} clients · {row.reviews} reviews</p>
-                  </div>
-                  <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${row.assignedClients >= 8 || row.reviews >= 5 ? "bg-rose-50 text-rose-700" : row.assignedClients <= 2 && row.reviews <= 2 ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
-                    {row.assignedClients >= 8 || row.reviews >= 5 ? "Overloaded" : row.assignedClients <= 2 && row.reviews <= 2 ? "Capacity" : "Balanced"}
-                  </span>
+            {loading || !allAvailable ? notice(false, "") : attentionItems.length ? (
+              <ul className="admin-overview-list">
+                {attentionItems.slice(0, 8).map(item => (
+                  <li key={item.id} className="admin-overview-attention-row">
+                    <span className="admin-overview-marker"><AlertTriangle aria-hidden="true" size={17} /></span>
+                    <div className="min-w-0">
+                      <p className="admin-overview-category">{item.category}</p>
+                      <p className="break-words text-sm font-semibold text-slate-950">{item.name}</p>
+                      <p className="mt-1 break-words text-xs text-slate-500">{item.detail}</p>
+                    </div>
+                    {sectionLink(item.action, item.path)}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="admin-overview-clear">
+                <CheckCircle2 aria-hidden="true" size={24} />
+                <div>
+                  <p className="text-sm font-semibold text-slate-950">You're up to date</p>
+                  <p className="mt-1 text-sm text-slate-500">No ownership, access, workload or client-risk exceptions.</p>
                 </div>
               </div>
-            ))}
-          </div>
-        </SurfaceCard>
-      </div>
+            )}
+            {!loading && allAvailable && attentionItems.length > 8 && <p className="mt-3 text-xs text-slate-500">Showing 8 of {attentionItems.length} exceptions. Open the relevant register to review all.</p>}
+          </section>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-        <SurfaceCard className="space-y-5">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h2 className="portal-section-title text-slate-950">Client risk watch</h2>
-              <p className="mt-1 text-sm text-slate-500">Lowest compliance health and inactive client records.</p>
-            </div>
-            <Button onClick={() => navigate("/firm/clients")} size="sm" variant="secondary">Open clients</Button>
-          </div>
-          <div className="space-y-3">
-            {atRiskClients.slice(0, 6).map((client) => (
-              <button className="flex w-full items-center justify-between gap-4 rounded-2xl border border-slate-200 px-4 py-3 text-left" key={client.id} onClick={() => navigate(`/firm/clients/${client.id}/profile`)} type="button">
-                <div>
-                  <p className="text-sm font-semibold text-slate-950">{client.name}</p>
-                  <p className="mt-1 text-xs text-slate-500">{client.entityType} · {client.status}</p>
-                </div>
-                <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${client.complianceHealth < 60 ? "bg-rose-50 text-rose-700" : "bg-amber-50 text-amber-700"}`}>{client.complianceHealth}% health</span>
-              </button>
-            ))}
-          </div>
-        </SurfaceCard>
-
-        <SurfaceCard className="space-y-5">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h2 className="portal-section-title text-slate-950">Recent audit & security activity</h2>
-              <p className="mt-1 text-sm text-slate-500">Latest administrative and system actions.</p>
-            </div>
-            <Button onClick={() => navigate("/firm/admin/audit")} size="sm" variant="secondary">View audit</Button>
-          </div>
-          <div className="space-y-3">
-            {recentAudit.map((item) => (
-              <div className="rounded-2xl border border-slate-200 px-4 py-3" key={item.id}>
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-slate-950">{formatAction(item.action)}</p>
-                    <p className="mt-1 text-xs text-slate-500">{actorName(item.actorUserId)} · {item.actorRole} · {item.entityType}</p>
-                  </div>
-                  <span className="text-xs text-slate-400">{formatDate(item.createdAtUtc)}</span>
-                </div>
+          <section aria-labelledby="admin-team-heading" className="admin-overview-section">
+            <div className="admin-overview-section-heading">
+              <div>
+                <h2 id="admin-team-heading" className="admin-overview-section-title text-slate-950"><span className="admin-overview-section-icon is-blue"><Users size={18} aria-hidden="true" /></span>Team workload</h2>
+                <p className="mt-1 text-sm text-slate-500">Client coverage and open reviews by accountant.</p>
               </div>
-            ))}
-            {!loading && recentAudit.length === 0 ? <p className="text-sm text-slate-500">No recent audit events were returned.</p> : null}
-          </div>
-        </SurfaceCard>
-      </div>
+              {sectionLink("Manage team", "/firm/admin/accountants")}
+            </div>
+            {loading || !allAvailable || !capacityRows.length ? notice(allAvailable, "No accountants have been added yet.") : (
+              <div className="overflow-x-auto">
+                <table className="admin-overview-table">
+                  <thead><tr><th scope="col">Accountant</th><th scope="col">Clients</th><th scope="col">Reviews</th><th scope="col">Workload</th></tr></thead>
+                  <tbody>{capacityRows.slice(0, 6).map(row => {
+                    const high = row.assignedClients >= 8 || row.reviews >= 5;
+                    const low = row.assignedClients <= 2 && row.reviews <= 2;
+                    return <tr key={row.accountant.id}>
+                      <th scope="row"><span className="admin-overview-person">
+                        <span aria-hidden="true" className="admin-overview-avatar">{row.accountant.fullName.split(/\s+/).slice(0, 2).map(part => part[0]).join("")}</span>
+                        <span>{row.accountant.fullName}</span>
+                      </span></th>
+                      <td className="tabular-nums">{row.assignedClients}</td>
+                      <td className="tabular-nums">{row.reviews}</td>
+                      <td><span className={`admin-overview-status ${high ? "is-warning" : "is-normal"}`}>{high ? "High workload" : low ? "Available" : "Balanced"}</span></td>
+                    </tr>;
+                  })}</tbody>
+                </table>
+                <p className="mt-3 text-xs text-slate-500">High workload: 8+ clients or 5+ open reviews.</p>
+              </div>
+            )}
+          </section>
 
-      <SurfaceCard className="space-y-4">
-        <div>
-          <h2 className="portal-section-title text-slate-950">Administration shortcuts</h2>
-          <p className="mt-1 text-sm text-slate-500">Jump directly to the control area you need.</p>
+          <section aria-labelledby="admin-risk-heading" className="admin-overview-section">
+            <div className="admin-overview-section-heading">
+              <div>
+                <h2 id="admin-risk-heading" className="admin-overview-section-title text-slate-950"><span className="admin-overview-section-icon is-mint"><ShieldCheck size={18} aria-hidden="true" /></span>Client risk watch</h2>
+                <p className="mt-1 text-sm text-slate-500">Compliance health below 60% or an inactive status.</p>
+              </div>
+              {sectionLink("All clients", "/firm/clients")}
+            </div>
+            {loading || !available.core || !atRiskClients.length ? notice(available.core, "No clients currently meet the risk criteria.") : (
+              <ul className="admin-overview-list">
+                {atRiskClients.slice(0, 6).map(client => (
+                  <li key={client.id}>
+                    <button className="admin-overview-risk-row" onClick={() => navigate(`/firm/clients/${client.id}/profile`)} type="button">
+                      <span className="min-w-0"><span className="block break-words text-sm font-semibold text-slate-950">{client.name}</span>
+                        <span className="mt-1 block text-xs text-slate-500">{client.entityType} · {client.status}</span></span>
+                      <span className="admin-overview-status is-warning">{client.complianceHealth}% health</span>
+                      <ArrowRight aria-hidden="true" size={16} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-          <Button onClick={() => navigate("/firm/admin/users")} variant="secondary">Users & access</Button>
-          <Button onClick={() => navigate("/firm/admin/roles")} variant="secondary">Roles & permissions</Button>
-          <Button onClick={() => navigate("/firm/admin/assignments")} variant="secondary">Assignments</Button>
-          <Button onClick={() => navigate("/firm/admin/audit")} variant="secondary">Audit & security</Button>
-          <Button onClick={() => navigate("/firm/admin/system-settings")} variant="secondary">System settings</Button>
-        </div>
-      </SurfaceCard>
+
+        <aside className="admin-overview-activity" aria-labelledby="admin-activity-heading">
+          <div className="admin-overview-section-heading">
+            <div>
+              <p className="admin-overview-category">Audit & security</p>
+              <h2 id="admin-activity-heading" className="text-slate-950">Recent activity</h2>
+            </div>
+            {sectionLink("View log", "/firm/admin/audit")}
+          </div>
+          {loading || !available.audit || !recentAudit.length ? notice(available.audit, "No recent audit activity.") : (
+            <ol className="admin-overview-timeline">
+              {recentAudit.map(item => (
+                <li key={item.id}>
+                  <p className="break-words text-sm font-semibold text-slate-950">{formatAction(item.action)}</p>
+                  <p className="mt-1 break-words text-xs leading-5 text-slate-500">{actorName(item.actorUserId)} · {item.actorRole} · {item.entityType}</p>
+                  <time className="mt-2 block text-xs text-slate-500" dateTime={item.createdAtUtc}>{formatDate(item.createdAtUtc)}</time>
+                </li>
+              ))}
+            </ol>
+          )}
+        </aside>
+      </div>
+
+      <nav aria-label="Administration shortcuts" className="admin-overview-shortcuts">
+        <span className="admin-overview-category">Quick access</span>
+        {sectionLink("Users & access", "/firm/admin/users")}
+        {sectionLink("Roles & permissions", "/firm/admin/roles")}
+        {sectionLink("Assignments", "/firm/admin/assignments")}
+        {sectionLink("Audit & security", "/firm/admin/audit")}
+        {sectionLink("System settings", "/firm/admin/system-settings")}
+      </nav>
     </div>
   );
 }

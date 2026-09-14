@@ -32,6 +32,7 @@ import type {
 import { cn } from "../../utils/cn";
 import { getClientFacingComplianceLabel } from "../../utils/compliance";
 import { formatDateLabel } from "../../utils/formatters";
+import { ComplianceMonitoringWorkspace } from "../../components/compliance/ComplianceMonitoringWorkspace";
 
 const complianceSnapshotDate = new Date();
 const navyCardClass =
@@ -835,8 +836,8 @@ function buildInsightCards(data: ComplianceCentreData) {
     {
       id: "score",
       value: `${data.overallScore}%`,
-      label: "Compliance Score",
-      helper: "+3%",
+      label: "Document readiness",
+      helper: "Recorded evidence only",
       tone: "emerald" as const,
       icon: <ShieldIcon />,
       sparkline: "M6 46 L20 40 L28 42 L44 30 L58 24 L74 14 L90 8",
@@ -1083,6 +1084,10 @@ function PrioritySection({
 }
 
 export function ClientComplianceCentrePage() {
+  return <ComplianceMonitoringWorkspace records={<ClientComplianceRecordsPage />} />;
+}
+
+function ClientComplianceRecordsPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { clientComplianceCentre: data, clientWorkflow } = usePortal();
@@ -1520,7 +1525,7 @@ export function ClientComplianceCentrePage() {
       <PageHeader title="Compliance Centre" eyebrow="Client workspace" description="Track your compliance requirements, renewals and outstanding documents." />
       <section className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-slate-600">
-          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-emerald-800"><strong>{effectiveData.overallScore}%</strong> compliant</span>
+          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-emerald-800"><strong>{effectiveData.overallScore}%</strong> document readiness</span>
           <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-rose-700"><strong>{effectiveData.expiredDocuments.length}</strong> expired</span>
           <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-amber-800"><strong>{effectiveData.expiringDocuments.length}</strong> expiring soon</span>
           <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5"><strong>{effectiveData.missingRequiredDocuments.length}</strong> missing</span>
@@ -1996,10 +2001,10 @@ export function ClientComplianceCentrePage() {
                       <div className="relative h-8 overflow-hidden rounded-lg bg-slate-100">
                         <div className="flex h-full">
                           <div
-                            aria-label={`${category.compliantCount} compliant`}
+                            aria-label={`${category.compliantCount} valid records`}
                             className="bg-emerald-500"
                             style={{ width: `${compliantWidth}%` }}
-                            title={`${category.compliantCount} compliant`}
+                            title={`${category.compliantCount} valid records`}
                           />
                           <div
                             aria-label={`${category.expiringCount} expiring`}
@@ -2037,7 +2042,7 @@ export function ClientComplianceCentrePage() {
 
                     <div className="text-left lg:text-right">
                       <p className="text-[1.35rem] font-semibold text-brand-800">{category.compliantPercent}%</p>
-                      <p className="text-[0.72rem] font-medium text-slate-500">compliant</p>
+                      <p className="text-[0.72rem] font-medium text-slate-500">records ready</p>
                     </div>
                   </div>
                 );
