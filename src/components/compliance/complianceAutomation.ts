@@ -115,8 +115,8 @@ export const complianceAutomationApi = {
 };
 
 export const complianceStatusLabel = (value: string) => value
-  .replaceAll("_", " ")
-  .replace(/\b\w/g, letter => letter.toUpperCase());
+  .replace(/_/g, " ")
+  .replace(/\b\w/g, (letter: string) => letter.toUpperCase());
 
 export const formatCompliancePeriod = (start: string, end: string) => {
   const startDate = new Date(start);
