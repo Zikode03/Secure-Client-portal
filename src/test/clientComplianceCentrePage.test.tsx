@@ -1,13 +1,19 @@
-// Friendly guide: this module (clientComplianceCentrePage.test) supports the Secure Client Portal workflow.
-// The goal is clear, maintainable code so future edits feel safe and straightforward.
-
-import { fireEvent, render, screen } from "@testing-library/react";
-import type { ReactNode } from "react";
+import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthProvider } from "../app/auth";
 import { PortalProvider } from "../app/portal";
 import { ClientComplianceCentrePage } from "../pages/client/ClientComplianceCentrePage";
 import type { SessionUser } from "../types/portal";
+import { apiGetJson } from "../services/apiClient";
+
+vi.mock("../services/apiClient", async original => ({
+  ...await original<typeof import("../services/apiClient")>(),
+  apiGetJson: vi.fn(),
+  apiPostJson: vi.fn(),
+  apiPutJson: vi.fn(),
+  apiPostForm: vi.fn(),
+}));
 
 const STORAGE_KEY = "accounting-document-control-session";
 const clientUser: SessionUser = {
@@ -23,91 +29,82 @@ const clientUser: SessionUser = {
   assignedClientIds: [],
 };
 
-function renderPage(page: ReactNode = <ClientComplianceCentrePage />) {
+const obligation = {
+  id: "obligation-1",
+  clientId: "client-apex",
+  clientName: "Apex Trading Ltd",
+  code: "VAT201",
+  name: "VAT201 return",
+  authority: "SARS",
+  periodStartUtc: "2026-08-01T00:00:00Z",
+  periodEndUtc: "2026-09-30T00:00:00Z",
+  dueDateUtc: null,
+  workflowStatus: "waiting_for_client",
+  readiness: "waiting_for_client",
+  preparationStatus: "not_started",
+  reviewStatus: "not_started",
+  submissionStatus: "not_submitted",
+  submittedAtUtc: null,
+  submissionReference: null,
+  amountPayable: null,
+  amountRefundable: null,
+  paymentRequired: false,
+  paymentStatus: "not_required",
+  paidAtUtc: null,
+  paymentReference: null,
+  evidenceRequired: 3,
+  evidenceFound: 2,
+  missingEvidenceCategories: ["sales_invoices"],
+  responsibleAccountantId: "accountant-1",
+  ruleVersion: "starter-2026.1",
+  createdReason: "Created automatically because the client compliance profile confirms VatRegistered.",
+  createdAtUtc: "2026-09-14T00:00:00Z",
+  updatedAtUtc: "2026-09-14T00:00:00Z",
+};
+
+beforeEach(() => {
+  window.localStorage.clear();
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(clientUser));
-  const result = render(
+  vi.mocked(apiGetJson).mockReset().mockImplementation(async path => {
+    if (path === "/api/compliance/automation/obligations") return [obligation];
+    if (path === "/api/compliance/automation/rules") return { version: "starter-2026.1", rules: [], updatedAtUtc: "2026-09-14T00:00:00Z" };
+    throw new Error(`Unexpected endpoint: ${path}`);
+  });
+});
+
+function renderPage() {
+  return render(
     <MemoryRouter>
       <PortalProvider>
-        <AuthProvider>{page}</AuthProvider>
+        <AuthProvider><ClientComplianceCentrePage /></AuthProvider>
       </PortalProvider>
     </MemoryRouter>,
   );
-  fireEvent.click(screen.getByRole("button", { name: "Document records" }));
-  return result;
 }
 
 describe("ClientComplianceCentrePage", () => {
-  it("renders the compliance centre workspace", () => {
+  it("renders the Phase 4 obligation register", async () => {
     renderPage();
-
-    expect(screen.getByText("Compliance Centre")).toBeInTheDocument();
-    expect(screen.getByText("Compliance calendar")).toBeInTheDocument();
-    expect(screen.getByText("Priority Items")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Compliance Centre" })).toBeInTheDocument();
+    expect(await screen.findByText("VAT201")).toBeInTheDocument();
+    expect(screen.getByText("SARS")).toBeInTheDocument();
+    expect(screen.getByText("Waiting For Client")).toBeInTheDocument();
+    expect(screen.getByText("2/3")).toBeInTheDocument();
   });
 
-  it("renders summary insight widgets", () => {
+  it("does not expose accountant automation actions to clients", async () => {
     renderPage();
-
-    expect(screen.getAllByText("Document readiness").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Expiring Soon").length).toBeGreaterThan(0);
-    expect(screen.getByText("Missing Records")).toBeInTheDocument();
-    expect(screen.getByText("Audit Activity")).toBeInTheDocument();
-    expect(screen.getByText("Storage Health")).toBeInTheDocument();
+    await screen.findByText("VAT201");
+    expect(screen.queryByRole("button", { name: "Run automation" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Compliance profile" })).not.toBeInTheDocument();
   });
 
-  it("shows expired documents as requiring a new version", () => {
+  it("shows the obligation workflow details", async () => {
     renderPage();
-
-    expect(screen.getAllByText("Expired - new version required").length).toBeGreaterThan(0);
-  });
-
-  it("does not present past expiry dates as days remaining", () => {
-    renderPage();
-
-    expect(screen.queryAllByText((content) => /days remaining|expires in/i.test(content))).toHaveLength(0);
-  });
-
-  it("shows missing required documents as compliance blockers", () => {
-    renderPage();
-
-    expect(screen.getAllByText("Missing - required for compliance").length).toBeGreaterThan(0);
-  });
-
-  it("renders clean priority filters", () => {
-    renderPage();
-
-    expect(screen.getByRole("button", { name: "All priorities" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Expired" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Expiring" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Missing" })).toBeInTheDocument();
-  });
-
-  it("shows feedback when the compliance report is downloaded", () => {
-    renderPage();
-
-    fireEvent.click(screen.getByRole("button", { name: "Download compliance report" }));
-
-    expect(screen.getByText("Compliance report downloaded")).toBeInTheDocument();
-    expect(screen.getByText(/current live compliance register was exported as CSV/i)).toBeInTheDocument();
-  });
-
-  it("lets the user dismiss feedback", () => {
-    renderPage();
-
-    fireEvent.click(screen.getByRole("button", { name: "Download compliance report" }));
-
-    expect(screen.getByText("Compliance report downloaded")).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
-
-    expect(screen.queryByText("Compliance report downloaded")).not.toBeInTheDocument();
-  });
-
-  it("renders the compliance report preview", () => {
-    renderPage();
-
-    expect(screen.getByText("Compliance Report")).toBeInTheDocument();
-    expect(screen.getByText("Compliance Health Snapshot")).toBeInTheDocument();
-    expect(screen.getByText("Report Coverage")).toBeInTheDocument();
+    await screen.findByText("VAT201");
+    screen.getByRole("button", { name: "Open" }).click();
+    expect(screen.getByRole("heading", { name: /VAT201/ })).toBeInTheDocument();
+    expect(screen.getByText(/Missing: sales_invoices/)).toBeInTheDocument();
+    expect(screen.getByText(/Created automatically/)).toBeInTheDocument();
   });
 });
