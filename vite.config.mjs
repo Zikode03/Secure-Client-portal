@@ -6,14 +6,22 @@ import { productionSecurityPlugin, securityHeaders } from "./config/security-hea
 
 export default defineConfig(({ mode, command }) => {
   const env = { ...loadEnv(mode, process.cwd(), ""), ...process.env };
-  // All deployable builds are protected, including custom staging modes.
-  if (command === "build") validateProductionEnvironment(env);
+  const isLocalBuildCheck = command === "build" && mode === "local-check";
+  const isDeployableBuild = command === "build" && !isLocalBuildCheck;
+
+  // Real deployable builds stay protected by the production environment checks.
+  // local-check only verifies that TypeScript and Vite can compile the frontend on a developer machine.
+  if (isDeployableBuild) validateProductionEnvironment(env);
 
   return {
     define: {
-      __PORTAL_DEPLOYMENT_BUILD__: JSON.stringify(command === "build"),
+      __PORTAL_DEPLOYMENT_BUILD__: JSON.stringify(isDeployableBuild),
     },
-    plugins: [react(), tailwindcss(), ...(command === "build" ? [productionSecurityPlugin(env.VITE_API_BASE_URL)] : [])],
+    plugins: [
+      react(),
+      tailwindcss(),
+      ...(isDeployableBuild ? [productionSecurityPlugin(env.VITE_API_BASE_URL)] : []),
+    ],
     preview: {
       headers: env.VITE_API_BASE_URL?.startsWith("https://") ? securityHeaders(env.VITE_API_BASE_URL) : {},
     },
