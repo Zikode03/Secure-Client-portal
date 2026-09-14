@@ -1,5 +1,6 @@
 import { apiGetJson, apiPatchJson, apiPostJson, apiPutJson, hasApiBaseUrl } from "./apiClient";
 import { portalService } from "./portalData";
+import { normaliseBusinessClassification } from "./businessClassification";
 import type {
   DocumentComment,
   FirmClientAccount,
@@ -37,6 +38,7 @@ interface BackendClientRecord {
   id: string;
   name: string;
   entityType: string;
+  industry?: string | null;
   status: string;
   complianceHealth: number;
   assignedAccountantId: string;
@@ -98,11 +100,12 @@ function mapBackendClientRecord(
   const assignedName = primaryAssignment?.accountantName?.trim();
   const backupName = backupAssignment?.accountantName?.trim();
   const normalizedStatus = client.status?.trim().toLowerCase();
+  const classification = normaliseBusinessClassification(client);
 
   return {
     id: client.id,
     clientName: client.name,
-    industry: client.entityType,
+    industry: classification.industry,
     assignedAccountant: assignedName || "Assigned accountant",
     assignedAccountantUserId: primaryAssignment?.accountantUserId ?? client.assignedAccountantId,
     backupAccountant: backupName || undefined,
@@ -370,6 +373,7 @@ export const portalServiceApi = {
     id?: string;
     name: string;
     entityType: string;
+    industry?: string;
     status: "active" | "pending" | "at_risk" | "archived";
     complianceHealth: number;
     assignedAccountantId: string;
