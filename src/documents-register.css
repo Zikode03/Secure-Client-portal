@@ -1,30 +1,60 @@
 /* Documents is a permanent records workspace, not a dashboard.
-   Keep the page visually quiet and send monthly-pack work back to Monthly Packs. */
+   Keep this screen visually quiet and send monthly collection back to Monthly Packs. */
 
-/* The old status counters read like dashboard KPIs and duplicate information
-   already available in the register filters/status column. */
+/* Remove dashboard-style counters. Status is already visible in the register
+   and can be filtered without turning this page into a dashboard. */
 .portal-page > section[aria-label="Document register summary"] {
   display: none;
 }
 
-/* Monthly requirements belong to the Monthly Packs workflow. Hiding this
-   duplicated checklist keeps Documents focused on finding and reviewing files. */
+/* Monthly requirements belong to the Monthly Packs workflow. The Documents
+   page should show the files produced by that workflow, not duplicate it. */
 .portal-page > section[aria-label="Document register summary"] + details.group {
   display: none;
 }
 
-/* Pull the search, filters and register into one calm vertical rhythm after
-   removing the dashboard-style summary/checklist blocks. */
+/* Keep the page compact after removing the duplicated blocks. */
 .portal-page > section[aria-label="Search documents"] {
-  margin-bottom: 0.25rem;
+  margin-bottom: 0;
 }
 
 .portal-page > section[aria-label="Search documents"] input {
   box-shadow: none;
 }
 
-/* The register itself remains the visual anchor: one bordered surface, subtle
-   row hover states and no decorative card grid around the data. */
-.portal-page [aria-label="Search documents"] ~ section .overflow-hidden.rounded-xl.border.bg-white {
-  box-shadow: 0 1px 2px rgb(15 23 42 / 0.03);
+/* Treat filters as a toolbar, not another card. */
+.portal-page > section[aria-label="Search documents"] ~ section:not([aria-label="Document register summary"]) {
+  box-shadow: none;
+}
+
+/* The register is the visual anchor: one restrained bordered surface with
+   subtle interaction instead of nested cards and decorative elevation. */
+.portal-page .overflow-hidden.rounded-xl.border.border-slate-200.bg-white {
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.035);
+}
+
+.portal-page .divide-y.divide-slate-100 > button {
+  min-height: 72px;
+}
+
+.portal-page .divide-y.divide-slate-100 > button:hover {
+  background: rgb(248 250 252 / 0.8);
+}
+
+/* Reduce the visual weight of file-type tiles so rows read like a professional
+   document register rather than a gallery of cards. */
+.portal-page .divide-y.divide-slate-100 > button .h-10.w-10.rounded-2xl {
+  border-radius: 0.65rem;
+  box-shadow: none;
+}
+
+/* Keep page rhythm deliberate and dense enough for document-heavy firms. */
+.portal-page.mx-auto.max-w-\[1320px\] {
+  gap: 1rem;
+}
+
+@media (min-width: 1024px) {
+  .portal-page.mx-auto.max-w-\[1320px\] {
+    padding-bottom: 2rem;
+  }
 }
