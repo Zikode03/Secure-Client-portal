@@ -45,7 +45,6 @@ const accountantUser: SessionUser = {
   assignedClientIds: ["client-apex", "firm-client-1", "firm-client-3", "firm-client-4"],
 };
 
-// Component flow: gather data first, then render a focused UI state.
 function renderWithProviders(page: JSX.Element, user: SessionUser) {
   window.localStorage.clear();
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
@@ -95,28 +94,21 @@ describe("shared firm pages", () => {
     expect(screen.queryByText("Summit Consulting")).not.toBeInTheDocument();
   });
 
-  it("renders the shared compliance actions for admin and accountant", async () => {
+  it("renders the shared Phase 4 compliance workspace for admin and accountant", async () => {
     const adminView = renderWithProviders(<AccountantComplianceCentrePage />, adminUser);
 
-    expect(
-      await screen.findByRole("heading", { name: "Compliance Workspace" }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Add Compliance Item/ })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Open system settings" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Assign accountant" })).not.toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Compliance Centre" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Run automation" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Obligations" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Add Compliance Item/i })).not.toBeInTheDocument();
 
     adminView.unmount();
 
     renderWithProviders(<AccountantComplianceCentrePage />, accountantUser);
 
-    expect(
-      await screen.findByRole("heading", { name: "Compliance Workspace" }),
-    ).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Open system settings" })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Request documents" })).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Download client compliance report" }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Compliance Centre" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Run automation" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Obligations" })).toBeInTheDocument();
   });
 
   it("scopes the shared documents page by role", async () => {
