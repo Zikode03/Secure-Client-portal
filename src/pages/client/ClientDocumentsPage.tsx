@@ -231,8 +231,6 @@ export function ClientDocumentsPage() {
         reviewedBy: document.reviewedBy,
         expiryDate: document.expiryDate,
         isRequired: slots.find((slot) => slot.documentType === document.documentType)?.isRequired ?? false,
-        // Live document comments are loaded in the document workspace rather than the register query.
-        // UnifiedSearchResult requires a count, so initialise it to zero until comment aggregation is exposed by the API.
         commentCount: document.comments?.length ?? 0,
         keywordText: `${document.fileName} ${document.documentType} ${document.monthLabel}`.toLowerCase(),
       }));
@@ -349,6 +347,8 @@ export function ClientDocumentsPage() {
     );
   }
 
+  const selectedVersions = selectedDocument ? versionsByDocumentId[selectedDocument.id] ?? [] : [];
+
   return (
     <div className="portal-page mx-auto max-w-[1280px] space-y-4">
       {feedback ? <FeedbackBanner {...feedback} onDismiss={() => setFeedback(null)} /> : null}
@@ -371,19 +371,22 @@ export function ClientDocumentsPage() {
       />
 
       <DocumentRegister
+        allResultsCount={sortedResults.length}
         currentPage={currentPage}
         documents={documents}
         hasActiveFilters={hasActiveFilters}
         onClearFilters={() => setFilters(createDefaultFilters())}
         onExport={exportResults}
         onPageChange={setCurrentPage}
-        onSelect={(result) => setSelectedResultId(result.id)}
+        onSelect={setSelectedResultId}
+        onSortChange={setSortDirection}
+        pageSize={pageSize}
+        pageStartIndex={pageStartIndex}
         requestDocumentIds={requestDocumentIds}
+        results={visibleResults}
         selectedResultId={selectedResultId}
         sortDirection={sortDirection}
         totalPages={totalPages}
-        totalResults={sortedResults.length}
-        visibleResults={visibleResults}
       />
 
       {selectedDocument ? (
@@ -413,11 +416,11 @@ export function ClientDocumentsPage() {
           <div className="mt-6">
             <h3 className="text-sm font-semibold text-slate-900">Versions</h3>
             <div className="mt-2 space-y-2">
-              {(versionsByDocumentId[selectedDocument.id] ?? selectedDocument.versions ?? []).length > 0 ? (
-                (versionsByDocumentId[selectedDocument.id] ?? selectedDocument.versions ?? []).map((version) => (
+              {selectedVersions.length > 0 ? (
+                selectedVersions.map((version) => (
                   <div key={version.id} className="flex items-center justify-between border-b border-slate-100 py-2 text-sm">
                     <span className="font-medium text-slate-700">Version {version.versionNumber}</span>
-                    <span className="text-slate-500">{formatDateLabel(version.uploadedAt)}</span>
+                    <span className="text-slate-500">{formatDateLabel(version.createdAtUtc)}</span>
                   </div>
                 ))
               ) : <p className="text-sm text-slate-500">No previous versions.</p>}
@@ -445,10 +448,12 @@ export function ClientDocumentsPage() {
       ) : null}
 
       <DocumentUploadModal
+        clientName={user?.company ?? "Client"}
+        existingFileNames={documents.map((document) => document.fileName)}
         isOpen={uploadModal.isOpen}
         onClose={() => { uploadModal.close(); setSelectedSlot(null); }}
-        onSubmit={handleUpload}
-        slot={selectedSlot}
+        onUploaded={handleUpload}
+        selectedSlot={selectedSlot}
       />
     </div>
   );
