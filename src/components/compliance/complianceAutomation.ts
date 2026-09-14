@@ -34,6 +34,9 @@ export interface ClientComplianceProfile {
   provisionalTaxpayer: boolean | null;
   companyTaxRegistered: boolean | null;
   cipcRegistered: boolean | null;
+  governmentSupplier: boolean | null;
+  csdRegistered: boolean | null;
+  csdSupplierNumber: string | null;
   financialYearEndMonth: number;
   updatedAtUtc: string;
 }
