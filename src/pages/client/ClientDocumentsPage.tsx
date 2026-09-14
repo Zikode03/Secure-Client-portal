@@ -231,6 +231,9 @@ export function ClientDocumentsPage() {
         reviewedBy: document.reviewedBy,
         expiryDate: document.expiryDate,
         isRequired: slots.find((slot) => slot.documentType === document.documentType)?.isRequired ?? false,
+        // Live document comments are loaded in the document workspace rather than the register query.
+        // UnifiedSearchResult requires a count, so initialise it to zero until comment aggregation is exposed by the API.
+        commentCount: document.comments?.length ?? 0,
         keywordText: `${document.fileName} ${document.documentType} ${document.monthLabel}`.toLowerCase(),
       }));
     }
@@ -338,26 +341,25 @@ export function ClientDocumentsPage() {
     return (
       <div className="portal-page mx-auto max-w-[1280px] space-y-5">
         {feedback ? <FeedbackBanner {...feedback} onDismiss={() => setFeedback(null)} /> : null}
-        <SurfaceCard className="rounded-2xl border border-slate-200 bg-white p-8">
-          <EmptyState title={loadState === "error" ? "Documents unavailable" : "Loading documents"} description={loadState === "error" ? "The live register could not be loaded. No demo records are being shown." : "Your live document register is being loaded."} />
+        <PageHeader title="Documents" description="Upload, find and manage your business records." />
+        <SurfaceCard className="p-8 text-center text-sm text-slate-500">
+          {loadState === "error" ? "The document register could not be loaded." : "Loading document register..."}
         </SurfaceCard>
       </div>
     );
   }
 
-  const selectedTone = selectedResult ? statusToTone(selectedResult.status) : "neutral";
-  const selectedVersions = selectedDocument ? versionsByDocumentId[selectedDocument.id] ?? [] : [];
-
   return (
-    <div className="portal-page mx-auto max-w-[1320px] space-y-5">
+    <div className="portal-page mx-auto max-w-[1280px] space-y-4">
+      {feedback ? <FeedbackBanner {...feedback} onDismiss={() => setFeedback(null)} /> : null}
+
       <PageHeader
         title="Documents"
-        eyebrow="Client workspace"
-        description="Upload, find and manage your business records."
+        description="A permanent register of your business records. Monthly collection stays in Monthly Packs."
         actions={<Button onClick={() => openUpload(preferredUploadSlot)}>Upload document</Button>}
       />
 
-      {feedback ? <FeedbackBanner {...feedback} onDismiss={() => setFeedback(null)} /> : null}
+      <MonthlyPackAttentionLink outstandingCount={outstandingCount} />
 
       <DocumentRegisterToolbar
         activeAdvancedFilterCount={activeAdvancedFilterCount}
@@ -368,87 +370,85 @@ export function ClientDocumentsPage() {
         statusOptions={statusOptions}
       />
 
-      <MonthlyPackAttentionLink outstandingCount={outstandingCount} />
-
       <DocumentRegister
-        allResultsCount={sortedResults.length}
         currentPage={currentPage}
         documents={documents}
         hasActiveFilters={hasActiveFilters}
         onClearFilters={() => setFilters(createDefaultFilters())}
         onExport={exportResults}
         onPageChange={setCurrentPage}
-        onSelect={(resultId) => { setSelectedResultId(resultId); setViewerOpen(true); }}
-        onSortChange={setSortDirection}
-        pageSize={pageSize}
-        pageStartIndex={pageStartIndex}
+        onSelect={(result) => setSelectedResultId(result.id)}
         requestDocumentIds={requestDocumentIds}
-        results={visibleResults}
         selectedResultId={selectedResultId}
         sortDirection={sortDirection}
         totalPages={totalPages}
+        totalResults={sortedResults.length}
+        visibleResults={visibleResults}
       />
 
-      {viewerOpen && selectedResult ? (
-        <div className="fixed inset-0 z-50 bg-slate-950/30" onClick={() => setViewerOpen(false)}>
-          <aside className="ml-auto h-full w-full max-w-[600px] overflow-y-auto border-l border-slate-200 bg-white shadow-[-18px_0_48px_rgba(15,23,42,0.16)]" onClick={(event) => event.stopPropagation()}>
-            <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-5">
-              <div>
-                <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${toneToAccentClass(selectedTone)}`}>{formatStatusLabel(selectedResult.status)}</span>
-                <h2 className="mt-3 text-xl font-semibold text-slate-950">{selectedResult.title}</h2>
-                <p className="mt-1 text-sm text-slate-500">{selectedResult.typeLabel} · {selectedResult.monthLabel}</p>
-              </div>
-              <button aria-label="Close document workspace" className="rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-600" onClick={() => setViewerOpen(false)} type="button">Close</button>
+      {selectedDocument ? (
+        <SurfaceCard className="p-5" aria-label="Document details drawer">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Document details</p>
+              <h2 className="mt-1 text-lg font-semibold text-slate-950">{selectedDocument.fileName}</h2>
+              <p className="mt-1 text-sm text-slate-500">{selectedDocument.documentType} · {selectedDocument.monthLabel}</p>
             </div>
+            <Button variant="secondary" onClick={() => setSelectedResultId("")} aria-label="Close document workspace">Close</Button>
+          </div>
 
-            <div className="space-y-6 px-5 py-5">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div><p className="text-xs font-medium uppercase tracking-wide text-slate-400">Uploaded</p><p className="mt-1 text-sm font-semibold text-slate-900">{formatDateLabel(selectedResult.date)}</p></div>
-                <div><p className="text-xs font-medium uppercase tracking-wide text-slate-400">Uploaded by</p><p className="mt-1 text-sm font-semibold text-slate-900">{selectedDocument?.uploadedBy ?? selectedResult.uploadedBy ?? "Client"}</p></div>
-                <div><p className="text-xs font-medium uppercase tracking-wide text-slate-400">File size</p><p className="mt-1 text-sm font-semibold text-slate-900">{selectedDocument?.sizeLabel ?? "—"}</p></div>
-                <div><p className="text-xs font-medium uppercase tracking-wide text-slate-400">Version</p><p className="mt-1 text-sm font-semibold text-slate-900">v{selectedDocument?.versionNumber ?? 1}</p></div>
-              </div>
+          <div className="mt-5 grid gap-4 border-y border-slate-100 py-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div><p className="text-xs text-slate-400">Status</p><p className={`mt-1 text-sm font-semibold ${toneToAccentClass(statusToTone(selectedDocument.status))}`}>{formatStatusLabel(selectedDocument.status)}</p></div>
+            <div><p className="text-xs text-slate-400">Uploaded</p><p className="mt-1 text-sm font-medium text-slate-700">{formatDateLabel(selectedDocument.uploadedAt)}</p></div>
+            <div><p className="text-xs text-slate-400">Uploaded by</p><p className="mt-1 text-sm font-medium text-slate-700">{selectedDocument.uploadedBy}</p></div>
+            <div><p className="text-xs text-slate-400">File size</p><p className="mt-1 text-sm font-medium text-slate-700">{selectedDocument.sizeLabel}</p></div>
+          </div>
 
-              <div className="flex flex-wrap gap-2 border-y border-slate-100 py-4">
-                <Button onClick={() => void downloadSelected()} size="sm" variant="secondary">Download</Button>
-                <Button onClick={() => openUpload(slots.find((slot) => slot.documentType === selectedResult.typeLabel) ?? preferredUploadSlot)} size="sm" variant="secondary">Replace document</Button>
-              </div>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Button onClick={() => setViewerOpen(true)}>View</Button>
+            <Button variant="secondary" onClick={() => void downloadSelected()}>Download</Button>
+            <Button variant="secondary" onClick={() => openUpload(slots.find((slot) => slot.id === selectedDocument.documentSlotId) ?? preferredUploadSlot)}>Replace document</Button>
+          </div>
 
-              <div>
-                <h3 className="text-sm font-semibold text-slate-950">Version history</h3>
-                <div className="mt-3 divide-y divide-slate-100 rounded-xl border border-slate-200">
-                  {(selectedVersions.length > 0 ? selectedVersions : selectedDocument ? [{
-                    id: `${selectedDocument.id}-current`,
-                    documentId: selectedDocument.id,
-                    versionNumber: selectedDocument.versionNumber ?? 1,
-                    name: selectedDocument.fileName,
-                    originalFileName: selectedDocument.fileName,
-                    fileType: selectedDocument.fileMimeType ?? "Document",
-                    sizeBytes: 0,
-                    uploadedByUserId: selectedDocument.uploadedBy,
-                    createdAtUtc: selectedDocument.uploadedAt,
-                    isCurrent: true,
-                  }] : []).map((version) => (
-                    <div className="grid grid-cols-[90px_minmax(0,1fr)_auto] gap-3 px-4 py-3 text-sm" key={version.id}>
-                      <span className="font-semibold text-slate-900">Version {version.versionNumber}</span>
-                      <span className="truncate text-slate-600">{version.originalFileName || version.name}</span>
-                      <span className="text-xs text-slate-500">{version.isCurrent ? "Current" : formatDateLabel(version.createdAtUtc)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+          <div className="mt-6">
+            <h3 className="text-sm font-semibold text-slate-900">Versions</h3>
+            <div className="mt-2 space-y-2">
+              {(versionsByDocumentId[selectedDocument.id] ?? selectedDocument.versions ?? []).length > 0 ? (
+                (versionsByDocumentId[selectedDocument.id] ?? selectedDocument.versions ?? []).map((version) => (
+                  <div key={version.id} className="flex items-center justify-between border-b border-slate-100 py-2 text-sm">
+                    <span className="font-medium text-slate-700">Version {version.versionNumber}</span>
+                    <span className="text-slate-500">{formatDateLabel(version.uploadedAt)}</span>
+                  </div>
+                ))
+              ) : <p className="text-sm text-slate-500">No previous versions.</p>}
             </div>
-          </aside>
+          </div>
+        </SurfaceCard>
+      ) : null}
+
+      {sortedResults.length === 0 && !hasActiveFilters ? (
+        <EmptyState title="No documents yet" description="Upload your first document or complete an item in Monthly Packs." />
+      ) : null}
+
+      {viewerOpen && selectedDocument ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" role="dialog" aria-modal="true" aria-label="Document preview">
+          <div className="w-full max-w-3xl rounded-2xl bg-white p-5 shadow-2xl">
+            <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-4">
+              <div><h2 className="font-semibold text-slate-950">{selectedDocument.fileName}</h2><p className="text-sm text-slate-500">{selectedDocument.documentType}</p></div>
+              <Button variant="secondary" onClick={() => setViewerOpen(false)}>Close</Button>
+            </div>
+            <div className="flex min-h-[360px] items-center justify-center text-center text-sm text-slate-500">
+              <div><p>Secure document preview</p><Button className="mt-4" variant="secondary" onClick={() => void downloadSelected()}>Download file</Button></div>
+            </div>
+          </div>
         </div>
       ) : null}
 
       <DocumentUploadModal
-        clientName={user?.company ?? "Client"}
-        existingFileNames={[]}
         isOpen={uploadModal.isOpen}
-        onClose={uploadModal.close}
-        onUploaded={handleUpload}
-        selectedSlot={selectedSlot}
+        onClose={() => { uploadModal.close(); setSelectedSlot(null); }}
+        onSubmit={handleUpload}
+        slot={selectedSlot}
       />
     </div>
   );
