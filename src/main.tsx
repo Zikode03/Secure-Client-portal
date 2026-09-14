@@ -13,6 +13,7 @@ import { PortalProvider } from "./app/portal";
 import { ThemeProvider } from "./app/theme";
 import "./styles.css";
 import "./kpi-compact.css";
+import "./documents-register.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
