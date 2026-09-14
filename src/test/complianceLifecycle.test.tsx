@@ -1,7 +1,4 @@
-// Friendly guide: this module (complianceLifecycle.test) supports the Secure Client Portal workflow.
-// The goal is clear, maintainable code so future edits feel safe and straightforward.
-
-import { act, fireEvent, render, renderHook, screen } from "@testing-library/react";
+import { act, render, renderHook, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { AuthProvider } from "../app/auth";
@@ -46,7 +43,6 @@ const clientUser: SessionUser = {
   assignedClientIds: [],
 };
 
-// Component flow: gather data first, then render a focused UI state.
 function PortalWrapper({ children }: { children: ReactNode }) {
   return <PortalProvider>{children}</PortalProvider>;
 }
@@ -55,15 +51,13 @@ function renderWithProviders(page: JSX.Element, user: SessionUser) {
   window.localStorage.clear();
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
 
-  const result = render(
+  return render(
     <MemoryRouter>
       <PortalProvider>
         <AuthProvider>{page}</AuthProvider>
       </PortalProvider>
     </MemoryRouter>,
   );
-  fireEvent.click(screen.getByRole("button", { name: "Document records" }));
-  return result;
 }
 
 describe("compliance lifecycle", () => {
@@ -106,22 +100,13 @@ describe("compliance lifecycle", () => {
     expect(calculateComplianceScore(documents)).toBe(data.overallScore);
   });
 
-  it("does not substitute demo clients when the compliance backend is unavailable", async () => {
+  it("renders the Phase 4 accountant compliance shell even when the API is unavailable", async () => {
     renderWithProviders(<AccountantComplianceCentrePage />, accountantUser);
 
     expect(screen.getByRole("heading", { name: "Compliance Centre" })).toBeInTheDocument();
-    await screen.findByText("Compliance records unavailable");
-    expect(screen.queryByText("Apex Trading Ltd")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /Tracked items/ })).toHaveTextContent("—");
-  });
-
-  it("explains how client requirements differ from pack completion", async () => {
-    renderWithProviders(<AccountantComplianceCentrePage />, accountantUser);
-
-    fireEvent.click(screen.getByText("How does Compliance Centre work?"));
-    expect(screen.getByText("1. Record the requirement")).toBeVisible();
-    expect(screen.getByText(/An uploaded file or a completed pack is not/)).toBeVisible();
-    await screen.findByText("Compliance records unavailable");
+    expect(screen.getByRole("heading", { name: "Obligations" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Run automation" })).toBeInTheDocument();
+    expect(await screen.findByText("Compliance automation unavailable")).toBeInTheDocument();
   });
 
   it("compliance item can generate a request", () => {
@@ -180,11 +165,13 @@ describe("compliance lifecycle", () => {
     expect(updated?.versions.filter((version) => version.isCurrentVersion)).toHaveLength(1);
   });
 
-  it("client sees simplified compliance labels", () => {
+  it("client sees the new obligation-focused compliance centre without accountant controls", async () => {
     renderWithProviders(<ClientComplianceCentrePage />, clientUser);
 
+    expect(screen.getByRole("heading", { name: "Compliance Centre" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Obligations" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Run automation" })).not.toBeInTheDocument();
     expect(getClientFacingComplianceLabel("EMP201")).toBe("Monthly payroll submission (EMP201)");
-    expect(screen.getByText("Tax compliance PIN")).toBeInTheDocument();
-    expect(screen.getAllByText("Monthly payroll submission (EMP201)").length).toBeGreaterThan(0);
+    expect(await screen.findByText("Compliance automation unavailable")).toBeInTheDocument();
   });
 });
