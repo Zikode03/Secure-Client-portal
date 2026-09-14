@@ -42,7 +42,7 @@ describe("client page smoke coverage", () => {
     expect(screen.getByText("Monthly Pack Status")).toBeInTheDocument();
   });
 
-  it("renders the document workspace", () => {
+  it("renders the document register with search and upload", () => {
     renderClientPage(<ClientDocumentsPage />);
     expect(screen.getByRole("heading", { name: "Documents" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Document register" })).toBeInTheDocument();
@@ -50,37 +50,32 @@ describe("client page smoke coverage", () => {
     expect(screen.getByRole("button", { name: "Upload document" })).toBeInTheDocument();
   });
 
-  it("keeps the document workspace open when a client selects a different result", async () => {
+  it("opens and closes the document details drawer", async () => {
     const { container } = renderClientPage(<ClientDocumentsPage />);
 
     const resultButton = await waitFor(() => {
-      const unselectedResult = Array.from(
-        container.querySelectorAll<HTMLButtonElement>("div.divide-y.divide-slate-100 > button"),
-      ).find((button) => !button.className.includes("ring-1"));
-      expect(unselectedResult).toBeDefined();
-      return unselectedResult!;
+      const firstResult = container.querySelector<HTMLButtonElement>("div.divide-y.divide-slate-100 > button");
+      expect(firstResult).toBeDefined();
+      return firstResult!;
     });
 
     fireEvent.click(resultButton);
+    expect(screen.getByRole("button", { name: "Close document workspace" })).toBeInTheDocument();
+    expect(screen.getByText("Version history")).toBeInTheDocument();
 
-    await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Close document workspace" })).toBeInTheDocument();
-    });
-
-    fireEvent.click(screen.getByRole("button", { name: "View" }));
-    expect(screen.getByRole("button", { name: "Close" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Close document workspace" }));
+    expect(screen.queryByRole("button", { name: "Close document workspace" })).not.toBeInTheDocument();
   });
 
-  it("opens a real upload action from the monthly checklist", () => {
+  it("opens the upload flow from the document register header", () => {
     renderClientPage(<ClientDocumentsPage />);
-
-    const uploadButton = screen
-      .getAllByRole("button")
-      .find((button) => /^(Upload|Re-upload|Upload new version)$/.test(button.textContent ?? ""));
-
-    expect(uploadButton).toBeDefined();
-    fireEvent.click(uploadButton!);
+    fireEvent.click(screen.getByRole("button", { name: "Upload document" }));
     expect(screen.getByRole("heading", { name: "Smart document upload" })).toBeInTheDocument();
+  });
+
+  it("links outstanding monthly-pack work back to Monthly Packs", () => {
+    renderClientPage(<ClientDocumentsPage />);
+    expect(screen.getByRole("link", { name: /Open monthly pack/i })).toHaveAttribute("href", "/client/packs");
   });
 
   it("renders the notification inbox", () => {
