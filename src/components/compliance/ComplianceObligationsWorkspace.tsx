@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { AlertCircle, CheckCircle2, ExternalLink, RefreshCw, Settings2, ShieldCheck, Upload } from "lucide-react";
 import { useAuth } from "../../app/auth";
-import { apiGetJson } from "../../services/apiClient";
+import { apiGetBlob, apiGetJson } from "../../services/apiClient";
 import type { Tone } from "../../types/portal";
 import { formatDateLabel } from "../../utils/formatters";
 import { Button } from "../ui/Button";
@@ -16,6 +17,7 @@ import {
   type ClientComplianceProfile,
   type ComplianceObligation,
   type ComplianceRuleSet,
+  type ObligationEvidence,
 } from "./complianceAutomation";
 import "./complianceAutomation.css";
 
@@ -44,6 +46,7 @@ const dateValue = (value?: string | null) => value ? value.slice(0, 10) : "";
 const money = (value: number | null) => value == null ? "—" : new Intl.NumberFormat("en-ZA", { style: "currency", currency: "ZAR" }).format(value);
 
 export function ComplianceObligationsWorkspace({ mode }: { mode: WorkspaceMode }) {
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const accountant = mode === "accountant";
   const canEditRules = user?.role === "admin";
@@ -52,13 +55,13 @@ export function ComplianceObligationsWorkspace({ mode }: { mode: WorkspaceMode }
   const [rules, setRules] = useState<ComplianceRuleSet | null>(null);
   const [profile, setProfile] = useState<ClientComplianceProfile | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [clientFilter, setClientFilter] = useState("all");
+  const [clientFilter, setClientFilter] = useState(searchParams.get("clientId") || "all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
-  const [showProfile, setShowProfile] = useState(false);
+  const [showProfile, setShowProfile] = useState(searchParams.get("setup") === "1");
   const [showRules, setShowRules] = useState(false);
 
   const selected = obligations.find(item => item.id === selectedId) ?? null;
@@ -67,7 +70,7 @@ export function ComplianceObligationsWorkspace({ mode }: { mode: WorkspaceMode }
     setLoading(true);
     try {
       const [rows, ruleSet, clientRows] = await Promise.all([
-        complianceAutomationApi.getObligations(accountant && clientFilter !== "all" ? clientFilter : undefined),
+        complianceAutomationApi.getObligations(),
         complianceAutomationApi.getRules(),
         accountant ? apiGetJson<ClientOption[]>("/api/clients") : Promise.resolve([]),
       ]);
@@ -82,8 +85,12 @@ export function ComplianceObligationsWorkspace({ mode }: { mode: WorkspaceMode }
   useEffect(() => { void load(); }, []);
   useEffect(() => {
     if (!accountant || clientFilter === "all") { setProfile(null); return; }
-    complianceAutomationApi.getProfile(clientFilter).then(setProfile).catch(error =>
-      setNotice({ tone: "danger", title: "Profile unavailable", message: error instanceof Error ? error.message : "Please try again." }));
+    let active = true;
+    setProfile(null);
+    complianceAutomationApi.getProfile(clientFilter).then(value => { if (active) setProfile(value); }).catch(error => {
+      if (active) setNotice({ tone: "danger", title: "Profile unavailable", message: error instanceof Error ? error.message : "Please try again." });
+    });
+    return () => { active = false; };
   }, [accountant, clientFilter]);
 
   const visible = useMemo(() => obligations.filter(item => {
@@ -105,7 +112,7 @@ export function ComplianceObligationsWorkspace({ mode }: { mode: WorkspaceMode }
       setNotice({
         tone: result.warnings.length ? "warning" : "success",
         title: "Compliance automation completed",
-        message: `${result.obligationsCreated} created, ${result.obligationsRefreshed} refreshed and ${result.missingEvidenceRequestsCreated} missing-evidence request(s) created.${result.warnings.length ? ` ${result.warnings.length} configuration warning(s) need attention.` : ""}`,
+        message: `${result.obligationsCreated} created, ${result.obligationsRefreshed} refreshed and ${result.missingEvidenceRequestsCreated} missing-evidence request(s) created.${result.warnings.length ? ` ${result.warnings.join(" ")}` : ""}`,
       });
       await load();
     } catch (error) {
@@ -171,7 +178,7 @@ export function ComplianceObligationsWorkspace({ mode }: { mode: WorkspaceMode }
         <thead><tr><th>Obligation</th>{accountant && <th>Client</th>}<th>Period</th><th>Due</th><th>Readiness</th><th>Evidence</th><th>Filing</th><th>Payment</th><th></th></tr></thead>
         <tbody>{visible.map(item => <tr key={item.id} className={item.workflowStatus === "overdue" ? "is-overdue" : ""}>
           <td><strong>{item.code}</strong><span>{item.authority}</span></td>{accountant && <td>{item.clientName}</td>}
-          <td>{formatCompliancePeriod(item.periodStartUtc, item.periodEndUtc)}</td><td>{item.dueDateUtc ? formatDateLabel(item.dueDateUtc) : <span className="muted">{item.code === "CSD" ? "Standing registration" : "Not configured"}</span>}</td>
+          <td>{item.code === "CSD" ? "Standing registration" : formatCompliancePeriod(item.periodStartUtc, item.periodEndUtc)}</td><td>{item.dueDateUtc ? formatDateLabel(item.dueDateUtc) : <span className="muted">{item.code === "CSD" ? "Standing registration" : "Not configured"}</span>}</td>
           <td><StatusPill value={item.workflowStatus} /></td><td>{item.evidenceFound}/{item.evidenceRequired}</td><td>{complianceStatusLabel(item.submissionStatus)}</td><td>{item.paymentRequired ? complianceStatusLabel(item.paymentStatus) : "—"}</td>
           <td><Button variant="secondary" onClick={() => setSelectedId(item.id)}>Open</Button></td>
         </tr>)}
@@ -179,7 +186,7 @@ export function ComplianceObligationsWorkspace({ mode }: { mode: WorkspaceMode }
         </tbody></table></div>
     </section>
 
-    {selected && <ObligationDrawer obligation={selected} accountant={accountant} busy={busy} setBusy={setBusy} onClose={() => setSelectedId(null)} onUpdated={replaceObligation} onNotice={setNotice} />}
+    {selected && <ObligationDrawer key={selected.id} obligation={selected} accountant={accountant} busy={busy} setBusy={setBusy} onClose={() => setSelectedId(null)} onUpdated={replaceObligation} onNotice={setNotice} />}
   </div>;
 }
 
@@ -201,6 +208,27 @@ function ObligationDrawer({ obligation, accountant, busy, setBusy, onClose, onUp
   const [paidOn, setPaidOn] = useState(dateValue(obligation.paidAtUtc) || new Date().toISOString().slice(0, 10));
   const [amountPaid, setAmountPaid] = useState(obligation.amountPayable?.toString() ?? "");
   const [evidenceFile, setEvidenceFile] = useState<File | null>(null);
+  const [savedEvidence, setSavedEvidence] = useState<ObligationEvidence[] | null>(null);
+
+  async function viewEvidence() {
+    setBusy(true);
+    try { setSavedEvidence(await complianceAutomationApi.getEvidence(obligation.id)); }
+    catch (error) { onNotice({ tone: "danger", title: "Evidence unavailable", message: error instanceof Error ? error.message : "Please try again." }); }
+    finally { setBusy(false); }
+  }
+
+  async function downloadEvidence(item: ObligationEvidence) {
+    setBusy(true);
+    try {
+      const { blob } = await apiGetBlob(`/api/compliance/evidence/${encodeURIComponent(item.id)}/download`);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url; link.download = item.fileName;
+      document.body.appendChild(link); link.click(); link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) { onNotice({ tone: "danger", title: "Download failed", message: error instanceof Error ? error.message : "Please try again." }); }
+    finally { setBusy(false); }
+  }
 
   async function act(action: () => Promise<ComplianceObligation>, title: string) {
     if (busy) return;
@@ -214,7 +242,9 @@ function ObligationDrawer({ obligation, accountant, busy, setBusy, onClose, onUp
     if (!evidenceFile || busy) return;
     setBusy(true);
     try {
-      await complianceAutomationApi.uploadEvidence(obligation.id, evidenceFile, `${obligation.code} compliance evidence for ${formatCompliancePeriod(obligation.periodStartUtc, obligation.periodEndUtc)}`);
+      const result = await complianceAutomationApi.uploadEvidence(obligation.id, evidenceFile, `${obligation.code} compliance evidence for ${formatCompliancePeriod(obligation.periodStartUtc, obligation.periodEndUtc)}`);
+      onUpdated(result.obligation);
+      setSavedEvidence(current => current ? [result.evidence, ...current] : null);
       setEvidenceFile(null);
       onNotice({ tone: "success", title: "Evidence uploaded", message: "The evidence is retained against this compliance obligation." });
     } catch (error) {
@@ -223,10 +253,14 @@ function ObligationDrawer({ obligation, accountant, busy, setBusy, onClose, onUp
   }
 
   return <div className="compliance-drawer-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}><aside className="compliance-drawer" aria-label={`${obligation.code} compliance obligation`}>
-    <div className="compliance-drawer-head"><div><p>{obligation.authority}</p><h2>{obligation.code} · {formatCompliancePeriod(obligation.periodStartUtc, obligation.periodEndUtc)}</h2></div><button type="button" onClick={onClose} aria-label="Close">×</button></div>
+    <div className="compliance-drawer-head"><div><p>{obligation.authority}</p><h2>{obligation.code} · {obligation.code === "CSD" ? "Standing registration" : formatCompliancePeriod(obligation.periodStartUtc, obligation.periodEndUtc)}</h2></div><button type="button" onClick={onClose} aria-label="Close">×</button></div>
     <div className="compliance-drawer-status"><StatusPill value={obligation.workflowStatus} /><span>{obligation.dueDateUtc ? `Due ${formatDateLabel(obligation.dueDateUtc)}` : obligation.code === "CSD" ? "Standing supplier registration" : "Deadline not configured"}</span></div>
     <section><h3>Why this exists</h3><p>{obligation.createdReason}</p><small>Rule version: {obligation.ruleVersion}</small></section>
     <section><h3>Evidence readiness</h3><p><strong>{obligation.evidenceFound}/{obligation.evidenceRequired}</strong> required categories found in the relevant monthly-pack period.</p>{obligation.missingEvidenceCategories.length > 0 && <p className="missing-list">Missing: {obligation.missingEvidenceCategories.join(", ")}</p>}</section>
+    <section><Button variant="secondary" disabled={busy} onClick={() => void viewEvidence()}>View saved evidence</Button>
+      {savedEvidence?.length === 0 && <p>No evidence has been uploaded for this obligation.</p>}
+      {savedEvidence?.map(item => <p key={item.id}><Button variant="secondary" disabled={busy} onClick={() => void downloadEvidence(item)}>{item.fileName} · version {item.versionNumber}</Button></p>)}
+    </section>
     <section className="workflow-list"><h3>Workflow</h3><div><span>Preparation</span><strong>{complianceStatusLabel(obligation.preparationStatus)}</strong></div><div><span>Review</span><strong>{complianceStatusLabel(obligation.reviewStatus)}</strong></div><div><span>External filing</span><strong>{complianceStatusLabel(obligation.submissionStatus)}</strong></div><div><span>Payment</span><strong>{obligation.paymentRequired ? complianceStatusLabel(obligation.paymentStatus) : "Not required"}</strong></div></section>
 
     {accountant && <>

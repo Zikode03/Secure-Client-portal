@@ -1,17 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ArrowUpRight, Building2 as BuildingIcon, ShieldCheck as ShieldIcon, Bell as BellIcon, FileText as DocumentIcon, LockKeyhole as LockIcon, Monitor as SessionIcon, Mail, Info, Eye, EyeOff } from "lucide-react";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
 import { Button } from "../../components/ui/Button";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
-import { SelectField } from "../../components/ui/SelectField";
-import { PageSection } from "../../components/ui/PageSection";
 import { TextField } from "../../components/ui/TextField";
 import { ApiError, apiGetJson, hasApiBaseUrl } from "../../services/apiClient";
 import type { BusinessProfile, Tone } from "../../types/portal";
 import { cn } from "../../utils/cn";
+import "./clientSettings.css";
 
-// Shared shape notes: these types keep UI and data contracts aligned.
 type SettingsSection = "business" | "security" | "notifications" | "documents";
 
 interface FeedbackNotice {
@@ -26,180 +25,25 @@ interface BackendClientProfile {
   entityType: string;
   primaryContact: string;
   email: string;
+  industry?: string;
+  registrationNumber?: string;
+  taxNumber?: string;
+  vatNumber?: string;
+  phone?: string;
+  tradingName?: string;
+  addressLine?: string;
+  city?: string;
+  country?: string;
+  primaryContactJobTitle?: string;
 }
 
-function BuildingIcon() {
-  return (
-    <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
-      <path
-        d="M6.5 19.5V5.75A1.75 1.75 0 0 1 8.25 4h7.5A1.75 1.75 0 0 1 17.5 5.75V19.5M4 19.5h16M9 8h1.5M13.5 8H15M9 11.5h1.5M13.5 11.5H15M9 15h1.5M13.5 15H15"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
+function Toggle({ checked, label, description, onChange }: { checked: boolean; label: string; description: string; onChange: () => void }) {
+  return <button type="button" role="switch" aria-checked={checked} aria-label={label} className="settings-toggle" onClick={onChange}>
+    <span><strong>{label}</strong><small>{description}</small></span>
+    <span aria-hidden="true" className={cn("settings-switch", checked && "is-on")}><span /></span>
+  </button>;
 }
-
-function ShieldIcon() {
-  return (
-    <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
-      <path
-        d="M12 3 19 6v6c0 4.9-2.8 8.7-7 10-4.2-1.3-7-5.1-7-10V6l7-3Z"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-      <path
-        d="m9.5 12 1.7 1.7L14.8 10"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
-}
-
-function BellIcon() {
-  return (
-    <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
-      <path
-        d="M8 18.5h8m-9-2V11a5 5 0 1 1 10 0v5.5l1.5 2H5.5l1.5-2Z"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
-}
-
-function DocumentIcon() {
-  return (
-    <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
-      <path
-        d="M8 3.75h6l4.25 4.25v10.25a2 2 0 0 1-2 2H8A2.25 2.25 0 0 1 5.75 18V6A2.25 2.25 0 0 1 8 3.75Z"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-      <path
-        d="M13.75 3.75V8h4.25"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
-}
-
-function LockIcon() {
-  return (
-    <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
-      <path
-        d="M7.75 10.25V8.5a4.25 4.25 0 0 1 8.5 0v1.75M7 10.25h10A1.75 1.75 0 0 1 18.75 12v6A1.75 1.75 0 0 1 17 19.75H7A1.75 1.75 0 0 1 5.25 18v-6A1.75 1.75 0 0 1 7 10.25Z"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
-}
-
-function InfoIcon() {
-  return (
-    <svg aria-hidden="true" className="h-5 w-5" fill="none" viewBox="0 0 24 24">
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.8" />
-      <path
-        d="M12 10.25v5m0-8v.25"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2"
-      />
-    </svg>
-  );
-}
-
-function SessionIcon() {
-  return (
-    <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
-      <rect
-        height="11.5"
-        rx="2"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        width="17"
-        x="3.5"
-        y="5.25"
-      />
-      <path
-        d="M8.5 19.5h7"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
-}
-
-function Toggle({
-  checked,
-  label,
-  description,
-  onChange,
-}: {
-  checked: boolean;
-  label: string;
-  description: string;
-  onChange: () => void;
-}) {
-  return (
-    <button
-      className="flex w-full items-center justify-between gap-4 rounded-[1.15rem] border border-slate-200 bg-white px-4 py-4 text-left transition hover:bg-slate-50"
-      onClick={onChange}
-      type="button"
-    >
-      <div>
-        <p className="text-sm font-semibold text-slate-950">{label}</p>
-        <p className="mt-1 text-[0.84rem] leading-6 text-slate-500">{description}</p>
-      </div>
-      <span
-        className={cn(
-          "relative inline-flex h-7 w-12 shrink-0 rounded-full transition",
-          checked ? "bg-brand-500" : "bg-slate-200",
-        )}
-      >
-        <span
-          className={cn(
-            "absolute top-1 h-5 w-5 rounded-full bg-white shadow transition",
-            checked ? "left-6" : "left-1",
-          )}
-        />
-      </span>
-    </button>
-  );
-}
-
-function sectionIcon(section: SettingsSection) {
-  switch (section) {
-    case "security":
-      return <ShieldIcon />;
-    case "notifications":
-      return <BellIcon />;
-    case "documents":
-      return <DocumentIcon />;
-    default:
-      return <BuildingIcon />;
-  }
-}
+const sectionIcons = { business: BuildingIcon, security: ShieldIcon, notifications: BellIcon, documents: DocumentIcon };
 
 function formatDateValue(value?: string) {
   if (!value) {
@@ -225,8 +69,10 @@ export function ClientSettingsPage() {
 
   const [activeSection, setActiveSection] = useState<SettingsSection>("business");
   const [profile, setProfile] = useState<BusinessProfile>(initialProfile);
-  const [industry, setIndustry] = useState("Accounting & Financial Services");
-  const [jobTitle, setJobTitle] = useState(user?.title ?? "Finance Manager");
+  const [industry, setIndustry] = useState("");
+  const [profileLoading, setProfileLoading] = useState(backendMode);
+  const [showPasswords, setShowPasswords] = useState(false);
+  const [jobTitle, setJobTitle] = useState(user?.title ?? "");
   const [deadlineAlerts, setDeadlineAlerts] = useState(notificationPreferences.deadlineAlerts);
   const [rejectionAlerts, setRejectionAlerts] = useState(notificationPreferences.rejectionAlerts);
   const [complianceAlerts, setComplianceAlerts] = useState(notificationPreferences.complianceAlerts);
@@ -240,7 +86,7 @@ export function ClientSettingsPage() {
 
   useEffect(() => {
     setProfile(initialProfile);
-    setJobTitle(user?.title ?? "Finance Manager");
+    setJobTitle(user?.title ?? "");
   }, [initialProfile, user]);
 
   useEffect(() => {
@@ -254,29 +100,42 @@ export function ClientSettingsPage() {
   useEffect(() => {
     const clientId = user?.clientIds[0];
     if (!backendMode || !clientId) {
+      setProfileLoading(false);
       return;
     }
 
+    let active = true;
+    setProfileLoading(true);
     void apiGetJson<BackendClientProfile>(`/api/clients/${encodeURIComponent(clientId)}`)
       .then((client) => {
+        if (!active) return;
         setProfile((current) => ({
           ...current,
           legalName: client.name,
           primaryContact: client.primaryContact,
           financeEmail: client.email,
-          registrationNumber: "",
-          vatNumber: "",
-          phone: "",
+          registrationNumber: client.registrationNumber ?? "",
+          taxNumber: client.taxNumber ?? "",
+          vatNumber: client.vatNumber ?? "",
+          phone: client.phone ?? "",
+          tradingName: client.tradingName ?? "",
+          addressLine: client.addressLine ?? "",
+          city: client.city ?? "",
+          country: client.country ?? "",
         }));
-        setIndustry(client.entityType || "Client entity");
+        setIndustry(client.industry ?? "");
+        setJobTitle(client.primaryContactJobTitle ?? user?.title ?? "");
       })
       .catch((error: unknown) => {
+        if (!active) return;
         setFeedbackNotice({
           tone: "danger",
           title: "Profile unavailable",
           message: error instanceof ApiError ? error.message : "The live client profile could not be loaded.",
         });
-      });
+      })
+      .finally(() => { if (active) setProfileLoading(false); });
+    return () => { active = false; };
   }, [backendMode, user?.clientIds]);
 
   const sections: Array<{
@@ -306,7 +165,7 @@ export function ClientSettingsPage() {
     {
       id: "documents",
       title: "Document preferences",
-      description: "Upload rules, formats and retention settings",
+      description: "Your documents and record handling",
       tone: "bg-sky-50 text-sky-600 ring-sky-100",
     },
   ];
@@ -330,8 +189,8 @@ export function ClientSettingsPage() {
 
   function handleResetProfile() {
     setProfile(initialProfile);
-    setIndustry("Accounting & Financial Services");
-    setJobTitle(user?.title ?? "Finance Manager");
+    setIndustry("");
+    setJobTitle(user?.title ?? "");
     setFeedbackNotice({
       tone: "info",
       title: "Changes reset",
@@ -368,8 +227,8 @@ export function ClientSettingsPage() {
     }
 
     setIsUpdatingPassword(true);
+    try {
     const result = await changePassword(currentPassword, nextPassword);
-    setIsUpdatingPassword(false);
 
     setFeedbackNotice({
       tone: result.ok ? "success" : "danger",
@@ -386,6 +245,9 @@ export function ClientSettingsPage() {
       setNextPassword("");
       setConfirmPassword("");
     }
+    } catch (error) {
+      setFeedbackNotice({ tone: "danger", title: "Password update failed", message: error instanceof Error ? error.message : "Please try again." });
+    } finally { setIsUpdatingPassword(false); }
   }
 
   function handleSaveNotifications() {
@@ -408,506 +270,106 @@ export function ClientSettingsPage() {
     });
   }
 
-  function renderBusinessProfile() {
-    return (
-      <PageSection className="overflow-hidden">
-        <div className="border-b border-slate-100 px-6 pb-5 pt-6">
-          <div className="flex items-start gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-50 text-brand-600 ring-1 ring-brand-100">
-              <BuildingIcon />
-            </div>
-            <div className="space-y-1">
-              <h2 className="portal-section-title text-slate-950">
-                Business profile
-              </h2>
-              <p className="text-[0.92rem] leading-7 text-slate-500">
-                Update your business details and primary contact information.
-              </p>
-            </div>
-          </div>
-        </div>
 
-        <div className="space-y-8 px-6 py-6">
-          {backendMode ? (
-            <div className="rounded-xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-800">
-              Registered business details are read-only in the client portal. Contact your accountant to request a change.
-            </div>
-          ) : null}
-          <div className="grid gap-5 md:grid-cols-2">
-            <TextField
-              label="Company name"
-              onChange={(event) =>
-                setProfile((current) => ({ ...current, legalName: event.target.value }))
-              }
-              readOnly={backendMode}
-              value={profile.legalName}
-            />
-            <TextField
-              label="Registration number"
-              onChange={(event) =>
-                setProfile((current) => ({ ...current, registrationNumber: event.target.value }))
-              }
-              readOnly={backendMode}
-              value={profile.registrationNumber}
-            />
-            <TextField
-              label="VAT number"
-              onChange={(event) =>
-                setProfile((current) => ({ ...current, vatNumber: event.target.value }))
-              }
-              readOnly={backendMode}
-              value={profile.vatNumber}
-            />
-            <SelectField
-              label="Industry"
-              disabled={backendMode}
-              onChange={(event) => setIndustry(event.target.value)}
-              options={[
-                { label: "Accounting & Financial Services", value: "Accounting & Financial Services" },
-                { label: "Wholesale & Distribution", value: "Wholesale & Distribution" },
-                { label: "Professional Services", value: "Professional Services" },
-                { label: "Manufacturing", value: "Manufacturing" },
-              ]}
-              value={industry}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <h3 className="text-[1.02rem] font-semibold text-slate-950">Primary contact</h3>
-            <p className="text-[0.88rem] text-slate-500">
-              This is the main contact for compliance communication.
-            </p>
-          </div>
-
-          <div className="grid gap-5 md:grid-cols-2">
-            <TextField
-              label="Full name"
-              onChange={(event) =>
-                setProfile((current) => ({ ...current, primaryContact: event.target.value }))
-              }
-              readOnly={backendMode}
-              value={profile.primaryContact}
-            />
-            <TextField
-              label="Email address"
-              onChange={(event) =>
-                setProfile((current) => ({ ...current, financeEmail: event.target.value }))
-              }
-              readOnly={backendMode}
-              value={profile.financeEmail}
-            />
-            <TextField
-              label="Phone number"
-              onChange={(event) =>
-                setProfile((current) => ({ ...current, phone: event.target.value }))
-              }
-              readOnly={backendMode}
-              value={profile.phone}
-            />
-            <TextField
-              label="Job title"
-              onChange={(event) => setJobTitle(event.target.value)}
-              readOnly={backendMode}
-              value={jobTitle}
-            />
-          </div>
-
-          <div className="rounded-[1.3rem] border border-brand-100 bg-[linear-gradient(180deg,#f7f8ff_0%,#ffffff_100%)] px-5 py-4">
-            <div className="flex items-start gap-3">
-              <div className="mt-0.5 text-brand-600">
-                <InfoIcon />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-slate-950">Why we need this information</p>
-                <p className="mt-1 text-[0.88rem] leading-7 text-slate-600">
-                  Your details help us ensure accurate compliance records, structured uploads, communication, and audit readiness.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {!backendMode ? <div className="flex flex-col gap-3 border-t border-slate-100 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
-          <Button
-            className="h-11 rounded-xl border border-slate-200 bg-white px-5 text-slate-700 hover:bg-slate-50"
-            onClick={handleResetProfile}
-            variant="secondary"
-          >
-            Reset changes
-          </Button>
-          <Button
-            className="h-11 rounded-xl bg-[linear-gradient(135deg,#5442ff,#6f59ff)] px-6 shadow-[0_16px_30px_rgba(84,66,255,0.18)] hover:bg-[linear-gradient(135deg,#4a38ef,#6650ff)]"
-            onClick={handleSaveProfile}
-          >
-            Save changes
-          </Button>
-        </div> : null}
-      </PageSection>
-    );
+  const currentSection = sections.find(section => section.id === activeSection)!;
+  const SectionIcon = sectionIcons[activeSection];
+  const initials = (user?.fullName || user?.name || "Client").split(" ").filter(Boolean).slice(0, 2).map(part => part[0]).join("");
+  function field(label: string, key: keyof BusinessProfile, type = "text") {
+    return <TextField label={label} type={type} placeholder={backendMode ? "Not provided" : ""}
+      readOnly={backendMode} value={profile[key] ?? ""}
+      onChange={event => setProfile(value => ({ ...value, [key]: event.target.value }))} />;
   }
 
-  function renderSecurity() {
-    const activeSessions = securitySettings.activeSessions ?? [];
+  return <div className="client-settings">
+    <header className="settings-heading">
+      <div><p className="settings-eyebrow">YOUR WORKSPACE</p><h1>Settings</h1><p>Business details, account access and the updates you receive.</p></div>
+      <div className="settings-identity"><span className="settings-avatar" aria-hidden="true">{initials}</span><div><strong>{user?.fullName || user?.name || "Client account"}</strong><span>{user?.email}</span></div></div>
+    </header>
 
-    return (
-      <PageSection className="">
-        <div className="flex items-start gap-4">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
-            <ShieldIcon />
-          </div>
-          <div className="space-y-1">
-            <h2 className="portal-section-title text-slate-950">Security</h2>
-            <p className="text-[0.92rem] leading-7 text-slate-500">
-              Manage account access, authentication controls, and current session trust.
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-6 grid gap-4 lg:grid-cols-2">
-          <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4">
-            <div className="flex items-center gap-3">
-              <div className="text-slate-600">
-                <LockIcon />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-slate-950">Password protection</p>
-                <p className="text-[0.84rem] text-slate-500">
-                  Last changed {formatDateValue(securitySettings.passwordLastChangedAt)}
-                </p>
-              </div>
-            </div>
-            <div className="mt-4 space-y-3">
-              <TextField
-                autoComplete="current-password"
-                id="client-current-password"
-                label="Current password"
-                onChange={(event) => setCurrentPassword(event.target.value)}
-                placeholder="Enter current password"
-                type="password"
-                value={currentPassword}
-              />
-              <TextField
-                autoComplete="new-password"
-                hint="Use at least 15 characters."
-                id="client-next-password"
-                label="New password"
-                onChange={(event) => setNextPassword(event.target.value)}
-                placeholder="Enter new password"
-                type="password"
-                value={nextPassword}
-              />
-              <TextField
-                autoComplete="new-password"
-                id="client-confirm-password"
-                label="Confirm new password"
-                onChange={(event) => setConfirmPassword(event.target.value)}
-                placeholder="Confirm new password"
-                type="password"
-                value={confirmPassword}
-              />
-              <Button
-                className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-slate-700 hover:bg-slate-50"
-                disabled={isUpdatingPassword}
-                onClick={() => void handlePasswordChange()}
-                variant="secondary"
-              >
-                {isUpdatingPassword ? "Updating password..." : "Update password"}
-              </Button>
-            </div>
-          </div>
-
-          {backendMode ? (
-            <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4">
-              <div className="flex items-center gap-3">
-                <div className="text-slate-600"><SessionIcon /></div>
-                <div>
-                  <p className="text-sm font-semibold text-slate-950">Session security</p>
-                  <p className="text-[0.84rem] text-slate-500">Password changes revoke your other active sessions automatically.</p>
-                </div>
-              </div>
-              <p className="mt-4 text-[0.86rem] leading-6 text-slate-600">
-                Detailed session management is not exposed by the current API, so this portal does not display synthetic devices or locations.
-              </p>
-            </div>
-          ) : (
-          <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4">
-            <div className="flex items-center gap-3">
-              <div className="text-slate-600">
-                <SessionIcon />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-slate-950">Active sessions</p>
-                <p className="text-[0.84rem] text-slate-500">
-                  {activeSessions.length} trusted session{activeSessions.length === 1 ? "" : "s"}
-                </p>
-              </div>
-            </div>
-            <div className="mt-4 space-y-2">
-              {activeSessions.map((session) => (
-                <div className="rounded-xl border border-slate-200 bg-white px-3 py-2" key={session.id}>
-                  <p className="text-sm font-medium text-slate-900">{session.label}</p>
-                  <p className="mt-1 text-xs text-slate-500">
-                    {session.location} | Last active {formatDateValue(session.lastActiveAt)}
-                    {session.isCurrent ? " | Current session" : ""}
-                  </p>
-                </div>
-              ))}
-              <Button
-                className="mt-2 h-10 rounded-xl border border-slate-200 bg-white px-4 text-slate-700 hover:bg-slate-50"
-                onClick={() =>
-                  setFeedbackNotice({
-                    tone: "success",
-                    title: "Session review complete",
-                    message: `You currently have ${activeSessions.length} trusted session${activeSessions.length === 1 ? "" : "s"} in this workspace.`,
-                  })
-                }
-                variant="secondary"
-              >
-                Review sessions
-              </Button>
-            </div>
-          </div>
-          )}
-        </div>
-      </PageSection>
-    );
-  }
-
-  function renderNotifications() {
-    if (backendMode) {
-      return (
-        <PageSection className="">
-          <div className="flex items-start gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-500 ring-1 ring-amber-100">
-              <BellIcon />
-            </div>
-            <div>
-              <h2 className="portal-section-title text-slate-950">Notification preferences</h2>
-              <p className="mt-2 max-w-2xl text-[0.92rem] leading-7 text-slate-500">
-                The current API delivers workflow notifications but does not yet expose preference storage. No local-only settings are shown or saved in live mode.
-              </p>
-              <Button className="mt-5" onClick={() => navigate("/client/notifications")} variant="secondary">
-                Open notification inbox
-              </Button>
-            </div>
-          </div>
-        </PageSection>
-      );
-    }
-
-    return (
-      <PageSection className="">
-        <div className="flex items-start gap-4">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-500 ring-1 ring-amber-100">
-            <BellIcon />
-          </div>
-          <div className="space-y-1">
-            <h2 className="portal-section-title text-slate-950">
-              Notification preferences
-            </h2>
-            <p className="text-[0.92rem] leading-7 text-slate-500">
-              Choose which workflow updates should come through as reminders and alerts.
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-6 space-y-3">
-          <Toggle
-            checked={deadlineAlerts}
-            description="Notify me when a monthly pack deadline is approaching."
-            label="Deadline reminders"
-            onChange={() => setDeadlineAlerts((current) => !current)}
-          />
-          <Toggle
-            checked={rejectionAlerts}
-            description="Notify me when an accountant rejects a file and needs a corrected upload."
-            label="Rejected document alerts"
-            onChange={() => setRejectionAlerts((current) => !current)}
-          />
-          <Toggle
-            checked={complianceAlerts}
-            description="Notify me when compliance records are expiring or have expired."
-            label="Compliance expiry alerts"
-            onChange={() => setComplianceAlerts((current) => !current)}
-          />
-          <Toggle
-            checked={weeklySummary}
-            description="Receive a weekly summary of workflow progress and blockers."
-            label="Weekly summary email"
-            onChange={() => setWeeklySummary((current) => !current)}
-          />
-          <Toggle
-            checked={browserAlerts}
-            description="Show browser alerts for urgent workflow changes while you are signed in."
-            label="Browser alerts"
-            onChange={() => setBrowserAlerts((current) => !current)}
-          />
-        </div>
-
-        <div className="mt-5 flex justify-end">
-          <Button
-            className="h-11 rounded-xl bg-[linear-gradient(135deg,#5442ff,#6f59ff)] px-6 shadow-[0_16px_30px_rgba(84,66,255,0.18)] hover:bg-[linear-gradient(135deg,#4a38ef,#6650ff)]"
-            onClick={handleSaveNotifications}
-          >
-            Save preferences
-          </Button>
-        </div>
-      </PageSection>
-    );
-  }
-
-  function renderDocuments() {
-    return (
-      <PageSection className="">
-        <div className="flex items-start gap-4">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-50 text-sky-600 ring-1 ring-sky-100">
-            <DocumentIcon />
-          </div>
-          <div className="space-y-1">
-            <h2 className="portal-section-title text-slate-950">
-              Document preferences
-            </h2>
-            <p className="text-[0.92rem] leading-7 text-slate-500">
-              Structured uploads, record retention, and file governance stay controlled here.
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-6 grid gap-4 lg:grid-cols-2">
-          <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4">
-            <p className="text-sm font-semibold text-slate-950">Structured uploads</p>
-            <p className="mt-2 text-[0.86rem] leading-7 text-slate-600">
-              Documents must still be uploaded through the correct monthly slot so they can be named, tracked, and reviewed properly.
-            </p>
-          </div>
-          <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4">
-            <p className="text-sm font-semibold text-slate-950">Retention</p>
-            <p className="mt-2 text-[0.86rem] leading-7 text-slate-600">
-              {portal.clientComplianceCentre.retentionNote}
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-5 flex flex-wrap gap-3">
-          <Button
-            className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-slate-700 hover:bg-slate-50"
-            onClick={() => navigate("/client/packs")}
-            variant="secondary"
-          >
-            Open monthly packs
-          </Button>
-          <Button
-            className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-slate-700 hover:bg-slate-50"
-            onClick={() => navigate("/client/compliance")}
-            variant="secondary"
-          >
-            Open compliance centre
-          </Button>
-        </div>
-      </PageSection>
-    );
-  }
-
-  return (
-    <div className="portal-page mx-auto max-w-[1280px] space-y-5">
-      <div className="portal-page-header grid gap-5 border-b border-slate-200 pb-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-        <div className="space-y-1.5">
-          <h1 className="portal-page-title text-slate-950">Settings</h1>
-          <p className="text-[0.98rem] text-slate-500">
-            Manage your account, preferences and security.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3 lg:justify-end">
-          <Button
-            className="h-11 rounded-2xl border border-slate-200 bg-white px-5 text-slate-800 hover:bg-slate-50"
-            onClick={() =>
-              setFeedbackNotice({
-                tone: "success",
-                title: "Secure storage active",
-                message: "Your documents stay encrypted, access-controlled, and retained for audit readiness.",
-              })
-            }
-            variant="secondary"
-          >
-            <LockIcon />
-            <span>Secure storage</span>
-            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[0.72rem] font-semibold text-emerald-700">
-              Secure
-            </span>
-          </Button>
-          <button
-            aria-label="Open notifications"
-            className="relative inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 transition hover:bg-slate-50 hover:text-slate-800"
-            onClick={() => navigate("/client/notifications")}
-            type="button"
-          >
-            <BellIcon />
-            <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-rose-500" />
-          </button>
-        </div>
-      </div>
-
-      {feedbackNotice ? (
-        <FeedbackBanner
-          message={feedbackNotice.message}
-          onDismiss={() => setFeedbackNotice(null)}
-          title={feedbackNotice.title}
-          tone={feedbackNotice.tone}
-        />
-      ) : null}
-
-      <PageSection className="">
-        <div className="grid gap-2 md:grid-cols-4">
-          {sections.map((section) => {
-            const active = activeSection === section.id;
-
-            return (
-              <button
-                className={cn(
-                  "flex items-start gap-3 rounded-[1.05rem] border px-3.5 py-3.5 text-left transition",
-                  active
-                    ? "border-brand-100 bg-[linear-gradient(180deg,#f7f8ff_0%,#ffffff_100%)] shadow-[0_12px_26px_rgba(84,66,255,0.06)]"
-                    : "border-slate-200 bg-white hover:bg-slate-50",
-                )}
-                key={section.id}
-                onClick={() => setActiveSection(section.id)}
-                type="button"
-              >
-                <div
-                  className={cn(
-                    "flex h-10 w-10 shrink-0 items-center justify-center rounded-full ring-1",
-                    section.tone,
-                  )}
-                >
-                  {sectionIcon(section.id)}
-                </div>
-                <div className="space-y-1">
-                  <p
-                    className={cn(
-                      "text-[0.92rem] font-semibold",
-                      active ? "text-brand-700" : "text-slate-950",
-                    )}
-                  >
-                    {section.title}
-                  </p>
-                  <p className="line-clamp-2 text-[0.76rem] leading-5 text-slate-500">
-                    {section.description}
-                  </p>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </PageSection>
-
-      {activeSection === "business"
-        ? renderBusinessProfile()
-        : activeSection === "security"
-          ? renderSecurity()
-          : activeSection === "notifications"
-            ? renderNotifications()
-            : renderDocuments()}
+    <div className="settings-tabs" role="tablist" aria-label="Settings sections">
+      {sections.map((section, index) => {
+        const Icon = sectionIcons[section.id];
+        const active = activeSection === section.id;
+        return <button type="button" role="tab" aria-selected={active} aria-controls={"settings-panel-" + section.id} id={"settings-tab-" + section.id}
+          tabIndex={active ? 0 : -1} key={section.id} className={cn("settings-tab", active && "is-active")}
+          onClick={() => { setActiveSection(section.id); setFeedbackNotice(null); }}
+          onKeyDown={event => {
+            let next = index;
+            if (event.key === "ArrowRight") next = (index + 1) % sections.length;
+            else if (event.key === "ArrowLeft") next = (index + sections.length - 1) % sections.length;
+            else if (event.key === "Home") next = 0;
+            else if (event.key === "End") next = sections.length - 1;
+            else return;
+            event.preventDefault(); setActiveSection(sections[next].id); setFeedbackNotice(null);
+            event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus();
+          }}><Icon size={19} aria-hidden="true" /><span>{section.title}</span></button>;
+      })}
     </div>
-  );
+
+    {feedbackNotice && <FeedbackBanner {...feedbackNotice} onDismiss={() => setFeedbackNotice(null)} />}
+    <section className="settings-panel" role="tabpanel" tabIndex={0} id={"settings-panel-" + activeSection} aria-labelledby={"settings-tab-" + activeSection}>
+      <header className="settings-panel-heading"><div className="settings-section-title"><SectionIcon size={21} aria-hidden="true" /><div><h2>{currentSection.title}</h2><p>{currentSection.description}</p></div></div>
+        {activeSection === "business" && backendMode && <span className="settings-label"><LockIcon size={13} aria-hidden="true" /> Managed by your firm</span>}
+      </header>
+
+      {activeSection === "business" && <>
+        {profileLoading && <p role="status" className="settings-note">Loading your business details…</p>}
+        <div className="settings-group"><div className="settings-group-label"><span>01 / BUSINESS</span><h3>Company details</h3><p>Your business identity as recorded by your firm.</p></div>
+          <div className="settings-fields" aria-busy={profileLoading}>
+            {field("Company name", "legalName")}{field("Trading name", "tradingName")}{field("Registration number", "registrationNumber")}{field("VAT number", "vatNumber")}
+            <TextField label="Industry" readOnly={backendMode} placeholder={backendMode ? "Not provided" : ""} value={industry} onChange={event => setIndustry(event.target.value)} />
+          </div>
+        </div>
+        <div className="settings-group"><div className="settings-group-label"><span>02 / CONTACT</span><h3>Primary contact</h3><p>The person your accountant contacts about documents and compliance.</p></div>
+          <div className="settings-fields">{field("Full name", "primaryContact")}{field("Email address", "financeEmail", "email")}{field("Phone number", "phone", "tel")}
+            <TextField label="Job title" readOnly={backendMode} placeholder={backendMode ? "Not provided" : ""} value={jobTitle} onChange={event => setJobTitle(event.target.value)} />
+          </div>
+        </div>
+        <footer className="settings-footer">{backendMode
+          ? <><p><Info size={16} aria-hidden="true" /> Need to update these details? Send your accountant a message.</p><Button variant="secondary" onClick={() => navigate("/client/requests")}>Contact your accountant <ArrowUpRight size={16} aria-hidden="true" /></Button></>
+          : <><Button variant="secondary" onClick={handleResetProfile}>Reset changes</Button><Button onClick={handleSaveProfile}>Save changes</Button></>}</footer>
+      </>}
+
+      {activeSection === "security" && <>
+        <div className="settings-group"><div className="settings-group-label"><span>01 / SIGN-IN</span><h3>Change password</h3><p>Choose a unique password with at least 15 characters.</p>
+          <small>Last changed: {formatDateValue(securitySettings.passwordLastChangedAt)}</small></div>
+          <form className="settings-password-form" onSubmit={event => { event.preventDefault(); void handlePasswordChange(); }}>
+            <TextField required autoComplete="current-password" label="Current password" type={showPasswords ? "text" : "password"} value={currentPassword} onChange={event => setCurrentPassword(event.target.value)} />
+            <div className="settings-fields"><TextField required autoComplete="new-password" label="New password" type={showPasswords ? "text" : "password"} value={nextPassword} onChange={event => setNextPassword(event.target.value)} />
+              <TextField required autoComplete="new-password" label="Confirm new password" type={showPasswords ? "text" : "password"} value={confirmPassword} onChange={event => setConfirmPassword(event.target.value)} /></div>
+            <div className="settings-form-actions"><button type="button" className="settings-text-button" aria-pressed={showPasswords} onClick={() => setShowPasswords(value => !value)}>{showPasswords ? <EyeOff size={16} /> : <Eye size={16} />}{showPasswords ? "Hide passwords" : "Show passwords"}</button>
+              <Button type="submit" disabled={isUpdatingPassword}>{isUpdatingPassword ? "Updating password…" : "Update password"}</Button></div>
+          </form>
+        </div>
+        <div className="settings-group"><div className="settings-group-label"><span>02 / ACCESS</span><h3>Session security</h3><p>Keep access to your account under your control.</p></div>
+          <div className="settings-policy"><SessionIcon size={22} aria-hidden="true" /><div><strong>{backendMode ? "Protect your signed-in sessions" : "Active sessions"}</strong>
+            <p>{backendMode ? "Changing your password signs out your other active sessions. A device-by-device list is not available here." : "Devices recorded in this workspace."}</p>
+            {!backendMode && (securitySettings.activeSessions ?? []).map(session => <div className="settings-session" key={session.id}><strong>{session.label}{session.isCurrent ? " · Current session" : ""}</strong><p>{session.location} · {formatDateValue(session.lastActiveAt)}</p></div>)}
+          </div></div>
+        </div>
+      </>}
+
+      {activeSection === "notifications" && (backendMode
+        ? <div className="settings-group"><div className="settings-group-label"><span>WORKFLOW UPDATES</span><h3>Stay up to date</h3><p>Find requests, document updates and reminders in your inbox.</p></div>
+          <div className="settings-notification-info"><Mail size={28} aria-hidden="true" /><h3>Your updates, in one place</h3><p>Notification preferences cannot be changed on this page yet. You can still read and manage the notifications you receive.</p><Button variant="secondary" onClick={() => navigate("/client/notifications")}>Open notification inbox <ArrowUpRight size={16} aria-hidden="true" /></Button></div>
+        </div>
+        : <><div className="settings-group"><div className="settings-group-label"><span>YOUR PREFERENCES</span><h3>Choose your updates</h3><p>Adjust reminders and summaries to suit your workflow.</p></div><div className="settings-toggles">
+          <Toggle checked={deadlineAlerts} label="Deadline reminders" description="When a monthly pack deadline is approaching." onChange={() => setDeadlineAlerts(value => !value)} />
+          <Toggle checked={rejectionAlerts} label="Rejected document alerts" description="When a file needs correcting and uploading again." onChange={() => setRejectionAlerts(value => !value)} />
+          <Toggle checked={complianceAlerts} label="Compliance expiry alerts" description="When compliance records are expiring." onChange={() => setComplianceAlerts(value => !value)} />
+          <Toggle checked={weeklySummary} label="Weekly summary email" description="A summary of progress and outstanding work." onChange={() => setWeeklySummary(value => !value)} />
+          <Toggle checked={browserAlerts} label="Browser alerts" description="Urgent updates while you are signed in." onChange={() => setBrowserAlerts(value => !value)} />
+        </div></div><footer className="settings-footer"><p>Apply your changes when you are ready.</p><Button onClick={handleSaveNotifications}>Save preferences</Button></footer></>)}
+
+      {activeSection === "documents" && <>
+        <div className="settings-group"><div className="settings-group-label"><span>01 / UPLOADS</span><h3>Keep documents organised</h3><p>Use the correct monthly-pack slot for documents requested by your accountant.</p></div>
+          <div className="settings-policy"><DocumentIcon size={23} aria-hidden="true" /><div><strong>Documents and monthly packs</strong><p>Your document register holds your records. Monthly packs group the documents needed for a particular period.</p>
+            <div className="settings-links"><Button variant="secondary" onClick={() => navigate("/client/documents")}>Open documents <ArrowUpRight size={15} /></Button><Button variant="secondary" onClick={() => navigate("/client/packs")}>Open monthly packs <ArrowUpRight size={15} /></Button></div></div></div>
+        </div>
+        <div className="settings-group"><div className="settings-group-label"><span>02 / RECORDS</span><h3>Retention &amp; compliance</h3><p>Record-handling rules are managed by your firm.</p></div>
+          <div className="settings-policy"><LockIcon size={23} aria-hidden="true" /><div><strong>Keeping your supporting records</strong><p>{portal.clientComplianceCentre.retentionNote || "Contact your accountant for your firm's document retention policy."}</p><Button variant="secondary" onClick={() => navigate("/client/compliance")}>Open compliance centre <ArrowUpRight size={15} /></Button></div></div>
+        </div>
+      </>}
+    </section>
+  </div>;
 }

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { UserPlus } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/Button";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
 import { PageHeader } from "../../components/ui/PageHeader";
@@ -60,6 +61,7 @@ function normalizedStatus(user: AdminUserRecord) {
 }
 
 export function AdminUsersPage() {
+  const navigate = useNavigate();
   const backendMode = hasApiBaseUrl();
   const [users, setUsers] = useState<AdminUserRecord[]>([]);
   const [query, setQuery] = useState("");
@@ -122,6 +124,7 @@ export function AdminUsersPage() {
   const restrictedUsers = users.filter((user) => normalizedStatus(user) !== "active").length;
 
   async function createUser() {
+    if (newUserRole === "client") { navigate("/firm/clients?add=1"); return; }
     if (!newUserName.trim() || !newUserEmail.trim()) {
       setFeedback({ tone: "warning", title: "User details required", message: "Enter a name and email address before creating the user." });
       return;
@@ -274,7 +277,7 @@ export function AdminUsersPage() {
               <p className="mt-1 text-sm text-slate-500">Set up access for a new team member or client.</p>
             </div>
           </div>
-          <Button disabled={loading || !backendMode} onClick={() => void createUser()}>Create user</Button>
+          <Button disabled={loading || !backendMode} onClick={() => void createUser()}>{newUserRole === "client" ? "Continue to client setup" : "Create user"}</Button>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <TextField label="Full name" placeholder="e.g. Alex Smith" autoComplete="name" onChange={(event) => setNewUserName(event.target.value)} value={newUserName} />

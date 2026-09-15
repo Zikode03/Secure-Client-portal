@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { ClientOnboardingForm, type ClientOnboardingResult } from "../../components/clients/ClientOnboardingForm";
 import { Button } from "../../components/ui/Button";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
 import { PageHeader } from "../../components/ui/PageHeader";
@@ -56,6 +57,13 @@ function healthTone(value: number) {
 
 export function AdminClientsPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [showOnboarding, setShowOnboarding] = useState(searchParams.get("add") === "1");
+  const [onboarded, setOnboarded] = useState<ClientOnboardingResult | null>(null);
+  function closeOnboarding() {
+    setShowOnboarding(false);
+    if (searchParams.has("add")) { const next = new URLSearchParams(searchParams); next.delete("add"); setSearchParams(next, { replace: true }); }
+  }
   const backendMode = hasApiBaseUrl();
   const [clients, setClients] = useState<ClientRecord[]>([]);
   const [assignments, setAssignments] = useState<AssignmentRecord[]>([]);
@@ -164,10 +172,15 @@ export function AdminClientsPage() {
         title="Client management"
         eyebrow="Administration"
         description="Manage your clients, accountant ownership and compliance."
-        actions={<Button onClick={() => navigate("/firm/admin/assignments")}><UsersRound aria-hidden="true" className="h-4 w-4" />Manage assignments</Button>}
+        actions={<><Button variant="secondary" onClick={() => navigate("/firm/admin/assignments")}><UsersRound aria-hidden="true" className="h-4 w-4" />Manage assignments</Button><Button disabled={!backendMode || showOnboarding} onClick={() => { setOnboarded(null); setShowOnboarding(true); }}>Add client</Button></>}
       />
 
       {feedback ? <FeedbackBanner message={feedback.message} onDismiss={() => setFeedback(null)} title={feedback.title} tone={feedback.tone} /> : null}
+      {showOnboarding && <ClientOnboardingForm onCancel={closeOnboarding} onCreated={result => {
+        closeOnboarding(); setOnboarded(result); clearFilters();
+        void load().then(() => setFeedback({ tone: result.userCreated && result.invitationDelivery !== "smtp" ? "warning" : "success", title: "Client saved", message: result.message }));
+      }} />}
+      {onboarded && <div className="flex flex-wrap items-center gap-3"><span className="text-sm text-slate-600">Next: confirm {onboarded.clientName}'s registrations.</span><Button onClick={() => navigate(`/firm/compliance?clientId=${encodeURIComponent(onboarded.clientId)}&setup=1`)}>Set up compliance profile</Button><Button variant="secondary" onClick={() => navigate(`/firm/clients/${onboarded.clientId}/profile`)}>Open business profile</Button></div>}
 
       <section aria-label="Client register" className="space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3">

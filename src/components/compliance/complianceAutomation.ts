@@ -38,7 +38,7 @@ export interface ClientComplianceProfile {
   csdRegistered: boolean | null;
   csdSupplierNumber: string | null;
   financialYearEndMonth: number;
-  updatedAtUtc: string;
+  updatedAtUtc: string | null;
 }
 
 export interface ComplianceObligation {
@@ -84,6 +84,21 @@ export interface ComplianceAutomationRunResult {
   warnings: string[];
 }
 
+export interface ObligationEvidence {
+  id: string;
+  complianceItemId: string;
+  clientId: string;
+  versionNumber: number;
+  fileName: string;
+  uploadedAtUtc: string;
+  downloadUrl: string;
+}
+
+export interface ObligationEvidenceUpload {
+  obligation: ComplianceObligation;
+  evidence: ObligationEvidence;
+}
+
 export const complianceAutomationApi = {
   getRules: () => apiGetJson<ComplianceRuleSet>("/api/compliance/automation/rules"),
   updateRules: (value: { version: string; rules: ComplianceRuleDefinition[] }) =>
@@ -106,11 +121,13 @@ export const complianceAutomationApi = {
     apiPostJson<ComplianceObligation, typeof value>(`/api/compliance/automation/obligations/${encodeURIComponent(id)}/payment`, value),
   notApplicable: (id: string, reason: string) =>
     apiPostJson<ComplianceObligation, { reason: string }>(`/api/compliance/automation/obligations/${encodeURIComponent(id)}/not-applicable`, { reason }),
+  getEvidence: (id: string) =>
+    apiGetJson<ObligationEvidence[]>(`/api/compliance/automation/obligations/${encodeURIComponent(id)}/evidence`),
   uploadEvidence: (id: string, file: File, note: string) => {
     const form = new FormData();
     form.append("File", file);
     if (note.trim()) form.append("Note", note.trim());
-    return apiPostForm<unknown>(`/api/compliance/items/${encodeURIComponent(id)}/evidence`, form);
+    return apiPostForm<ObligationEvidenceUpload>(`/api/compliance/automation/obligations/${encodeURIComponent(id)}/evidence`, form);
   },
 };
 
@@ -121,7 +138,7 @@ export const complianceStatusLabel = (value: string) => value
 export const formatCompliancePeriod = (start: string, end: string) => {
   const startDate = new Date(start);
   const endDate = new Date(end);
-  const format = new Intl.DateTimeFormat("en-ZA", { month: "short", year: "numeric" });
+  const format = new Intl.DateTimeFormat("en", { month: "short", year: "numeric", timeZone: "UTC" });
   const a = format.format(startDate);
   const b = format.format(endDate);
   return a === b ? a : `${a} – ${b}`;
