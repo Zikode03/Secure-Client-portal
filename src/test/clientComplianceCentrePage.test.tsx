@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthProvider } from "../app/auth";
@@ -86,10 +86,10 @@ describe("ClientComplianceCentrePage", () => {
   it("renders the Phase 4 obligation register", async () => {
     renderPage();
     expect(screen.getByRole("heading", { name: "Compliance Centre" })).toBeInTheDocument();
-    expect(await screen.findByText("VAT201")).toBeInTheDocument();
-    expect(screen.getByText("SARS")).toBeInTheDocument();
-    expect(screen.getByText("Waiting For Client")).toBeInTheDocument();
-    expect(screen.getByText("2/3")).toBeInTheDocument();
+    const row = within(await screen.findByRole("row", { name: /VAT201/ }));
+    expect(row.getByText("SARS")).toBeInTheDocument();
+    expect(row.getByText("Waiting For Client")).toBeInTheDocument();
+    expect(row.getByText("2/3")).toBeInTheDocument();
   });
 
   it("does not expose accountant automation actions to clients", async () => {
@@ -102,9 +102,10 @@ describe("ClientComplianceCentrePage", () => {
   it("shows the obligation workflow details", async () => {
     renderPage();
     await screen.findByText("VAT201");
-    screen.getByRole("button", { name: "Open" }).click();
-    expect(screen.getByRole("heading", { name: /VAT201/ })).toBeInTheDocument();
-    expect(screen.getByText(/Missing: sales_invoices/)).toBeInTheDocument();
-    expect(screen.getByText(/Created automatically/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Open" }));
+    const drawer = within(screen.getByRole("complementary", { name: "VAT201 compliance obligation" }));
+    expect(drawer.getByRole("heading", { name: /VAT201/ })).toBeInTheDocument();
+    expect(drawer.getByText(/Missing: sales_invoices/)).toBeInTheDocument();
+    expect(drawer.getByText(/Created automatically/)).toBeInTheDocument();
   });
 });

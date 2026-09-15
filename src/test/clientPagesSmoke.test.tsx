@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { AuthProvider } from "../app/auth";
@@ -50,18 +50,16 @@ describe("client page smoke coverage", () => {
     expect(screen.getByRole("button", { name: "Upload document" })).toBeInTheDocument();
   });
 
-  it("opens and closes the document details drawer", async () => {
-    const { container } = renderClientPage(<ClientDocumentsPage />);
-
-    const resultButton = await waitFor(() => {
-      const firstResult = container.querySelector<HTMLButtonElement>("div.divide-y.divide-slate-100 > button");
-      expect(firstResult).toBeDefined();
-      return firstResult!;
-    });
-
-    fireEvent.click(resultButton);
+  it.each([
+    ["invoice", "INV-2041", "ApexTrading_Invoice_April_2026.pdf"],
+    ["document", "ApexTrading_SignedDocuments_April_2026.pdf", "ApexTrading_SignedDocuments_April_2026.pdf"],
+  ])("opens and closes details for a local %s row", async (_kind, title, fileName) => {
+    renderClientPage(<ClientDocumentsPage />);
+    fireEvent.change(screen.getByRole("textbox", { name: "Search documents" }), { target: { value: title } });
+    fireEvent.click(await screen.findByRole("button", { name: new RegExp(title.replace(/\./g, "\\.")) }));
     expect(screen.getByRole("button", { name: "Close document workspace" })).toBeInTheDocument();
-    expect(screen.getByText("Version history")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: fileName })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Versions" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Close document workspace" }));
     expect(screen.queryByRole("button", { name: "Close document workspace" })).not.toBeInTheDocument();

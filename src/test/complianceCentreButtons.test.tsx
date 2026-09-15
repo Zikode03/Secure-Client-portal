@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AccountantComplianceCentrePage } from "../pages/accountant/AccountantComplianceCentrePage";
@@ -53,6 +53,7 @@ beforeEach(() => {
     if (path === "/api/compliance/automation/obligations") return [obligation];
     if (path === "/api/compliance/automation/rules") return { version: "starter-2026.1", rules: [], updatedAtUtc: "2026-09-14T00:00:00Z" };
     if (path === "/api/clients") return [{ id: "client-1", name: "Acme" }];
+    if (path === "/api/compliance/automation/obligations/obligation-1/evidence") return [];
     if (path === "/api/compliance/automation/profiles/client-1") return {
       clientId: "client-1",
       vatRegistered: true,
@@ -94,9 +95,9 @@ describe("Phase 4 compliance centre", () => {
   it.each(["admin", "accountant"])("shows the obligation workflow for %s", async role => {
     vi.mocked(useAuth).mockReturnValue({ user: { id: "staff", role, fullName: "Staff User" } } as ReturnType<typeof useAuth>);
     renderPage();
-    expect(await screen.findByText("VAT201")).toBeInTheDocument();
-    expect(screen.getByText("Acme")).toBeInTheDocument();
-    expect(screen.getByText("Ready To File")).toBeInTheDocument();
+    const row = within(await screen.findByRole("row", { name: /VAT201/ }));
+    expect(row.getByText("Acme")).toBeInTheDocument();
+    expect(row.getByText("Ready To File")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Run automation" })).toBeInTheDocument();
   });
 
@@ -122,10 +123,26 @@ describe("Phase 4 compliance centre", () => {
     fireEvent.click(screen.getByRole("button", { name: "Open" }));
     fireEvent.change(screen.getByLabelText("Submission reference"), { target: { value: "SARS-123" } });
     fireEvent.click(screen.getByRole("button", { name: "Record submission" }));
-    expect(await screen.findByText("Submission recorded")).toBeInTheDocument();
+    expect(await screen.findByRole("status")).toHaveTextContent("Submission recorded");
+    const drawer = within(screen.getByRole("complementary", { name: "VAT201 compliance obligation" }));
+    expect(drawer.getByText("Submission recorded")).toBeInTheDocument();
+    expect(drawer.getByText(/SARS-123/)).toBeInTheDocument();
+    expect(drawer.queryByRole("button", { name: "Record submission" })).not.toBeInTheDocument();
     expect(apiPostJson).toHaveBeenCalledWith(
       "/api/compliance/automation/obligations/obligation-1/submission",
       expect.objectContaining({ submissionReference: "SARS-123" }),
     );
+  });
+
+  it("opens saved evidence from the obligation row and closes the workspace", async () => {
+    renderPage();
+    const row = within(await screen.findByRole("row", { name: /VAT201/ }));
+    fireEvent.click(row.getByRole("button", { name: "Open" }));
+    const drawer = within(screen.getByRole("complementary", { name: "VAT201 compliance obligation" }));
+    fireEvent.click(drawer.getByRole("button", { name: "View saved evidence" }));
+    expect(await drawer.findByText("No evidence has been uploaded for this obligation.")).toBeInTheDocument();
+    expect(apiGetJson).toHaveBeenCalledWith("/api/compliance/automation/obligations/obligation-1/evidence");
+    fireEvent.click(drawer.getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("complementary", { name: "VAT201 compliance obligation" })).not.toBeInTheDocument();
   });
 });

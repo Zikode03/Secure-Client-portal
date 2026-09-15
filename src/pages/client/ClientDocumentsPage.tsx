@@ -12,6 +12,7 @@ import { PageHeader } from "../../components/ui/PageHeader";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
 import { useDisclosure } from "../../hooks/useDisclosure";
 import { ApiError, apiGetBlob, apiGetJson, apiPostForm, hasApiBaseUrl } from "../../services/apiClient";
+import { buildReviewDocumentFromInvoice } from "../../services/workflowEngine";
 import {
   buildSlotUploadForm,
   formatSizeLabel,
@@ -255,7 +256,11 @@ export function ClientDocumentsPage() {
   const pageStartIndex = (currentPage - 1) * pageSize;
   const visibleResults = sortedResults.slice(pageStartIndex, pageStartIndex + pageSize);
   const selectedResult = sortedResults.find((result) => result.id === selectedResultId) ?? null;
-  const selectedDocument = documents.find((document) => document.id === selectedResult?.id) ?? null;
+  const selectedInvoice = !backendMode && selectedResult?.resultType === "invoice"
+    ? portal.clientWorkflow.invoices.find((invoice) => invoice.id === selectedResult.id)
+    : undefined;
+  const selectedDocument = documents.find((document) => document.id === selectedResult?.id)
+    ?? (selectedInvoice ? buildReviewDocumentFromInvoice(selectedInvoice) : null);
 
   const monthOptions = useMemo(() => [...new Set(searchableResults.map((result) => result.monthLabel))].sort((a, b) => b.localeCompare(a)), [searchableResults]);
   const statusOptions = useMemo(() => [...new Set(searchableResults.map((result) => formatStatusLabel(result.status)))].sort(), [searchableResults]);

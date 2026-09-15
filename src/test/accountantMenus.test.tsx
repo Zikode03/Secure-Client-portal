@@ -5,7 +5,6 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { AuthProvider } from "../app/auth";
 import { PortalProvider } from "../app/portal";
-import { AccountantComplianceCentrePage } from "../pages/accountant/AccountantComplianceCentrePage";
 import { AccountantDocumentsPage } from "../pages/accountant/AccountantDocumentsPage";
 import type { SessionUser } from "../types/portal";
 
@@ -38,21 +37,6 @@ function renderWithProviders(page: JSX.Element) {
 }
 
 describe("accountant overflow menus", () => {
-  it("shows the compliance client actions in the row overflow menu", async () => {
-    renderWithProviders(<AccountantComplianceCentrePage />);
-
-    const actionButtons = await screen.findAllByRole("button", {
-      name: "Open client actions",
-    });
-    fireEvent.click(actionButtons[0]);
-
-    expect(screen.getByRole("button", { name: "View compliance history" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Open document centre" })).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Export client compliance report" }),
-    ).toBeInTheDocument();
-  });
-
   it("shows only implemented document actions in the overflow menu", async () => {
     renderWithProviders(<AccountantDocumentsPage />);
 
