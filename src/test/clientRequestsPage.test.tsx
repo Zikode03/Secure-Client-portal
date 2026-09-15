@@ -91,6 +91,7 @@ function renderPage(
     requestPasswordReset: vi.fn(),
     authNotice: null,
     clearAuthNotice: vi.fn(),
+    updateProfile: vi.fn(),
     logout: vi.fn(),
   });
 

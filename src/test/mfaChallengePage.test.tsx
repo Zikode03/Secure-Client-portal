@@ -8,7 +8,7 @@ const verify = vi.fn(), finish = vi.fn(), cancel = vi.fn();
 function setup(setupKey: string | null = null) {
   vi.mocked(useAuth).mockReturnValue({
     ready: true, user: null, authNotice: null, clearAuthNotice: vi.fn(),
-    login: vi.fn(), completeInvite: vi.fn(), requestPasswordReset: vi.fn(), changePassword: vi.fn(), logout: vi.fn(),
+    login: vi.fn(), completeInvite: vi.fn(), requestPasswordReset: vi.fn(), changePassword: vi.fn(), updateProfile: vi.fn(), logout: vi.fn(),
     pendingMfa: {mfaRequired: true, challengeToken: "challenge", setupKey},
     verifyMfa: verify, finishMfa: finish, cancelMfa: cancel,
   });

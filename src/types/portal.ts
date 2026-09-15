@@ -81,6 +81,7 @@ export type NotificationKind =
   | "expiring_documents";
 
 export interface SessionUser {
+  phone?: string;
   id: string;
   name: string;
   fullName: string;

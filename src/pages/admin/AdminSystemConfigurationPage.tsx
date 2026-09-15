@@ -1,255 +1,202 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { Bell, Building2, CalendarDays, Check, ChevronRight, FileText, GitBranch, Mail, Plus, Save, Trash2 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Button } from "../../components/ui/Button";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
-import { PageSection } from "../../components/ui/PageSection";
+import { SelectField } from "../../components/ui/SelectField";
+import { TextAreaField } from "../../components/ui/TextAreaField";
 import { TextField } from "../../components/ui/TextField";
-import { ApiError, apiGetJson, apiPostJson, apiPutJson, hasApiBaseUrl } from "../../services/apiClient";
+import { SmtpVerificationPanel } from "../../components/auth/SmtpVerificationPanel";
+import { ApiError, apiGetJson, apiPutJson, hasApiBaseUrl } from "../../services/apiClient";
 import type { Tone } from "../../types/portal";
+import { AdminFirmProfilePanel } from "./AdminFirmProfilePanel";
+import "./systemSettings.css";
 
-type Section = "requests" | "reminders" | "deadlines" | "escalations";
-
-interface RequestTemplate {
-  id: string;
-  name: string;
-  requestType: string;
-  titleTemplate: string;
-  descriptionTemplate: string;
-  priority: string;
-  defaultDueInDays: number | null;
-}
-
-interface ReminderRule {
-  id: string;
-  name: string;
-  triggerType: string;
-  daysBeforeDue: number;
-  audienceRole: string;
-  messageTemplate: string;
-  isEnabled: boolean;
-}
-
-interface DeadlineRule {
-  id: string;
-  name: string;
-  scope: string;
-  dueDayOfMonth: number;
-  graceDays: number;
-  priority: string;
-  isEnabled: boolean;
-}
-
-interface EscalationRule {
-  id: string;
-  name: string;
-  triggerType: string;
-  daysAfterDue: number;
-  escalateToRole: string;
-  action: string;
-  isEnabled: boolean;
-}
-
-interface FeedbackNotice {
-  tone: Tone;
-  title: string;
-  message: string;
-}
-
-const sectionLabels: Array<{ key: Section; label: string; description: string }> = [
-  { key: "requests", label: "Request templates", description: "Standardise common client follow-up requests and due dates." },
-  { key: "reminders", label: "Reminder rules", description: "Control automated reminders before deadlines." },
-  { key: "deadlines", label: "Deadline rules", description: "Set due days, grace periods, and priority rules." },
-  { key: "escalations", label: "Escalation rules", description: "Define what happens when deadlines are missed." },
-];
-
-const endpoints: Record<Section, string> = {
-  requests: "/api/admin/firm-management/templates/requests",
-  reminders: "/api/admin/firm-management/rules/reminders",
-  deadlines: "/api/admin/firm-management/rules/deadlines",
-  escalations: "/api/admin/firm-management/rules/escalations",
+type RuleSection = "requests" | "reminders" | "deadlines" | "escalations";
+type Section = "profile" | RuleSection | "email";
+interface BaseRecord { id: string; name: string }
+interface RequestTemplate extends BaseRecord { requestType: string; titleTemplate: string; descriptionTemplate: string; priority: string; defaultDueInDays: number | null }
+interface ReminderRule extends BaseRecord { triggerType: string; daysBeforeDue: number; audienceRole: string; messageTemplate: string; isEnabled: boolean }
+interface DeadlineRule extends BaseRecord { scope: string; dueDayOfMonth: number; graceDays: number; priority: string; isEnabled: boolean }
+interface EscalationRule extends BaseRecord { triggerType: string; daysAfterDue: number; escalateToRole: string; action: string; isEnabled: boolean }
+interface Configuration { requests: RequestTemplate[]; reminders: ReminderRule[]; deadlines: DeadlineRule[]; escalations: EscalationRule[] }
+interface FeedbackNotice { tone: Tone; title: string; message: string }
+const emptyConfiguration: Configuration = { requests: [], reminders: [], deadlines: [], escalations: [] };
+const sections = [
+  { key: "profile", label: "Firm profile", icon: Building2 },
+  { key: "requests", label: "Request templates", icon: FileText },
+  { key: "reminders", label: "Reminder rules", icon: Bell },
+  { key: "deadlines", label: "Deadline rules", icon: CalendarDays },
+  { key: "escalations", label: "Escalation rules", icon: GitBranch },
+  { key: "email", label: "Email delivery", icon: Mail },
+] as const;
+const descriptions: Record<RuleSection, string> = {
+  requests: "Reusable messages for requesting documents, corrections, and signatures from clients.",
+  reminders: "Choose who receives a reminder and how many days before a deadline it is sent.",
+  deadlines: "Set monthly due dates and record the grace period for each type of work.",
+  escalations: "Route overdue client or accountant actions to the person who should follow up.",
 };
+const endpoints: Record<RuleSection, string> = {
+  requests: "/api/admin/firm-management/templates/requests", reminders: "/api/admin/firm-management/rules/reminders",
+  deadlines: "/api/admin/firm-management/rules/deadlines", escalations: "/api/admin/firm-management/rules/escalations",
+};
+const priorityOptions = ["low", "medium", "high", "urgent", "critical"].map(value => ({ value, label: value[0].toUpperCase() + value.slice(1) }));
+const roleOptions = [{ value: "client", label: "Client" }, { value: "accountant", label: "Accountant" }, { value: "admin", label: "Administrator" }];
+const requestOptions = [{ value: "missing_document", label: "Missing document" }, { value: "reupload_required", label: "Document correction / re-upload" }, { value: "signature_required", label: "Signature required" }];
+const scopeOptions = [{ value: "monthly_pack", label: "Monthly packs" }, { value: "compliance_item", label: "Compliance items" }];
+const triggerOptions = [{ value: "overdue_client_action", label: "Waiting for a client action" }, { value: "overdue_accountant_action", label: "Waiting for an accountant action" }];
+const actionOptions = [{ value: "notify", label: "Send a notification" }, { value: "notify_admin", label: "Notify administrator" }, { value: "create_request", label: "Request follow-up (notification only)" }];
 
-function newId() {
-  return typeof crypto !== "undefined" && "randomUUID" in crypto
-    ? crypto.randomUUID()
-    : `00000000-0000-4000-8000-${Date.now().toString().padStart(12, "0").slice(-12)}`;
+function Choice({ label, value, options, onChange, hint }: { label: string; value: string; options: { value: string; label: string }[]; onChange: (value: string) => void; hint?: string }) {
+  const choices = options.some(option => option.value === value) ? options : [...options, { value, label: `${value.split("_").join(" ")} (existing value)` }];
+  return <SelectField label={label} value={value} options={choices} hint={hint} onChange={event => onChange(event.target.value)} />;
 }
-
-function NumberField({ label, value, onChange, nullable = false }: { label: string; value: number | null; onChange: (value: number | null) => void; nullable?: boolean }) {
-  return (
-    <TextField
-      label={label}
-      min={0}
-      onChange={(event) => {
-        if (nullable && event.target.value === "") {
-          onChange(null);
-          return;
-        }
-        onChange(Number(event.target.value));
-      }}
-      type="number"
-      value={value ?? ""}
-    />
-  );
+function NumberField({ label, value, onChange, min = 0, max, hint, nullable = false }: { label: string; value: number | null; onChange: (value: number | null) => void; min?: number; max?: number; hint?: string; nullable?: boolean }) {
+  return <TextField label={label} type="number" min={min} max={max} step={1} required={!nullable} value={value === null || Number.isNaN(value) ? "" : value} hint={hint} onChange={event => onChange(event.target.value === "" ? null : Number(event.target.value))} />;
 }
-
-function Toggle({ checked, label, onChange }: { checked: boolean; label: string; onChange: (checked: boolean) => void }) {
-  return (
-    <label className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700">
-      <input checked={checked} onChange={(event) => onChange(event.target.checked)} type="checkbox" />
-      {label}
-    </label>
-  );
+function Toggle({ checked, onChange }: { checked: boolean; onChange: (checked: boolean) => void }) {
+  return <button type="button" className="settings-toggle" role="switch" aria-label="Rule enabled" aria-checked={checked} onClick={() => onChange(!checked)}><span className="settings-switch-track"><span /></span>{checked ? "Enabled" : "Paused"}</button>;
 }
+function dayLabel(value: number) { return Number.isFinite(value) ? `${value} ${value === 1 ? "day" : "days"}` : "… days"; }
+function labelFor(options: { value: string; label: string }[], value: string) { return options.find(option => option.value === value)?.label ?? value.split("_").join(" "); }
+function exampleMessage(value: string) { return value.split("{{documentName}}").join("September bank statement").split("{{reason}}").join("The last page is missing. Please upload the complete statement."); }
 
 export function AdminSystemConfigurationPage() {
   const backendMode = hasApiBaseUrl();
-  const [activeSection, setActiveSection] = useState<Section>("requests");
-  const [requests, setRequests] = useState<RequestTemplate[]>([]);
-  const [reminders, setReminders] = useState<ReminderRule[]>([]);
-  const [deadlines, setDeadlines] = useState<DeadlineRule[]>([]);
-  const [escalations, setEscalations] = useState<EscalationRule[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [activeSection, setActiveSection] = useState<Section>("profile");
+  const [draft, setDraft] = useState<Configuration>(emptyConfiguration);
+  const [saved, setSaved] = useState<Configuration>(emptyConfiguration);
+  const [selectedIds, setSelectedIds] = useState<Partial<Record<RuleSection, string>>>({});
+  const [loading, setLoading] = useState(backendMode);
+  const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackNotice | null>(null);
-
-  async function loadAll() {
-    if (!backendMode) {
-      setFeedback({ tone: "warning", title: "Backend required", message: "System configuration is a live administration function and requires the backend API." });
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const [requestRows, reminderRows, deadlineRows, escalationRows] = await Promise.all([
-        apiGetJson<RequestTemplate[]>(endpoints.requests),
-        apiGetJson<ReminderRule[]>(endpoints.reminders),
-        apiGetJson<DeadlineRule[]>(endpoints.deadlines),
-        apiGetJson<EscalationRule[]>(endpoints.escalations),
-      ]);
-      setRequests(requestRows);
-      setReminders(reminderRows);
-      setDeadlines(deadlineRows);
-      setEscalations(escalationRows);
-      setFeedback(null);
-    } catch (error) {
-      setFeedback({ tone: "danger", title: "Configuration could not be loaded", message: error instanceof ApiError ? error.message : "The firm configuration could not be loaded." });
-    } finally {
-      setLoading(false);
-    }
-  }
-
+  const [query, setQuery] = useState("");
+  const [profileDirty, setProfileDirty] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   useEffect(() => {
-    void loadAll();
-  }, [backendMode]);
-
-  const sectionCount = useMemo<Record<Section, number>>(() => ({
-    requests: requests.length,
-    reminders: reminders.length,
-    deadlines: deadlines.length,
-    escalations: escalations.length,
-  }), [deadlines.length, escalations.length, reminders.length, requests.length]);
-
-  async function saveSection() {
-    setSaving(true);
-    try {
-      const payload = activeSection === "requests" ? requests
-        : activeSection === "reminders" ? reminders
-          : activeSection === "deadlines" ? deadlines
-            : escalations;
-      await apiPutJson<unknown, typeof payload>(endpoints[activeSection], payload);
-      setFeedback({ tone: "success", title: "Configuration saved", message: `${sectionLabels.find((item) => item.key === activeSection)?.label ?? "Configuration"} has been saved to the backend.` });
-      await loadAll();
-    } catch (error) {
-      setFeedback({ tone: "danger", title: "Configuration could not be saved", message: error instanceof ApiError ? error.message : "The configuration update failed." });
-    } finally {
-      setSaving(false);
+    if (!backendMode) { setFeedback({ tone: "warning", title: "Settings unavailable", message: "Connect to the portal service to load and update firm settings." }); return; }
+    let cancelled = false;
+    setLoading(true);
+    void Promise.all([apiGetJson<RequestTemplate[]>(endpoints.requests), apiGetJson<ReminderRule[]>(endpoints.reminders), apiGetJson<DeadlineRule[]>(endpoints.deadlines), apiGetJson<EscalationRule[]>(endpoints.escalations)])
+      .then(([requests, reminders, deadlines, escalations]) => {
+        if (cancelled) return;
+        const result = { requests, reminders, deadlines, escalations };
+        setDraft(result); setSaved(result); setLoaded(true); setFeedback(null);
+      }).catch(error => {
+        if (!cancelled) setFeedback({ tone: "danger", title: "Settings could not be loaded", message: error instanceof ApiError ? error.message : "Please try loading the settings again." });
+      }).finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [backendMode, loadAttempt]);
+  const dirty = (section: RuleSection) => JSON.stringify(draft[section]) !== JSON.stringify(saved[section]);
+  const anyDirty = (Object.keys(endpoints) as RuleSection[]).some(dirty);
+  useEffect(() => {
+    if (!anyDirty) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [anyDirty]);
+  function update<K extends RuleSection>(section: K, id: string, patch: Partial<Configuration[K][number]>) {
+    setDraft(current => ({ ...current, [section]: current[section].map(row => row.id === id ? { ...row, ...patch } : row) }));
+  }
+  function add(section: RuleSection) {
+    const id = crypto.randomUUID();
+    const defaults = {
+      requests: { id, name: "New request template", requestType: "missing_document", titleTemplate: "Missing document: {{documentName}}", descriptionTemplate: "Please upload the complete document so we can continue your review.", priority: "medium", defaultDueInDays: 3 },
+      reminders: { id, name: "New reminder", triggerType: "deadline_approaching", daysBeforeDue: 3, audienceRole: "client", messageTemplate: "Please review your upcoming deadline and complete any outstanding items.", isEnabled: true },
+      deadlines: { id, name: "New deadline", scope: "monthly_pack", dueDayOfMonth: 5, graceDays: 0, priority: "medium", isEnabled: false },
+      escalations: { id, name: "New escalation", triggerType: "overdue_client_action", daysAfterDue: 2, escalateToRole: "accountant", action: "notify", isEnabled: true },
+    };
+    setDraft(current => ({ ...current, [section]: [...current[section], defaults[section]] }));
+    setSelectedIds(current => ({ ...current, [section]: id })); setQuery(""); setFeedback(null);
+  }
+  async function saveSection(section: RuleSection) {
+    // All records in this section are saved, including records not currently selected.
+    const payload = draft[section];
+    const invalid = payload.find(row => !row.name.trim() ||
+      ("titleTemplate" in row && (!row.titleTemplate.trim() || !row.descriptionTemplate.trim() || (row.defaultDueInDays !== null && (!Number.isInteger(row.defaultDueInDays) || row.defaultDueInDays < 0)))) ||
+      ("daysBeforeDue" in row && (!row.messageTemplate.trim() || !Number.isInteger(row.daysBeforeDue) || row.daysBeforeDue < 0)) ||
+      ("dueDayOfMonth" in row && (!Number.isInteger(row.dueDayOfMonth) || row.dueDayOfMonth < 1 || row.dueDayOfMonth > 31 || !Number.isInteger(row.graceDays) || row.graceDays < 0)) ||
+      ("daysAfterDue" in row && (!Number.isInteger(row.daysAfterDue) || row.daysAfterDue < 0)));
+    if (invalid) {
+      setSelectedIds(current => ({ ...current, [section]: invalid.id })); setQuery("");
+      setFeedback({ tone: "warning", title: "Check the selected item", message: "Complete the name and message fields, use whole numbers of days, and choose a monthly due day from 1 to 31." }); return;
     }
-  }
-
-  async function seedDefaults() {
-    setSaving(true);
+    setSaving(true); setFeedback(null);
     try {
-      await apiPostJson<{ seeded: boolean }, Record<string, never>>("/api/admin/firm-management/seed-defaults", {});
-      setFeedback({ tone: "success", title: "Defaults seeded", message: "Default firm templates and rules have been created where required." });
-      await loadAll();
+      await apiPutJson<unknown, typeof payload>(endpoints[section], payload);
+      setSaved(current => ({ ...current, [section]: payload }));
+      setFeedback({ tone: "success", title: "Changes saved", message: `${sections.find(item => item.key === section)?.label} have been saved. Drafts in other sections are kept.` });
     } catch (error) {
-      setFeedback({ tone: "danger", title: "Defaults could not be seeded", message: error instanceof ApiError ? error.message : "The default configuration could not be created." });
-    } finally {
-      setSaving(false);
+      setFeedback({ tone: "danger", title: "Changes could not be saved", message: error instanceof ApiError ? error.message : "Your draft is still here. Please try again." });
+    } finally { setSaving(false); }
+  }
+  function remove(section: RuleSection, id: string) { setDraft(current => ({ ...current, [section]: current[section].filter(row => row.id !== id) })); }
+  function summary(section: RuleSection, id: string) {
+    if (section === "requests") { const row = draft.requests.find(item => item.id === id)!; return `${labelFor(requestOptions, row.requestType)} · ${row.defaultDueInDays === null ? "No default due date" : `${dayLabel(row.defaultDueInDays)} to respond`}`; }
+    if (section === "reminders") { const row = draft.reminders.find(item => item.id === id)!; return `${row.daysBeforeDue === 0 ? "On the due date" : `${dayLabel(row.daysBeforeDue)} before due`} · ${labelFor(roleOptions, row.audienceRole)}`; }
+    if (section === "deadlines") { const row = draft.deadlines.find(item => item.id === id)!; return `${labelFor(scopeOptions, row.scope)} · Day ${Number.isFinite(row.dueDayOfMonth) ? row.dueDayOfMonth : "…"}`; }
+    const row = draft.escalations.find(item => item.id === id)!; return `${dayLabel(row.daysAfterDue)} overdue · ${labelFor(roleOptions, row.escalateToRole)}`;
+  }
+  function renderEditor(section: RuleSection, id: string) {
+    if (section === "requests") {
+      const row = draft.requests.find(item => item.id === id)!;
+      const change = (patch: Partial<RequestTemplate>) => update("requests", id, patch);
+      return <>
+        <div className="settings-fields"><TextField required maxLength={160} label="Template name" hint="An internal name your team can recognise." value={row.name} onChange={event => change({ name: event.target.value })} /><Choice label="What do you need?" value={row.requestType} options={requestOptions} onChange={requestType => change({ requestType })} /></div>
+        <div className="settings-form-group"><h3>Client message</h3><TextField required maxLength={300} label="Request subject" value={row.titleTemplate} onChange={event => change({ titleTemplate: event.target.value })} /><TextAreaField required maxLength={2000} label="Instructions for the client" value={row.descriptionTemplate} onChange={event => change({ descriptionTemplate: event.target.value })} /><p className="settings-help">Use <code>{"{{documentName}}"}</code> for the document name and <code>{"{{reason}}"}</code> for the reason supplied with the request.</p></div>
+        <div className="settings-fields"><Choice label="Priority" value={row.priority} options={priorityOptions} onChange={priority => change({ priority })} /><NumberField label="Response due in days" nullable value={row.defaultDueInDays} hint="Calendar days from the request. Leave blank for no default." onChange={defaultDueInDays => change({ defaultDueInDays })} /></div>
+        <aside className="settings-preview"><span className="settings-eyebrow">Example client message</span><h3>{exampleMessage(row.titleTemplate) || "Your request subject"}</h3><p className="settings-message">{exampleMessage(row.descriptionTemplate) || "Your instructions will appear here."}</p><small>Sample document: September bank statement. Nothing is sent from this editor.</small></aside>
+      </>;
     }
+    if (section === "reminders") {
+      const row = draft.reminders.find(item => item.id === id)!;
+      const change = (patch: Partial<ReminderRule>) => update("reminders", id, patch);
+      return <>
+        <TextField required maxLength={160} label="Rule name" value={row.name} onChange={event => change({ name: event.target.value })} />
+        <div className="settings-fields"><Choice label="When should this run?" value={row.triggerType} options={[{ value: "deadline_approaching", label: "A deadline is approaching" }]} onChange={triggerType => change({ triggerType })} /><Choice label="Who receives it?" value={row.audienceRole} options={roleOptions} onChange={audienceRole => change({ audienceRole })} /><NumberField label="Days before the deadline" value={row.daysBeforeDue} hint="Use 0 for a reminder on the due date." onChange={value => change({ daysBeforeDue: value ?? NaN })} /></div>
+        <TextAreaField required maxLength={1000} label="Reminder message" hint="Saved message wording. Current automated reminders use a standard message with the item and its due date." value={row.messageTemplate} onChange={event => change({ messageTemplate: event.target.value })} />
+        <aside className="settings-preview"><span className="settings-eyebrow">Rule summary</span><h3>Remind the {labelFor(roleOptions, row.audienceRole).toLowerCase()} {row.daysBeforeDue === 0 ? "on the due date" : `${dayLabel(row.daysBeforeDue)} before the deadline`}.</h3><p>Applies to open monthly packs and dated compliance items. Add separate rules for additional reminder days.</p></aside>
+      </>;
+    }
+    if (section === "deadlines") {
+      const row = draft.deadlines.find(item => item.id === id)!;
+      const change = (patch: Partial<DeadlineRule>) => update("deadlines", id, patch);
+      return <>
+        <TextField required maxLength={160} label="Rule name" value={row.name} onChange={event => change({ name: event.target.value })} />
+        <div className="settings-fields"><Choice label="Applies to" value={row.scope} options={scopeOptions} onChange={scope => change({ scope })} /><Choice label="Priority" value={row.priority} options={priorityOptions} onChange={priority => change({ priority })} /><NumberField label="Due day of the month" min={1} max={31} value={row.dueDayOfMonth} hint="Choose a day from 1 to 31." onChange={value => change({ dueDayOfMonth: value ?? NaN })} /><NumberField label="Grace period in days" value={row.graceDays} hint="Recorded allowance after the due date; this does not shift reminder dates." onChange={value => change({ graceDays: value ?? NaN })} /></div>
+        <aside className="settings-preview"><span className="settings-eyebrow">Rule summary</span><h3>{labelFor(scopeOptions, row.scope)} · due on day {Number.isFinite(row.dueDayOfMonth) ? row.dueDayOfMonth : "…"} each month.</h3><p>{row.graceDays ? `${dayLabel(row.graceDays)} of grace recorded.` : "No grace period recorded."} Priority: {labelFor(priorityOptions, row.priority).toLowerCase()}.</p><small>{row.scope === "monthly_pack" ? "For shorter months, the last available day is used. If several monthly pack rules are enabled, the earliest due day takes precedence." : "Compliance reminders follow the due or expiry date on each item. This saved rule does not replace those dates."}</small></aside>
+      </>;
+    }
+    const row = draft.escalations.find(item => item.id === id)!;
+    const change = (patch: Partial<EscalationRule>) => update("escalations", id, patch);
+    return <>
+      <TextField required maxLength={160} label="Rule name" value={row.name} onChange={event => change({ name: event.target.value })} />
+      <div className="settings-fields"><Choice label="What is overdue?" value={row.triggerType} options={triggerOptions} onChange={triggerType => change({ triggerType })} /><NumberField label="Days after the due date" value={row.daysAfterDue} hint="Calendar days overdue before escalation is eligible." onChange={value => change({ daysAfterDue: value ?? NaN })} /><Choice label="Escalate to" value={row.escalateToRole} options={roleOptions.filter(role => role.value !== "client")} onChange={escalateToRole => change({ escalateToRole })} /><Choice label="Follow-up action" value={row.action} options={actionOptions} onChange={action => change({ action })} /></div>
+      <aside className="settings-preview"><span className="settings-eyebrow">Escalation path</span><div className="settings-rule-path"><span>{labelFor(triggerOptions, row.triggerType)}</span><ChevronRight size={16} aria-hidden="true" /><span>{dayLabel(row.daysAfterDue)} overdue</span><ChevronRight size={16} aria-hidden="true" /><span>{labelFor(roleOptions, row.escalateToRole)}</span></div><p>Escalation currently sends a notification to the selected role. The follow-up action is recorded; it does not create a new request automatically.</p></aside>
+    </>;
   }
-
-  function removeAt<T>(rows: T[], setRows: (rows: T[]) => void, index: number) {
-    setRows(rows.filter((_, rowIndex) => rowIndex !== index));
-  }
-
-  return (
-    <div className="space-y-6">
-      <header className="portal-page-header flex flex-col gap-5 border-b border-slate-200 pb-6 lg:flex-row lg:items-center lg:justify-between">
-        <div className="min-w-0 space-y-2">
-          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Administration / Settings</p>
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-950 sm:text-3xl">System configuration</h1>
-          <p className="max-w-2xl text-sm leading-6 text-slate-500">Configure firm-wide request templates and automation rules.</p>
-        </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-3" role="group" aria-label="Configuration actions">
-          <Button className="border border-slate-300" disabled={loading || saving || !backendMode} onClick={() => void seedDefaults()} variant="ghost">Seed defaults</Button>
-          <button
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#061b41] bg-[#061b41] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[#09275c] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 disabled:cursor-not-allowed disabled:opacity-60"
-            disabled={loading || saving || !backendMode}
-            onClick={() => void saveSection()}
-            title="Save changes to the selected section"
-            type="button"
-          >
-            <svg aria-hidden="true" className="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h12l4 4v12a2 2 0 0 1-2 2Z" /><path d="M17 21v-8H7v8M7 3v5h9" /></svg>
-            {saving ? "Saving…" : "Save changes"}
-          </button>
-        </div>
-      </header>
-
-      {feedback ? <FeedbackBanner message={feedback.message} onDismiss={() => setFeedback(null)} title={feedback.title} tone={feedback.tone} /> : null}
-
-      <div className="space-y-5">
-        <div aria-label="Configuration sections" className="grid grid-cols-2 gap-3 md:grid-cols-4" role="group">
-          {sectionLabels.map((section) => (
-            <button
-              aria-controls="configuration-section-editor"
-              aria-pressed={activeSection === section.key}
-              className={`flex min-h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-xl border px-3 py-3 text-sm font-semibold leading-5 shadow-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 ${activeSection === section.key ? "border-brand-700 bg-brand-700 text-white hover:bg-brand-800" : "border-slate-300 bg-white text-slate-700 hover:border-brand-400 hover:bg-brand-50"}`}
-              key={section.key}
-              onClick={() => setActiveSection(section.key)}
-              type="button"
-            >
-              <span>{section.label}</span>
-              <span className={`inline-flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full px-1.5 text-xs tabular-nums ${activeSection === section.key ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"}`}>{sectionCount[section.key]}</span>
-            </button>
-          ))}
-        </div>
-
-        <PageSection className="space-y-5" id="configuration-section-editor">
-          <div>
-            <h2 className="portal-section-title text-slate-950">{sectionLabels.find((item) => item.key === activeSection)?.label}</h2>
-            <p className="mt-1 text-sm text-slate-500">{sectionLabels.find((item) => item.key === activeSection)?.description}</p>
-            <p className="mt-1 text-sm text-slate-500">Changes only take effect after you save the current section.</p>
-          </div>
-
-
-          {activeSection === "requests" ? (
-            <div className="space-y-4">{requests.map((item, index) => <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4" key={item.id}><div className="grid gap-4 md:grid-cols-2"><TextField label="Name" value={item.name} onChange={(e) => setRequests(requests.map((row, i) => i === index ? { ...row, name: e.target.value } : row))} /><TextField label="Request type" value={item.requestType} onChange={(e) => setRequests(requests.map((row, i) => i === index ? { ...row, requestType: e.target.value } : row))} /><TextField label="Title template" value={item.titleTemplate} onChange={(e) => setRequests(requests.map((row, i) => i === index ? { ...row, titleTemplate: e.target.value } : row))} /><TextField label="Description template" value={item.descriptionTemplate} onChange={(e) => setRequests(requests.map((row, i) => i === index ? { ...row, descriptionTemplate: e.target.value } : row))} /><TextField label="Priority" value={item.priority} onChange={(e) => setRequests(requests.map((row, i) => i === index ? { ...row, priority: e.target.value } : row))} /><NumberField label="Default due in days" nullable value={item.defaultDueInDays} onChange={(value) => setRequests(requests.map((row, i) => i === index ? { ...row, defaultDueInDays: value } : row))} /></div><div className="flex justify-end"><Button onClick={() => removeAt(requests, setRequests, index)} variant="danger">Remove</Button></div></div>)}<Button onClick={() => setRequests([...requests, { id: newId(), name: "", requestType: "document", titleTemplate: "", descriptionTemplate: "", priority: "normal", defaultDueInDays: 3 }])} variant="secondary">Add request template</Button></div>
-          ) : null}
-
-          {activeSection === "reminders" ? (
-            <div className="space-y-4">{reminders.map((item, index) => <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4" key={item.id}><div className="grid gap-4 md:grid-cols-2"><TextField label="Name" value={item.name} onChange={(e) => setReminders(reminders.map((row, i) => i === index ? { ...row, name: e.target.value } : row))} /><TextField label="Trigger type" value={item.triggerType} onChange={(e) => setReminders(reminders.map((row, i) => i === index ? { ...row, triggerType: e.target.value } : row))} /><NumberField label="Days before due" value={item.daysBeforeDue} onChange={(value) => setReminders(reminders.map((row, i) => i === index ? { ...row, daysBeforeDue: value ?? 0 } : row))} /><TextField label="Audience role" value={item.audienceRole} onChange={(e) => setReminders(reminders.map((row, i) => i === index ? { ...row, audienceRole: e.target.value } : row))} /><TextField label="Message template" value={item.messageTemplate} onChange={(e) => setReminders(reminders.map((row, i) => i === index ? { ...row, messageTemplate: e.target.value } : row))} /></div><div className="flex items-center justify-between gap-3"><Toggle checked={item.isEnabled} label="Rule enabled" onChange={(checked) => setReminders(reminders.map((row, i) => i === index ? { ...row, isEnabled: checked } : row))} /><Button onClick={() => removeAt(reminders, setReminders, index)} variant="danger">Remove</Button></div></div>)}<Button onClick={() => setReminders([...reminders, { id: newId(), name: "", triggerType: "deadline", daysBeforeDue: 3, audienceRole: "client", messageTemplate: "", isEnabled: true }])} variant="secondary">Add reminder rule</Button></div>
-          ) : null}
-
-          {activeSection === "deadlines" ? (
-            <div className="space-y-4">{deadlines.map((item, index) => <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4" key={item.id}><div className="grid gap-4 md:grid-cols-2"><TextField label="Name" value={item.name} onChange={(e) => setDeadlines(deadlines.map((row, i) => i === index ? { ...row, name: e.target.value } : row))} /><TextField label="Scope" value={item.scope} onChange={(e) => setDeadlines(deadlines.map((row, i) => i === index ? { ...row, scope: e.target.value } : row))} /><NumberField label="Due day of month" value={item.dueDayOfMonth} onChange={(value) => setDeadlines(deadlines.map((row, i) => i === index ? { ...row, dueDayOfMonth: value ?? 1 } : row))} /><NumberField label="Grace days" value={item.graceDays} onChange={(value) => setDeadlines(deadlines.map((row, i) => i === index ? { ...row, graceDays: value ?? 0 } : row))} /><TextField label="Priority" value={item.priority} onChange={(e) => setDeadlines(deadlines.map((row, i) => i === index ? { ...row, priority: e.target.value } : row))} /></div><div className="flex items-center justify-between gap-3"><Toggle checked={item.isEnabled} label="Rule enabled" onChange={(checked) => setDeadlines(deadlines.map((row, i) => i === index ? { ...row, isEnabled: checked } : row))} /><Button onClick={() => removeAt(deadlines, setDeadlines, index)} variant="danger">Remove</Button></div></div>)}<Button onClick={() => setDeadlines([...deadlines, { id: newId(), name: "", scope: "monthly_pack", dueDayOfMonth: 5, graceDays: 0, priority: "normal", isEnabled: true }])} variant="secondary">Add deadline rule</Button></div>
-          ) : null}
-
-          {activeSection === "escalations" ? (
-            <div className="space-y-4">{escalations.map((item, index) => <div className="space-y-4 rounded-2xl border border-slate-200 bg-slate-50 p-4" key={item.id}><div className="grid gap-4 md:grid-cols-2"><TextField label="Name" value={item.name} onChange={(e) => setEscalations(escalations.map((row, i) => i === index ? { ...row, name: e.target.value } : row))} /><TextField label="Trigger type" value={item.triggerType} onChange={(e) => setEscalations(escalations.map((row, i) => i === index ? { ...row, triggerType: e.target.value } : row))} /><NumberField label="Days after due" value={item.daysAfterDue} onChange={(value) => setEscalations(escalations.map((row, i) => i === index ? { ...row, daysAfterDue: value ?? 0 } : row))} /><TextField label="Escalate to role" value={item.escalateToRole} onChange={(e) => setEscalations(escalations.map((row, i) => i === index ? { ...row, escalateToRole: e.target.value } : row))} /><TextField label="Action" value={item.action} onChange={(e) => setEscalations(escalations.map((row, i) => i === index ? { ...row, action: e.target.value } : row))} /></div><div className="flex items-center justify-between gap-3"><Toggle checked={item.isEnabled} label="Rule enabled" onChange={(checked) => setEscalations(escalations.map((row, i) => i === index ? { ...row, isEnabled: checked } : row))} /><Button onClick={() => removeAt(escalations, setEscalations, index)} variant="danger">Remove</Button></div></div>)}<Button onClick={() => setEscalations([...escalations, { id: newId(), name: "", triggerType: "overdue", daysAfterDue: 1, escalateToRole: "accountant", action: "notify", isEnabled: true }])} variant="secondary">Add escalation rule</Button></div>
-          ) : null}
-        </PageSection>
-      </div>
-    </div>
-  );
+  const ruleSection = activeSection !== "profile" && activeSection !== "email" ? activeSection : null;
+  const rows = ruleSection ? draft[ruleSection] : [];
+  const selected = ruleSection ? rows.find(row => row.id === selectedIds[ruleSection]) ?? rows[0] : null;
+  const filteredRows = ruleSection ? rows.filter(row => `${row.name} ${summary(ruleSection, row.id)}`.toLowerCase().includes(query.toLowerCase())) : [];
+  const sectionLabel = sections.find(section => section.key === activeSection)!.label;
+  return <div className="system-settings">
+    <header className="settings-page-heading"><div><p className="settings-eyebrow">Administration</p><h1>System settings</h1><p>Set up your firm and the rules that keep client work moving.</p></div><span className="settings-access"><Building2 size={15} aria-hidden="true" />Firm-wide settings</span></header>
+    <nav aria-label="Settings sections" className="settings-sections">{sections.map(({ key, label, icon: Icon }) => <button key={key} type="button" aria-pressed={activeSection === key} aria-controls={`settings-panel-${key}`} onClick={() => { setActiveSection(key); setQuery(""); }}><Icon size={17} aria-hidden="true" /><span>{label}</span>{(key === "profile" ? profileDirty : key in endpoints && dirty(key as RuleSection)) ? <span className="settings-dirty-dot" aria-label="Unsaved changes" /> : null}</button>)}</nav>
+    <div hidden={activeSection !== "profile"} id="settings-panel-profile"><AdminFirmProfilePanel onDirtyChange={setProfileDirty} /></div>
+    <div hidden={activeSection !== "email"} id="settings-panel-email" className="settings-surface settings-email"><SmtpVerificationPanel /></div>
+    {ruleSection && <section id={`settings-panel-${ruleSection}`} aria-label={sectionLabel}>
+      <div className="settings-section-heading"><div><h2>{sectionLabel}</h2><p>{descriptions[ruleSection]}</p></div><Button variant="secondary" disabled={!loaded || loading || saving} onClick={() => add(ruleSection)}><Plus size={16} aria-hidden="true" />Add {ruleSection === "requests" ? "template" : "rule"}</Button></div>
+      {ruleSection === "requests" && <div className="settings-context"><FileText size={18} aria-hidden="true" /><p>Request templates define a reusable client message. To choose the documents collected each month, use <Link to="/firm/admin/monthly-packs">Pack templates</Link>.</p></div>}
+      {feedback && <FeedbackBanner {...feedback} onDismiss={() => setFeedback(null)} />}
+      {loading ? <div className="settings-empty" role="status">Loading firm settings…</div> : !loaded ? <div className="settings-empty"><h3>Settings are unavailable</h3><p>Your saved configuration must load before it can be edited.</p><Button variant="secondary" disabled={!backendMode} onClick={() => setLoadAttempt(value => value + 1)}>Try again</Button></div> : <form onSubmit={event => { event.preventDefault(); void saveSection(ruleSection); }}>
+        <fieldset disabled={saving} className="settings-workbench"><legend className="sr-only">{sectionLabel} editor</legend>
+          <aside className="settings-library"><div className="settings-library-heading"><h3>{ruleSection === "requests" ? "Template library" : "Your rules"}</h3><span>{rows.length}</span></div><TextField label={`Search ${ruleSection === "requests" ? "templates" : "rules"}`} placeholder="Search by name…" value={query} onChange={event => setQuery(event.target.value)} /><div className="settings-library-list">{filteredRows.map(row => <button key={row.id} type="button" aria-pressed={selected?.id === row.id} onClick={() => setSelectedIds(current => ({ ...current, [ruleSection]: row.id }))}><span><strong>{row.name || "Untitled"}</strong><small>{summary(ruleSection, row.id)}</small></span>{"isEnabled" in row && <i className={row.isEnabled ? "is-enabled" : "is-paused"} aria-label={row.isEnabled ? "Enabled" : "Paused"} />}</button>)}{!filteredRows.length && <p className="settings-help">{rows.length ? "No matches. Try a different name." : `No ${ruleSection === "requests" ? "templates" : "rules"} yet. Add your first one to get started.`}</p>}</div></aside>
+          <div className="settings-editor">{selected ? <><div className="settings-editor-heading"><div><p className="settings-eyebrow">{ruleSection === "requests" ? "Template details" : "Rule details"}</p><h3>{selected.name || "Untitled"}</h3></div>{"isEnabled" in selected && <Toggle checked={selected.isEnabled} onChange={isEnabled => update(ruleSection, selected.id, { isEnabled })} />}</div>{renderEditor(ruleSection, selected.id)}<div className="settings-remove"><Button type="button" variant="ghost" onClick={() => remove(ruleSection, selected.id)}><Trash2 size={15} aria-hidden="true" />Remove {ruleSection === "requests" ? "template" : "rule"}</Button><small>Removal takes effect when you save. Discard changes to undo.</small></div></> : <div className="settings-empty"><FileText size={30} aria-hidden="true" /><h3>Start with one clear {ruleSection === "requests" ? "request" : "rule"}</h3><p>{descriptions[ruleSection]}</p></div>}</div>
+        </fieldset>
+        <footer className="settings-save-bar"><p role="status">{dirty(ruleSection) ? <><span className="settings-dirty-dot" />Unsaved changes in {sectionLabel.toLowerCase()}</> : <><Check size={16} aria-hidden="true" />No unsaved changes</>}</p><div><Button type="button" variant="ghost" disabled={saving || !dirty(ruleSection)} onClick={() => { setDraft(current => ({ ...current, [ruleSection]: saved[ruleSection] })); setFeedback(null); }}>Discard changes</Button><Button type="submit" disabled={saving || !dirty(ruleSection)}><Save size={16} aria-hidden="true" />{saving ? "Saving…" : `Save ${ruleSection === "requests" ? "templates" : "rules"}`}</Button></div></footer>
+      </form>}
+    </section>}
+  </div>;
 }

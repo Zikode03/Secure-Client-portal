@@ -91,19 +91,16 @@ describe("role-based route access", () => {
   it("admin can access system settings", async () => {
     renderAppAt("/firm/admin/system-settings", createUser("admin"));
 
-    expect(await screen.findByRole("heading", { name: "System configuration" })).toBeInTheDocument();
-    const actions = within(screen.getByRole("group", { name: "Configuration actions" }));
-    expect(actions.getByRole("button", { name: "Seed defaults" })).toBeInTheDocument();
-    expect(actions.getByRole("button", { name: "Save changes" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "System settings" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Required documents/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Monthly packs/ })).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Request templates" })).toBeInTheDocument();
-    const sectionButtons = within(screen.getByRole("group", { name: "Configuration sections" })).getAllByRole("button");
-    expect(sectionButtons).toHaveLength(4);
+    expect(screen.getByRole("heading", { name: "Firm profile" })).toBeInTheDocument();
+    const sectionButtons = within(screen.getByRole("navigation", { name: "Settings sections" })).getAllByRole("button");
+    expect(sectionButtons).toHaveLength(6);
     expect(sectionButtons[0]).toHaveAttribute("aria-pressed", "true");
     for (const [index, name] of ["Request templates", "Reminder rules", "Deadline rules", "Escalation rules"].entries()) {
-      fireEvent.click(sectionButtons[index]);
-      expect(sectionButtons[index]).toHaveAttribute("aria-pressed", "true");
+      fireEvent.click(sectionButtons[index + 1]);
+      expect(sectionButtons[index + 1]).toHaveAttribute("aria-pressed", "true");
       expect(screen.getByRole("heading", { name })).toBeInTheDocument();
       expect(sectionButtons.filter((button) => button.getAttribute("aria-pressed") === "true")).toHaveLength(1);
     }
@@ -133,7 +130,7 @@ describe("role-based route access", () => {
   it("legacy admin system settings route redirects to the canonical page", async () => {
     renderAppAt("/admin/system-settings", createUser("admin"));
 
-    expect(await screen.findByRole("heading", { name: "System configuration" })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "System settings" })).toBeInTheDocument();
   });
 
   it("legacy request state machine route redirects to the canonical page", async () => {
@@ -163,18 +160,22 @@ describe("role-based route access", () => {
     expect(screen.queryByRole("link", { name: "Activity Feed" })).not.toBeInTheDocument();
     expect(screen.queryByText("System")).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Notification Preferences" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Settings" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Settings" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Help & Support" })).toHaveAttribute("href", "/firm/help");
     expect(screen.queryByRole("link", { name: "Notifications" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "User Management" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Roles" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "System Settings" })).not.toBeInTheDocument();
   });
 
-  it("keeps settings available from the account menu", async () => {
+  it("keeps settings directly in the sidebar and profile actions in the header", async () => {
     renderAppAt("/firm/dashboard", createUser("accountant"));
 
     expect(await screen.findByText("Compliance Portal")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Open account menu" }));
+    expect(screen.getByRole("button", { name: "Sign out" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Open profile menu" }));
+    expect(screen.getByRole("link", { name: "View profile" })).toHaveAttribute("href", "/firm/profile");
+    expect(screen.getByRole("link", { name: "Edit profile" })).toHaveAttribute("href", "/firm/profile?edit=true");
 
     expect(screen.getByRole("link", { name: "Settings" })).toBeInTheDocument();
   });

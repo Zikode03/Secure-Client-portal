@@ -31,7 +31,8 @@ export type NavigationIcon =
   | "assignments"
   | "templates"
   | "deadlines"
-  | "policies";
+  | "policies"
+  | "help";
 
 export interface NavigationItem {
   label: string;
@@ -79,6 +80,8 @@ export const navigationByRole: Record<Role, NavigationItem[]> = {
       section: "Compliance",
       icon: "compliance",
     },
+    { label: "Settings", to: "/client/settings", description: "Manage business and account settings", section: "Configuration", icon: "settings" },
+    { label: "Help & Support", to: "/client/help", description: "Find help and contact your portal support team", section: "Configuration", icon: "help" },
   ],
   accountant: [
     {
@@ -137,6 +140,8 @@ export const navigationByRole: Record<Role, NavigationItem[]> = {
       section: "Compliance",
       icon: "deadlines",
     },
+    { label: "Settings", to: "/firm/settings", description: "Manage workspace settings", section: "Configuration", icon: "settings" },
+    { label: "Help & Support", to: "/firm/help", description: "Find help and contact your portal support team", section: "Configuration", icon: "help" },
   ],
   admin: [
     {
@@ -250,6 +255,13 @@ export const navigationByRole: Record<Role, NavigationItem[]> = {
       description: "Manage firm rules, templates, and system controls",
       section: "Configuration",
       icon: "settings",
+    },
+    {
+      label: "Help & Support",
+      to: "/firm/help",
+      description: "Find help and contact your portal support team",
+      section: "Configuration",
+      icon: "help",
     },
   ],
 };

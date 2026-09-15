@@ -16,6 +16,7 @@ import {
   ApiError,
   apiGetJson,
   apiPostJson,
+  apiPutJson,
   hasApiBaseUrl,
 } from "../services/apiClient";
 
@@ -50,7 +51,10 @@ interface AuthResult {
   user?: SessionUser;
 }
 
+export interface ProfileUpdate { fullName: string; title: string; phone: string; }
+
 interface AuthContextValue {
+  updateProfile: (profile: ProfileUpdate) => Promise<AuthResult>;
   pendingMfa: MfaChallenge | null;
   verifyMfa: (code: string, recovery: boolean) => Promise<AuthResult>;
   finishMfa: () => Promise<AuthResult>;
@@ -120,6 +124,8 @@ interface BackendLoginResponse extends Partial<MfaChallenge> {
 
 interface BackendMeResponse {
   user: {
+    title?: string;
+    phone?: string;
     id: string;
     fullName: string;
     email: string;
@@ -158,7 +164,8 @@ function mapBackendUser(payload: BackendMeResponse["user"]): SessionUser {
     fullName: payload.fullName,
     email: payload.email,
     role: payload.role,
-    title: payload.role === "client" ? "Client user" : "Portal user",
+    title: payload.title ?? "",
+    phone: payload.phone ?? "",
     company: "",
     initials: createInitials(payload.fullName),
     clientIds,
@@ -639,6 +646,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           [user.email.toLowerCase()]: nextPassword.trim(),
         }));
         return { ok: true, message: "Password updated for this portal account." };
+      },
+      async updateProfile(profile) {
+        if (!user) return { ok: false, message: "Sign in to edit your profile." };
+        const fullName = profile.fullName.trim();
+        if (!fullName || fullName.length > 200 || profile.title.trim().length > 100 || profile.phone.trim().length > 40) {
+          return { ok: false, message: "Enter your full name and keep your details within the field limits." };
+        }
+        const details = { fullName, title: profile.title.trim(), phone: profile.phone.trim() };
+        if (hasApiBaseUrl()) {
+          try {
+            const response = await apiPutJson<BackendMeResponse, ProfileUpdate>("/api/auth/profile", details);
+            const nextUser = mapBackendUser(response.user);
+            setUser(nextUser);
+            return { ok: true, user: nextUser, message: "Your profile has been updated." };
+          } catch (error) {
+            return { ok: false, message: getApiErrorMessage(error, "Your profile could not be saved. Please try again.") };
+          }
+        }
+        const nextUser = { ...user, ...details, name: buildUserName(fullName), initials: createInitials(fullName) };
+        setUser(nextUser);
+        return { ok: true, user: nextUser, message: "Your profile has been updated." };
       },
       async logout() {
         if (hasApiBaseUrl()) {

@@ -189,6 +189,7 @@ function renderPage(workflowOverrides: Record<string, unknown> = {}) {
     },
     authNotice: null,
     clearAuthNotice: vi.fn(),
+    updateProfile: vi.fn(),
     login: vi.fn(),
     completeInvite: vi.fn(),
     requestPasswordReset: vi.fn(),

@@ -36,10 +36,10 @@ describe("admin navigation", () => {
       "Users & Access", "Roles & Permissions", "Audit & Security",
     ]);
     expect(navigationByRole.admin.filter((item) => item.section === "Documents").map((item) => item.label)).toEqual([
-      "Documents", "Required Documents", "Monthly Packs", "Filing Register",
+      "Documents", "Filing Register",
     ]);
     expect(configurationLabels).toEqual(
-      expect.arrayContaining(["Request SLA Rules", "System Settings"]),
+      expect.arrayContaining(["Request SLA Rules", "System Settings", "Help & Support"]),
     );
   });
 });

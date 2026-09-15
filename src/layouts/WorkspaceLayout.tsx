@@ -9,6 +9,8 @@ import type { Role } from "../types/portal";
 import { cn } from "../utils/cn";
 import type { NavigationIcon, NavigationItem } from "../utils/navigation";
 import { navigationByRole } from "../utils/navigation";
+import { WorkspaceAccountMenu } from "../components/auth/WorkspaceAccountMenu";
+import "./workspaceShell.css";
 
 // Shared shape notes: these types keep UI and data contracts aligned.
 interface WorkspaceLayoutProps {
@@ -86,15 +88,6 @@ function SignOutIcon() {
   );
 }
 
-function UserAvatar({ initials }: { initials?: string }) {
-  return (
-    <span className="relative inline-flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[linear-gradient(135deg,#18ac5f,#0a2f66)] text-[0.72rem] font-semibold text-white shadow-sm ring-1 ring-white/40">
-      {initials || "U"}
-      <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-emerald-400" />
-    </span>
-  );
-}
-
 function NavIcon({ icon }: { icon: NavigationIcon }) {
   const common = "h-[1.05rem] w-[1.05rem]";
 
@@ -144,6 +137,13 @@ function NavIcon({ icon }: { icon: NavigationIcon }) {
         <svg className={common} fill="none" viewBox="0 0 24 24">
           <path d="m12 3 1.5 2.7 3.1.5-.9 3 2.2 2.2-2.2 2.2.9 3-3.1.5L12 21l-1.5-2.7-3.1-.5.9-3L6 12l2.2-2.2-.9-3 3.1-.5L12 3Z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" />
           <circle cx="12" cy="12" r="2.8" stroke="currentColor" strokeWidth="1.8" />
+        </svg>
+      );
+    case "help":
+      return (
+        <svg className={common} fill="none" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="1.8" />
+          <path d="M9.7 9.3a2.4 2.4 0 1 1 3.8 1.9c-.9.7-1.5 1.2-1.5 2.5m0 3h.01" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
         </svg>
       );
     case "portfolio":
@@ -259,12 +259,11 @@ function prefetchRoute(path: string) {
 }
 
 export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
-  const { logout, user } = useAuth();
-  const { theme, toggleTheme } = useTheme();
+  const { logout } = useAuth();
+  const { theme } = useTheme();
   const location = useLocation();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const navigation = navigationByRole[role];
   const groupedNavigation = useMemo(() => groupNavigation(navigation), [navigation]);
   const effectiveCollapsed = sidebarCollapsed && !mobileNavOpen;
@@ -278,10 +277,10 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
 
   const activeItem = useMemo(
     () =>
-      navigation.find((item) => location.pathname.startsWith(item.to)) ?? navigation[0],
+      [...navigation].sort((a, b) => b.to.length - a.to.length).find((item) => location.pathname === item.to || location.pathname.startsWith(`${item.to}/`)) ?? navigation[0],
     [location.pathname, navigation],
   );
-  const activePageLabel = location.pathname.startsWith(settingsPath)
+  const activePageLabel = /^\/(client|firm)\/profile$/.test(location.pathname) ? "My profile" : location.pathname.startsWith(settingsPath)
     ? "Settings"
     : location.pathname.includes("/notifications/preferences")
       ? "Notification Preferences"
@@ -302,7 +301,7 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
   return (
     <div
       className={cn(
-        "min-h-screen",
+        "workspace-shell",
         isDark
           ? "bg-[#090909]"
           : "bg-canvas",
@@ -316,10 +315,10 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
           type="button"
         />
       ) : null}
-      <div className="flex min-h-screen flex-col lg:flex-row">
+      <div className="workspace-frame flex flex-col lg:flex-row">
         <aside
           className={cn(
-            "fixed inset-y-0 left-0 z-40 w-[88vw] max-w-[340px] -translate-x-full overflow-hidden border-r px-4 transition-[width,transform] duration-200 lg:sticky lg:top-0 lg:h-screen lg:max-w-none lg:translate-x-0",
+            "workspace-sidebar fixed inset-y-0 left-0 z-40 w-[88vw] max-w-[340px] -translate-x-full overflow-hidden border-r px-4 transition-[width,transform] duration-200 lg:sticky lg:top-0 lg:h-screen lg:max-w-none lg:translate-x-0",
             adminDenseSidebar ? "py-3" : denseSidebar ? "py-3" : "py-4",
             effectiveCollapsed ? "lg:w-[84px]" : "lg:w-[280px]",
             navSurfaceClass,
@@ -449,6 +448,7 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
                       <NavLink
                         key={item.to}
                         aria-label={effectiveCollapsed ? item.label : undefined}
+                        end={item.to === "/firm/compliance"}
                         title={effectiveCollapsed ? item.label : undefined}
                         className={({ isActive }) =>
                           cn(
@@ -504,148 +504,31 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
               ))}
             </nav>
 
-            <div className={cn("mt-auto border-t pt-3", isDark ? "border-white/10" : "border-slate-200")}>
-              <div className="relative">
-                <button
-                  aria-expanded={accountMenuOpen}
-                  aria-label="Open account menu"
-                  className={cn(
-                    "flex w-full items-center rounded-md text-left transition",
-                    effectiveCollapsed
-                      ? "h-10 justify-center px-0"
-                      : "h-10 gap-2.5 px-3",
-                    accountMenuOpen ? navActiveClass : navHoverClass,
-                  )}
-                  onClick={() => setAccountMenuOpen((current) => !current)}
-                  type="button"
-                >
-                  <UserAvatar initials={user?.initials} />
-                  {!effectiveCollapsed ? (
-                    <>
-                      <span className="min-w-0 flex-1">
-                        <span className={cn("block truncate font-semibold text-[0.82rem]", isDark ? "text-white" : "text-slate-950")}>
-                          {user?.fullName ?? user?.name}
-                        </span>
-                        <span className={cn("block truncate text-[0.68rem]", navMutedClass)}>
-                          {user?.title}
-                        </span>
-                      </span>
-                      <span className={cn("text-[0.9rem]", navMutedClass)}>v</span>
-                    </>
-                  ) : null}
-                </button>
-
-                {accountMenuOpen ? (
-                  <div
-                    className={cn(
-                      "absolute bottom-[calc(100%+0.6rem)] z-50 w-[240px] rounded-lg border p-3 shadow-[0_18px_42px_rgba(15,23,42,0.18)]",
-                      effectiveCollapsed ? "bottom-0 left-[calc(100%+0.75rem)]" : "left-0",
-                      isDark ? "border-neutral-700 bg-[#151515] text-neutral-100" : "border-slate-200 bg-white text-slate-800",
-                    )}
-                  >
-                    <div className="mb-3 flex flex-col gap-3 px-0 py-0 border-b pb-3" style={isDark ? {borderColor: 'rgba(255,255,255,0.1)'} : {borderColor: '#e2e8f0'}}>
-                      <div className="flex items-center gap-2">
-                        <UserAvatar initials={user?.initials} />
-                        <div className="min-w-0">
-                          <p className={cn("truncate text-[0.78rem] font-semibold", isDark ? "text-white" : "text-slate-950")}>
-                            {user?.fullName ?? user?.name}
-                          </p>
-                          <p className={cn("truncate text-[0.66rem]", navMutedClass)}>{user?.email || (user?.company ?? user?.title)}</p>
-                        </div>
-                      </div>
-                      <span className="inline-flex w-fit items-center rounded-full border px-2 py-0.5 text-[0.64rem] font-semibold uppercase tracking-[0.08em]" style={isDark ? {borderColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.7)'} : {borderColor: '#e2e8f0', color: '#64748b'}}>
-                        {role === "client" ? "Client" : role === "admin" ? "Admin" : "Firm"}
-                      </span>
-                    </div>
-                    <NavLink
-                      className={({ isActive }) =>
-                        cn("flex items-center gap-2.5 rounded-md px-2.5 py-2 text-[0.79rem] transition", isActive ? navActiveClass : navHoverClass)
-                      }
-                      to={settingsPath}
-                      onClick={() => {
-                        setAccountMenuOpen(false);
-                        setMobileNavOpen(false);
-                      }}
-                    >
-                      <NavIcon icon="settings" />
-                      <span>Settings</span>
-                    </NavLink>
-                    <button className={cn("flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[0.79rem] transition", navHoverClass)} type="button">
-                      <svg className="h-[1rem] w-[1rem]" fill="none" viewBox="0 0 24 24">
-                        <path
-                          d="M12 3.5a8.5 8.5 0 1 0 0 17 8.5 8.5 0 0 0 0-17ZM12 9v3m0 3h.01"
-                          stroke="currentColor"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth="1.8"
-                        />
-                      </svg>
-                      <span>Help & support</span>
-                    </button>
-                    <button
-                      className={cn("flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[0.79rem] transition text-red-600 hover:bg-red-50", isDark && "text-red-400 hover:bg-red-950/20")}
-                      onClick={logout}
-                      type="button"
-                    >
-                      <SignOutIcon />
-                      <span>Sign out</span>
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-
+            <div className="workspace-sidebar-footer">
+              <button aria-label="Sign out" title={effectiveCollapsed ? "Sign out" : undefined} className={cn("workspace-signout", effectiveCollapsed && "is-collapsed")} onClick={() => void logout()} type="button">
+                <SignOutIcon />
+                {!effectiveCollapsed && <span>Sign out</span>}
+              </button>
             </div>
           </div>
         </aside>
 
-        <main className="min-w-0 flex min-h-0 flex-1 flex-col">
-          <header className="border-b border-slate-200 bg-white/92 px-4 py-3 backdrop-blur sm:px-6 lg:px-8">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-3">
-                <button
-                  aria-label="Open navigation"
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition hover:bg-slate-50 lg:hidden"
-                  onClick={() => setMobileNavOpen(true)}
-                  type="button"
-                >
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24">
-                    <path
-                      d="M4 7h16M4 12h16M4 17h16"
-                      stroke="currentColor"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="1.8"
-                    />
-                  </svg>
+        <main className="workspace-main min-w-0 flex min-h-0 flex-1 flex-col">
+          <header className="workspace-topbar">
+            <div className="workspace-topbar-inner">
+              <div className="flex min-w-0 items-center gap-3">
+                <button aria-label="Open navigation" aria-expanded={mobileNavOpen} className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-slate-600 transition hover:bg-slate-50 lg:hidden" onClick={() => setMobileNavOpen(true)} type="button">
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" /></svg>
                 </button>
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">
-                      {role} workspace
-                    </p>
-                    {role === "admin" ? (
-                      <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[0.64rem] font-semibold uppercase tracking-[0.12em] text-amber-700">
-                        Admin only
-                      </span>
-                    ) : null}
+                <div className="workspace-topbar-title">
+                  <div className="flex items-center gap-2">
+                    <p className="workspace-eyebrow">{role === "admin" ? "Admin" : role === "accountant" ? "Firm" : "Client"} workspace</p>
+                    {role === "admin" ? <span className="workspace-admin-badge">Admin only</span> : null}
                   </div>
-                  <h2 className="mt-1 text-[1.12rem] font-semibold text-slate-950">{activePageLabel}</h2>
+                  <h2>{activePageLabel}</h2>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
-                <button
-                  className="inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-                  onClick={toggleTheme}
-                  type="button"
-                >
-                  <span>{theme === "dark" ? "Light mode" : "Dark mode"}</span>
-                </button>
-                {user?.company ? (
-                  <div className="hidden rounded-full border border-slate-200 bg-slate-50 px-3.5 py-1.5 text-sm text-slate-500 lg:inline-flex">
-                    {user.company}
-                  </div>
-                ) : null}
-              </div>
+              <WorkspaceAccountMenu />
             </div>
           </header>
 

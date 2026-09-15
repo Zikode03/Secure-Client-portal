@@ -7,6 +7,9 @@ import { defaultPathForRole, useAuth } from "./auth";
 import type { Permission, Role } from "../types/portal";
 import { canAccessRoute, hasPermission } from "../utils/permissions";
 
+const ProfilePage = lazy(() => import("../pages/shared/ProfilePage").then(module => ({ default: module.ProfilePage })));
+const HelpSupportPage = lazy(() => import("../pages/shared/HelpSupportPage").then(module => ({ default: module.HelpSupportPage })));
+
 const WorkspaceLayout = lazy(() =>
   import("../layouts/WorkspaceLayout").then((module) => ({ default: module.WorkspaceLayout })),
 );
@@ -247,6 +250,8 @@ export default function App() {
           <Route element={<NotificationPreferencesPage />} path="notifications/preferences" />
           <Route element={<Navigate replace to="/client/inbox" />} path="messages" />
           <Route element={<ClientSettingsPage />} path="settings" />
+          <Route element={<ProfilePage />} path="profile" />
+          <Route element={<HelpSupportPage />} path="help" />
         </Route>
 
         <Route element={<RequireFirmWorkspace />} path="/firm">
@@ -269,6 +274,8 @@ export default function App() {
           <Route element={<AccountantNotificationsPage />} path="notifications" />
           <Route element={<NotificationPreferencesPage />} path="notifications/preferences" />
           <Route element={<FirmSettingsPage />} path="settings" />
+          <Route element={<ProfilePage />} path="profile" />
+          <Route element={<HelpSupportPage />} path="help" />
           <Route element={<FirmClient360Page />} path="clients/:clientId/profile" />
 
           <Route element={<RequirePermission permission="manage:users"><AdminUsersPage /></RequirePermission>} path="admin/users" />
