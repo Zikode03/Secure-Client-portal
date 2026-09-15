@@ -1,4 +1,4 @@
-.workspace-shell { --shell-surface: #fff; --shell-muted: #64748b; --shell-text: #13213a; --shell-border: #e5eaf0; --shell-hover: #f3f6f9; height: 100dvh; overflow: hidden; }
+.workspace-shell { --shell-surface: #fff; --shell-muted: #64748b; --shell-text: #13213a; --shell-border: #e5eaf0; --shell-hover: #f3f6f9; position: relative; height: 100dvh; overflow: hidden; }
 .theme-dark .workspace-shell { --shell-surface: #151515; --shell-muted: #a3a3a3; --shell-text: #f5f5f5; --shell-border: #303030; --shell-hover: #242424; }
 .workspace-shell > .workspace-frame { height: 100%; min-height: 0; }
 .workspace-sidebar { flex-shrink: 0; height: 100dvh; }
@@ -70,3 +70,24 @@
 @media (max-width: 767px) { .workspace-topbar { padding: 12px 16px; } .workspace-profile-label { display: none; } .workspace-header-actions { gap: 10px; } .workspace-account { padding-left: 10px; } .workspace-profile-grid { grid-template-columns: 1fr; } .workspace-profile-summary, .workspace-profile-details { padding: 22px; } }
 @media (max-width: 767px) { .workspace-support-grid { grid-template-columns: 1fr; } }
 @media (max-width: 420px) { .workspace-topbar-inner { gap: 8px; } .workspace-topbar-title h2 { font-size: 14px; } .workspace-topbar-title .workspace-eyebrow { font-size: 8px; letter-spacing: .06em; } .workspace-theme-switch button { width: 27px; } .workspace-profile-trigger { gap: 4px; } .workspace-profile-trigger > svg { display: none; } .workspace-header-actions { gap: 6px; } .workspace-account { padding-left: 6px; } }
+
+@media (min-width: 1080px) and (max-height: 760px) {
+  .client-inbox-page, .accountant-inbox-page { gap: 12px; }
+  :is(.client-inbox-page, .accountant-inbox-page) > .portal-page-header { padding-bottom: 12px; }
+  :is(.client-inbox-page, .accountant-inbox-page) > .portal-page-header > div:first-child > p,
+  :is(.client-inbox-page, .accountant-inbox-page) > .portal-page-header > div:first-child > div > p,
+  .inbox-conversation-assignee, .inbox-composer-intro { display: none; }
+  .inbox-conversation-header { gap: 8px; padding-top: 12px; padding-bottom: 12px; max-height: 140px; overflow-y: auto; }
+  .inbox-conversation-header > div:first-child { flex: 1; }
+  .inbox-conversation-header h2 { margin-top: 8px; font-size: 16px; line-height: 22px; }
+  .inbox-composer { padding-top: 12px; padding-bottom: 12px; }
+}
+
+@media (min-width: 1080px) and (max-height: 560px) {
+  .inbox-thread-controls { padding: 8px 12px; }
+  .inbox-thread-controls > div { margin-top: 0; margin-bottom: 6px; }
+  .inbox-thread-controls > div:nth-child(2) { height: 32px; }
+  .inbox-thread-controls > div:last-child { margin-bottom: 0; }
+  .inbox-thread-controls > div:last-child button { padding: 4px; font-size: 10px; line-height: 12px; }
+  .inbox-thread-pagination { min-height: 44px; padding-top: 6px; padding-bottom: 6px; }
+}

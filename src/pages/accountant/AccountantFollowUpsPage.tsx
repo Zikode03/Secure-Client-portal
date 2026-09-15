@@ -343,7 +343,7 @@ function ThreadListPane({
 
   return (
     <section className="flex h-full min-h-[660px] flex-col overflow-hidden bg-white min-[1080px]:min-h-0 min-[1080px]:border-r min-[1080px]:border-slate-200">
-      <div className="border-b border-slate-200 bg-slate-50/70 px-4 py-3.5">
+      <div className="inbox-thread-controls shrink-0 border-b border-slate-200 bg-slate-50/70 px-4 py-3.5">
         <div className="mb-2 flex items-center justify-between gap-3 px-1">
           <div>
             <p className="text-[0.72rem] font-medium uppercase tracking-[0.12em] text-[#7b879e]">Threads</p>
@@ -442,7 +442,7 @@ function ThreadListPane({
           );
         })}
       </div>
-      <div className="flex min-h-[58px] items-center justify-between border-t border-slate-200 px-4 py-3 text-xs text-slate-500">
+      <div className="inbox-thread-pagination flex min-h-[58px] shrink-0 items-center justify-between border-t border-slate-200 px-4 py-3 text-xs text-slate-500">
         <span>Page {currentPage} of {totalPages}</span>
         <div className="flex items-center gap-4">
           <button disabled={currentPage <= 1} onClick={onPrevPage} type="button" className="font-semibold text-slate-700 disabled:opacity-35">Prev</button>
@@ -559,7 +559,7 @@ function ConversationPane({
   return (
     <section className="flex h-full min-h-[720px] flex-col overflow-y-auto bg-white min-[1080px]:min-h-0">
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white">
-        <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 px-4 py-4 sm:px-5 lg:px-6">
+        <div className="inbox-conversation-header shrink-0 flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 px-4 py-4 sm:px-5 lg:px-6">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2.5">
               <p className={`inline-flex rounded-full px-3 py-1 text-[0.62rem] font-medium ${priorityBadgeClass(request.priority)}`}>
@@ -576,7 +576,7 @@ function ConversationPane({
             <h2 className="mt-3 max-w-[760px] text-[1.12rem] font-medium leading-7 text-[#091333] sm:text-[1.2rem]">
               {request.title}
             </h2>
-            <div className="mt-2 space-y-1 text-sm text-[#6c7b94]">
+            <div className="inbox-conversation-assignee mt-2 space-y-1 text-sm text-[#6c7b94]">
               <p>Client: <span className="font-medium text-[#4b5f7c]">{request.clientName}</span></p>
               <p>Assigned to: <span className="text-[#4b5f7c]">{request.assignedTo}</span></p>
             </div>
@@ -618,7 +618,7 @@ function ConversationPane({
           </div>
         </div>
 
-        <div className="inbox-scroll-region min-h-[360px] flex-1 space-y-3 bg-[#fbfcfe] px-4 py-5 pb-6 pr-1 sm:px-5 lg:px-6">
+        <div className="inbox-scroll-region min-h-[360px] min-[1080px]:min-h-0 flex-1 space-y-3 bg-[#fbfcfe] px-4 py-5 pb-6 pr-1 sm:px-5 lg:px-6">
           {request.comments.map((comment) => {
             const internal = isInternalNote(comment.message);
             const strippedMessage = stripInternalPrefix(comment.message);
@@ -680,9 +680,9 @@ function ConversationPane({
           })}
         </div>
 
-        <div className="space-y-3 bg-white px-4 py-4 sm:px-5 lg:px-6">
+        <div className="inbox-composer shrink-0 space-y-3 bg-white px-4 py-4 sm:px-5 lg:px-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
+            <div className="inbox-composer-intro">
               <p className="text-[0.88rem] font-medium text-[#091333]">Reply to this conversation</p>
               <p className="text-[0.78rem] text-[#6f7d96]">Send a client reply, attach a file, or switch to an internal note.</p>
             </div>
