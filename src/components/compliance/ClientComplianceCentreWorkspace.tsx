@@ -54,6 +54,13 @@ function nextAction(item: ComplianceObligation) {
   }
 }
 
+function verificationMethod(item: ComplianceObligation) {
+  const source = `${item.code} ${item.authority}`.toUpperCase();
+  const manuallyConfirmedAuthority = ["CIPC", "SARS", "CSD"].some(value => source.includes(value));
+  if (!manuallyConfirmedAuthority) return "Managed by your accountant";
+  return item.workflowStatus === "complete" ? "Accountant confirmed" : "Manual check by your accountant";
+}
+
 function sortByDueDate(a: ComplianceObligation, b: ComplianceObligation) {
   if (!a.dueDateUtc && !b.dueDateUtc) return a.name.localeCompare(b.name);
   if (!a.dueDateUtc) return 1;
@@ -202,10 +209,11 @@ function ObligationRow({ item, expanded, onToggle, onUploadOpen, onUploaded }: {
     </div>
     <div className="cc-record-foot"><span>{nextAction(item)}</span>{uploadNeeded && <button type="button" className="cc-upload-open" aria-expanded={expanded} aria-controls={detailsId} onClick={onUploadOpen}><Upload size={14} aria-hidden="true" />Upload</button>}{state === "action" && !uploadNeeded && <Link to="/client/inbox"><MessageSquare size={14} aria-hidden="true" />Contact accountant</Link>}</div>
     {expanded && <div className="cc-details" id={detailsId}>
-      <dl><div><dt>Period</dt><dd>{item.code === "CSD" ? "Standing registration" : formatCompliancePeriod(item.periodStartUtc, item.periodEndUtc)}</dd></div><div><dt>Current stage</dt><dd>{complianceStatusLabel(item.workflowStatus)}</dd></div><div><dt>Supporting evidence</dt><dd>{item.evidenceFound} of {item.evidenceRequired} received</dd>{item.evidenceRequired > 0 && <progress max={100} value={evidencePercent} aria-label={`${item.code} supporting evidence`} />}</div></dl>
+      <dl><div><dt>Period</dt><dd>{item.code === "CSD" ? "Standing registration" : formatCompliancePeriod(item.periodStartUtc, item.periodEndUtc)}</dd></div><div><dt>Current stage</dt><dd>{complianceStatusLabel(item.workflowStatus)}</dd></div><div><dt>Supporting evidence</dt><dd>{item.evidenceFound} of {item.evidenceRequired} received</dd>{item.evidenceRequired > 0 && <progress max={100} value={evidencePercent} aria-label={`${item.code} supporting evidence`} />}</div><div><dt>Verification</dt><dd>{verificationMethod(item)}</dd></div></dl>
       <div className="cc-workflow" aria-label={`${item.code} workflow`}>{[{ label: "Preparation", done: item.preparationStatus === "complete" }, { label: "Review", done: item.reviewStatus === "approved" }, { label: "Filing", done: ["submitted", "not_required"].includes(item.submissionStatus) }, { label: "Payment", done: !item.paymentRequired || item.paymentStatus === "paid" }].map(step => <span className={step.done ? "is-done" : ""} key={step.label}>{step.done ? <Check size={13} aria-hidden="true" /> : <span className="cc-step-dot" />}{step.label}</span>)}</div>
       <p>{nextAction(item)}.</p>{item.submissionReference && <p>Submission reference: <strong>{item.submissionReference}</strong></p>}
       {item.missingEvidenceCategories.some(category => category !== "csd_registration_report") && <p>Required documents count toward readiness once your accountant accepts them for {formatCompliancePeriod(item.periodStartUtc, item.periodEndUtc)}.</p>}
+      <div className="cc-record-foot"><span>Related workspace</span><Link to="/client/documents"><FileText size={14} aria-hidden="true" />Documents</Link><Link to="/client/inbox"><MessageSquare size={14} aria-hidden="true" />Requests & messages</Link></div>
       <ObligationEvidencePanel item={item} onUploaded={onUploaded} />
     </div>}
   </article>;
