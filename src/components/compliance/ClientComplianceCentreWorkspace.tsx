@@ -178,9 +178,14 @@ export function ClientComplianceCentreWorkspace() {
         title="Compliance Centre"
         description="Keep track of what needs attention, what is coming up and what your accountant is handling."
         actions={
-          <Button variant="secondary" disabled={loading} onClick={() => void load()}>
-            <RefreshCw size={16} /> Refresh
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" onClick={() => window.print()}>
+              <Download size={16} /> Print summary
+            </Button>
+            <Button variant="secondary" disabled={loading} onClick={() => void load()}>
+              <RefreshCw size={16} /> Refresh
+            </Button>
+          </div>
         }
       />
 
