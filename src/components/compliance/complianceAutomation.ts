@@ -99,6 +99,18 @@ export interface ObligationEvidenceUpload {
   evidence: ObligationEvidence;
 }
 
+export interface ComplianceHistoryEntry {
+  id: string;
+  action: string;
+  actor: string;
+  actorRole: string | null;
+  timestamp: string;
+  detail: string;
+  entityType: string;
+  entityId: string;
+  metadataJson: string | null;
+}
+
 export const complianceAutomationApi = {
   getRules: () => apiGetJson<ComplianceRuleSet>("/api/compliance/automation/rules"),
   updateRules: (value: { version: string; rules: ComplianceRuleDefinition[] }) =>
@@ -109,6 +121,7 @@ export const complianceAutomationApi = {
     apiPutJson<ClientComplianceProfile, typeof value>(`/api/compliance/automation/profiles/${encodeURIComponent(clientId)}`, value),
   getObligations: (clientId?: string) =>
     apiGetJson<ComplianceObligation[]>(`/api/compliance/automation/obligations${clientId ? `?clientId=${encodeURIComponent(clientId)}` : ""}`),
+  getHistory: () => apiGetJson<ComplianceHistoryEntry[]>("/api/compliance/history"),
   run: (clientId?: string) =>
     apiPostJson<ComplianceAutomationRunResult, Record<string, never>>(`/api/compliance/automation/run${clientId ? `?clientId=${encodeURIComponent(clientId)}` : ""}`, {}),
   preparation: (id: string, value: { complete: boolean; note?: string }) =>

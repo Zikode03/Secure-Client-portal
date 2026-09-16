@@ -24,6 +24,13 @@ describe("compliance automation API contract", () => {
     expect(apiGetJson).toHaveBeenCalledWith("/api/compliance/automation/obligations/id%2Fwith%20space/evidence");
   });
 
+  it("reads client-scoped activity from the backend history endpoint", async () => {
+    const entries = [{ id: "event-1", action: "compliance.automation.obligation_created", actor: "System", timestamp: "2026-09-14T12:00:00Z", detail: "Obligation created" }];
+    vi.mocked(apiGetJson).mockResolvedValueOnce(entries);
+    expect(await complianceAutomationApi.getHistory()).toBe(entries);
+    expect(apiGetJson).toHaveBeenCalledWith("/api/compliance/history");
+  });
+
   it("does not report failed storage as a successful upload", async () => {
     vi.mocked(apiPostForm).mockRejectedValue(new Error("Scanner unavailable"));
     await expect(complianceAutomationApi.uploadEvidence("obligation-1", new File(["x"], "x.pdf"), "")).rejects.toThrow("Scanner unavailable");
