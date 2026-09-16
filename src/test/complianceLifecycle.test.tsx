@@ -165,13 +165,14 @@ describe("compliance lifecycle", () => {
     expect(updated?.versions.filter((version) => version.isCurrentVersion)).toHaveLength(1);
   });
 
-  it("client sees the new obligation-focused compliance centre without accountant controls", async () => {
+  it("client sees the compliance overview without accountant controls when the API is unavailable", async () => {
     renderWithProviders(<ClientComplianceCentrePage />, clientUser);
 
     expect(screen.getByRole("heading", { name: "Compliance Centre" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Obligations" })).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Compliance sections" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Run automation" })).not.toBeInTheDocument();
     expect(getClientFacingComplianceLabel("EMP201")).toBe("Monthly payroll submission (EMP201)");
-    expect(await screen.findByText("Compliance automation unavailable")).toBeInTheDocument();
+    expect(await screen.findByText("Compliance information is unavailable.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Your compliance at a glance" })).toBeInTheDocument();
   });
 });

@@ -83,13 +83,16 @@ function renderPage() {
 }
 
 describe("ClientComplianceCentrePage", () => {
-  it("renders the Phase 4 obligation register", async () => {
+  it("renders the client compliance overview and required actions", async () => {
     renderPage();
     expect(screen.getByRole("heading", { name: "Compliance Centre" })).toBeInTheDocument();
-    const row = within(await screen.findByRole("row", { name: /VAT201/ }));
-    expect(row.getByText("SARS")).toBeInTheDocument();
-    expect(row.getByText("Waiting For Client")).toBeInTheDocument();
-    expect(row.getByText("2/3")).toBeInTheDocument();
+    await screen.findByText("VAT201");
+    fireEvent.click(within(screen.getByRole("navigation", { name: "Compliance sections" })).getByRole("button", { name: "Action required" }));
+    expect(screen.getByRole("heading", { name: "Action required" })).toBeInTheDocument();
+    expect(screen.getByText("VAT201 return")).toBeInTheDocument();
+    expect(screen.getByText("SARS")).toBeInTheDocument();
+    expect(screen.getByText("Provide sales_invoices")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Upload" })).toHaveAttribute("href", "/client/documents");
   });
 
   it("does not expose accountant automation actions to clients", async () => {
@@ -102,10 +105,12 @@ describe("ClientComplianceCentrePage", () => {
   it("shows the obligation workflow details", async () => {
     renderPage();
     await screen.findByText("VAT201");
-    fireEvent.click(screen.getByRole("button", { name: "Open" }));
-    const drawer = within(screen.getByRole("complementary", { name: "VAT201 compliance obligation" }));
-    expect(drawer.getByRole("heading", { name: /VAT201/ })).toBeInTheDocument();
-    expect(drawer.getByText(/Missing: sales_invoices/)).toBeInTheDocument();
-    expect(drawer.getByText(/Created automatically/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "View", exact: true }));
+    expect(screen.getByText("Supporting evidence")).toBeInTheDocument();
+    expect(screen.getByText("2 of 3 received")).toBeInTheDocument();
+    expect(screen.getByText("Waiting For Client")).toBeInTheDocument();
+    expect(screen.getByText("Provide sales_invoices.")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Close", exact: true }));
+    expect(screen.queryByText("Supporting evidence")).not.toBeInTheDocument();
   });
 });
