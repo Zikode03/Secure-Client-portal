@@ -60,8 +60,31 @@ export interface BankingOverviewDto {
   syncRuns: BankSyncRunDto[];
 }
 
+export interface MonthlyPackBankingStatusDto {
+  clientId: string;
+  year: number;
+  month: number;
+  status: "not_connected" | "incomplete" | "current" | "complete" | "needs_attention" | string;
+  hasActiveConnection: boolean;
+  isPeriodComplete: boolean;
+  connectedAccountCount: number;
+  periodStartUtc: string;
+  periodEndUtc: string;
+  requiredThroughUtc: string;
+  dataFromUtc: string | null;
+  dataThroughUtc: string | null;
+  missingFromUtc: string | null;
+  missingToUtc: string | null;
+  message: string;
+}
+
 export const bankingApi = {
-  getOverview: () => apiGetJson<BankingOverviewDto>("/api/banking/overview"),
+  getOverview: (clientId?: string) =>
+    apiGetJson<BankingOverviewDto>(clientId ? `/api/banking/overview?clientId=${encodeURIComponent(clientId)}` : "/api/banking/overview"),
+  getMonthlyPackStatus: (clientId: string, year: number, month: number) =>
+    apiGetJson<MonthlyPackBankingStatusDto>(
+      `/api/banking/monthly-pack-status?clientId=${encodeURIComponent(clientId)}&year=${year}&month=${month}`,
+    ),
   connectSandbox: () => apiPostJson<BankingOverviewDto, { clientId: null }>("/api/banking/sandbox/connect", { clientId: null }),
   sync: (connectionId: string) => apiPostJson<BankingOverviewDto, Record<string, never>>(`/api/banking/connections/${connectionId}/sync`, {}),
   disconnect: (connectionId: string) => apiPostJson<BankingOverviewDto, Record<string, never>>(`/api/banking/connections/${connectionId}/disconnect`, {}),
