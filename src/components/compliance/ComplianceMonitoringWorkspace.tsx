@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { ArrowRight, History, Settings2, Unplug } from "lucide-react";
+import { ArrowRight, History, Settings2, ShieldCheck, Unplug } from "lucide-react";
 import { useAuth } from "../../app/auth";
 import { apiGetJson, apiPostJson, apiPutJson, hasApiBaseUrl } from "../../services/apiClient";
 import { Button } from "../ui/Button";
@@ -23,7 +23,13 @@ export interface MonitoringProfile {
   registrationNumber: string; taxNumber: string; csdSupplierNumber: string; checks: Check[];
 }
 const applicabilityLabels: Record<string, string> = { undecided: "Needs assessment", applies: "Applies", not_applicable: "Not applicable" };
-const statusLabels: Record<string, string> = { not_checked: "Not checked", accountant_confirmed: "Manually checked", stale: "Recheck due", identifiers_changed: "Identifier changed — recheck" };
+const statusLabels: Record<string, string> = {
+  not_checked: "Not checked",
+  accountant_confirmed: "Accountant confirmed",
+  authority_verified: "Verified by CIPC",
+  stale: "Recheck due",
+  identifiers_changed: "Identifier changed — recheck",
+};
 const outcomeLabels: Record<string, string> = { pass: "No issue recorded", fail: "Issue recorded", unknown: "Inconclusive" };
 const timeLabel = (value: string) => new Date(value).toLocaleString("en-ZA", { dateStyle: "medium", timeStyle: "short" });
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : "Please try again.";
@@ -65,7 +71,7 @@ function MonitoringBusinesses() {
   return <div className="authority-monitoring">
     <PageHeader title="Compliance Centre" eyebrow={user?.role === "client" ? "Your business" : "Business oversight"}
       description="See what needs checking, where the information came from and what to do next." />
-    <div className="monitoring-intro"><Unplug aria-hidden="true" size={20} /><p><strong>Authority connections are not active yet.</strong> Prepare your business details now. Manual checks are labelled separately and never presented as live verification.</p></div>
+    <div className="monitoring-intro"><Unplug aria-hidden="true" size={20} /><p><strong>Authority verification is source-specific.</strong> CIPC checks can run live when your authorised CIPC subscription is configured. SARS TCS and CSD remain accountant-confirmed until authorised integrations are available.</p></div>
     {loading ? <p role="status">Loading businesses…</p> : error ? <div role="alert"><p>{error}</p><Button variant="secondary" onClick={() => setReload(x => x + 1)}>Retry businesses</Button></div> : !clients.length ? <p>No accessible businesses. Ask your administrator to check your business assignment.</p> : <>
       <div className="monitoring-business"><SelectField label="Business to monitor" value={clientId} options={clients.map(client => ({ label: client.name, value: client.id }))} onChange={event => setClientId(event.target.value)} /></div>
       <ComplianceMonitoringPanel key={clientId} clientId={clientId} />
@@ -114,6 +120,7 @@ export function ComplianceMonitoringPanel({ clientId }: { clientId: string }) {
     } catch (error) { setError(errorMessage(error)); }
     finally { setBusy(false); }
   }
+
   async function recordManual(event: React.FormEvent) {
     event.preventDefault();
     if (!selected || !profile?.canManage || busy) return;
@@ -129,9 +136,24 @@ export function ComplianceMonitoringPanel({ clientId }: { clientId: string }) {
     } catch (error) { setError(errorMessage(error)); }
     finally { setBusy(false); }
   }
+
+  async function verifyWithCipc(check: Check) {
+    if (!profile?.canManage || busy || check.source !== "CIPC" || check.connectionStatus !== "connected") return;
+    setBusy(true); setError(""); setNotice("");
+    try {
+      const updated = await apiPostJson<MonitoringProfile, object>(`${path}/authority-verifications/cipc`, {
+        version: profile.version,
+        checkCode: check.code,
+      });
+      setProfile(updated); setDraft(updated); setHistoryReload(x => x + 1);
+      setNotice(`${check.name} was verified using the configured CIPC authority connection.`);
+    } catch (error) { setError(errorMessage(error)); }
+    finally { setBusy(false); }
+  }
+
   if (loading) return <p role="status">Loading monitoring setup…</p>;
   if (!profile || !draft) return <div role="alert"><p>Monitoring unavailable. No compliance conclusion can be shown.</p><p>{error}</p><Button variant="secondary" onClick={() => setReload(x => x + 1)}>Retry monitoring</Button></div>;
-  const incomplete = profile.checks.filter(check => check.applicability === "undecided" || (check.applicability === "applies" && (check.verificationStatus !== "accountant_confirmed" || check.latestVerification?.outcome === "unknown"))).length;
+  const incomplete = profile.checks.filter(check => check.applicability === "undecided" || (check.applicability === "applies" && (!["accountant_confirmed", "authority_verified"].includes(check.verificationStatus) || check.latestVerification?.outcome === "unknown"))).length;
   return <section aria-label={`Authority monitoring for ${profile.clientName}`} className="monitoring-content">
     <div className="monitoring-heading"><div><h2>{profile.clientName}</h2><p>{incomplete ? `${incomplete} check${incomplete === 1 ? " needs" : "s need"} assessment or verification.` : "Review the scope and source of each result below."} No overall compliance conclusion is available.</p></div><div className="monitoring-actions">
       <Button variant="secondary" disabled={busy || editing || !!selected} onClick={() => { setNotice(""); setReload(x => x + 1); }}>Reload saved data</Button>
@@ -158,9 +180,13 @@ export function ComplianceMonitoringPanel({ clientId }: { clientId: string }) {
       {profile.checks.map(check => <tr key={check.code}>
         <th scope="row"><small className="monitoring-source">{check.source}</small><strong>{check.name}</strong><small>{check.description}</small></th>
         <td>{applicabilityLabels[check.applicability] ?? "Needs assessment"}{check.reason && <small>{check.reason}</small>}</td>
-        <td><span className="monitoring-pill">{check.connectionStatus === "not_connected" ? "Not connected" : "Connection unavailable"}</span><small>{statusLabels[check.verificationStatus] ?? "Verification unavailable"}</small></td>
-        <td>{check.latestVerification ? <><strong>{outcomeLabels[check.latestVerification.outcome] ?? "Inconclusive"}</strong><small>Manual · {timeLabel(check.latestVerification.checkedAtUtc)}</small><small>Review after {timeLabel(check.latestVerification.reviewAfterUtc)}</small>{!check.latestVerification.matchesCurrentIdentifiers && <small>Earlier identifier — do not rely on this result.</small>}</> : <small>No verification recorded</small>}</td>
-        <td><div className="monitoring-row-actions"><button type="button" disabled={busy} onClick={() => setHistoryCheck(check)} aria-label={`History — ${check.name}`}><History size={15} aria-hidden="true" />History</button>{profile.canManage && check.applicability === "applies" && <button type="button" disabled={busy || editing} aria-label={`Record manual check — ${check.name}`} onClick={() => { setSelected(check); setManual({ outcome: "unknown", evidenceReference: "", checkedAt: "", reviewAfter: "" }); setError(""); }}>Record manual check <ArrowRight size={15} aria-hidden="true" /></button>}</div></td>
+        <td><span className="monitoring-pill">{check.connectionStatus === "connected" ? `${check.source} connected` : "Not connected"}</span><small>{statusLabels[check.verificationStatus] ?? "Verification unavailable"}</small></td>
+        <td>{check.latestVerification ? <><strong>{outcomeLabels[check.latestVerification.outcome] ?? "Inconclusive"}</strong><small>{check.latestVerification.method === "authority_verified" ? `${check.source} authority` : "Manual"} · {timeLabel(check.latestVerification.checkedAtUtc)}</small><small>Review after {timeLabel(check.latestVerification.reviewAfterUtc)}</small>{!check.latestVerification.matchesCurrentIdentifiers && <small>Earlier identifier — do not rely on this result.</small>}</> : <small>No verification recorded</small>}</td>
+        <td><div className="monitoring-row-actions">
+          <button type="button" disabled={busy} onClick={() => setHistoryCheck(check)} aria-label={`History — ${check.name}`}><History size={15} aria-hidden="true" />History</button>
+          {profile.canManage && check.applicability === "applies" && check.source === "CIPC" && check.connectionStatus === "connected" && <button type="button" disabled={busy || editing} aria-label={`Verify with CIPC — ${check.name}`} onClick={() => void verifyWithCipc(check)}><ShieldCheck size={15} aria-hidden="true" />Verify with CIPC</button>}
+          {profile.canManage && check.applicability === "applies" && <button type="button" disabled={busy || editing} aria-label={`Record manual check — ${check.name}`} onClick={() => { setSelected(check); setManual({ outcome: "unknown", evidenceReference: "", checkedAt: "", reviewAfter: "" }); setError(""); }}>Record manual check <ArrowRight size={15} aria-hidden="true" /></button>}
+        </div></td>
       </tr>)}
     </tbody></table></div>
     {!profile.canManage && <p className="monitoring-disclaimer">Your accountant maintains the identifiers and decides which checks apply. Contact them if any details need correcting.</p>}
@@ -195,7 +221,7 @@ function VerificationHistory({ path, check, onClose }: { path: string; check: Ch
   return <section id="authority-verification-history" tabIndex={-1} className="monitoring-history" aria-label={`Verification history — ${check.name}`}>
     <div className="monitoring-heading"><h3>Verification history · {check.name}</h3><button type="button" onClick={onClose}>Close history</button></div>
     {loading ? <p role="status">Loading verification history…</p> : error ? <div role="alert"><p>{error}</p><button type="button" onClick={() => setRetry(x => x + 1)}>Retry history</button></div> : !rows.length ? <p>No verification recorded{page > 1 ? " on this page" : " yet"}. Uploading a document does not create a verification.</p> : <ol>{rows.map(row => <li key={row.id}>
-      <strong>{outcomeLabels[row.outcome] ?? "Inconclusive"} · {row.method === "accountant_confirmed" ? "Manual verification" : "Unrecognised method"}</strong>
+      <strong>{outcomeLabels[row.outcome] ?? "Inconclusive"} · {row.method === "authority_verified" ? `${check.source} authority verification` : row.method === "accountant_confirmed" ? "Manual verification" : "Unrecognised method"}</strong>
       <p>Checked {timeLabel(row.checkedAtUtc)} · Recorded by {row.recordedByName} on {timeLabel(row.recordedAtUtc)}</p>
       <p>Evidence: {row.evidenceReference}</p><p>Review after {timeLabel(row.reviewAfterUtc)}{!row.matchesCurrentIdentifiers ? " · Business identifier has changed" : ""}</p>
     </li>)}</ol>}
