@@ -189,6 +189,18 @@ describe("role-based route access", () => {
     expect(screen.queryByRole("link", { name: "Messages" })).not.toBeInTheDocument();
   });
 
+  it("renders the Banking sidebar icon in expanded and collapsed navigation", async () => {
+    renderAppAt("/client/dashboard", createUser("client"));
+
+    const bankingLink = await screen.findByRole("link", { name: "Banking" });
+    expect(bankingLink).toHaveAttribute("href", "/client/banking");
+    expect(bankingLink.querySelector("svg.lucide-landmark")).toBeInTheDocument();
+    expect(bankingLink.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+
+    fireEvent.click(screen.getByRole("button", { name: "Collapse sidebar" }));
+    expect(screen.getByRole("link", { name: "Banking" }).querySelector("svg.lucide-landmark")).toBeInTheDocument();
+  });
+
   it("legacy client messages route redirects users to contextual workspaces", async () => {
     renderAppAt("/client/messages", createUser("client"));
 

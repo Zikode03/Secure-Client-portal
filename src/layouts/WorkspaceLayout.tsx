@@ -2,6 +2,7 @@
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
 import { useMemo, useState } from "react";
+import { Landmark } from "lucide-react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../app/auth";
 import { useTheme } from "../app/theme";
@@ -92,6 +93,8 @@ function NavIcon({ icon }: { icon: NavigationIcon }) {
   const common = "h-[1.05rem] w-[1.05rem]";
 
   switch (icon) {
+    case "banking":
+      return <Landmark aria-hidden="true" className={common} strokeWidth={1.8} />;
     case "dashboard":
       return (
         <svg className={common} fill="none" viewBox="0 0 24 24">
