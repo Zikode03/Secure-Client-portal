@@ -46,6 +46,9 @@ const AdminMonthlyPacksPage = lazy(() =>
 const ClientComplianceCentrePage = lazy(() =>
   import("../pages/client/ClientComplianceCentrePage").then((module) => ({ default: module.ClientComplianceCentrePage })),
 );
+const ClientBankingPage = lazy(() =>
+  import("../pages/client/ClientBankingPage").then((module) => ({ default: module.ClientBankingPage })),
+);
 const ClientDashboardPage = lazy(() =>
   import("../pages/client/ClientDashboardPage").then((module) => ({ default: module.ClientDashboardPage })),
 );
@@ -246,6 +249,7 @@ export default function App() {
           <Route element={<ClientDocumentsPage />} path="documents" />
           <Route element={<Navigate replace to="/client/documents" />} path="invoices" />
           <Route element={<ClientComplianceCentrePage />} path="compliance" />
+          <Route element={<ClientBankingPage />} path="banking" />
           <Route element={<ClientNotificationsPage />} path="notifications" />
           <Route element={<NotificationPreferencesPage />} path="notifications/preferences" />
           <Route element={<Navigate replace to="/client/inbox" />} path="messages" />
