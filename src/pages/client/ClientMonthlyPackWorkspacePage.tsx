@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Building2, Download, FilePlus2, Paperclip, Plus, Repeat2, UploadCloud, X } from "lucide-react";
 import { useAuth } from "../../app/auth";
+import { MonthlyPackBankingStatusPanel } from "../../components/banking/MonthlyPackBankingStatusPanel";
 import { MonthlyPackCustomizationProvider } from "../../components/workflow/MonthlyPackCustomizationContext";
 import { Button } from "../../components/ui/Button";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
@@ -114,18 +115,10 @@ export function ClientMonthlyPackWorkspacePage() {
   const [documents, setDocuments] = useState<BackendDocumentRecord[]>([]);
   const [profile, setProfile] = useState<ClientMonthlyPackProfile | null>(null);
 
-  // The existing checklist owns its own backend load. Incrementing this key remounts it only
-  // after a structural pack change so a newly added row appears without a browser refresh.
   const [checklistRevision, setChecklistRevision] = useState(0);
-
-  // Supporting-document state is intentionally separate from checklist-item state. Supporting
-  // files travel with the monthly pack but never change required-document completion.
   const [category, setCategory] = useState("proof_of_payment");
   const [customCategory, setCustomCategory] = useState("");
   const [files, setFiles] = useState<File[]>([]);
-
-  // Client-created checklist items can be one-off or requested for every month. Recurring client
-  // requests remain pending until Accountant/Admin approval; the current-month slot exists now.
   const [showAddItem, setShowAddItem] = useState(false);
   const [itemLabel, setItemLabel] = useState("");
   const [itemCategory, setItemCategory] = useState("other");
@@ -133,7 +126,6 @@ export function ClientMonthlyPackWorkspacePage() {
   const [itemRequired, setItemRequired] = useState(false);
   const [itemRecurrence, setItemRecurrence] = useState<"this_month" | "every_month">("this_month");
   const [itemDueDate, setItemDueDate] = useState("");
-
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<{
     tone: "success" | "warning" | "danger";
@@ -401,6 +393,17 @@ export function ClientMonthlyPackWorkspacePage() {
       >
         <ClientMonthlyPacksPage key={checklistRevision} />
       </MonthlyPackCustomizationProvider>
+
+      {backendMode && pack && clientId ? (
+        <section className="portal-page mx-auto max-w-[1280px]">
+          <MonthlyPackBankingStatusPanel
+            bankingPath="/client/banking"
+            clientId={clientId}
+            month={pack.month}
+            year={pack.year}
+          />
+        </section>
+      ) : null}
 
       {backendMode && client ? (
         <section className="portal-page mx-auto max-w-[1280px]">
