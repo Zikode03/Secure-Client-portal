@@ -4,6 +4,7 @@ import { useParams } from "react-router-dom";
 import { Button } from "../../components/ui/Button";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
+import { MonthlyPackBankingStatusPanel } from "../../components/banking/MonthlyPackBankingStatusPanel";
 import { ApiError, apiGetJson, apiPostJson, apiPutJson, hasApiBaseUrl } from "../../services/apiClient";
 import { formatDateLabel, formatStatusLabel } from "../../utils/formatters";
 import { AccountantClientWorkspacePage } from "./AccountantClientWorkspacePage";
@@ -477,6 +478,12 @@ export function AccountantClientPackWorkspacePage() {
     <div className="space-y-5">
       <AccountantClientWorkspacePage />
 
+      {backendMode && pack && clientId ? (
+        <div className="portal-page mx-auto max-w-[1280px]">
+          <MonthlyPackBankingStatusPanel clientId={clientId} year={pack.year} month={pack.month} showConnections />
+        </div>
+      ) : null}
+
       {backendMode ? (
         <section className="portal-page mx-auto max-w-[1280px] pb-8">
           <SurfaceCard className="overflow-hidden rounded-2xl border border-slate-200 bg-white p-0">
@@ -568,7 +575,6 @@ export function AccountantClientPackWorkspacePage() {
 
                 <div className="mt-3 grid gap-2 md:grid-cols-3">
                   {([
-                    ["bankFeedConnected", "Bank feed connected"],
                     ["salesInvoicesSynced", "Sales invoices synced"],
                     ["purchaseInvoicesSynced", "Purchase invoices synced"],
                   ] as const).map(([key, text]) => (

@@ -15,7 +15,7 @@ function dateTime(value: string | null) {
 }
 
 function statusLabel(status: string) {
-  return status.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+  return status.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 export function ClientBankingPage() {
@@ -29,8 +29,8 @@ export function ClientBankingPage() {
     try {
       setError("");
       setData(await bankingApi.getOverview());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not load banking data.");
+    } catch {
+      setError("Could not load banking data. Please refresh and try again.");
     } finally {
       setLoading(false);
     }
@@ -48,14 +48,19 @@ export function ClientBankingPage() {
       setWorking(true);
       setError("");
       setData(await action());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "The banking action failed.");
+    } catch {
+      setError("The banking action could not be completed. Please refresh before trying again.");
     } finally {
       setWorking(false);
     }
   }
 
   if (loading) return <div className="p-6 text-sm text-slate-500">Loading banking…</div>;
+  if (!data) return <section className="space-y-3 p-6">
+    <h1 className="text-2xl font-semibold text-slate-950">Banking</h1>
+    <p role="alert" className="text-sm text-red-700">{error || "Banking data is unavailable."}</p>
+    <button type="button" className="text-sm font-semibold text-brand-700" onClick={() => void load()}>Retry</button>
+  </section>;
 
   return (
     <div className="space-y-6">
@@ -151,12 +156,12 @@ export function ClientBankingPage() {
       ) : null}
 
       {tab === "transactions" ? (
-        <section className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-          <div className="grid grid-cols-[130px_1fr_130px_140px] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+        <section className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+          <div className="grid min-w-[640px] grid-cols-[130px_1fr_130px_140px] gap-3 border-b border-slate-200 bg-slate-50 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
             <span>Date</span><span>Description</span><span>Reference</span><span className="text-right">Amount</span>
           </div>
           {data?.recentTransactions.length ? data.recentTransactions.map((transaction) => (
-            <div className="grid grid-cols-[130px_1fr_130px_140px] gap-3 border-b border-slate-100 px-4 py-3 text-sm last:border-b-0" key={transaction.id}>
+            <div className="grid min-w-[640px] grid-cols-[130px_1fr_130px_140px] gap-3 border-b border-slate-100 px-4 py-3 text-sm last:border-b-0" key={transaction.id}>
               <span className="text-slate-600">{new Date(transaction.transactionDateUtc).toLocaleDateString("en-ZA")}</span>
               <span><span className="font-medium text-slate-900">{transaction.description}</span><span className="ml-2 text-xs text-slate-400">{transaction.providerCategory}</span></span>
               <span className="truncate text-slate-500">{transaction.reference || "—"}</span>
@@ -170,7 +175,7 @@ export function ClientBankingPage() {
         <section className="rounded-lg border border-slate-200 bg-white">
           {data?.syncRuns.length ? data.syncRuns.map((run) => (
             <div className="grid gap-3 border-b border-slate-100 px-5 py-4 last:border-b-0 md:grid-cols-[1fr_160px_160px_140px]" key={run.id}>
-              <div><p className="text-sm font-medium text-slate-900">{statusLabel(run.status)}</p><p className="mt-1 text-xs text-slate-500">{run.errorMessage ?? run.provider}</p></div>
+              <div><p className="text-sm font-medium text-slate-900">{statusLabel(run.status)}</p><p className="mt-1 text-xs text-slate-500">{run.status === "failed" ? "Sync could not be completed. Please try again." : run.provider}</p></div>
               <div><p className="text-xs text-slate-500">Started</p><p className="mt-1 text-sm text-slate-700">{dateTime(run.startedAtUtc)}</p></div>
               <div><p className="text-xs text-slate-500">Finished</p><p className="mt-1 text-sm text-slate-700">{dateTime(run.finishedAtUtc)}</p></div>
               <div><p className="text-xs text-slate-500">Transactions</p><p className="mt-1 text-sm font-medium text-slate-900">{run.transactionsReceived}</p></div>
