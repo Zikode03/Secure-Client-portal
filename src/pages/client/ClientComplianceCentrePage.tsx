@@ -1,5 +1,5 @@
-import { ComplianceObligationsWorkspace } from "../../components/compliance/ComplianceObligationsWorkspace";
+import { ClientComplianceCentreWorkspace } from "../../components/compliance/ClientComplianceCentreWorkspace";
 
 export function ClientComplianceCentrePage() {
-  return <ComplianceObligationsWorkspace mode="client" />;
+  return <ClientComplianceCentreWorkspace />;
 }
