@@ -8,6 +8,7 @@ export type NavigationSection =
   | "Documents"
   | "Document Setup"
   | "Compliance"
+  | "Banking"
   | "Management"
   | "Access & Security"
   | "Configuration";
@@ -19,6 +20,7 @@ export type NavigationIcon =
   | "documents"
   | "messages"
   | "compliance"
+  | "banking"
   | "notifications"
   | "settings"
   | "portfolio"
@@ -79,6 +81,13 @@ export const navigationByRole: Record<Role, NavigationItem[]> = {
       description: "Track expiries, reminders, and retained records",
       section: "Compliance",
       icon: "compliance",
+    },
+    {
+      label: "Banking",
+      to: "/client/banking",
+      description: "Manage connected bank accounts, transactions, and sync health",
+      section: "Banking",
+      icon: "banking",
     },
     { label: "Settings", to: "/client/settings", description: "Manage business and account settings", section: "Configuration", icon: "settings" },
     { label: "Help & Support", to: "/client/help", description: "Find help and contact your portal support team", section: "Configuration", icon: "help" },
