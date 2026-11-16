@@ -1,3 +1,4 @@
+import { buildDocumentTextPreview } from "../../utils/documentTextPreview";
 import { BulkInvoiceScan } from "../../components/invoice-review/BulkInvoiceScan";
 import { InvoiceReviewPanel, type InvoiceReviewReady } from "../../components/invoice-review/InvoiceReviewPanel";
 import { reviewQueueApi } from "../../services/reviewQueueApi";
@@ -493,22 +494,7 @@ function openDocumentInNewTab(record: DocumentRecord) {
     record.extractedText ??
     `${record.documentType}\n${record.fileName}\n${record.description}`;
 
-  previewWindow.document.write(`<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>${record.fileName}</title>
-    <style>
-      body { margin: 0; padding: 24px; font-family: Calibri, system-ui, -apple-system, Segoe UI, sans-serif; background: #f8fafc; color: #0f172a; }
-      pre { white-space: pre-wrap; line-height: 1.6; font-size: 14px; }
-    </style>
-  </head>
-  <body>
-    <h1 style="font-size:20px; margin:0 0 12px;">${record.fileName}</h1>
-    <pre>${previewText}</pre>
-  </body>
-</html>`);
+  previewWindow.document.write(buildDocumentTextPreview(record.fileName, previewText));
   previewWindow.document.close();
   return true;
 }
