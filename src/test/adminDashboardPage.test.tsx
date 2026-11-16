@@ -24,7 +24,7 @@ describe("admin dashboard", () => {
     expect(metrics).toHaveClass("lg:grid-cols-4");
     expect(within(metrics).getAllByRole("button")).toHaveLength(4);
     expect(screen.getByText("No accountants have been added yet.")).toBeInTheDocument();
-    expect(screen.getByText("No clients currently meet the risk criteria.")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Client risk watch" })).not.toBeInTheDocument();
     fireEvent.click(within(metrics).getByRole("button", { name: /Needs attention/ }));
     expect(screen.getByRole("region", { name: "Needs attention" })).toHaveFocus();
     fireEvent.click(screen.getByRole("button", { name: "Manage assignments" }));
@@ -39,7 +39,22 @@ describe("admin dashboard", () => {
     fireEvent.click(await screen.findByRole("button", { name: "View client" }));
     expect(navigate).toHaveBeenCalledWith("/firm/clients/acme/profile");
     expect(screen.queryByText("You're up to date")).not.toBeInTheDocument();
-    expect(screen.getByText("45% health")).toBeInTheDocument();
+    expect(screen.getByText("45% compliance health · active")).toBeInTheDocument();
+    expect(screen.getAllByText("Acme Holdings")).toHaveLength(1);
+  });
+
+  it("loads system details only when opened and keeps them out of the initial overview", async () => {
+    renderPage();
+    await screen.findByText("You're up to date");
+    expect(apiGetJson).not.toHaveBeenCalledWith("/api/admin/operations");
+    const toggle = screen.getByRole("button", { name: /System status/ });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    await screen.findByText(/Operations data is unavailable/);
+    expect(apiGetJson).toHaveBeenCalledWith("/api/admin/operations");
+    fireEvent.click(toggle);
+    expect(screen.queryByRole("region", { name: "Firm operations" })).not.toBeInTheDocument();
   });
 
   it("does not display an all-clear or zero review count when a feed fails", async () => {

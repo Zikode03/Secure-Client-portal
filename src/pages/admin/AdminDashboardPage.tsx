@@ -1,10 +1,9 @@
 import { AdminOperationsPanel } from "./AdminOperationsPanel";
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ArrowRight, BriefcaseBusiness, CheckCircle2, ClipboardCheck, ShieldCheck, ShieldX, Users } from "lucide-react";
+import { AlertTriangle, ArrowRight, BriefcaseBusiness, CheckCircle2, ClipboardCheck, ShieldX } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/Button";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
-import { KpiCard } from "../../components/ui/KpiCard";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { ApiError, apiGetJson, hasApiBaseUrl } from "../../services/apiClient";
 import type { Tone } from "../../types/portal";
@@ -98,6 +97,7 @@ function formatDate(value: string) {
 export function AdminDashboardPage() {
   const navigate = useNavigate();
   const backendMode = hasApiBaseUrl();
+  const [operationsOpen, setOperationsOpen] = useState(false);
   const [data, setData] = useState<DashboardState>(emptyState);
   const [loading, setLoading] = useState(backendMode);
   const [available, setAvailable] = useState({ core: false, reviews: false, audit: false });
@@ -283,28 +283,23 @@ export function AdminDashboardPage() {
 
   return (
     <div className="admin-overview space-y-6">
-      <div className="admin-overview-hero">
       <PageHeader
         actions={<>
           <Button onClick={() => navigate("/firm/admin/users")} variant="secondary">Manage users</Button>
           <Button onClick={() => navigate("/firm/admin/assignments")}>Manage assignments</Button>
         </>}
-        description="A clear view of client ownership, team workload and account access."
-        eyebrow="Firm overview"
-        title="Your firm, at a glance"
+        description="Manage client ownership, team workload and account access."
+        title="Firm overview"
       />
-      <div className="admin-overview-hero-footer">
-        <span><ShieldCheck size={16} aria-hidden="true" /> Administration workspace</span>
-        {!loading && available.core && <span>{data.clients.length} {data.clients.length === 1 ? "client" : "clients"}<i aria-hidden="true" />{accountants.length} {accountants.length === 1 ? "accountant" : "accountants"}</span>}
-      </div>
-      </div>
       {feedback ? <FeedbackBanner message={feedback.message} onDismiss={() => setFeedback(null)} title={feedback.title} tone={feedback.tone} /> : null}
 
       <section aria-label="Administration metrics" className="admin-overview-metrics grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {summaryCards.map(card => (
-          <KpiCard key={card.label} accent={card.available && card.value > 0} icon={card.icon}
-            label={card.label} onClick={card.action}
-            value={loading ? "…" : card.available ? card.value : "—"} />
+          <button key={card.label} className="admin-overview-metric" onClick={card.action} type="button">
+            <span className="admin-overview-metric-top"><span>{card.label}</span><span className="admin-overview-metric-icon" aria-hidden="true">{card.icon}</span></span>
+            <span className="admin-overview-metric-value">{loading ? "…" : card.available ? card.value : "—"}</span>
+            <span className="admin-overview-metric-link">View details <ArrowRight size={13} aria-hidden="true" /></span>
+          </button>
         ))}
       </section>
 
@@ -313,7 +308,7 @@ export function AdminDashboardPage() {
           <section id="admin-attention" tabIndex={-1} aria-labelledby="admin-attention-heading" className="admin-overview-section">
             <div className="admin-overview-section-heading">
               <div>
-                <h2 id="admin-attention-heading" className="admin-overview-section-title text-slate-950"><span className="admin-overview-section-icon is-amber"><AlertTriangle size={18} aria-hidden="true" /></span>Needs attention</h2>
+                <h2 id="admin-attention-heading" className="admin-overview-section-title text-slate-950">Needs attention</h2>
                 <p className="mt-1 text-sm text-slate-500">Ownership, access and risk decisions to follow up.</p>
               </div>
               {allAvailable && !loading && <span className="admin-overview-count">{interventionCount}</span>}
@@ -322,7 +317,6 @@ export function AdminDashboardPage() {
               <ul className="admin-overview-list">
                 {attentionItems.slice(0, 8).map(item => (
                   <li key={item.id} className="admin-overview-attention-row">
-                    <span className="admin-overview-marker"><AlertTriangle aria-hidden="true" size={17} /></span>
                     <div className="min-w-0">
                       <p className="admin-overview-category">{item.category}</p>
                       <p className="break-words text-sm font-semibold text-slate-950">{item.name}</p>
@@ -347,7 +341,7 @@ export function AdminDashboardPage() {
           <section aria-labelledby="admin-team-heading" className="admin-overview-section">
             <div className="admin-overview-section-heading">
               <div>
-                <h2 id="admin-team-heading" className="admin-overview-section-title text-slate-950"><span className="admin-overview-section-icon is-blue"><Users size={18} aria-hidden="true" /></span>Team workload</h2>
+                <h2 id="admin-team-heading" className="admin-overview-section-title text-slate-950">Team workload</h2>
                 <p className="mt-1 text-sm text-slate-500">Client coverage and open reviews by accountant.</p>
               </div>
               {sectionLink("Manage team", "/firm/admin/accountants")}
@@ -375,35 +369,11 @@ export function AdminDashboardPage() {
             )}
           </section>
 
-          <section aria-labelledby="admin-risk-heading" className="admin-overview-section">
-            <div className="admin-overview-section-heading">
-              <div>
-                <h2 id="admin-risk-heading" className="admin-overview-section-title text-slate-950"><span className="admin-overview-section-icon is-mint"><ShieldCheck size={18} aria-hidden="true" /></span>Client risk watch</h2>
-                <p className="mt-1 text-sm text-slate-500">Compliance health below 60% or an inactive status.</p>
-              </div>
-              {sectionLink("All clients", "/firm/clients")}
-            </div>
-            {loading || !available.core || !atRiskClients.length ? notice(available.core, "No clients currently meet the risk criteria.") : (
-              <ul className="admin-overview-list">
-                {atRiskClients.slice(0, 6).map(client => (
-                  <li key={client.id}>
-                    <button className="admin-overview-risk-row" onClick={() => navigate(`/firm/clients/${client.id}/profile`)} type="button">
-                      <span className="min-w-0"><span className="block break-words text-sm font-semibold text-slate-950">{client.name}</span>
-                        <span className="mt-1 block text-xs text-slate-500">{client.entityType} · {client.status}</span></span>
-                      <span className="admin-overview-status is-warning">{client.complianceHealth}% health</span>
-                      <ArrowRight aria-hidden="true" size={16} />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
         </div>
 
         <aside className="admin-overview-activity" aria-labelledby="admin-activity-heading">
           <div className="admin-overview-section-heading">
             <div>
-              <p className="admin-overview-category">Audit & security</p>
               <h2 id="admin-activity-heading" className="text-slate-950">Recent activity</h2>
             </div>
             {sectionLink("View log", "/firm/admin/audit")}
@@ -422,7 +392,13 @@ export function AdminDashboardPage() {
         </aside>
       </div>
 
-      <AdminOperationsPanel />
+      <section className="admin-overview-system">
+        <button type="button" className="admin-overview-system-toggle" aria-expanded={operationsOpen} aria-controls="admin-system-details" onClick={() => setOperationsOpen(value => !value)}>
+          <span><strong>System status</strong><small>Email delivery, automation, storage and backups</small></span>
+          <span className="admin-overview-system-action">{operationsOpen ? "Hide details" : "View details"}<ArrowRight size={16} aria-hidden="true" /></span>
+        </button>
+        <div id="admin-system-details" hidden={!operationsOpen}>{operationsOpen ? <AdminOperationsPanel /> : null}</div>
+      </section>
 
       <nav aria-label="Administration shortcuts" className="admin-overview-shortcuts">
         <span className="admin-overview-category">Quick access</span>
