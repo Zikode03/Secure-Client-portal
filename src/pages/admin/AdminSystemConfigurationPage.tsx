@@ -155,7 +155,7 @@ export function AdminSystemConfigurationPage() {
       return <>
         <TextField required maxLength={160} label="Rule name" value={row.name} onChange={event => change({ name: event.target.value })} />
         <div className="settings-fields"><Choice label="When should this run?" value={row.triggerType} options={[{ value: "deadline_approaching", label: "A deadline is approaching" }]} onChange={triggerType => change({ triggerType })} /><Choice label="Who receives it?" value={row.audienceRole} options={roleOptions} onChange={audienceRole => change({ audienceRole })} /><NumberField label="Days before the deadline" value={row.daysBeforeDue} hint="Use 0 for a reminder on the due date." onChange={value => change({ daysBeforeDue: value ?? NaN })} /></div>
-        <TextAreaField required maxLength={1000} label="Reminder message" hint="Saved message wording. Current automated reminders use a standard message with the item and its due date." value={row.messageTemplate} onChange={event => change({ messageTemplate: event.target.value })} />
+        <TextAreaField required maxLength={1000} label="Reminder message" hint="This wording is sent by automated reminders. Use {item} for the document or pack and {dueDate} for its deadline." value={row.messageTemplate} onChange={event => change({ messageTemplate: event.target.value })} />
         <aside className="settings-preview"><span className="settings-eyebrow">Rule summary</span><h3>Remind the {labelFor(roleOptions, row.audienceRole).toLowerCase()} {row.daysBeforeDue === 0 ? "on the due date" : `${dayLabel(row.daysBeforeDue)} before the deadline`}.</h3><p>Applies to open monthly packs and dated compliance items. Add separate rules for additional reminder days.</p></aside>
       </>;
     }

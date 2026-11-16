@@ -26,7 +26,7 @@ import {
   formatDateTimeLabel,
   formatStatusLabel,
 } from "../../utils/formatters";
-import { getScopedReviewQueue } from "../../utils/permissions";
+import { hasPermission, getScopedReviewQueue } from "../../utils/permissions";
 
 const reviewSnapshotDate = new Date();
 
@@ -872,6 +872,7 @@ function PreviewCanvas({
 
 export function AccountantReviewPage() {
   const { user } = useAuth();
+  const canReviewDocuments = hasPermission(user, "review:documents");
   const portal = usePortal();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -1371,6 +1372,7 @@ export function AccountantReviewPage() {
   }
 
   async function approveActiveDocument() {
+    if (!canReviewDocuments) { setReviewMessage("Your account has read-only oversight. Accounting review permission is required for this action."); return; }
     if (!backendMode || !activeDocument) {
       return;
     }
@@ -1392,6 +1394,7 @@ export function AccountantReviewPage() {
   }
 
   async function rejectActiveDocument() {
+    if (!canReviewDocuments) { setReviewMessage("Your account has read-only oversight. Accounting review permission is required for this action."); return; }
     if (!backendMode || !activeDocument) {
       return;
     }
@@ -1416,6 +1419,7 @@ export function AccountantReviewPage() {
   }
 
   async function requestReuploadForActiveDocument() {
+    if (!canReviewDocuments) { setReviewMessage("Your account has read-only oversight. Accounting review permission is required for this action."); return; }
     if (!backendMode || !activeDocument) {
       return;
     }
@@ -1758,7 +1762,7 @@ export function AccountantReviewPage() {
                 </label>
                 <p className="mt-1 text-xs text-slate-500">Saved findings guide prioritisation. Opening an invoice rechecks its current details and possible duplicates.</p>
               </div>
-              <BulkInvoiceScan disabled={viewerOpen || queueLoading} invoices={orderedRows.filter(row => (row.record.keywordTags[0] || row.record.documentType).toLowerCase().includes("invoice")).map(row => ({ id: row.item.id, fileName: row.record.fileName, versionNumber: row.record.versionNumber ?? 1 }))} onFinished={() => setQueueRevision(value => value + 1)} />
+              <BulkInvoiceScan disabled={!canReviewDocuments || viewerOpen || queueLoading} invoices={orderedRows.filter(row => (row.record.keywordTags[0] || row.record.documentType).toLowerCase().includes("invoice")).map(row => ({ id: row.item.id, fileName: row.record.fileName, versionNumber: row.record.versionNumber ?? 1 }))} onFinished={() => setQueueRevision(value => value + 1)} />
             </> : null}
 
             <div className="hidden border-b border-slate-100 px-5 py-4 text-[0.78rem] uppercase tracking-[0.12em] text-slate-400 lg:grid lg:grid-cols-[1.7fr_0.9fr_0.9fr_4.5rem] lg:gap-4">
@@ -2104,7 +2108,7 @@ export function AccountantReviewPage() {
                         </div>
                       ) : null}
 
-                      {backendMode && invoiceDocument ? <InvoiceReviewPanel
+                      {backendMode && invoiceDocument && canReviewDocuments ? <InvoiceReviewPanel
                         key={activeDocument.id}
                         documentId={activeDocument.id}
                         versionNumber={activeDocument.versionNumber ?? 1}
@@ -2270,10 +2274,11 @@ export function AccountantReviewPage() {
                       </div>
                       {backendMode ? (
                         <div className="grid gap-2">
+                          {!canReviewDocuments ? <p className="text-xs text-slate-600">Read-only oversight. An authorised accountant must review this document.</p> : null}
                           <Button
                             className="h-10 rounded-xl px-3"
                             onClick={() => void approveActiveDocument()}
-                            disabled={invoiceDocument && (invoiceReviewReady?.documentId !== activeDocument.id || !invoiceReviewReady.ready)}
+                            disabled={!canReviewDocuments || (invoiceDocument && (invoiceReviewReady?.documentId !== activeDocument.id || !invoiceReviewReady.ready))}
                             size="sm"
                           >
                             Approve
@@ -2281,6 +2286,7 @@ export function AccountantReviewPage() {
                           <div className="grid gap-2 sm:grid-cols-2">
                             <Button
                               className="h-10 rounded-xl px-3 text-rose-700"
+                              disabled={!canReviewDocuments}
                               onClick={() => void rejectActiveDocument()}
                               size="sm"
                               variant="secondary"
@@ -2289,6 +2295,7 @@ export function AccountantReviewPage() {
                             </Button>
                             <Button
                               className="h-10 rounded-xl px-3 text-amber-700"
+                              disabled={!canReviewDocuments}
                               onClick={() => void requestReuploadForActiveDocument()}
                               size="sm"
                               variant="secondary"

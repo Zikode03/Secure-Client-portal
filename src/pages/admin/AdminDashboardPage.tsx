@@ -1,3 +1,4 @@
+import { AdminOperationsPanel } from "./AdminOperationsPanel";
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, ArrowRight, BriefcaseBusiness, CheckCircle2, ClipboardCheck, ShieldCheck, ShieldX, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -420,6 +421,8 @@ export function AdminDashboardPage() {
           )}
         </aside>
       </div>
+
+      <AdminOperationsPanel />
 
       <nav aria-label="Administration shortcuts" className="admin-overview-shortcuts">
         <span className="admin-overview-category">Quick access</span>

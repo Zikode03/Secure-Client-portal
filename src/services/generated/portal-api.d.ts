@@ -224,6 +224,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/operations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AdminOperations_Get_GET_api_admin_operations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/settings/{key}": {
         parameters: {
             query?: never;
@@ -320,6 +336,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/users/{id}/resend-invitation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["Admin_ResendInvitation_POST_api_admin_users_id_resend_invitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/users/{id}/reset-access": {
         parameters: {
             query?: never;
@@ -346,6 +378,22 @@ export interface paths {
         get?: never;
         put?: never;
         post: operations["Admin_ResetPassword_POST_api_admin_users_id_reset_password"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/users/{id}/revoke-sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["Admin_RevokeSessions_POST_api_admin_users_id_revoke_sessions"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1720,6 +1768,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/firm-branding": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["FirmBranding_Get_GET_api_firm_branding"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/monthly-pack-profiles/{clientId}": {
         parameters: {
             query?: never;
@@ -2506,6 +2570,10 @@ export interface components {
         };
         "SecureClientPortal.Backend.Api.Modules.Banking.BankingErrorResponse": {
             error: string;
+        };
+        "SecureClientPortal.Backend.Api.Modules.FirmManagement.FirmBrandingResponse": {
+            firmName: string;
+            logoDataUrl?: string | null;
         };
         "SecureClientPortal.Backend.Application.Contracts.Modules.Assignments.CreateAssignmentRequest": {
             /** Format: uuid */
@@ -3304,6 +3372,36 @@ export interface components {
             fullName: string;
             role: string;
         };
+        "SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.AdminOperationsResponse": {
+            accessEmailEnabled: boolean;
+            automationEnabled: boolean;
+            automationLastRun?: components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.OperationResult"];
+            /** Format: date-time */
+            checkedAtUtc: string;
+            deploymentMode: string;
+            /** Format: int32 */
+            emailFailed: number;
+            /** Format: int32 */
+            emailPending: number;
+            lastBackup?: components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.OperationResult"];
+            lastRestore?: components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.OperationResult"];
+            /** Format: int32 */
+            missingDocuments: number;
+            notificationEmailEnabled: boolean;
+            /** Format: int32 */
+            overdueDocuments: number;
+            /** Format: int32 */
+            overdueRequests: number;
+            /** Format: int32 */
+            packsClosed: number;
+            /** Format: int32 */
+            packsUnderReview: number;
+            storageAvailable: boolean;
+            /** Format: int64 */
+            storageBytes?: number | null;
+            /** Format: int64 */
+            storageQuotaBytes: number;
+        };
         "SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.AdminResetAccessRequest": {
             reason: string;
         };
@@ -3333,6 +3431,12 @@ export interface components {
             fullName: string;
             password?: string | null;
             role: string;
+        };
+        "SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.OperationResult": {
+            /** Format: date-time */
+            atUtc: string;
+            status: string;
+            verified?: boolean;
         };
         "SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.UpdateRoleRequest": {
             displayName?: string | null;
@@ -3853,6 +3957,9 @@ export interface components {
             invite: components["schemas"]["Source.Anonymous_EF9688A74F537602"];
             reset: boolean;
         };
+        "Source.Anonymous_663DA7957586995E": {
+            revokedSessions: number;
+        };
         "Source.Anonymous_783B1C4893B2FA97": {
             database: string;
             ok: boolean;
@@ -3982,6 +4089,14 @@ export interface components {
         "Source.Anonymous_B9B4467E2A5EA1F9": {
             status: string;
             total: number;
+        };
+        "Source.Anonymous_B9BF36DE1611F5FA": {
+            delivery: string;
+            deliveryError: string | null;
+            /** Format: date-time */
+            expiresAtUtc: string;
+            /** Format: uuid */
+            id: string;
         };
         "Source.Anonymous_B9D995E5CB0B554E": {
             accountants: components["schemas"]["Source.Anonymous_3EB22849C2884330"][];
@@ -4149,6 +4264,10 @@ export interface components {
         };
         "Source.SecureClientPortal.Backend.Api.Modules.Auth.CsrfTokenResponse": {
             requestToken: string;
+        };
+        "Source.SecureClientPortal.Backend.Api.Modules.FirmManagement.FirmBrandingResponse": {
+            firmName: string;
+            logoDataUrl: string | null;
         };
         "Source.SecureClientPortal.Backend.Application.Contracts.Modules.Auth.SecuritySessionResponse": {
             clientIp: string | null;
@@ -4940,6 +5059,33 @@ export interface components {
             item: components["schemas"]["Source.SecureClientPortal.Backend.Application.Contracts.Modules.ReviewQueue.ReviewQueueItemResponse"];
             reviewHistory: components["schemas"]["Source.SecureClientPortal.Backend.Application.Contracts.Modules.ReviewQueue.ReviewQueueDecisionResponse"][];
             versions: components["schemas"]["Source.SecureClientPortal.Backend.Application.Contracts.Modules.ReviewQueue.ReviewQueueVersionResponse"][];
+        };
+        "Source.SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.AdminOperationsResponse": {
+            accessEmailEnabled: boolean;
+            automationEnabled: boolean;
+            automationLastRun: components["schemas"]["Source.SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.OperationResult"] | null;
+            /** Format: date-time */
+            checkedAtUtc: string;
+            deploymentMode: string;
+            emailFailed: number;
+            emailPending: number;
+            lastBackup: components["schemas"]["Source.SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.OperationResult"] | null;
+            lastRestore: components["schemas"]["Source.SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.OperationResult"] | null;
+            missingDocuments: number;
+            notificationEmailEnabled: boolean;
+            overdueDocuments: number;
+            overdueRequests: number;
+            packsClosed: number;
+            packsUnderReview: number;
+            storageAvailable: boolean;
+            storageBytes: number | null;
+            storageQuotaBytes: number;
+        };
+        "Source.SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.OperationResult": {
+            /** Format: date-time */
+            atUtc: string;
+            status: string;
+            verified: boolean;
         };
         "Source.SecureClientPortal.Backend.Application.Modules.Banking.BankAccountDto": {
             accountName: string;
@@ -6146,6 +6292,42 @@ export interface operations {
             };
         };
     };
+    AdminOperations_Get_GET_api_admin_operations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.AdminOperationsResponse"];
+                    "text/json": components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.AdminOperationsResponse"];
+                    "text/plain": components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.AdminOperationsResponse"];
+                };
+            };
+            /** @description Sign-in required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Client access denied, role denied, or CSRF validation failed. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     Admin_GetSetting_GET_api_admin_settings_key: {
         parameters: {
             query?: never;
@@ -6478,6 +6660,42 @@ export interface operations {
             };
         };
     };
+    Admin_ResendInvitation_POST_api_admin_users_id_resend_invitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Source.Anonymous_B9BF36DE1611F5FA"];
+                };
+            };
+            /** @description Sign-in required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Client access denied, role denied, or CSRF validation failed. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     Admin_ResetUserAccess_POST_api_admin_users_id_reset_access: {
         parameters: {
             query?: never;
@@ -6544,6 +6762,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Source.Anonymous_396FBB4D6D8C23E7"];
+                };
+            };
+            /** @description Sign-in required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Client access denied, role denied, or CSRF validation failed. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    Admin_RevokeSessions_POST_api_admin_users_id_revoke_sessions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Source.Anonymous_663DA7957586995E"];
                 };
             };
             /** @description Sign-in required. */
@@ -10573,6 +10827,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Source.Anonymous_9A340C529CFCAB52"];
+                };
+            };
+            /** @description Sign-in required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Client access denied, role denied, or CSRF validation failed. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    FirmBranding_Get_GET_api_firm_branding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SecureClientPortal.Backend.Api.Modules.FirmManagement.FirmBrandingResponse"];
+                    "text/json": components["schemas"]["SecureClientPortal.Backend.Api.Modules.FirmManagement.FirmBrandingResponse"];
+                    "text/plain": components["schemas"]["SecureClientPortal.Backend.Api.Modules.FirmManagement.FirmBrandingResponse"];
                 };
             };
             /** @description Sign-in required. */

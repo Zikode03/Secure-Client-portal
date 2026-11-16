@@ -1,8 +1,9 @@
+import { apiGetJson, hasApiBaseUrl } from "../services/apiClient";
 import { NotificationBell } from "../components/notifications/NotificationBell";
 // Friendly guide: this module (WorkspaceLayout) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Landmark } from "lucide-react";
 import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../app/auth";
@@ -264,6 +265,14 @@ function prefetchRoute(path: string) {
 
 export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
   const { logout } = useAuth();
+  const [branding, setBranding] = useState<{ firmName: string; logoDataUrl?: string | null }>({ firmName: "" });
+  useEffect(() => {
+    let active = true;
+    if (hasApiBaseUrl()) void apiGetJson<{ firmName: string; logoDataUrl?: string | null }>("/api/firm-branding").then(value => { if (active && typeof value?.firmName === "string") setBranding(value); }).catch(() => { /* Keep the product identity when branding cannot load. */ });
+    const updated = (event: Event) => setBranding((event as CustomEvent<{ firmName: string; logoDataUrl?: string | null }>).detail);
+    window.addEventListener("firm-branding-updated", updated);
+    return () => { active = false; window.removeEventListener("firm-branding-updated", updated); };
+  }, []);
   const { theme } = useTheme();
   const location = useLocation();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -355,12 +364,12 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
                     isDark ? "bg-white/5" : "bg-brand-50",
                   )}
                 >
-                  <PortalMark />
+                  {branding.logoDataUrl ? <img src={branding.logoDataUrl} alt="Firm logo" className="h-8 w-8 object-contain" /> : <PortalMark />}
                 </div>
                 {!effectiveCollapsed ? (
                   <div className="min-w-0">
                     <p className={cn("truncate font-semibold leading-5", denseSidebar ? "text-[0.88rem]" : "text-[0.92rem]", isDark ? "text-white" : "text-slate-950")}>
-                      Compliance Portal
+                      {branding.firmName || "Secure Client"}
                     </p>
                     <p className={cn("truncate font-semibold uppercase tracking-[0.14em]", denseSidebar ? "text-[0.58rem]" : "text-[0.62rem]", navMutedClass)}>
                       {role === "client" ? "Client Workspace" : role === "admin" ? "Admin Workspace" : "Firm Workspace"}

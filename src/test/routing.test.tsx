@@ -154,7 +154,7 @@ describe("role-based route access", () => {
   it("navigation hides admin-only items from accountants", async () => {
     renderAppAt("/firm/dashboard", createUser("accountant"));
 
-    expect(await screen.findByText("Compliance Portal")).toBeInTheDocument();
+    expect(await screen.findByText("Secure Client")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Compliance Calendar" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Work Queue" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Inbox" })).toBeInTheDocument();
@@ -173,7 +173,7 @@ describe("role-based route access", () => {
   it("keeps settings directly in the sidebar and profile actions in the header", async () => {
     renderAppAt("/firm/dashboard", createUser("accountant"));
 
-    expect(await screen.findByText("Compliance Portal")).toBeInTheDocument();
+    expect(await screen.findByText("Secure Client")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Sign out" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Open profile menu" }));
     expect(screen.getByRole("link", { name: "View profile" })).toHaveAttribute("href", "/firm/profile");

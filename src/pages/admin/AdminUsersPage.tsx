@@ -26,14 +26,6 @@ interface AdminUserRecord {
   securityStatus?: string | null;
 }
 
-interface ResetAccessResponse {
-  id: string;
-  reset: boolean;
-  invite?: { expiresAtUtc: string; setupUrl: string };
-  delivery?: string;
-  deliveryError?: string | null;
-}
-
 interface ResetPasswordResponse {
   id: string;
   delivery: string;
@@ -75,7 +67,7 @@ export function AdminUsersPage() {
   const [newUserRole, setNewUserRole] = useState("accountant");
   const [newUserCompany, setNewUserCompany] = useState("");
 
-  async function loadUsers() {
+  async function loadUsers(clearFeedback = true) {
     if (!backendMode) {
       setFeedback({
         tone: "warning",
@@ -88,7 +80,7 @@ export function AdminUsersPage() {
     setLoading(true);
     try {
       setUsers(await apiGetJson<AdminUserRecord[]>("/api/admin/users"));
-      setFeedback(null);
+      if (clearFeedback) setFeedback(null);
     } catch (error) {
       setFeedback({
         tone: "danger",
@@ -132,7 +124,7 @@ export function AdminUsersPage() {
 
     setLoading(true);
     try {
-      await apiPostJson<AdminUserRecord, { fullName: string; email: string; role: string; company: string | null }>(
+      const created = await apiPostJson<AdminUserRecord & { delivery?: string; deliveryError?: string }, { fullName: string; email: string; role: string; company: string | null }>(
         "/api/admin/users",
         {
           fullName: newUserName.trim(),
@@ -144,8 +136,8 @@ export function AdminUsersPage() {
       setNewUserName("");
       setNewUserEmail("");
       setNewUserCompany("");
-      setFeedback({ tone: "success", title: "User created", message: "The user has been added and the backend invite flow has been triggered." });
-      await loadUsers();
+      setFeedback({ tone: created.delivery === "smtp" ? "success" : "warning", title: "User created", message: created.delivery === "smtp" ? "A setup invitation was emailed to the user." : created.deliveryError ?? "The account was created, but no invitation email was sent. Check email settings and resend the invitation." });
+      await loadUsers(false);
     } catch (error) {
       setFeedback({ tone: "danger", title: "User could not be created", message: error instanceof ApiError ? error.message : "The user could not be created." });
     } finally {
@@ -170,7 +162,7 @@ export function AdminUsersPage() {
     setBusyUserId(user.id);
     try {
       await apiPutJson<AdminUserRecord, { role: string }>(`/api/admin/users/${user.id}/role`, { role: nextRole });
-      await loadUsers();
+      await loadUsers(false);
       setFeedback({
         tone: "success",
         title: "Role updated",
@@ -200,7 +192,7 @@ export function AdminUsersPage() {
           ? `${user.fullName}'s active sessions have been revoked.`
           : `${user.fullName} can sign in again.`,
       });
-      await loadUsers();
+      await loadUsers(false);
     } catch (error) {
       setFeedback({ tone: "danger", title: "Status update failed", message: error instanceof ApiError ? error.message : "The user's access status could not be changed." });
     } finally {
@@ -208,29 +200,17 @@ export function AdminUsersPage() {
     }
   }
 
-  async function resetAccess(user: AdminUserRecord) {
-    const reason = window.prompt(`Reason for resetting access for ${user.fullName}:`, "Admin security reset");
-    if (!reason?.trim()) return;
-
+  async function accessAction(user: AdminUserRecord, action: "resend-invitation" | "revoke-sessions") {
+    if (action === "revoke-sessions" && !window.confirm(`Sign out all sessions for ${user.fullName}? Their password and account status will stay the same.`)) return;
     setBusyUserId(user.id);
     try {
-      const result = await apiPostJson<ResetAccessResponse, { reason: string }>(
-        `/api/admin/users/${user.id}/reset-access`,
-        { reason: reason.trim() },
-      );
-      setFeedback({
-        tone: result.delivery === "failed" ? "warning" : "success",
-        title: "Access reset issued",
-        message: result.delivery === "failed"
-          ? `Access was reset, but the reset email could not be delivered${result.deliveryError ? `: ${result.deliveryError}` : "."}`
-          : `${user.fullName}'s sessions were revoked and a password-reset setup link was issued.`,
-      });
-      await loadUsers();
-    } catch (error) {
-      setFeedback({ tone: "danger", title: "Access reset failed", message: error instanceof ApiError ? error.message : "The user's access could not be reset." });
-    } finally {
-      setBusyUserId(null);
-    }
+      const result = await apiPostJson<{ delivery?: string; deliveryError?: string; revokedSessions?: number }, Record<string, never>>(`/api/admin/users/${user.id}/${action}`, {});
+      setFeedback(action === "resend-invitation"
+        ? { tone: result.delivery === "smtp" ? "success" : "warning", title: result.delivery === "smtp" ? "Invitation resent" : "Invitation not delivered", message: result.delivery === "smtp" ? `A new setup invitation was emailed to ${user.fullName}.` : result.deliveryError ?? "Email delivery is disabled. Check email configuration before retrying." }
+        : { tone: "success", title: "Sessions revoked", message: `${result.revokedSessions ?? 0} sessions signed out. The account remains enabled.` });
+      await loadUsers(false);
+    } catch (error) { setFeedback({ tone: "danger", title: "Access action failed", message: error instanceof ApiError ? error.message : "The operation could not be completed." }); }
+    finally { setBusyUserId(null); }
   }
 
   async function resetPassword(user: AdminUserRecord) {
@@ -248,7 +228,7 @@ export function AdminUsersPage() {
         title: result.delivery === "smtp" ? "Reset email sent" : "Email delivery requires attention",
         message: result.delivery === "smtp" ? `A one-time reset link was emailed to ${user.fullName}. It expires in 30 minutes. MFA remains enabled.` : (result.deliveryError ?? "The reset email was not sent. Check SMTP configuration and retry."),
       });
-      await loadUsers();
+      await loadUsers(false);
     } catch (error) {
       setFeedback({ tone: "danger", title: "Password reset failed", message: error instanceof ApiError ? error.message : "The user's password could not be reset." });
     } finally {
@@ -341,7 +321,7 @@ export function AdminUsersPage() {
                     </td>
                     <td className="px-4 py-4">
                       <div className="flex flex-wrap justify-end gap-2">
-                        <Button disabled={busy} onClick={() => void resetAccess(user)} size="sm" variant="secondary">Reset access</Button>
+                        {status === "invited" ? <Button disabled={busy} onClick={() => void accessAction(user, "resend-invitation")} size="sm" variant="secondary">Resend invitation</Button> : <Button disabled={busy} onClick={() => void accessAction(user, "revoke-sessions")} size="sm" variant="secondary">Sign out sessions</Button>}
                         <Button disabled={busy} onClick={() => void resetPassword(user)} size="sm" variant="secondary">Reset password</Button>
                         <Button disabled={busy} onClick={() => void toggleStatus(user)} size="sm" variant={status === "active" ? "danger" : "secondary"}>
                           {status === "active" ? "Disable" : "Enable"}

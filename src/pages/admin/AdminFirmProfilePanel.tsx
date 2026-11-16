@@ -15,6 +15,7 @@ interface SettingResponse {
 
 interface FirmProfile {
   firmName: string;
+  logoDataUrl?: string | null;
   registrationNumber: string;
   vatNumber: string;
   email: string;
@@ -89,6 +90,15 @@ export function AdminFirmProfilePanel({ onDirtyChange }: { onDirtyChange?: (dirt
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty]);
 
+  async function chooseLogo(file?: File) {
+    if (!file) return;
+    if (!["image/png", "image/jpeg"].includes(file.type) || file.size > 100_000) { setFeedback({ tone: "danger", title: "Logo not supported", message: "Choose a PNG or JPEG logo no larger than 100 KB." }); return; }
+    const reader = new FileReader();
+    reader.onload = () => { if (typeof reader.result === "string") setProfile(current => ({ ...current, logoDataUrl: reader.result as string })); };
+    reader.onerror = () => setFeedback({ tone: "danger", title: "Logo could not be read", message: "Choose the image again." });
+    reader.readAsDataURL(file);
+  }
+
   async function save() {
     if (!loaded) return;
     if (!profile.firmName.trim()) {
@@ -102,6 +112,7 @@ export function AdminFirmProfilePanel({ onDirtyChange }: { onDirtyChange?: (dirt
         valueJson: JSON.stringify(profile),
       });
       setSaved(profile);
+      window.dispatchEvent(new CustomEvent("firm-branding-updated", { detail: { firmName: profile.firmName, logoDataUrl: profile.logoDataUrl } }));
       setFeedback({ tone: "success", title: "Firm profile saved", message: "Your business details, contact information, and regional defaults have been saved." });
     } catch (error) {
       setFeedback({ tone: "danger", title: "Firm profile could not be saved", message: error instanceof ApiError ? error.message : "The firm profile update failed." });
@@ -118,6 +129,7 @@ export function AdminFirmProfilePanel({ onDirtyChange }: { onDirtyChange?: (dirt
       <form onSubmit={event => { event.preventDefault(); void save(); }}>
         <fieldset className="settings-profile" disabled={saving}><legend className="sr-only">Firm profile details</legend>
           <div className="settings-firm-identity"><span className="settings-firm-mark"><Building2 size={28} aria-hidden="true" /></span><div><h3>{profile.firmName || "Your firm"}</h3><p>{profile.email || "Add a contact email for your organisation"}</p></div></div>
+          <section className="settings-profile-section"><div><h3>Workspace identity</h3><p>Your saved firm name and logo appear in staff and client workspaces.</p></div><div className="settings-fields"><label className="space-y-2 text-sm font-medium text-slate-700">Firm logo<input className="block w-full text-sm" type="file" accept="image/png,image/jpeg" onChange={event => { void chooseLogo(event.target.files?.[0]); event.target.value = ""; }} /><small className="block text-slate-500">PNG or JPEG, up to 100 KB.</small></label>{profile.logoDataUrl ? <div className="flex items-center gap-3"><img src={profile.logoDataUrl} alt="Firm logo preview" className="h-12 w-12 object-contain" /><Button type="button" variant="ghost" onClick={() => setProfile({ ...profile, logoDataUrl: null })}>Remove logo</Button></div> : null}</div></section>
           <section className="settings-profile-section"><div><Building2 size={20} aria-hidden="true" /><h3>Business details</h3><p>Your registered organisation and tax details.</p></div><div className="settings-fields">
             <div className="settings-full-width"><TextField required maxLength={200} label="Firm name" placeholder="Your registered firm name" autoComplete="organization" onChange={event => setProfile({ ...profile, firmName: event.target.value })} value={profile.firmName} /></div>
             <TextField maxLength={80} label="Registration number" hint="Company registration number, if applicable." onChange={event => setProfile({ ...profile, registrationNumber: event.target.value })} value={profile.registrationNumber} />

@@ -37,7 +37,7 @@ const allPermissions: Permission[] = [
 ];
 
 const rolePermissions: Record<Role, Permission[]> = {
-  admin: allPermissions,
+  admin: allPermissions.filter(permission => permission !== "review:documents"),
   accountant: [
     "view:assigned_clients",
     "view:assigned_documents",

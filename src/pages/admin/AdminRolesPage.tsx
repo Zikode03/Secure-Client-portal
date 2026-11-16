@@ -12,7 +12,8 @@ interface RoleRecord {
   name: string;
   displayName: string;
   scope: string;
-  permissionsJson: string;
+  permissionsJson?: string;
+  permissions?: string[];
   isSystemRole: boolean;
   isActive: boolean;
 }
@@ -24,24 +25,26 @@ interface FeedbackNotice {
 }
 
 const permissionGroups: Array<{ label: string; permissions: string[] }> = [
-  { label: "Access", permissions: ["access.admin", "access.accountant", "access.client"] },
-  { label: "Clients", permissions: ["view:assigned_clients", "view:all_clients", "manage:assignments"] },
-  { label: "Documents", permissions: ["view:assigned_documents", "view:all_documents", "review:documents", "comment:documents"] },
-  { label: "Review & requests", permissions: ["view:assigned_review_queue", "view:firm_review_queue", "request:documents", "comment:requests"] },
-  { label: "Compliance", permissions: ["view:assigned_compliance", "view:firm_compliance"] },
-  { label: "Administration", permissions: ["manage:users", "manage:roles", "manage:templates", "manage:deadline_rules", "manage:system_settings"] },
-  { label: "Reporting", permissions: ["export:firm_reports", "export:client_reports"] },
+  { label: "Workspace access", permissions: ["access.admin", "access.accountant", "access.client"] },
+  { label: "Clients", permissions: ["clients.read", "clients.create", "clients.update", "clients.status.update", "clients.profile.update", "clients.delete"] },
+  { label: "Documents", permissions: ["documents.read", "documents.upload", "documents.update", "documents.review", "documents.delete"] },
+  { label: "Requests", permissions: ["requests.read", "requests.create", "requests.comment", "requests.update", "requests.delete"] },
+  { label: "Assignments", permissions: ["assignments.read", "assignments.create", "assignments.update", "assignments.delete"] },
+  { label: "Users", permissions: ["users.read", "users.create", "users.update", "users.activate", "users.deactivate"] },
+  { label: "Roles", permissions: ["roles.read", "roles.create", "roles.update", "roles.activate", "roles.deactivate"] },
+  { label: "Settings and oversight", permissions: ["settings.read", "settings.update", "templates.update", "deadlines.update", "audit_logs.read", "compliance.read", "reports.export"] },
 ];
 
 const scopeOptions = [
   { label: "Admin", value: "admin" },
-  { label: "Firm / accountant", value: "firm" },
+  { label: "Firm / accountant", value: "accountant" },
   { label: "Client", value: "client" },
 ];
 
 function readPermissions(role: RoleRecord) {
+  if (Array.isArray(role.permissions)) return role.permissions.filter((value): value is string => typeof value === "string");
   try {
-    const parsed = JSON.parse(role.permissionsJson) as unknown;
+    const parsed = JSON.parse(role.permissionsJson ?? "[]") as unknown;
     return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string") : [];
   } catch {
     return [];
@@ -53,11 +56,11 @@ export function AdminRolesPage() {
   const [roles, setRoles] = useState<RoleRecord[]>([]);
   const [selectedRoleName, setSelectedRoleName] = useState("");
   const [displayName, setDisplayName] = useState("");
-  const [scope, setScope] = useState("firm");
+  const [scope, setScope] = useState("accountant");
   const [permissions, setPermissions] = useState<string[]>([]);
   const [newRoleName, setNewRoleName] = useState("");
   const [newDisplayName, setNewDisplayName] = useState("");
-  const [newScope, setNewScope] = useState("firm");
+  const [newScope, setNewScope] = useState("accountant");
   const [newPermissions, setNewPermissions] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<FeedbackNotice | null>(null);
@@ -181,6 +184,7 @@ export function AdminRolesPage() {
 
   return (
     <div className="space-y-6">
+      <p className="text-sm text-slate-600">Administrators manage the firm. Grant documents.review separately when an administrator must also approve documents or close months.</p>
       <PageHeader
         description="Define what each role can see and do across the portal."
         eyebrow="Administration"
