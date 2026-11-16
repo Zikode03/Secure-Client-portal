@@ -85,9 +85,29 @@ export function getUserPermissions(user: SessionUser | null | undefined) {
     return [] as Permission[];
   }
 
-  return Array.from(
-    new Set([...(user.permissions ?? []), ...getPermissionsForRole(user.role)]),
-  );
+  if (user.permissions === undefined) return getPermissionsForRole(user.role);
+  const mapped = new Set<Permission>();
+  const server = new Set<string>(user.permissions);
+  for (const permission of user.permissions) if (allPermissions.includes(permission)) mapped.add(permission);
+  const add = (key: string, ...permissions: Permission[]) => { if (server.has(key)) permissions.forEach(value => mapped.add(value)); };
+  add("clients.read", user.role === "admin" ? "view:all_clients" : "view:assigned_clients");
+  add("documents.read", ...(user.role === "admin"
+    ? ["view:all_documents", "view:firm_review_queue"] as Permission[]
+    : ["view:assigned_documents", "view:assigned_review_queue"] as Permission[]));
+  add("documents.review", "review:documents");
+  add("documents.upload", "comment:documents");
+  add("compliance.read", user.role === "admin" ? "view:firm_compliance" : "view:assigned_compliance");
+  add("users.read", "manage:users");
+  add("roles.read", "manage:roles");
+  add("assignments.create", "manage:assignments");
+  add("templates.update", "manage:templates");
+  add("deadlines.update", "manage:deadline_rules");
+  add("settings.update", "manage:system_settings");
+  add("reports.export", "export:client_reports");
+  if (user.role === "admin") add("reports.export", "export:firm_reports");
+  add("requests.create", "request:documents");
+  add("requests.comment", "comment:requests");
+  return [...mapped];
 }
 
 export function hasPermission(

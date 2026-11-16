@@ -1,6 +1,8 @@
 # Security review — 16 November 2026
 
-Assessment: resolve the authorization findings before treating Secure Client as ready for public use with real financial records. This is a source/configuration review with automated checks and isolated in-memory reproductions, not a penetration test or certification. No application fixes or live-account/data changes were made.
+Implementation update: findings 1–3 below have been addressed in code and dependencies. Configured permissions (including empty lists) are authoritative on the frontend and backend; sensitive client/document/request/settings operations have explicit checks. Current database claims replace token authorization claims before every API authorization check. Editing or disabling a role revokes its sessions. Only untouched builtin role definitions are upgraded with explicit operation permissions; administrator-edited roles are preserved. Affected users must sign in again after policy updates. Npm and backend package audits now report no vulnerabilities. Backup/recovery and deployment verification remain separate release work.
+
+Original assessment: resolve the authorization findings before treating Secure Client as ready for public use with real financial records. This is a source/configuration review with automated checks and isolated in-memory reproductions, not a penetration test or certification. No application fixes or live-account/data changes were made.
 
 ## Confirmed findings
 
@@ -69,3 +71,12 @@ These are source-level controls; their presence does not establish that producti
 - No actual cross-client browser session penetration test, production network scan, email dispatch, malware upload to live storage, password rotation, configuration edits or restore operation was performed.
 
 Priorities: (1) authoritative backend permissions and operation policies; (2) immediate invalidation after role-definition edits; (3) backend/build-tool advisory remediation; (4) current-membership checks and complete recovery verification. Then perform authenticated end-to-end negative tests against a controlled staging environment.
+
+## Implementation evidence
+
+- Backend negative tests cover denied read-only access, empty permissions, no administrator wildcard, role edit/disable revocation, unrelated-session preservation and replacement of old authorization/membership claims.
+- Frontend permissions map the server’s granted operations without unioning broad role defaults. The previous test that expected removed permissions to be restored was replaced with a denial regression.
+- PKCS is pinned to 8.0.2, the .NET 8 servicing release addressing the reported advisories.
+- Vite 8.3.8, React plugin 6.3.0, Vitest 4.1.12 and current compatible CSS tooling replace the flagged versions. Npm peer dependency installation succeeds without legacy-peer-deps.
+- Workflow checks now audit frontend dependencies at moderate severity or above. Audit snapshots are updated in security-dependency-audit.json and security-dotnet-audit.json.
+- The current-claims middleware also mitigates finding 4 on authenticated API requests: old token client IDs are removed and client membership is read from the database.

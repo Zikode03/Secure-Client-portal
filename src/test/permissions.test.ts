@@ -8,6 +8,8 @@ import {
   getScopedClients,
   getScopedDocuments,
   getScopedReviewQueue,
+  getUserPermissions,
+  hasPermission,
 } from "../utils/permissions";
 
 const adminUser: SessionUser = {
@@ -100,13 +102,13 @@ describe("permission and scoping helpers", () => {
     expect(canAccessRoute(adminUser, "/firm/dashboard")).toBe(true);
   });
 
-  it("keeps role defaults even when backend permissions are present", () => {
+  it("does not restore removed permissions from role defaults", () => {
     const backendAdminUser: SessionUser = {
       ...adminUser,
       permissions: ["comment:documents"],
     };
 
-    expect(canAccessRoute(backendAdminUser, "/admin/accountants")).toBe(true);
+    expect(canAccessRoute(backendAdminUser, "/admin/accountants")).toBe(false);
   });
 
   it("scoping follows dynamic assignment changes and ignores stale assignedClientIds", () => {
@@ -175,4 +177,12 @@ describe("permission and scoping helpers", () => {
     const scoped = getScopedReviewQueue(accountantUser, queue, reassignedClients);
     expect(scoped.map((item) => item.id)).toContain("q-2");
   });
+});
+
+it("maps server permissions without inventing additional privileges", () => {
+  const user = {...accountantUser, permissions:["documents.read", "clients.read"] as unknown as SessionUser["permissions"]};
+  expect(hasPermission(user,"view:assigned_documents")).toBe(true);
+  expect(hasPermission(user,"review:documents")).toBe(false);
+  expect(hasPermission({...adminUser,permissions:[]},"manage:users")).toBe(false);
+  expect(getUserPermissions({...clientUser,permissions:[]})).toEqual([]);
 });
