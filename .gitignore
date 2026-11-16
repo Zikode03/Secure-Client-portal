@@ -17,3 +17,14 @@ database/**/local/
 
 # Backend local secrets
 backend/.env
+
+tools/verify-work-queue/bin/
+tools/verify-work-queue/obj/
+
+tools/verify-migration/bin/
+tools/verify-migration/obj/
+
+# Local verification build outputs and logs
+tools/**/bin/
+tools/**/obj/
+*.log

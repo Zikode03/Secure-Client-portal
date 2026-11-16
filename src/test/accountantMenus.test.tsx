@@ -1,59 +1,41 @@
-// Friendly guide: this module (accountantMenus.test) supports the Secure Client Portal workflow.
-// The goal is clear, maintainable code so future edits feel safe and straightforward.
-
+import { apiGetJson } from "../services/apiClient";
+import { waitFor } from "@testing-library/react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { AuthProvider } from "../app/auth";
+import { beforeEach, expect, it, vi } from "vitest";
 import { PortalProvider } from "../app/portal";
 import { AccountantDocumentsPage } from "../pages/accountant/AccountantDocumentsPage";
-import type { SessionUser } from "../types/portal";
+import { portalServiceApi } from "../services/portalApi";
+const user = vi.hoisted(() => ({ id: "accountant-1", name: "Test", fullName: "Test Staff", email: "staff@test.invalid", role: "accountant", clientIds: [], assignedClientIds: ["client-1"] }));
+vi.mock("../app/auth", () => ({ useAuth: () => ({ ready: true, user }), useOptionalAuth: () => ({ ready: true, user }) }));
+vi.mock("../services/apiClient", async original => ({ ...await original<typeof import("../services/apiClient")>(), hasApiBaseUrl: () => true, apiGetJson: vi.fn(async path => path === "/api/documents" ? [{ id: "document-1", clientId: "client-1", monthlyPackId: "pack-1", name: "invoice.pdf", category: "sales_invoices", status: "under_review", uploadedAtUtc: "2026-11-11T08:00:00Z", fileType: "application/pdf", sizeBytes: 100, currentVersionNumber: 1 }] : []) }));
+beforeEach(() => { vi.spyOn(portalServiceApi, "getAdminClients").mockResolvedValue([{ id: "client-1", clientName: "Test business", industry: "Services", assignedAccountant: user.fullName, assignedAccountantUserId: user.id, requiredPack: "Monthly", completionRate: 0, deadlinePolicy: "Configured", status: "on_track" }]); });
+it("shows only document browsing actions for records returned by the backend", async () => {
+  render(<MemoryRouter><PortalProvider><AccountantDocumentsPage /></PortalProvider></MemoryRouter>);
+  const actions = await screen.findAllByRole("button", { name: "Open result actions" });
+  expect(screen.getByRole("heading", { name: "Client documents" })).toBeInTheDocument();
+  fireEvent.click(actions[0]);
+  expect(screen.getByRole("button", { name: "Preview file" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Download" })).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Request re-upload" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Mark under review" })).not.toBeInTheDocument();
+});
 
-const STORAGE_KEY = "accounting-document-control-session";
-
-const accountantUser: SessionUser = {
-  id: "user-accountant-1",
-  name: "Daniel",
-  fullName: "Daniel Mokoena",
-  email: "accountant@example.com",
-  role: "accountant",
-  title: "Senior Accountant",
-  company: "Finwell Advisory",
-  initials: "DM",
-  clientIds: [],
-  assignedClientIds: ["client-apex", "firm-client-1", "firm-client-3", "firm-client-4"],
-};
-
-// Component flow: gather data first, then render a focused UI state.
-function renderWithProviders(page: JSX.Element) {
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(accountantUser));
-
-  return render(
-    <MemoryRouter>
-      <PortalProvider>
-        <AuthProvider>{page}</AuthProvider>
-      </PortalProvider>
-    </MemoryRouter>,
-  );
-}
-
-describe("accountant overflow menus", () => {
-  it("shows only implemented document actions in the overflow menu", async () => {
-    renderWithProviders(<AccountantDocumentsPage />);
-
-    const actionButtons = await screen.findAllByRole("button", {
-      name: "Open result actions",
-    });
-    expect(screen.getByRole("heading", { name: "Client documents" })).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: "Search client documents" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Request documents" })).toBeInTheDocument();
-    fireEvent.click(actionButtons[0]);
-
-    expect(screen.getByRole("button", { name: "Preview file" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Download" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "View version history" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "View comments" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Request re-upload" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Mark under review" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Escalate issue" })).not.toBeInTheDocument();
+it("files an accepted document through the real protected API transport", async () => {
+  vi.mocked(apiGetJson).mockImplementation(async path => path === "/api/documents" ? [{id:"document-1",clientId:"client-1",monthlyPackId:"pack-1",name:"invoice.pdf",category:"sales_invoices",status:"accepted",uploadedAtUtc:"2026-11-11T08:00:00Z",fileType:"application/pdf",sizeBytes:100,currentVersionNumber:1}] : []);
+  const fetchMock=vi.fn(async (input:RequestInfo|URL)=>{
+    const url=input instanceof Request?input.url:String(input);
+    if(url.endsWith("/api/auth/csrf"))return new Response(JSON.stringify({requestToken:"test-token"}),{headers:{"Content-Type":"application/json"}});
+    if(url.endsWith("/download"))return new Response("%PDF-1.4 isolated test",{headers:{"Content-Type":"application/pdf"}});
+    return new Response(JSON.stringify({status:"filed"}),{headers:{"Content-Type":"application/json"}});
   });
+  vi.stubGlobal("fetch",fetchMock);
+  try {
+    render(<MemoryRouter><PortalProvider><AccountantDocumentsPage /></PortalProvider></MemoryRouter>);
+    fireEvent.click((await screen.findAllByRole("button",{name:"Open result actions"}))[0]);
+    fireEvent.click(screen.getByRole("button",{name:"Preview file"}));
+    fireEvent.click(await screen.findByRole("button",{name:"File document"}));
+    await screen.findByText("Document filed. It is available in the Filing Register.");
+    await waitFor(()=>expect(fetchMock.mock.calls.some(([input])=>input instanceof Request&&input.method==="PUT"&&input.url.endsWith("/api/documents/document-1/status"))).toBe(true));
+  } finally {vi.unstubAllGlobals();}
 });

@@ -1,14 +1,11 @@
+import { InboxListControls } from "../../components/inbox/InboxListControls";
 import { type MouseEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowUpDown,
-  ChevronDown,
   Copy,
   Paperclip,
-  RefreshCw,
   Reply,
-  Search,
   Send,
-  SlidersHorizontal,
   Star,
 } from "lucide-react";
 import { useAuth } from "../../app/auth";
@@ -140,15 +137,6 @@ function plainMessageText(message: string) {
   return message.slice(0, start).trim();
 }
 
-function priorityBadgeClass(priority: WorkflowRequest["priority"]) {
-  if (priority === "high") {
-    return "bg-amber-100 text-amber-800";
-  }
-  if (priority === "medium") {
-    return "bg-amber-50 text-amber-700";
-  }
-  return "bg-emerald-50 text-emerald-700";
-}
 
 function initials(value: string) {
   return value
@@ -236,16 +224,6 @@ function requestTypeHelperText(request: WorkflowRequest) {
     return "Document request: upload the requested file or reply if the document is not available.";
   }
   return "";
-}
-
-function accountantEmail(name: string) {
-  const localPart = name
-    .toLowerCase()
-    .replace(/[^a-z\s]/g, "")
-    .trim()
-    .split(/\s+/)
-    .join(".");
-  return `${localPart || "accountant"}@apex.co.za`;
 }
 
 function toRequestPriority(priority?: string): WorkflowRequest["priority"] {
@@ -367,129 +345,12 @@ function ThreadListPane({
   sortDirection: SortDirection;
   readThreadIds: ReadonlySet<string>;
 }) {
-  const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
-  const filterMenuRef = useRef<HTMLDivElement | null>(null);
-  const unreadTotal = requests.reduce(
-    (sum, request) => sum + (readThreadIds.has(request.id) ? 0 : unreadFromAccountantCount(request)),
-    0,
-  );
-  const filterOptions: Array<{ label: string; value: ThreadFilter; count?: number }> = [
-    { label: "Inbox", value: "all" },
-    { label: "Unread", value: "unread", count: unreadTotal },
-    { label: "Resolved", value: "resolved" },
-    { label: "Unresolved", value: "unresolved" },
-  ];
-
-  useEffect(() => {
-    if (!isFilterMenuOpen) {
-      return;
-    }
-
-    function handlePointerDown(event: globalThis.MouseEvent) {
-      if (!filterMenuRef.current?.contains(event.target as Node)) {
-        setIsFilterMenuOpen(false);
-      }
-    }
-
-    document.addEventListener("mousedown", handlePointerDown);
-    return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, [isFilterMenuOpen]);
-
   return (
-    <section className="flex h-full min-h-[660px] flex-col overflow-hidden bg-white min-[1080px]:min-h-0 min-[1080px]:border-r min-[1080px]:border-slate-200">
-      <div className="inbox-thread-controls shrink-0 border-b border-slate-200 bg-slate-50/70 px-4 py-3.5">
-        <div className="mb-2 flex items-center justify-between gap-3 px-1">
-          <div>
-            <p className="text-[0.72rem] font-medium uppercase tracking-[0.12em] text-[#7b879e]">Threads</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#cfe7de] bg-[#f5fbf8] px-2.5 py-1 text-[0.66rem] font-medium text-[#087d69]">
-              <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[#087d69] px-1 text-[0.56rem] font-semibold leading-none text-white">
-                {unreadTotal}
-              </span>
-              Unread
-            </span>
-            <div className="relative flex shrink-0 items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-1 text-[#061b41]" ref={filterMenuRef}>
-            <button
-              aria-label="Refresh inbox"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-full transition hover:bg-white"
-              onClick={() => {
-                setIsFilterMenuOpen(false);
-                onRefreshInbox();
-              }}
-              title="Refresh inbox"
-              type="button"
-            >
-              <RefreshCw aria-hidden="true" className="h-4 w-4" />
-            </button>
-            <button
-              aria-expanded={isFilterMenuOpen}
-              aria-haspopup="menu"
-              aria-label="Filter threads"
-              className={`inline-flex h-8 w-8 items-center justify-center rounded-full transition ${filter !== "all" || isFilterMenuOpen ? "bg-[#0a2f66]/10 text-[#00856f]" : "hover:bg-white"}`}
-              onClick={() => setIsFilterMenuOpen((current) => !current)}
-              type="button"
-            >
-              <SlidersHorizontal aria-hidden="true" className="h-4 w-4" />
-            </button>
-            <button
-              aria-label="Sort threads"
-              aria-pressed={sortDirection === "asc"}
-              className={`inline-flex h-8 w-8 items-center justify-center rounded-full transition ${sortDirection === "asc" ? "bg-[#0a2f66]/10 text-[#00856f]" : "hover:bg-white"}`}
-              onClick={onToggleSort}
-              title={sortDirection === "desc" ? "Newest first" : "Oldest first"}
-              type="button"
-            >
-              <ArrowUpDown aria-hidden="true" className="h-4 w-4" />
-            </button>
-            {isFilterMenuOpen ? (
-              <div className="absolute right-0 top-10 z-20 w-44 rounded-lg border border-slate-200 bg-white p-1.5 shadow-[0_18px_36px_rgba(4,24,52,0.14)]" role="menu">
-                {filterOptions.map((option) => (
-                  <button
-                    className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-xs font-semibold transition ${
-                      filter === option.value ? "bg-[#eef4fa] text-[#0a2f66]" : "text-[#41506f] hover:bg-slate-50 hover:text-[#091333]"
-                    }`}
-                    key={option.value}
-                    onClick={() => {
-                      onChangeFilter(option.value);
-                      setIsFilterMenuOpen(false);
-                    }}
-                    role="menuitem"
-                    type="button"
-                  >
-                    <span>{option.label}</span>
-                    {option.count ? <span className="text-[#091333]">{option.count}</span> : null}
-                  </button>
-                ))}
-              </div>
-            ) : null}
-            </div>
-          </div>
-        </div>
-        <div className="mt-2 flex h-10 items-center gap-3 rounded-xl border border-slate-200/80 bg-white px-3 shadow-[0_8px_18px_rgba(15,23,42,0.05)]">
-          <Search aria-hidden="true" className="h-4 w-4 text-slate-500" />
-          <input
-            className="h-full w-full bg-transparent text-sm text-[#091333] outline-none placeholder:text-[#7b879e]"
-            onChange={(event) => onChangeSearch(event.target.value)}
-            placeholder="Search threads..."
-            value={searchValue}
-          />
-        </div>
-        <div className="mt-3 grid grid-cols-4 gap-1 rounded-xl bg-slate-100 p-1">
-          {filterOptions.map((option) => (
-            <button
-              className={`min-w-0 rounded-lg px-2 py-2 text-[0.68rem] font-semibold transition ${
-                filter === option.value ? "bg-white text-[#091333] shadow-sm" : "text-[#64748b] hover:text-[#091333]"
-              }`}
-              key={option.value}
-              onClick={() => onChangeFilter(option.value)}
-              type="button"
-            >
-              {option.value === "all" ? "All" : option.value === "unresolved" ? "Needs action" : option.label}
-            </button>
-          ))}
-        </div>
-      </div>
+    <section className="flex h-full min-h-0 max-h-[420px] flex-col min-[1080px]:max-h-none overflow-hidden bg-white min-[1080px]:min-h-0 min-[1080px]:border-r min-[1080px]:border-slate-200">
+      <InboxListControls filter={filter} onChangeFilter={onChangeFilter} searchValue={searchValue} onChangeSearch={onChangeSearch} actions={<>
+          <button type="button" aria-label="Sort threads" onClick={onToggleSort} className="rounded px-2 py-1.5 hover:bg-slate-50">{sortDirection === "desc" ? "Newest first" : "Oldest first"}</button>
+          <button type="button" onClick={onRefreshInbox} className="rounded px-2 py-1.5 hover:bg-slate-50">Refresh inbox</button>
+        </>} />
 
       <div className="inbox-scroll-region min-h-0 flex-1 bg-white pb-3 pr-1">
         {requests.map((request, index) => {
@@ -505,14 +366,14 @@ function ThreadListPane({
             <div key={request.id}>
               {showSection ? (
                 <div className="flex h-9 w-full items-center gap-2 border-b border-slate-100 bg-[#f7f9fc] px-4 text-left text-[0.82rem] font-medium text-[#091333] sm:px-4 lg:px-4">
-                  <ChevronDown aria-hidden="true" className="h-4 w-4 text-[#35466d]" />
                   {sectionLabel}
                 </div>
               ) : null}
               <button
-                className={`relative grid w-full grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-3 px-4 py-3 text-left transition sm:px-4 lg:px-4 lg:py-3.5 ${
+                className={`relative grid w-full grid-cols-[auto_minmax(0,1fr)] items-start gap-3 px-4 py-3 text-left transition sm:px-4 lg:px-4 lg:py-3.5 ${
                   selected ? "bg-[#eef3fb] shadow-[inset_0_0_0_1px_rgba(127,155,203,0.14)]" : "hover:bg-slate-50/80"
                 }`}
+                aria-current={selected ? "true" : undefined}
                 onClick={() => onSelectRequest(request.id)}
                 type="button"
               >
@@ -528,8 +389,8 @@ function ThreadListPane({
                   <p className="mt-0.5 line-clamp-1 text-[0.8rem] font-medium leading-5 text-[#091333]">{request.title}</p>
                   <p className="mt-1 line-clamp-1 text-[0.78rem] font-medium leading-5 text-[#5f7090]">{preview}</p>
                 </div>
-                <div className="flex min-h-12 shrink-0 flex-col items-end justify-between gap-1 pt-0.5">
-                  <InboxStatusBadge audience="client" className="max-w-[112px] justify-center text-center text-[0.6rem]" status={request.status} />
+                <div className="col-start-2 flex items-center justify-between gap-2 pb-1">
+                  <InboxStatusBadge audience="client" className="text-[0.65rem]" status={request.status} />
                   {unread > 0 ? (
                     <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-[#087d69] px-1.5 text-[0.58rem] font-semibold leading-none text-white">
                       {unread}
@@ -696,20 +557,15 @@ function ConversationPane({
   }
 
   return (
-    <section className="flex h-full min-h-[720px] flex-col overflow-hidden bg-white min-[1080px]:min-h-0" onClick={() => setMessageContextMenu(null)}>
+    <section className="flex h-full min-h-[520px] flex-col overflow-hidden bg-white min-[1080px]:min-h-0" onClick={() => setMessageContextMenu(null)}>
       <div className="inbox-conversation-header shrink-0 flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 px-4 py-4 sm:px-5 lg:px-6">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2.5">
-            <p className={`inline-flex rounded-full px-3 py-1 text-[0.62rem] font-medium ${priorityBadgeClass(request.priority)}`}>
-              {request.priority.toUpperCase()} PRIORITY
-            </p>
             <InboxStatusBadge audience="client" status={request.status} />
             <p className="text-xs font-medium text-[#6f7d96]">
               {formatDateLabel(lastActivity(request))}, {formatThreadTime(lastActivity(request))}
             </p>
-            <span className="rounded-full bg-[#eef3fb] px-2.5 py-1 text-[0.66rem] font-medium text-[#315b9c]">
-              {request.comments.length} messages
-            </span>
+
           </div>
           <h2 className="mt-3 max-w-[760px] text-[1.12rem] font-medium leading-7 text-[#091333] sm:text-[1.2rem]">
             {request.title}
@@ -718,10 +574,9 @@ function ConversationPane({
             <p>
                 Assigned accountant: <span className="text-[#4b5f7c]">{request.assignedTo}</span>
               </p>
-            <p>{accountantEmail(request.assignedTo)}</p>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-1 rounded-full border border-slate-200/80 bg-white px-2 py-1 shadow-[0_8px_20px_rgba(15,23,42,0.06)]">
+        <div className="flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-1 py-1">
           <button
             aria-label="Open conversation details"
             className="h-9 rounded-full px-3 text-xs font-semibold text-[#315b9c] transition hover:bg-slate-50"
@@ -756,7 +611,11 @@ function ConversationPane({
 
       <div className="flex min-h-0 flex-1 flex-col bg-white">
           <div className="inbox-scroll-region min-h-[360px] min-[1080px]:min-h-0 flex-1 space-y-3 bg-[#fbfcfe] px-4 py-5 pb-6 pr-1 sm:px-5 lg:px-6">
-            <div className="sr-only">{requestTypeHelperText(request)}</div>
+            {requestTypeHelperText(request) ? <p className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-600">{requestTypeHelperText(request)}</p> : null}
+            {request.description ? <article className="rounded-lg border border-slate-200 bg-white px-4 py-3">
+              <p className="mb-1 text-xs font-semibold text-slate-500">Original request</p>
+              <p className="whitespace-pre-wrap text-sm leading-6 text-slate-800">{request.description}</p>
+            </article> : null}
             {request.comments.map((comment, index) => {
               const attachment = decodeAttachment(comment.message);
               const text = plainMessageText(comment.message);
@@ -1154,7 +1013,7 @@ export function ClientRequestsPage() {
   }
 
   return (
-    <div className="client-inbox-page portal-page mx-auto flex h-auto w-full max-w-[1440px] flex-col gap-5 pb-8 min-[1080px]:h-full min-[1080px]:min-h-0 min-[1080px]:overflow-hidden min-[1080px]:pb-0">
+    <div className="client-inbox-page portal-page mx-auto flex h-auto w-full max-w-none flex-col gap-5 pb-8 min-[1080px]:h-full min-[1080px]:min-h-0 min-[1080px]:overflow-hidden min-[1080px]:pb-0">
       <header className="portal-page-header flex flex-wrap items-center justify-between gap-5 border-b border-slate-200 pb-6">
         <div className="space-y-1.5">
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">Client workspace</p>
@@ -1169,11 +1028,9 @@ export function ClientRequestsPage() {
             className="client-inbox-primary-button h-11 rounded-xl border-0 px-4 text-sm font-semibold ring-0"
             onClick={() => setIsRequestModalOpen(true)}
           >
-            New request
+            Request a document
           </Button>
-          <div className="inline-flex items-center rounded-full bg-white px-3 py-1.5 text-[0.78rem] font-semibold text-[#41506f] shadow-[0_10px_24px_rgba(4,24,52,0.06)] ring-1 ring-slate-200">
-            {visibleRequests.length} active thread{visibleRequests.length === 1 ? "" : "s"}
-          </div>
+
         </div>
       </header>
 
@@ -1186,8 +1043,8 @@ export function ClientRequestsPage() {
         />
       ) : null}
 
-      {visibleRequests.length > 0 && activeRequest ? (
-        <div className="client-inbox-layout grid grid-cols-1 items-start overflow-hidden rounded-2xl border border-slate-200 bg-white min-[1080px]:min-h-0 min-[1080px]:flex-1 min-[1080px]:items-stretch min-[1080px]:grid-cols-[minmax(300px,340px)_minmax(0,1fr)]">
+      {requests.length > 0 ? (
+        <div className="client-inbox-layout grid grid-cols-1 items-start overflow-hidden rounded-2xl border border-slate-200 bg-white min-[1080px]:min-h-0 min-[1080px]:flex-1 min-[1080px]:items-stretch min-[1080px]:grid-cols-[minmax(320px,380px)_minmax(0,1fr)]">
           <ThreadListPane
             currentPage={currentPage}
             filter={filter}
@@ -1200,12 +1057,12 @@ export function ClientRequestsPage() {
             onToggleSort={() => setSortDirection((current) => (current === "desc" ? "asc" : "desc"))}
             requests={pagedRequests}
             searchValue={searchValue}
-            selectedRequestId={activeRequest.id}
+            selectedRequestId={activeRequest?.id ?? ""}
             sortDirection={sortDirection}
             readThreadIds={readThreadIds}
             totalPages={totalPages}
           />
-          <ConversationPane
+          {activeRequest ? <ConversationPane
             canStar={!backendMode}
             onReply={(requestId, message) => {
               if (!backendMode) {
@@ -1244,7 +1101,10 @@ export function ClientRequestsPage() {
             }}
             onToggleStar={toggleRequestStar}
             request={activeRequest}
-          />
+          /> : <section className="flex min-h-64 flex-col items-center justify-center p-8 text-center">
+            <h2 className="text-base font-semibold text-slate-900">No conversations match your filters</h2>
+            <p className="mt-2 text-sm text-slate-500">Change the filter or clear your search to find a conversation.</p>
+          </section>}
         </div>
       ) : (
         <section className={`${inboxPanelClass} px-6 py-10 text-center`}>

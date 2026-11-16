@@ -1,36 +1,25 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { privateStateKey } from "../../utils/privateBrowserState";
 
-function readStoredIds(key: string) {
+function read(key: string | null): Set<string> {
+  if (!key) return new Set();
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(key) ?? "[]") as unknown;
-    return new Set(Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === "string") : []);
-  } catch {
-    return new Set<string>();
-  }
+    const value: unknown = JSON.parse(window.sessionStorage.getItem(key) ?? "[]");
+    return new Set(Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : []);
+  } catch { return new Set(); }
 }
 
 export function useInboxReadState(audience: "client" | "firm", userId?: string) {
-  const storageKey = `inbox-read:${audience}:${userId || "anonymous"}`;
-  const [readThreadIds, setReadThreadIds] = useState<Set<string>>(() => readStoredIds(storageKey));
-
-  useEffect(() => {
-    setReadThreadIds(readStoredIds(storageKey));
-  }, [storageKey]);
-
-  useEffect(() => {
-    window.localStorage.setItem(storageKey, JSON.stringify([...readThreadIds]));
-  }, [readThreadIds, storageKey]);
-
-  const markRead = useCallback((requestId: string) => {
-    setReadThreadIds((current) => {
-      if (current.has(requestId)) return current;
-      return new Set(current).add(requestId);
+  const key = privateStateKey(userId, `read:${audience}`);
+  const [state, setState] = useState(() => ({ key, ids: read(key) }));
+  const readThreadIds = useMemo(() => state.key === key ? state.ids : read(key), [key, state]);
+  const hydrateRead = useCallback((ids: string[]) => {
+    setState((previous) => {
+      const next = new Set([...(previous.key === key ? previous.ids : read(key)), ...ids]);
+      if (key) window.sessionStorage.setItem(key, JSON.stringify([...next]));
+      return { key, ids: next };
     });
-  }, []);
-
-  const hydrateRead = useCallback((requestIds: string[]) => {
-    setReadThreadIds((current) => new Set([...current, ...requestIds]));
-  }, []);
-
+  }, [key]);
+  const markRead = useCallback((id: string) => hydrateRead([id]), [hydrateRead]);
   return useMemo(() => ({ hydrateRead, markRead, readThreadIds }), [hydrateRead, markRead, readThreadIds]);
 }

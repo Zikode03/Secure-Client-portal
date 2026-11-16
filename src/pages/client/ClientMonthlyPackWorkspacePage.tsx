@@ -1,3 +1,5 @@
+import { monthlyPacksApi } from "../../services/monthlyPacksApi";
+import { documentsApi } from "../../services/documentsApi";
 import { useEffect, useMemo, useState } from "react";
 import { Building2, Download, FilePlus2, Paperclip, Plus, Repeat2, UploadCloud, X } from "lucide-react";
 import { useAuth } from "../../app/auth";
@@ -10,8 +12,6 @@ import {
   ApiError,
   apiGetBlob,
   apiGetJson,
-  apiPostForm,
-  apiPostJson,
   hasApiBaseUrl,
 } from "../../services/apiClient";
 import { formatDateLabel, formatStatusLabel } from "../../utils/formatters";
@@ -121,8 +121,7 @@ export function ClientMonthlyPackWorkspacePage() {
   const [files, setFiles] = useState<File[]>([]);
   const [showAddItem, setShowAddItem] = useState(false);
   const [itemLabel, setItemLabel] = useState("");
-  const [itemCategory, setItemCategory] = useState("other");
-  const [itemCustomCategory, setItemCustomCategory] = useState("");
+  const [itemError, setItemError] = useState("");
   const [itemRequired, setItemRequired] = useState(false);
   const [itemRecurrence, setItemRecurrence] = useState<"this_month" | "every_month">("this_month");
   const [itemDueDate, setItemDueDate] = useState("");
@@ -138,13 +137,9 @@ export function ClientMonthlyPackWorkspacePage() {
 
     try {
       const [packs, allDocuments, packProfile, clientRecord] = await Promise.all([
-        apiGetJson<BackendMonthlyPackRecord[]>(
-          `/api/monthly-packs?clientId=${encodeURIComponent(clientId)}`,
-        ),
-        apiGetJson<BackendDocumentRecord[]>("/api/documents"),
-        apiGetJson<ClientMonthlyPackProfile>(
-          `/api/monthly-pack-profiles/${encodeURIComponent(clientId)}`,
-        ),
+        monthlyPacksApi.list(clientId),
+        documentsApi.list(),
+        monthlyPacksApi.profile(clientId),
         apiGetJson<ClientRecord>(`/api/clients/${encodeURIComponent(clientId)}`),
       ]);
 
@@ -201,59 +196,30 @@ export function ClientMonthlyPackWorkspacePage() {
       });
       return;
     }
+    setItemError("");
     setShowAddItem(true);
   }
 
   async function addMonthlyPackItem() {
-    const resolvedCategory =
-      itemCategory === "other" ? itemCustomCategory.trim() : itemCategory;
-    if (!itemLabel.trim() || !resolvedCategory) {
-      setFeedback({
-        tone: "warning",
-        title: "Item details required",
-        message: "Enter a document name and choose a category before adding it to the pack.",
-      });
+    if (busy) return;
+    if (!itemLabel.trim()) {
+      setItemError("Enter the name of the document or item you need.");
       return;
     }
-
     if (uploadLocked) {
-      setFeedback({
-        tone: "warning",
-        title: "Monthly pack is locked",
-        message:
-          "New checklist items cannot be added while this pack is already with the accountant or complete.",
-      });
+      setItemError("This monthly pack is already with the accountant or complete. Add new items to the next pack.");
       return;
     }
-
-    const duplicate = [...(profile?.currentPackItems ?? []), ...(profile?.recurringItems ?? [])].some(
-      (item) =>
-        item.label.trim().toLowerCase() === itemLabel.trim().toLowerCase() ||
-        item.category.trim().toLowerCase() === resolvedCategory.toLowerCase(),
-    );
-    if (duplicate && !window.confirm("A similar monthly-pack item already exists. Add another separate item anyway?")) {
+    const duplicate = [...(profile?.currentPackItems ?? []), ...(profile?.recurringItems ?? []), ...(profile?.pendingRecurringItems ?? [])].some(item => item.label.trim().toLowerCase() === itemLabel.trim().toLowerCase());
+    if (duplicate) {
+      setItemError("An item with this name already exists. Use a distinct name for a separate document.");
       return;
     }
-
+    setItemError("");
     setBusy(true);
     try {
-      const response = await apiPostJson<
-        {
-          slotId: string;
-          monthlyPackId: string;
-          recurringRequestId?: string | null;
-          recurrence: string;
-          source: string;
-        },
-        {
-          category: string;
-          label: string;
-          isRequired: boolean;
-          recurrence: string;
-          dueDateUtc: string | null;
-        }
-      >(`/api/monthly-pack-profiles/${encodeURIComponent(clientId)}/items`, {
-        category: resolvedCategory,
+      const response = await monthlyPacksApi.addItem(clientId, {
+        category: null,
         label: itemLabel.trim(),
         isRequired: itemRequired,
         recurrence: itemRecurrence,
@@ -265,8 +231,6 @@ export function ClientMonthlyPackWorkspacePage() {
       const addedLabel = itemLabel.trim();
       setShowAddItem(false);
       setItemLabel("");
-      setItemCategory("other");
-      setItemCustomCategory("");
       setItemRequired(false);
       setItemRecurrence("this_month");
       setItemDueDate("");
@@ -281,14 +245,7 @@ export function ClientMonthlyPackWorkspacePage() {
           : `${addedLabel} was added to this month's checklist.`,
       });
     } catch (error) {
-      setFeedback({
-        tone: "danger",
-        title: "Could not add monthly-pack item",
-        message:
-          error instanceof ApiError
-            ? error.message
-            : "The new checklist item could not be saved.",
-      });
+      setItemError(error instanceof Error ? error.message : "The new checklist item could not be saved. Try again.");
     } finally {
       setBusy(false);
     }
@@ -332,7 +289,7 @@ export function ClientMonthlyPackWorkspacePage() {
         form.append("MonthlyPackId", pack.id);
         form.append("DocumentType", documentType);
         form.append("File", file, file.name);
-        await apiPostForm("/api/documents/upload", form);
+        await documentsApi.uploadForm(form);
       }
 
       const uploadedCount = files.length;
@@ -397,7 +354,6 @@ export function ClientMonthlyPackWorkspacePage() {
       {backendMode && pack && clientId ? (
         <section className="portal-page mx-auto max-w-[1280px]">
           <MonthlyPackBankingStatusPanel
-            bankingPath="/client/banking"
             clientId={clientId}
             month={pack.month}
             year={pack.year}
@@ -649,7 +605,7 @@ export function ClientMonthlyPackWorkspacePage() {
           className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-[2px]"
           role="dialog"
         >
-          <div className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-slate-200 bg-white shadow-2xl">
+          <form noValidate onSubmit={event => { event.preventDefault(); void addMonthlyPackItem(); }} className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-3xl border border-slate-200 bg-white shadow-2xl">
             <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-5 py-4">
               <div>
                 <h2
@@ -675,30 +631,19 @@ export function ClientMonthlyPackWorkspacePage() {
             </div>
 
             <div className="grid gap-4 p-5 sm:grid-cols-2">
+              {itemError ? <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700 sm:col-span-2">{itemError}</p> : null}
               <label className="block sm:col-span-2">
-                <span className="text-xs font-semibold text-slate-600">Document / item name</span>
+                <span className="text-xs font-semibold text-slate-600">Item name (required)</span>
                 <input
                   autoFocus
                   className="mt-1 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-brand-300 focus:ring-4 focus:ring-brand-50"
-                  onChange={(event) => setItemLabel(event.target.value)}
+                  required
+                  maxLength={200}
+                  aria-invalid={!!itemError && !itemLabel.trim()}
+                  onChange={(event) => { setItemLabel(event.target.value); setItemError(""); }}
                   placeholder="e.g. Fuel card statement"
                   value={itemLabel}
                 />
-              </label>
-
-              <label className="block">
-                <span className="text-xs font-semibold text-slate-600">Category</span>
-                <select
-                  className="mt-1 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-brand-300 focus:ring-4 focus:ring-brand-50"
-                  onChange={(event) => setItemCategory(event.target.value)}
-                  value={itemCategory}
-                >
-                  {categoryOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
               </label>
 
               <label className="block">
@@ -710,18 +655,6 @@ export function ClientMonthlyPackWorkspacePage() {
                   value={itemDueDate}
                 />
               </label>
-
-              {itemCategory === "other" ? (
-                <label className="block sm:col-span-2">
-                  <span className="text-xs font-semibold text-slate-600">Custom category</span>
-                  <input
-                    className="mt-1 h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm outline-none focus:border-brand-300 focus:ring-4 focus:ring-brand-50"
-                    onChange={(event) => setItemCustomCategory(event.target.value)}
-                    placeholder="e.g. vehicle finance"
-                    value={itemCustomCategory}
-                  />
-                </label>
-              ) : null}
 
               <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3 sm:col-span-2">
                 <p className="text-xs font-semibold text-slate-600">How often?</p>
@@ -785,11 +718,11 @@ export function ClientMonthlyPackWorkspacePage() {
               >
                 Cancel
               </Button>
-              <Button disabled={busy} onClick={() => void addMonthlyPackItem()}>
+              <Button disabled={busy} type="submit">
                 <Plus className="h-4 w-4" /> {busy ? "Adding…" : "Add item"}
               </Button>
             </div>
-          </div>
+          </form>
         </div>
       ) : null}
     </div>

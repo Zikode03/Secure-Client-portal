@@ -396,6 +396,9 @@ export interface ReconciliationIssue {
 }
 
 export interface UploadSubmission {
+  invoiceDetails?: import("../services/invoiceScanner").InvoiceDetails;
+  detailsConfirmed?: boolean;
+  allowDuplicate?: boolean;
   slotId: string;
   fileName: string;
   autoName: string;

@@ -1,0 +1,1781 @@
+// Test-only unit fixtures. Never import from application code.
+// Friendly guide: this module (portalData) supports the Secure Client Portal workflow.
+// The goal is clear, maintainable code so future edits feel safe and straightforward.
+
+import {
+  getAccountantComplianceCentreData,
+  getClientComplianceCentreData,
+} from "./complianceDataFixture";
+import type {
+  AccountantDashboardData,
+  AdminDashboardData,
+  AuditTrailEntry,
+  BankTransaction,
+  ClientDocumentCenterData,
+  ClientWorkflowSeed,
+  DocumentComment,
+  DocumentPolicy,
+  DocumentRecord,
+  ExpiringDocumentItem,
+  InvoiceRecord,
+  LatestRecordItem,
+  NotificationItem,
+  ReconciliationIssue,
+  ReviewWorkspaceData,
+  Role,
+  SessionUser,
+  SmartAlertItem,
+} from "../../types/portal";
+
+const TODAY = new Date("2026-05-04T08:00:00.000Z");
+
+const clone = <Value,>(value: Value): Value => JSON.parse(JSON.stringify(value)) as Value;
+
+// Component flow: gather data first, then render a focused UI state.
+function differenceInDays(dateValue: string) {
+  const target = new Date(dateValue);
+  return Math.ceil((target.getTime() - TODAY.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function buildExpiringItem(
+  id: string,
+  fileName: string,
+  documentType: string,
+  expiresOn: string,
+  owner: string,
+): ExpiringDocumentItem {
+  const daysRemaining = differenceInDays(expiresOn);
+  const status = daysRemaining < 0 ? "expired" : "expiring_soon";
+
+  return {
+    id,
+    fileName,
+    documentType,
+    expiresOn,
+    owner,
+    tone: daysRemaining < 0 ? "danger" : daysRemaining <= 10 ? "danger" : "warning",
+    daysRemaining,
+    status,
+    alertMessage:
+      daysRemaining < 0
+        ? `${documentType} has expired and needs to be replaced immediately.`
+        : `Your ${documentType} expires in ${daysRemaining} days.`,
+  };
+}
+
+function buildComments(): DocumentComment[] {
+  return [];
+}
+
+function buildAuditTrail(): AuditTrailEntry[] {
+  return [
+    {
+      id: "audit-1",
+      status: "Uploaded",
+      actor: "Sarah Jacobs",
+      timestamp: "2026-05-01T08:40:00.000Z",
+      note: "Uploaded into the structured Invoices slot.",
+    },
+    {
+      id: "audit-2",
+      status: "Under Review",
+      actor: "Daniel Mokoena",
+      timestamp: "2026-05-02T11:15:00.000Z",
+      note: "Moved into review after auto-naming and metadata checks passed.",
+    },
+  ];
+}
+
+const demoUsers: Record<Role, SessionUser> = {
+  client: {
+    id: "user-client-1",
+    name: "Sarah Jacobs",
+    fullName: "Sarah Jacobs",
+    email: "sarah@apextrading.co.za",
+    role: "client",
+    title: "Finance Manager",
+    company: "Apex Trading Ltd",
+    initials: "SJ",
+    clientIds: ["client-apex"],
+    assignedClientIds: [],
+  },
+  accountant: {
+    id: "user-accountant-1",
+    name: "Daniel Mokoena",
+    fullName: "Daniel Mokoena",
+    email: "daniel@finwelladvisory.co.za",
+    role: "accountant",
+    title: "Senior Accountant",
+    company: "Finwell Advisory",
+    initials: "DM",
+    clientIds: [],
+    assignedClientIds: [],
+  },
+  admin: {
+    id: "user-admin-1",
+    name: "Priya Naidoo",
+    fullName: "Priya Naidoo",
+    email: "priya@finwelladvisory.co.za",
+    role: "admin",
+    title: "Operations Lead",
+    company: "Finwell Advisory",
+    initials: "PN",
+    clientIds: [],
+    assignedClientIds: [],
+  },
+};
+
+const sharedNotifications: NotificationItem[] = [
+  {
+    id: "note-1",
+    kind: "missing_documents",
+    title: "Bank statement is still missing from April 2026",
+    message:
+      "Apex Trading cannot submit April 2026 until the required bank statement slot is filled.",
+    createdAt: "2026-05-03T09:15:00.000Z",
+    dueDate: "2026-05-06T17:00:00.000Z",
+    tone: "danger",
+    actionLabel: "Open checklist",
+    actionHref: "/client/packs#pack-checklist",
+    linkedRecordLabel: "Bank Statement - April 2026",
+    linkedWorkspace: "monthly_packs",
+    impactLabel: "Month-end filing cannot proceed",
+    blockingLabel: "April 2026 Monthly Pack",
+    nextStep: "Upload the missing bank statement into the April 2026 structured slot.",
+    state: "unread",
+    activity: [
+      {
+        id: "note-1-activity-1",
+        title: "Reminder generated",
+        detail: "Workflow engine flagged the missing required bank statement.",
+        timestamp: "2026-05-03T09:15:00.000Z",
+        tone: "danger",
+        actor: "Workflow engine",
+      },
+    ],
+  },
+  {
+    id: "note-2",
+    kind: "rejected_documents",
+    title: "An invoice file was rejected",
+    message:
+      "The accountant requested clearer scans and a short note on the missing VAT numbers before the file can move forward.",
+    createdAt: "2026-05-02T14:30:00.000Z",
+    dueDate: "2026-05-06T17:00:00.000Z",
+    tone: "warning",
+    actionLabel: "Review rejection",
+    actionHref: "/client/documents",
+    linkedRecordLabel: "Invoices - April 2026",
+    linkedWorkspace: "documents",
+    impactLabel: "Reviewed file still needs correction",
+    blockingLabel: "April 2026 Monthly Pack",
+    nextStep: "Open the invoice bundle, review the rejection note, and re-upload the corrected support.",
+    state: "unread",
+    activity: [
+      {
+        id: "note-2-activity-1",
+        title: "Document rejected",
+        detail: "Accountant requested clearer VAT support for the invoice bundle.",
+        timestamp: "2026-05-02T14:30:00.000Z",
+        tone: "warning",
+        actor: "Daniel Mokoena",
+      },
+    ],
+  },
+  {
+    id: "note-3",
+    kind: "deadline_reminder",
+    title: "April pack closes in 2 days",
+    message:
+      "Required April 2026 records are still incomplete, so the submission window remains blocked.",
+    createdAt: "2026-05-02T08:10:00.000Z",
+    dueDate: "2026-05-06T17:00:00.000Z",
+    tone: "warning",
+    actionLabel: "See month controls",
+    actionHref: "/client/packs#submission-readiness",
+    linkedRecordLabel: "April 2026 Monthly Pack",
+    linkedWorkspace: "monthly_packs",
+    impactLabel: "Submission window is approaching",
+    blockingLabel: "April 2026 Monthly Pack",
+    nextStep: "Resolve the remaining checklist blockers before the close window ends.",
+    state: "unread",
+    activity: [
+      {
+        id: "note-3-activity-1",
+        title: "Deadline reminder sent",
+        detail: "The month-end close date is approaching with open blockers still in place.",
+        timestamp: "2026-05-02T08:10:00.000Z",
+        tone: "warning",
+        actor: "Workflow engine",
+      },
+    ],
+  },
+  {
+    id: "note-4",
+    kind: "expiring_documents",
+    title: "Tax Clearance expires in 10 days",
+    message: "Your Tax Clearance certificate expires in 10 days.",
+    createdAt: "2026-05-04T06:15:00.000Z",
+    dueDate: "2026-05-14T00:00:00.000Z",
+    tone: "danger",
+    actionLabel: "View expiring items",
+    actionHref: "/client/compliance",
+    linkedRecordLabel: "Tax Clearance Certificate",
+    linkedWorkspace: "compliance",
+    impactLabel: "Compliance status may fall out of date",
+    blockingLabel: "Compliance Centre",
+    nextStep: "Review the expiring record and upload a renewed version before expiry.",
+    state: "unread",
+    activity: [
+      {
+        id: "note-4-activity-1",
+        title: "Expiry reminder raised",
+        detail: "The portal flagged the upcoming Tax Clearance expiry window.",
+        timestamp: "2026-05-04T06:15:00.000Z",
+        tone: "danger",
+        actor: "Workflow engine",
+      },
+    ],
+  },
+];
+
+const clientDocuments: DocumentRecord[] = [
+  {
+    id: "doc-1001",
+    clientId: "client-apex",
+    clientName: "Apex Trading Ltd",
+    documentType: "Invoices",
+    fileName: "ApexTrading_Invoices_April_2026.pdf",
+    monthLabel: "April 2026",
+    description: "Main invoice bundle for the April month close.",
+    status: "under_review",
+    uploadedBy: "Sarah Jacobs",
+    uploadedAt: "2026-05-01T08:40:00.000Z",
+    reviewedBy: "Daniel Mokoena",
+    reviewedAt: "2026-05-02T11:15:00.000Z",
+    sizeLabel: "4.8 MB",
+    keywordTags: ["invoices", "april", "revenue"],
+    amountLabel: "R 52,400",
+    extractedText:
+      "April 2026 invoice bundle. Revenue ledger closing pack with invoice totals and customer references.",
+    comments: buildComments(),
+    auditTrail: buildAuditTrail(),
+  },
+  {
+    id: "doc-1002",
+    clientId: "client-apex",
+    clientName: "Apex Trading Ltd",
+    documentType: "Invoices",
+    fileName: "ApexTrading_Invoices_April_2026_Supporting.pdf",
+    monthLabel: "April 2026",
+    description: "Supporting invoice file waiting for clearer receipt scans.",
+    status: "rejected",
+    uploadedBy: "Sarah Jacobs",
+    uploadedAt: "2026-04-29T15:25:00.000Z",
+    reviewedBy: "Daniel Mokoena",
+    reviewedAt: "2026-04-30T09:10:00.000Z",
+    sizeLabel: "7.1 MB",
+    keywordTags: ["invoices", "receipts", "april"],
+    supplierName: "Makro",
+    amountLabel: "R 12,500",
+    extractedText:
+      "Makro office supplies invoice. April 2026 procurement record with VAT details and branch reference.",
+    expiryDate: undefined,
+    rejectionReason: "Three receipts were cropped and two VAT numbers are unreadable.",
+    comments: [],
+    auditTrail: [
+      {
+        id: "audit-3",
+        status: "Uploaded",
+        actor: "Sarah Jacobs",
+        timestamp: "2026-04-29T15:25:00.000Z",
+        note: "Uploaded into the structured Invoices slot.",
+      },
+      {
+        id: "audit-4",
+        status: "Rejected",
+        actor: "Daniel Mokoena",
+        timestamp: "2026-04-30T09:10:00.000Z",
+        note: "Rejected because the supplier evidence was incomplete.",
+      },
+    ],
+  },
+  {
+    id: "doc-1003",
+    clientId: "client-apex",
+    clientName: "Apex Trading Ltd",
+    documentType: "Signed Documents",
+    fileName: "ApexTrading_SignedDocuments_April_2026.pdf",
+    monthLabel: "April 2026",
+    description: "Signed filing authorisation and engagement documents.",
+    status: "accepted",
+    uploadedBy: "Sarah Jacobs",
+    uploadedAt: "2026-04-28T09:00:00.000Z",
+    reviewedBy: "Daniel Mokoena",
+    reviewedAt: "2026-04-28T10:20:00.000Z",
+    sizeLabel: "1.2 MB",
+    keywordTags: ["signed", "engagement", "legal"],
+    comments: [],
+    auditTrail: [
+      {
+        id: "audit-5",
+        status: "Accepted",
+        actor: "Daniel Mokoena",
+        timestamp: "2026-04-28T10:20:00.000Z",
+        note: "Accepted and linked to the April compliance file.",
+      },
+    ],
+  },
+  {
+    id: "doc-1004",
+    clientId: "client-apex",
+    clientName: "Apex Trading Ltd",
+    documentType: "Bank Statement",
+    fileName: "ApexTrading_BankStatement_March_2026.pdf",
+    monthLabel: "March 2026",
+    description: "Verified month-end statement from the operating account.",
+    status: "filed",
+    uploadedBy: "Sarah Jacobs",
+    uploadedAt: "2026-04-03T07:55:00.000Z",
+    reviewedBy: "Daniel Mokoena",
+    reviewedAt: "2026-04-03T13:20:00.000Z",
+    sizeLabel: "2.3 MB",
+    keywordTags: ["bank", "statement", "march"],
+    extractedText:
+      "March 2026 operating account bank statement. Closing balance and transaction history verified for month end.",
+    comments: [],
+    auditTrail: [
+      {
+        id: "audit-6",
+        status: "Filed",
+        actor: "Daniel Mokoena",
+        timestamp: "2026-04-03T13:20:00.000Z",
+        note: "Filed after bank reconciliation closed.",
+      },
+    ],
+  },
+  {
+    id: "doc-1005",
+    clientId: "client-apex",
+    clientName: "Apex Trading Ltd",
+    documentType: "Tax Clearance",
+    fileName: "ApexTrading_TaxClearance_April_2026.pdf",
+    monthLabel: "April 2026",
+    description: "Current tax clearance certificate linked to tender compliance.",
+    status: "accepted",
+    uploadedBy: "Sarah Jacobs",
+    uploadedAt: "2026-04-16T08:10:00.000Z",
+    reviewedBy: "Daniel Mokoena",
+    reviewedAt: "2026-04-16T09:45:00.000Z",
+    sizeLabel: "980 KB",
+    keywordTags: ["tax", "clearance", "compliance"],
+    expiryDate: "2026-05-14T00:00:00.000Z",
+    comments: [],
+    auditTrail: [
+      {
+        id: "audit-7",
+        status: "Accepted",
+        actor: "Daniel Mokoena",
+        timestamp: "2026-04-16T09:45:00.000Z",
+        note: "Accepted with an expiry reminder scheduled.",
+      },
+    ],
+  },
+  {
+    id: "doc-1006",
+    clientId: "client-apex",
+    clientName: "Apex Trading Ltd",
+    documentType: "B-BBEE Certificate",
+    fileName: "ApexTrading_BBBEECertificate_2026.pdf",
+    monthLabel: "April 2026",
+    description: "B-BBEE certificate used for supplier and tender checks.",
+    status: "accepted",
+    uploadedBy: "Sarah Jacobs",
+    uploadedAt: "2026-03-24T10:05:00.000Z",
+    reviewedBy: "Daniel Mokoena",
+    reviewedAt: "2026-03-24T11:00:00.000Z",
+    sizeLabel: "720 KB",
+    keywordTags: ["bbbee", "certificate", "compliance"],
+    expiryDate: "2026-04-30T00:00:00.000Z",
+    comments: [],
+    auditTrail: [
+      {
+        id: "audit-8",
+        status: "Accepted",
+        actor: "Daniel Mokoena",
+        timestamp: "2026-03-24T11:00:00.000Z",
+        note: "Accepted and flagged for expiry tracking.",
+      },
+    ],
+  },
+  {
+    id: "doc-1007",
+    clientId: "client-apex",
+    clientName: "Apex Trading Ltd",
+    documentType: "Proof of Address",
+    fileName: "ApexTrading_ProofOfAddress_April_2026.pdf",
+    monthLabel: "April 2026",
+    description: "Updated address confirmation for entity verification.",
+    status: "uploaded",
+    uploadedBy: "Sarah Jacobs",
+    uploadedAt: "2026-05-02T09:30:00.000Z",
+    sizeLabel: "600 KB",
+    keywordTags: ["proof", "address", "fica"],
+    expiryDate: "2026-05-20T00:00:00.000Z",
+    comments: [],
+    auditTrail: [
+      {
+        id: "audit-9",
+        status: "Uploaded",
+        actor: "Sarah Jacobs",
+        timestamp: "2026-05-02T09:30:00.000Z",
+        note: "Uploaded and waiting for final review.",
+      },
+    ],
+  },
+  {
+    id: "doc-1008",
+    clientId: "client-apex",
+    clientName: "Apex Trading Ltd",
+    documentType: "Master Services Contract",
+    fileName: "ApexTrading_MasterServicesContract_2026.pdf",
+    monthLabel: "April 2026",
+    description: "Current contract used for annual compliance and filing permissions.",
+    status: "under_review",
+    uploadedBy: "Sarah Jacobs",
+    uploadedAt: "2026-05-01T14:10:00.000Z",
+    reviewedBy: "Daniel Mokoena",
+    reviewedAt: "2026-05-02T10:00:00.000Z",
+    sizeLabel: "2.0 MB",
+    keywordTags: ["contract", "legal", "services"],
+    expiryDate: "2026-05-29T00:00:00.000Z",
+    comments: [],
+    auditTrail: [
+      {
+        id: "audit-10",
+        status: "Under Review",
+        actor: "Daniel Mokoena",
+        timestamp: "2026-05-02T10:00:00.000Z",
+        note: "Under review for signature completeness and expiry tagging.",
+      },
+    ],
+  },
+  {
+    id: "doc-1009",
+    clientId: "client-apex",
+    clientName: "Apex Trading Ltd",
+    documentType: "Payroll Summary",
+    fileName: "ApexTrading_PayrollSummary_April_2026.xlsx",
+    monthLabel: "April 2026",
+    description: "Payroll summary and deductions schedule.",
+    status: "accepted",
+    uploadedBy: "Sarah Jacobs",
+    uploadedAt: "2026-04-30T16:05:00.000Z",
+    reviewedBy: "Daniel Mokoena",
+    reviewedAt: "2026-05-01T09:45:00.000Z",
+    sizeLabel: "520 KB",
+    keywordTags: ["payroll", "salary", "april"],
+    amountLabel: "R 148,200",
+    extractedText:
+      "April 2026 payroll summary with PAYE, UIF, SDL, and net salary totals.",
+    comments: [],
+    auditTrail: [
+      {
+        id: "audit-11",
+        status: "Accepted",
+        actor: "Daniel Mokoena",
+        timestamp: "2026-05-01T09:45:00.000Z",
+        note: "Accepted for the month-end payroll close.",
+      },
+    ],
+  },
+  {
+    id: "doc-1010",
+    clientId: "client-apex",
+    clientName: "Apex Trading Ltd",
+    documentType: "ID Copy",
+    fileName: "ApexTrading_DirectorID_April_2026.pdf",
+    monthLabel: "April 2026",
+    description: "Director identity record for compliance refresh.",
+    status: "accepted",
+    uploadedBy: "Sarah Jacobs",
+    uploadedAt: "2026-04-15T08:20:00.000Z",
+    reviewedBy: "Daniel Mokoena",
+    reviewedAt: "2026-04-15T09:05:00.000Z",
+    sizeLabel: "430 KB",
+    keywordTags: ["id", "fica", "identity"],
+    expiryDate: "2026-06-01T00:00:00.000Z",
+    comments: [],
+    auditTrail: [
+      {
+        id: "audit-12",
+        status: "Accepted",
+        actor: "Daniel Mokoena",
+        timestamp: "2026-04-15T09:05:00.000Z",
+        note: "Accepted with compliance refresh tagging.",
+      },
+    ],
+  },
+  {
+    id: "doc-1011",
+    clientId: "client-apex",
+    clientName: "Apex Trading Ltd",
+    documentType: "Invoices",
+    fileName: "Makro_Invoice_March_2026.pdf",
+    monthLabel: "March 2026",
+    description: "March invoice from Makro used for month-on-month search and supplier lookups.",
+    status: "filed",
+    uploadedBy: "Sarah Jacobs",
+    uploadedAt: "2026-04-01T09:10:00.000Z",
+    reviewedBy: "Daniel Mokoena",
+    reviewedAt: "2026-04-01T13:25:00.000Z",
+    sizeLabel: "1.1 MB",
+    keywordTags: ["march", "makro", "office", "invoice"],
+    supplierName: "Makro",
+    amountLabel: "R 12,500",
+    extractedText:
+      "Makro March 2026 office furniture and consumables invoice. Total amount R12,500 with supplier code MKR-118.",
+    comments: [],
+    auditTrail: [
+      {
+        id: "audit-13",
+        status: "Filed",
+        actor: "Daniel Mokoena",
+        timestamp: "2026-04-01T13:25:00.000Z",
+        note: "Filed after the supplier invoice matched the March month-close pack.",
+      },
+    ],
+  },
+];
+
+const clientInvoices: InvoiceRecord[] = [
+  {
+    id: "inv-2041",
+    clientId: "client-apex",
+    clientName: "Apex Trading Ltd",
+    invoiceNumber: "INV-2041",
+    fileName: "ApexTrading_Invoice_April_2026.pdf",
+    monthLabel: "April 2026",
+    description: "Consulting invoice for April month-end preparation.",
+    amountLabel: "R 18,400",
+    uploadedAt: "2026-05-03T09:00:00.000Z",
+    status: "draft",
+    keywordTags: ["invoice", "consulting", "april"],
+    supplierName: "BlueOcean Ltd",
+    extractedText:
+      "Consulting invoice INV-2041 for BlueOcean Ltd covering April 2026 month-end preparation.",
+  },
+  {
+    id: "inv-2040",
+    clientId: "client-apex",
+    clientName: "Apex Trading Ltd",
+    invoiceNumber: "INV-2042",
+    fileName: "INV-2042_ApexTrading_Apr2026.pdf",
+    monthLabel: "April 2026",
+    description: "Support invoice uploaded for final checks.",
+    amountLabel: "R 12,960",
+    uploadedAt: "2026-05-02T13:25:00.000Z",
+    status: "uploaded",
+    keywordTags: ["invoice", "support", "april"],
+    supplierName: "Northwind Distribution",
+    extractedText:
+      "Support invoice INV-2042 for Northwind Distribution. April service period and signed delivery note attached.",
+  },
+  {
+    id: "inv-2039",
+    clientId: "client-apex",
+    clientName: "Apex Trading Ltd",
+    invoiceNumber: "INV-2039",
+    fileName: "INV-2039_ApexTrading_Apr2026.pdf",
+    monthLabel: "April 2026",
+    description: "Finalised invoice waiting for accountant pickup.",
+    amountLabel: "R 8,250",
+    uploadedAt: "2026-05-01T16:10:00.000Z",
+    status: "finalised",
+    keywordTags: ["invoice", "finalised", "april"],
+    supplierName: "City Stores",
+    extractedText:
+      "Finalised April invoice INV-2039 for City Stores awaiting accountant pickup.",
+  },
+  {
+    id: "inv-2038",
+    clientId: "client-apex",
+    clientName: "Apex Trading Ltd",
+    invoiceNumber: "INV-2038",
+    fileName: "INV-2038_ApexTrading_Apr2026.pdf",
+    monthLabel: "April 2026",
+    description: "Finalised invoice already sent to the accountant.",
+    amountLabel: "R 6,480",
+    uploadedAt: "2026-05-01T14:05:00.000Z",
+    status: "sent_to_accountant",
+    keywordTags: ["invoice", "sent", "april"],
+    supplierName: "Riverbank Foods",
+    extractedText:
+      "April invoice sent to accountant for Riverbank Foods with completed delivery schedule.",
+  },
+  {
+    id: "inv-2037",
+    clientId: "client-apex",
+    clientName: "Apex Trading Ltd",
+    invoiceNumber: "INV-2037",
+    fileName: "INV-2037_ApexTrading_Apr2026.pdf",
+    monthLabel: "April 2026",
+    description: "Invoice in accountant review.",
+    amountLabel: "R 10,800",
+    uploadedAt: "2026-04-30T15:40:00.000Z",
+    status: "under_review",
+    keywordTags: ["invoice", "review", "april"],
+    supplierName: "Delta Systems",
+    extractedText:
+      "Invoice under review for Delta Systems. Waiting on final reviewer sign-off.",
+  },
+  {
+    id: "inv-2036",
+    clientId: "client-apex",
+    clientName: "Apex Trading Ltd",
+    invoiceNumber: "INV-2036",
+    fileName: "INV-2036_ApexTrading_Apr2026.pdf",
+    monthLabel: "April 2026",
+    description: "Invoice accepted by accountant.",
+    amountLabel: "R 14,200",
+    uploadedAt: "2026-04-29T12:15:00.000Z",
+    status: "accepted",
+    keywordTags: ["invoice", "accepted", "april"],
+    supplierName: "Echo Finance",
+    extractedText:
+      "Accepted invoice for Echo Finance with approved April work order references.",
+  },
+  {
+    id: "inv-2035",
+    clientId: "client-apex",
+    clientName: "Apex Trading Ltd",
+    invoiceNumber: "INV-2035",
+    fileName: "INV-2035_ApexTrading_Apr2026.pdf",
+    monthLabel: "April 2026",
+    description: "Invoice rejected because the supporting PO number is missing.",
+    amountLabel: "R 9,320",
+    uploadedAt: "2026-04-28T10:35:00.000Z",
+    status: "rejected",
+    keywordTags: ["invoice", "rejected", "april"],
+    supplierName: "Horizon AI",
+    extractedText:
+      "Rejected invoice for Horizon AI. Purchase order reference is missing from the face of the document.",
+    rejectionReason: "Purchase order reference missing from the final invoice.",
+  },
+  {
+    id: "inv-2034",
+    clientId: "client-apex",
+    clientName: "Apex Trading Ltd",
+    invoiceNumber: "INV-2033",
+    fileName: "INV-2033_ApexTrading_Mar2026.pdf",
+    monthLabel: "March 2026",
+    description: "Archived invoice from the previous month.",
+    amountLabel: "R 55,000",
+    uploadedAt: "2026-04-04T09:50:00.000Z",
+    status: "accepted",
+    keywordTags: ["invoice", "march"],
+    supplierName: "Apex Municipal Account",
+    extractedText:
+      "March invoice INV-2033 for Apex Municipal Account. Large once-off service closeout.",
+  },
+  {
+    id: "inv-2033",
+    clientId: "client-apex",
+    clientName: "Apex Trading Ltd",
+    invoiceNumber: "INV-2032",
+    fileName: "INV-2032_ApexTrading_Mar2026.pdf",
+    monthLabel: "March 2026",
+    description: "Previous month invoice filed for reference.",
+    amountLabel: "R 48,000",
+    uploadedAt: "2026-04-02T13:05:00.000Z",
+    status: "accepted",
+    keywordTags: ["invoice", "march"],
+    supplierName: "Sterling Retail",
+    extractedText:
+      "March invoice INV-2032 for Sterling Retail with approved revenue schedule.",
+  },
+  {
+    id: "inv-2032",
+    clientId: "client-apex",
+    clientName: "Apex Trading Ltd",
+    invoiceNumber: "INV-2031",
+    fileName: "INV-2031_ApexTrading_Mar2026.pdf",
+    monthLabel: "March 2026",
+    description: "March support invoice for comparison reporting.",
+    amountLabel: "R 36,000",
+    uploadedAt: "2026-04-01T11:25:00.000Z",
+    status: "accepted",
+    keywordTags: ["invoice", "march"],
+    supplierName: "Peak Trade Supplies",
+    extractedText:
+      "March invoice INV-2031 for Peak Trade Supplies used in revenue comparison reporting.",
+  },
+];
+
+const clientBankTransactions: BankTransaction[] = [
+  {
+    id: "txn-1",
+    monthLabel: "April 2026",
+    date: "2026-05-03T10:12:00.000Z",
+    reference: "EFT-8814",
+    description: "Customer receipt recorded without an attached invoice reference.",
+    counterparty: "Walk-in customer",
+    amountLabel: "R 5,000",
+    amountValue: 5000,
+    direction: "inflow",
+  },
+  {
+    id: "txn-2",
+    monthLabel: "April 2026",
+    date: "2026-05-02T13:35:00.000Z",
+    reference: "EFT-8815",
+    description: "Payment received for April support work.",
+    counterparty: "Northwind Distribution",
+    amountLabel: "R 12,960",
+    amountValue: 12960,
+    direction: "inflow",
+  },
+  {
+    id: "txn-3",
+    monthLabel: "April 2026",
+    date: "2026-05-01T16:22:00.000Z",
+    reference: "EFT-8816",
+    description: "Customer payment cleared against finalised invoice.",
+    counterparty: "City Stores",
+    amountLabel: "R 8,250",
+    amountValue: 8250,
+    direction: "inflow",
+  },
+];
+
+const clientWorkflowSeed: ClientWorkflowSeed = {
+  monthPack: {
+    monthLabel: "April 2026",
+    dueDate: "2026-05-06T17:00:00.000Z",
+    deadlineStatus: "due",
+    progressPercent: 25,
+    completedCount: 1,
+    totalCount: 4,
+    canComplete: false,
+    completionMessage:
+      "You cannot submit this month because required documents are still missing or rejected.",
+    slots: [
+      {
+        id: "slot-1",
+        documentType: "Bank Statement",
+        description: "Main business account statement for the month.",
+        status: "missing",
+        month: "April",
+        year: 2026,
+        acceptedFiles: ["PDF"],
+        progress: 0,
+        autoName: "ApexTrading_BankStatement_April_2026.pdf",
+        isRequired: true,
+      },
+      {
+        id: "slot-2",
+        documentType: "Invoices",
+        description:
+          "All customer and supplier invoice evidence for the month in one controlled slot.",
+        status: "rejected",
+        month: "April",
+        year: 2026,
+        acceptedFiles: ["PDF", "JPG", "PNG", "ZIP"],
+        progress: 35,
+        autoName: "ApexTrading_Invoices_April_2026.pdf",
+        isRequired: true,
+        lastSubmission: "2026-05-01T08:40:00.000Z",
+        rejectionReason:
+          "The invoice support is incomplete because three receipt scans are cropped and two VAT numbers are unreadable.",
+      },
+      {
+        id: "slot-3",
+        documentType: "Signed Documents",
+        description: "Signed approvals, filing authorisations, and month-end sign-off.",
+        status: "pending_signature",
+        month: "April",
+        year: 2026,
+        acceptedFiles: ["PDF"],
+        progress: 68,
+        autoName: "ApexTrading_SignedDocuments_April_2026.pdf",
+        isRequired: true,
+        lastSubmission: "2026-04-28T09:00:00.000Z",
+      },
+      {
+        id: "slot-4",
+        documentType: "Compliance Record",
+        description:
+          "Current compliance evidence for the period, such as Tax PIN, proof of address, or contract support.",
+        status: "under_review",
+        month: "April",
+        year: 2026,
+        acceptedFiles: ["PDF", "JPG", "PNG"],
+        progress: 90,
+        autoName: "ApexTrading_ComplianceRecord_April_2026.pdf",
+        isRequired: true,
+        supportsExpiryDate: true,
+        lastSubmission: "2026-05-02T09:30:00.000Z",
+      },
+    ],
+  },
+  documents: clientDocuments,
+  invoices: clientInvoices,
+  bankTransactions: clientBankTransactions,
+  notifications: sharedNotifications,
+  activity: [
+    {
+      id: "activity-1",
+      title: "Invoice support file rejected",
+      detail: "Daniel asked for clearer scans on three receipts before the file can be accepted.",
+      timestamp: "2026-04-30T09:10:00.000Z",
+      tone: "danger",
+      actor: "Daniel Mokoena",
+      relatedLabel: "Invoices",
+    },
+    {
+      id: "activity-2",
+      title: "Invoice INV-2038 sent to accountant",
+      detail: "The finalised invoice moved into the accountant queue automatically.",
+      timestamp: "2026-05-01T14:05:00.000Z",
+      tone: "success",
+      actor: "Sarah Jacobs",
+      relatedLabel: "INV-2038",
+    },
+    {
+      id: "activity-3",
+      title: "Tax Clearance warning raised",
+      detail: "The portal highlighted that the certificate expires in 10 days.",
+      timestamp: "2026-05-04T06:15:00.000Z",
+      tone: "warning",
+      actor: "Workflow engine",
+      relatedLabel: "Compliance Record",
+    },
+  ],
+  currentMonthInvoiceCount: 12,
+  previousMonthInvoiceCount: 40,
+  currentMonthLabel: "April 2026",
+  previousMonthLabel: "March 2026",
+};
+
+const latestOverallDocumentsForAccountant: LatestRecordItem[] = [
+  {
+    id: "overall-1",
+    name: "ApexTrading_Invoices_April_2026.pdf",
+    type: "Invoices",
+    date: "2026-05-01T08:40:00.000Z",
+    status: "under_review",
+    kind: "document",
+    clientName: "Apex Trading Ltd",
+  },
+  {
+    id: "overall-2",
+    name: "BluePeak_PayrollSummary_April_2026.xlsx",
+    type: "Payroll Summary",
+    date: "2026-05-02T07:30:00.000Z",
+    status: "uploaded",
+    kind: "document",
+    clientName: "Blue Peak Logistics",
+  },
+  {
+    id: "overall-3",
+    name: "INV-2038_ApexTrading_Apr2026.pdf",
+    type: "Invoice",
+    date: "2026-05-01T14:05:00.000Z",
+    status: "sent_to_accountant",
+    kind: "invoice",
+    amountLabel: "R 6,480",
+    clientName: "Apex Trading Ltd",
+  },
+  {
+    id: "overall-4",
+    name: "MetroHabitat_VATWorkingPapers_April_2026.xlsx",
+    type: "VAT Working Papers",
+    date: "2026-05-01T15:10:00.000Z",
+    status: "uploaded",
+    kind: "document",
+    clientName: "Metro Habitat Group",
+  },
+  {
+    id: "overall-5",
+    name: "CloudNine_TaxClearance_2026.pdf",
+    type: "Tax Clearance",
+    date: "2026-04-30T10:20:00.000Z",
+    status: "accepted",
+    kind: "document",
+    clientName: "Cloud Nine Retail",
+  },
+];
+
+const accountantSmartAlerts: SmartAlertItem[] = [
+  {
+    id: "smart-1",
+    title: "Bank statement missing while invoices are already in",
+    message:
+      "Apex Trading has invoice activity for April 2026, but the required bank statement is still missing from the month pack.",
+    tone: "danger",
+    category: "completeness",
+  },
+  {
+    id: "smart-2",
+    title: "Invoice numbers skipped in the April sequence",
+    message:
+      "Apex Trading moved from INV-2042 to INV-2039. Review whether INV-2040 was voided or never uploaded.",
+    tone: "warning",
+    category: "sequence",
+  },
+  {
+    id: "smart-3",
+    title: "Client revenue dropped sharply from March",
+    message:
+      "Apex Trading invoiced materially less value this month than in March, which may indicate missing billing or a real trading slowdown.",
+    tone: "warning",
+    category: "revenue",
+  },
+];
+
+const accountantReconciliationIssues: ReconciliationIssue[] = [
+  {
+    id: "recon-1",
+    transactionDate: "2026-05-03T10:12:00.000Z",
+    reference: "EFT-8814",
+    counterparty: "Walk-in customer",
+    amountLabel: "R 5,000",
+    message: "R5,000 received but no matching invoice was found in the April invoice run.",
+    suggestedAction: "Check whether a cash sale invoice is missing or whether the amount belongs to another period.",
+    tone: "danger",
+  },
+  {
+    id: "recon-2",
+    transactionDate: "2026-05-02T13:35:00.000Z",
+    reference: "EFT-8815",
+    counterparty: "Northwind Distribution",
+    amountLabel: "R 12,960",
+    message: "Receipt amount matches an uploaded invoice, but the bank statement is still outstanding for formal reconciliation.",
+    suggestedAction: "Collect the April bank statement before marking the reconciliation review complete.",
+    tone: "warning",
+    matchedInvoiceNumber: "INV-2042",
+  },
+];
+
+const accountantDashboardData: AccountantDashboardData = {
+  summaryMetrics: [
+    {
+      id: "acc-metric-1",
+      label: "Total clients",
+      value: "24",
+      helper: "Active clients with structured monthly workflows.",
+      tone: "info",
+    },
+    {
+      id: "acc-metric-2",
+      label: "Clients missing documents",
+      value: "9",
+      helper: "Required slots are still open across these clients.",
+      tone: "danger",
+    },
+    {
+      id: "acc-metric-3",
+      label: "Overdue submissions",
+      value: "6",
+      helper: "Deadline has passed and follow-up is required today.",
+      tone: "warning",
+    },
+    {
+      id: "acc-metric-4",
+      label: "Pending review",
+      value: "14",
+      helper: "Documents and invoices waiting for accountant action.",
+      tone: "success",
+    },
+  ],
+  portfolio: [
+    {
+      id: "portfolio-1",
+      clientId: "firm-client-1",
+      clientName: "Apex Trading Ltd",
+      monthLabel: "April 2026",
+      progressPercent: 67,
+      status: "attention",
+      assignedAccountant: "Daniel Mokoena",
+      missingCount: 3,
+      overdueCount: 0,
+      deadline: "06 May 2026",
+    },
+    {
+      id: "portfolio-2",
+      clientId: "firm-client-2",
+      clientName: "Blue Peak Logistics",
+      monthLabel: "April 2026",
+      progressPercent: 52,
+      status: "overdue",
+      assignedAccountant: "Lerato Nkosi",
+      missingCount: 4,
+      overdueCount: 2,
+      deadline: "03 May 2026",
+    },
+    {
+      id: "portfolio-3",
+      clientId: "firm-client-3",
+      clientName: "Cloud Nine Retail",
+      monthLabel: "April 2026",
+      progressPercent: 91,
+      status: "on_track",
+      assignedAccountant: "Daniel Mokoena",
+      missingCount: 0,
+      overdueCount: 0,
+      deadline: "07 May 2026",
+    },
+    {
+      id: "portfolio-4",
+      clientId: "firm-client-4",
+      clientName: "Metro Habitat Group",
+      monthLabel: "April 2026",
+      progressPercent: 74,
+      status: "attention",
+      assignedAccountant: "Sipho Maseko",
+      missingCount: 1,
+      overdueCount: 0,
+      deadline: "06 May 2026",
+    },
+  ],
+  reviewQueue: [
+    {
+      id: "doc-1001",
+      clientName: "Apex Trading Ltd",
+      documentType: "Invoices",
+      monthLabel: "April 2026",
+      submittedAt: "2026-05-01T08:40:00.000Z",
+      status: "under_review",
+      assignedAccountant: "Daniel Mokoena",
+    },
+    {
+      id: "review-2",
+      clientName: "Blue Peak Logistics",
+      documentType: "Bank Statement",
+      monthLabel: "April 2026",
+      submittedAt: "2026-05-02T09:05:00.000Z",
+      status: "uploaded",
+      assignedAccountant: "Lerato Nkosi",
+    },
+    {
+      id: "review-3",
+      clientName: "Blue Peak Logistics",
+      documentType: "Payroll Summary",
+      monthLabel: "April 2026",
+      submittedAt: "2026-05-02T07:30:00.000Z",
+      status: "uploaded",
+      assignedAccountant: "Lerato Nkosi",
+    },
+    {
+      id: "review-4",
+      clientName: "Metro Habitat Group",
+      documentType: "VAT Working Papers",
+      monthLabel: "April 2026",
+      submittedAt: "2026-05-01T15:10:00.000Z",
+      status: "uploaded",
+      assignedAccountant: "Sipho Maseko",
+    },
+    {
+      id: "review-5",
+      clientName: "Cloud Nine Retail",
+      documentType: "Signed Documents",
+      monthLabel: "April 2026",
+      submittedAt: "2026-05-01T13:20:00.000Z",
+      status: "under_review",
+      assignedAccountant: "Daniel Mokoena",
+    },
+    {
+      id: "review-6",
+      clientName: "Metro Habitat Group",
+      documentType: "Supplier Statement",
+      monthLabel: "April 2026",
+      submittedAt: "2026-05-01T11:45:00.000Z",
+      status: "uploaded",
+      assignedAccountant: "Sipho Maseko",
+    },
+    {
+      id: "review-7",
+      clientName: "Cloud Nine Retail",
+      documentType: "Proof of Address",
+      monthLabel: "April 2026",
+      submittedAt: "2026-05-01T10:25:00.000Z",
+      status: "uploaded",
+      assignedAccountant: "Daniel Mokoena",
+    },
+    {
+      id: "review-8",
+      clientName: "Blue Peak Logistics",
+      documentType: "Expense Receipts",
+      monthLabel: "April 2026",
+      submittedAt: "2026-04-30T16:10:00.000Z",
+      status: "uploaded",
+      assignedAccountant: "Lerato Nkosi",
+    },
+    {
+      id: "review-9",
+      clientName: "Cloud Nine Retail",
+      documentType: "Credit Note",
+      monthLabel: "April 2026",
+      submittedAt: "2026-04-30T15:05:00.000Z",
+      status: "under_review",
+      assignedAccountant: "Daniel Mokoena",
+    },
+    {
+      id: "review-10",
+      clientName: "Metro Habitat Group",
+      documentType: "Purchase Order",
+      monthLabel: "April 2026",
+      submittedAt: "2026-04-30T12:40:00.000Z",
+      status: "uploaded",
+      assignedAccountant: "Sipho Maseko",
+    },
+    {
+      id: "review-11",
+      clientName: "Blue Peak Logistics",
+      documentType: "Delivery Note",
+      monthLabel: "April 2026",
+      submittedAt: "2026-04-30T09:55:00.000Z",
+      status: "uploaded",
+      assignedAccountant: "Lerato Nkosi",
+    },
+  ],
+  deadlines: [
+    {
+      id: "deadline-1",
+      label: "Apex Trading VAT support pack",
+      dueDate: "2026-05-06T17:00:00.000Z",
+      owner: "Daniel Mokoena",
+      tone: "warning",
+    },
+    {
+      id: "deadline-2",
+      label: "Blue Peak payroll close",
+      dueDate: "2026-05-03T16:00:00.000Z",
+      owner: "Lerato Nkosi",
+      tone: "danger",
+    },
+    {
+      id: "deadline-3",
+      label: "Metro Habitat VAT reconciliation",
+      dueDate: "2026-05-07T16:30:00.000Z",
+      owner: "Sipho Maseko",
+      tone: "info",
+    },
+  ],
+  notifications: sharedNotifications,
+  smartAlerts: accountantSmartAlerts,
+  reconciliationIssues: accountantReconciliationIssues,
+  missingDocuments: [
+    {
+      id: "missing-1",
+      documentType: "Bank Statement",
+      monthLabel: "April 2026",
+      description: "Required month-end bank statement still missing.",
+      isRequired: true,
+      status: "missing",
+      clientName: "Apex Trading Ltd",
+    },
+    {
+      id: "missing-2",
+      documentType: "Invoices",
+      monthLabel: "April 2026",
+      description: "Required invoice evidence is only partially complete for the month close.",
+      isRequired: true,
+      status: "partial",
+      clientName: "Apex Trading Ltd",
+    },
+    {
+      id: "missing-3",
+      documentType: "Signed Documents",
+      monthLabel: "April 2026",
+      description: "Authorisation pack is waiting on the final signature before it can move forward.",
+      isRequired: true,
+      status: "pending_signature",
+      clientName: "Apex Trading Ltd",
+    },
+    {
+      id: "missing-5",
+      documentType: "Payroll Summary",
+      monthLabel: "April 2026",
+      description: "Missing required payroll summary for Blue Peak Logistics.",
+      isRequired: true,
+      status: "missing",
+      clientName: "Blue Peak Logistics",
+    },
+  ],
+  expiringDocuments: [
+    buildExpiringItem(
+      "exp-1",
+      "ApexTrading_TaxClearance_April_2026.pdf",
+      "Tax Clearance certificate",
+      "2026-05-14T00:00:00.000Z",
+      "Apex Trading Ltd",
+    ),
+    buildExpiringItem(
+      "exp-2",
+      "ApexTrading_BBBEECertificate_2026.pdf",
+      "B-BBEE Certificate",
+      "2026-04-30T00:00:00.000Z",
+      "Apex Trading Ltd",
+    ),
+    buildExpiringItem(
+      "exp-3",
+      "CloudNine_DirectorID_2026.pdf",
+      "ID document",
+      "2026-05-24T00:00:00.000Z",
+      "Cloud Nine Retail",
+    ),
+  ],
+  rejectedDocuments: [
+    {
+      id: "reject-1",
+      name: "ApexTrading_Invoices_April_2026_Supporting.pdf",
+      type: "Invoices",
+      reason: "Receipt scans are incomplete and two VAT numbers are unreadable.",
+      date: "2026-04-30T09:10:00.000Z",
+      clientName: "Apex Trading Ltd",
+      status: "rejected",
+    },
+    {
+      id: "reject-2",
+      name: "INV-2035_ApexTrading_Apr2026.pdf",
+      type: "Invoice",
+      reason: "Purchase order reference missing from the final invoice.",
+      date: "2026-04-28T10:35:00.000Z",
+      clientName: "Apex Trading Ltd",
+      status: "rejected",
+    },
+  ],
+  latestOverallDocuments: latestOverallDocumentsForAccountant,
+};
+
+const adminPolicies: DocumentPolicy[] = [
+  {
+    id: "policy-1",
+    name: "Monthly Pack Completion",
+    description:
+      "Clients cannot close a month until every mandatory slot is present and any rejected document has been corrected.",
+    requiredByDay: "6th working day",
+    gracePeriod: "2 business days",
+    owner: "Operations",
+  },
+  {
+    id: "policy-2",
+    name: "Bank Statement Collection",
+    description:
+      "One bank statement per operating account is mandatory for every open reporting month.",
+    requiredByDay: "3rd working day",
+    gracePeriod: "1 business day",
+    owner: "Compliance",
+  },
+  {
+    id: "policy-3",
+    name: "Expiry Tracking",
+    description:
+      "Tax Clearance, B-BBEE certificates, IDs, proof of address, and contracts must store expiry dates and surface warning alerts before they lapse.",
+    requiredByDay: "Before filing",
+    gracePeriod: "None",
+    owner: "Compliance",
+  },
+];
+
+const adminDashboardData: AdminDashboardData = {
+  summaryMetrics: [
+    {
+      id: "admin-metric-1",
+      label: "Active Clients",
+      value: "124",
+      helper: "Clients with live portals and monthly workflows.",
+      tone: "info",
+    },
+    {
+      id: "admin-metric-2",
+      label: "Assigned Accountants",
+      value: "18",
+      helper: "Accountants carrying live pack ownership today.",
+      tone: "success",
+    },
+    {
+      id: "admin-metric-3",
+      label: "At-Risk Packs",
+      value: "17",
+      helper: "Firm-wide packs at risk because of missing or rejected items.",
+      tone: "danger",
+    },
+    {
+      id: "admin-metric-4",
+      label: "Tracked expiries",
+      value: "39",
+      helper: "Documents with active expiry monitoring across the firm.",
+      tone: "warning",
+    },
+  ],
+  clients: [
+    {
+      id: "firm-client-1",
+      clientName: "Apex Trading Ltd",
+      industry: "Wholesale",
+      assignedAccountant: "Daniel Mokoena",
+      assignedAccountantUserId: "user-accountant-1",
+      requiredPack: "Trading monthly pack",
+      completionRate: 67,
+      deadlinePolicy: "6th working day",
+      status: "attention",
+    },
+    {
+      id: "firm-client-2",
+      clientName: "Blue Peak Logistics",
+      industry: "Transport",
+      assignedAccountant: "Lerato Nkosi",
+      assignedAccountantUserId: "user-accountant-2",
+      requiredPack: "Transport monthly pack",
+      completionRate: 52,
+      deadlinePolicy: "5th working day",
+      status: "overdue",
+    },
+    {
+      id: "firm-client-3",
+      clientName: "Cloud Nine Retail",
+      industry: "Retail",
+      assignedAccountant: "Daniel Mokoena",
+      assignedAccountantUserId: "user-accountant-1",
+      requiredPack: "Retail monthly pack",
+      completionRate: 91,
+      deadlinePolicy: "7th working day",
+      status: "on_track",
+    },
+    {
+      id: "firm-client-4",
+      clientName: "Coastal Auto Group",
+      industry: "Automotive",
+      assignedAccountant: "Daniel Mokoena",
+      assignedAccountantUserId: "user-accountant-1",
+      requiredPack: "Automotive monthly pack",
+      completionRate: 64,
+      deadlinePolicy: "6th working day",
+      status: "overdue",
+    },
+    {
+      id: "firm-client-5",
+      clientName: "Summit Consulting",
+      industry: "Professional Services",
+      assignedAccountant: "Lerato Nkosi",
+      assignedAccountantUserId: "user-accountant-2",
+      requiredPack: "Consulting monthly pack",
+      completionRate: 78,
+      deadlinePolicy: "6th working day",
+      status: "attention",
+    },
+  ],
+  policies: adminPolicies,
+  notifications: sharedNotifications,
+};
+
+const ADMIN_CLIENT_ASSIGNMENTS_STORAGE_KEY = "secure-client-portal.admin-client-assignments";
+
+function readPersistedAdminClients() {
+  const defaultClients = useSeededTestFixtures ? adminDashboardData.clients : cleanAdminClients;
+
+  if (typeof window === "undefined") {
+    return clone(defaultClients);
+  }
+
+  const raw = window.localStorage.getItem(ADMIN_CLIENT_ASSIGNMENTS_STORAGE_KEY);
+  if (!raw) {
+    return clone(defaultClients);
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as Array<{
+      id: string;
+      assignedAccountant: string;
+      assignedAccountantUserId?: string;
+    }>;
+    const persistedById = new Map(parsed.map((item) => [item.id, item]));
+    return clone(cleanAdminClients).map((client) => {
+      const persisted = persistedById.get(client.id);
+      if (!persisted) {
+        return client;
+      }
+
+      return {
+        ...client,
+        assignedAccountant: persisted.assignedAccountant,
+        assignedAccountantUserId: persisted.assignedAccountantUserId,
+      };
+    });
+  } catch {
+    return clone(cleanAdminClients);
+  }
+}
+
+function persistAdminClients(clients: AdminDashboardData["clients"]) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const payload = clients.map((client) => ({
+    id: client.id,
+    assignedAccountant: client.assignedAccountant,
+    assignedAccountantUserId: client.assignedAccountantUserId,
+  }));
+  window.localStorage.setItem(ADMIN_CLIENT_ASSIGNMENTS_STORAGE_KEY, JSON.stringify(payload));
+}
+
+function createEmptyReviewDocument(): DocumentRecord {
+  const nowIso = new Date().toISOString();
+  return {
+    id: "doc-empty-seed",
+    clientId: "client-apex",
+    clientName: "Apex Trading Ltd",
+    documentType: "Monthly Pack",
+    fileName: "No_Submitted_Documents_Yet.txt",
+    monthLabel: "April 2026",
+    description: "No submitted documents yet. Upload drafts and submit the monthly pack to start review.",
+    status: "draft",
+    uploadedBy: "Client",
+    uploadedAt: nowIso,
+    sizeLabel: "0 KB",
+    keywordTags: ["empty", "seed"],
+    comments: [],
+    auditTrail: [
+      {
+        id: "audit-empty-seed",
+        status: "Seed reset",
+        actor: "System",
+        timestamp: nowIso,
+        note: "Workspace reset to a clean upload state.",
+      },
+    ],
+  };
+}
+
+function createCleanClientWorkflowSeed(): ClientWorkflowSeed {
+  const cleanSlots = clientWorkflowSeed.monthPack.slots.map((slot) => ({
+    ...slot,
+    status: "missing" as const,
+    progress: 0,
+    lastSubmission: undefined,
+    rejectionReason: undefined,
+  }));
+
+  return {
+    ...clone(clientWorkflowSeed),
+    monthPack: {
+      ...clone(clientWorkflowSeed.monthPack),
+      progressPercent: 0,
+      completedCount: 0,
+      totalCount: cleanSlots.length,
+      canComplete: false,
+      completionMessage:
+        "Upload documents into the required slots. Drafts stay in your workspace until you submit the month.",
+      submissionStatus: "open",
+      submittedAt: undefined,
+      slots: cleanSlots,
+    },
+    documents: [],
+    invoices: [],
+    bankTransactions: [],
+    notifications: [],
+    activity: [],
+    currentMonthInvoiceCount: 0,
+    previousMonthInvoiceCount: 0,
+  };
+}
+
+const cleanClientWorkflowSeed = createCleanClientWorkflowSeed();
+const emptyReviewDocument = createEmptyReviewDocument();
+const cleanAdminClients: AdminDashboardData["clients"] = [
+  {
+    id: "firm-client-1",
+    clientName: "Apex Trading Ltd",
+    industry: "Wholesale",
+    assignedAccountant: "Default Accountant",
+    requiredPack: "Trading monthly pack",
+    completionRate: 72,
+    deadlinePolicy: "6th working day",
+    status: "attention",
+  },
+  {
+    id: "firm-client-2",
+    clientName: "Blue Peak Logistics",
+    industry: "Transport",
+    assignedAccountant: "Default Accountant",
+    requiredPack: "Transport monthly pack",
+    completionRate: 44,
+    deadlinePolicy: "5th working day",
+    status: "overdue",
+  },
+  {
+    id: "firm-client-3",
+    clientName: "Cloud Nine Retail",
+    industry: "Retail",
+    assignedAccountant: "Default Accountant",
+    requiredPack: "Retail monthly pack",
+    completionRate: 93,
+    deadlinePolicy: "7th working day",
+    status: "on_track",
+  },
+  {
+    id: "firm-client-4",
+    clientName: "Metro Habitat Group",
+    industry: "Property",
+    assignedAccountant: "Default Accountant",
+    requiredPack: "Property monthly pack",
+    completionRate: 68,
+    deadlinePolicy: "6th working day",
+    status: "attention",
+  },
+  {
+    id: "firm-client-5",
+    clientName: "Summit Consulting",
+    industry: "Professional Services",
+    assignedAccountant: "Default Accountant",
+    requiredPack: "Consulting monthly pack",
+    completionRate: 57,
+    deadlinePolicy: "6th working day",
+    status: "attention",
+  },
+];
+
+const cleanAccountantDashboardData: AccountantDashboardData = {
+  ...clone(accountantDashboardData),
+  summaryMetrics: [
+    {
+      id: "acc-metric-1",
+      label: "Total clients",
+      value: String(cleanAdminClients.length),
+      helper: "Active clients with structured monthly workflows.",
+      tone: "info",
+    },
+    {
+      id: "acc-metric-2",
+      label: "Clients missing documents",
+      value: "4",
+      helper: "Required records are still outstanding across active clients.",
+      tone: "warning",
+    },
+    {
+      id: "acc-metric-3",
+      label: "Overdue submissions",
+      value: "1",
+      helper: "One client pack has already passed its filing deadline.",
+      tone: "danger",
+    },
+    {
+      id: "acc-metric-4",
+      label: "Pending review",
+      value: "5",
+      helper: "Five review items are ready for accountant action.",
+      tone: "info",
+    },
+  ],
+  portfolio: [
+    {
+      id: "portfolio-1",
+      clientId: "firm-client-1",
+      clientName: "Apex Trading Ltd",
+      monthLabel: cleanClientWorkflowSeed.monthPack.monthLabel,
+      progressPercent: 72,
+      status: "attention",
+      assignedAccountant: "Default Accountant",
+      missingCount: 2,
+      overdueCount: 0,
+      deadline: "2026-07-04T17:00:00.000Z",
+    },
+    {
+      id: "portfolio-2",
+      clientId: "firm-client-2",
+      clientName: "Blue Peak Logistics",
+      monthLabel: cleanClientWorkflowSeed.monthPack.monthLabel,
+      progressPercent: 44,
+      status: "overdue",
+      assignedAccountant: "Default Accountant",
+      missingCount: 4,
+      overdueCount: 2,
+      deadline: "2026-06-29T17:00:00.000Z",
+    },
+    {
+      id: "portfolio-3",
+      clientId: "firm-client-3",
+      clientName: "Cloud Nine Retail",
+      monthLabel: cleanClientWorkflowSeed.monthPack.monthLabel,
+      progressPercent: 93,
+      status: "on_track",
+      assignedAccountant: "Default Accountant",
+      missingCount: 0,
+      overdueCount: 0,
+      deadline: "2026-07-07T17:00:00.000Z",
+    },
+    {
+      id: "portfolio-4",
+      clientId: "firm-client-4",
+      clientName: "Metro Habitat Group",
+      monthLabel: cleanClientWorkflowSeed.monthPack.monthLabel,
+      progressPercent: 68,
+      status: "attention",
+      assignedAccountant: "Default Accountant",
+      missingCount: 2,
+      overdueCount: 0,
+      deadline: "2026-07-03T17:00:00.000Z",
+    },
+    {
+      id: "portfolio-5",
+      clientId: "firm-client-5",
+      clientName: "Summit Consulting",
+      monthLabel: cleanClientWorkflowSeed.monthPack.monthLabel,
+      progressPercent: 57,
+      status: "attention",
+      assignedAccountant: "Default Accountant",
+      missingCount: 3,
+      overdueCount: 1,
+      deadline: "2026-07-02T17:00:00.000Z",
+    },
+  ],
+  reviewQueue: [
+    {
+      id: "review-mock-1",
+      clientName: "Apex Trading Ltd",
+      documentType: "Bank Statement",
+      monthLabel: cleanClientWorkflowSeed.monthPack.monthLabel,
+      submittedAt: "2026-06-30T09:10:00.000Z",
+      status: "uploaded",
+      assignedAccountant: "Default Accountant",
+    },
+    {
+      id: "review-mock-2",
+      clientName: "Blue Peak Logistics",
+      documentType: "Payroll Summary",
+      monthLabel: cleanClientWorkflowSeed.monthPack.monthLabel,
+      submittedAt: "2026-06-30T08:15:00.000Z",
+      status: "uploaded",
+      assignedAccountant: "Default Accountant",
+    },
+    {
+      id: "review-mock-3",
+      clientName: "Cloud Nine Retail",
+      documentType: "Signed Documents",
+      monthLabel: cleanClientWorkflowSeed.monthPack.monthLabel,
+      submittedAt: "2026-06-29T16:40:00.000Z",
+      status: "under_review",
+      assignedAccountant: "Default Accountant",
+    },
+    {
+      id: "review-mock-4",
+      clientName: "Metro Habitat Group",
+      documentType: "VAT Working Papers",
+      monthLabel: cleanClientWorkflowSeed.monthPack.monthLabel,
+      submittedAt: "2026-06-29T13:20:00.000Z",
+      status: "uploaded",
+      assignedAccountant: "Default Accountant",
+    },
+    {
+      id: "review-mock-5",
+      clientName: "Summit Consulting",
+      documentType: "Expense Schedule",
+      monthLabel: cleanClientWorkflowSeed.monthPack.monthLabel,
+      submittedAt: "2026-06-28T11:00:00.000Z",
+      status: "uploaded",
+      assignedAccountant: "Default Accountant",
+    },
+  ],
+  deadlines: [
+    {
+      id: "deadline-mock-1",
+      label: "Blue Peak payroll close",
+      dueDate: "2026-06-29T17:00:00.000Z",
+      owner: "Default Accountant",
+      tone: "danger",
+    },
+    {
+      id: "deadline-mock-2",
+      label: "Metro Habitat VAT reconciliation",
+      dueDate: "2026-07-03T16:30:00.000Z",
+      owner: "Default Accountant",
+      tone: "warning",
+    },
+  ],
+  notifications: [],
+  smartAlerts: [],
+  reconciliationIssues: [],
+  missingDocuments: [],
+  expiringDocuments: [],
+  rejectedDocuments: [],
+  latestOverallDocuments: [],
+};
+
+const cleanReviewWorkspaceData: ReviewWorkspaceData = {
+  queue: [],
+  selectedDocument: emptyReviewDocument,
+};
+
+const useSeededTestFixtures = import.meta.env.MODE === "test";
+
+export const portalService = {
+  getDemoUser(role: Role) {
+    return clone(demoUsers[role]);
+  },
+  getClientWorkflowSeed() {
+    return clone(useSeededTestFixtures ? clientWorkflowSeed : cleanClientWorkflowSeed);
+  },
+  getClientNotifications() {
+    return clone(useSeededTestFixtures ? clientWorkflowSeed.notifications : []);
+  },
+  getClientComplianceCentre() {
+    return getClientComplianceCentreData();
+  },
+  getClientDocumentCenter(): ClientDocumentCenterData {
+    return {
+      latestDocuments: useSeededTestFixtures ? clone(clientDocuments) : [],
+      previousMonthDocuments: useSeededTestFixtures ? clone(clientDocuments) : [],
+      expiringDocuments: useSeededTestFixtures
+        ? clone(clientDocuments.filter((item) => Boolean(item.expiryDate)))
+        : [],
+      rejectedDocuments: useSeededTestFixtures
+        ? clone(clientDocuments.filter((item) => item.status === "rejected"))
+        : [],
+    };
+  },
+  getAccountantDashboard() {
+    return clone(useSeededTestFixtures ? accountantDashboardData : cleanAccountantDashboardData);
+  },
+  getAccountantComplianceCentre() {
+    return getAccountantComplianceCentreData();
+  },
+  getAccountantNotifications() {
+    return clone(useSeededTestFixtures ? accountantDashboardData.notifications : []);
+  },
+  getReviewWorkspace() {
+    return clone(cleanReviewWorkspaceData);
+  },
+  getAdminDashboard() {
+    return clone(
+      useSeededTestFixtures
+        ? adminDashboardData
+        : { ...adminDashboardData, clients: cleanAdminClients, notifications: [] },
+    );
+  },
+  getAdminClients() {
+    return readPersistedAdminClients();
+  },
+  updateClientAssignment(
+    clientId: string,
+    assignedAccountant: string,
+    assignedAccountantUserId?: string,
+  ) {
+    const next = readPersistedAdminClients().map((client) =>
+      client.id === clientId
+        ? { ...client, assignedAccountant, assignedAccountantUserId }
+        : client,
+    );
+    persistAdminClients(next);
+    return clone(next.find((client) => client.id === clientId) ?? next[0]);
+  },
+  getAdminPolicies() {
+    return clone(adminPolicies);
+  },
+  getDocumentById(documentId: string) {
+    const document = clientDocuments.find((item) => item.id === documentId) ?? emptyReviewDocument;
+    return clone(document);
+  },
+};

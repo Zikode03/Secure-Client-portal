@@ -1,3 +1,5 @@
+// Isolated state/UI unit test; application data is not used.
+vi.mock("../services/apiClient", async original => ({ ...await original<typeof import("../services/apiClient")>(), hasApiBaseUrl: () => false }));
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { vi } from "vitest";
@@ -71,7 +73,7 @@ function renderPage(
   const toggleRequestStar = vi.fn(() => ({ ok: true, message: "Request starred." }));
 
   mockedUseAuth.mockReturnValue({
-    pendingMfa: null, verifyMfa: vi.fn(), finishMfa: vi.fn(), cancelMfa: vi.fn(),
+    pendingMfa: null, logoutPending: false, verifyMfa: vi.fn(), finishMfa: vi.fn(), cancelMfa: vi.fn(),
     ready: true,
     user: {
       id: "user-client-1",
@@ -169,21 +171,18 @@ describe("ClientRequestsPage", () => {
       createRequest({ id: "open-1", status: "open", title: "Open bank statement task", comments: [] }),
     ]);
 
-    fireEvent.click(screen.getByRole("button", { name: "Filter threads" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Unresolved" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open" }));
     expect(screen.queryByText("Resolved tax query")).not.toBeInTheDocument();
     expect(screen.getAllByText("Open bank statement task").length).toBeGreaterThan(0);
-    fireEvent.click(screen.getByRole("button", { name: "Filter threads" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Inbox" }));
+    fireEvent.click(screen.getByRole("button", { name: "All" }));
     expect(screen.getAllByText("Resolved tax query").length).toBeGreaterThan(0);
   });
 
-  it("supports filter menu options", () => {
+  it("shows filters directly without an extra menu", () => {
     renderPage([createRequest()]);
 
-    fireEvent.click(screen.getByRole("button", { name: "Filter threads" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Resolved" }));
-    expect(screen.getByText("No threads match your filters")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Resolved" }));
+    expect(screen.getByText("No conversations match your filters")).toBeInTheDocument();
   });
 
   it("shows the simplified thread actions in the reader header", () => {
@@ -209,8 +208,7 @@ describe("ClientRequestsPage", () => {
       createRequest({ id: "open-1", status: "open", title: "Open bank statement task", comments: [] }),
     ]);
 
-    fireEvent.click(screen.getByRole("button", { name: "Filter threads" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "Resolved" }));
+    fireEvent.click(screen.getByRole("button", { name: "Resolved" }));
     expect(screen.queryByText("Open bank statement task")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Refresh inbox" }));
     expect(screen.getAllByText("Resolved tax query").length).toBeGreaterThan(0);

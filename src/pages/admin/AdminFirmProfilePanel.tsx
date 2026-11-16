@@ -119,7 +119,7 @@ export function AdminFirmProfilePanel({ onDirtyChange }: { onDirtyChange?: (dirt
         <fieldset className="settings-profile" disabled={saving}><legend className="sr-only">Firm profile details</legend>
           <div className="settings-firm-identity"><span className="settings-firm-mark"><Building2 size={28} aria-hidden="true" /></span><div><h3>{profile.firmName || "Your firm"}</h3><p>{profile.email || "Add a contact email for your organisation"}</p></div></div>
           <section className="settings-profile-section"><div><Building2 size={20} aria-hidden="true" /><h3>Business details</h3><p>Your registered organisation and tax details.</p></div><div className="settings-fields">
-            <div className="settings-full-width"><TextField required maxLength={200} label="Firm name" placeholder="e.g. Finwell Advisory" autoComplete="organization" onChange={event => setProfile({ ...profile, firmName: event.target.value })} value={profile.firmName} /></div>
+            <div className="settings-full-width"><TextField required maxLength={200} label="Firm name" placeholder="Your registered firm name" autoComplete="organization" onChange={event => setProfile({ ...profile, firmName: event.target.value })} value={profile.firmName} /></div>
             <TextField maxLength={80} label="Registration number" hint="Company registration number, if applicable." onChange={event => setProfile({ ...profile, registrationNumber: event.target.value })} value={profile.registrationNumber} />
             <TextField maxLength={80} label="VAT number" hint="Leave blank if your firm is not VAT registered." onChange={event => setProfile({ ...profile, vatNumber: event.target.value })} value={profile.vatNumber} />
           </div></section>

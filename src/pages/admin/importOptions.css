@@ -1,0 +1,55 @@
+/* Simple entry choices; format guidance belongs in the upload step. */
+.import-option-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  max-width: 60rem;
+}
+.import-option-card {
+  display: flex;
+  align-items: center;
+  gap: .875rem;
+  min-width: 0;
+  padding: 1.25rem;
+  text-align: left;
+  border: 1px solid #e2e7ed;
+  border-radius: .75rem;
+  background: #fff;
+  transition: border-color 150ms ease, background-color 150ms ease;
+}
+.import-option-card__icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: .625rem;
+  background: #f5f7fa;
+  color: #52647c;
+}
+.import-option-card__content { display: grid; gap: .3rem; flex: 1; min-width: 0; }
+.import-option-card__title {
+  color: #1e293b;
+  font-size: .875rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.import-option-card__description { color: #64748b; font-size: .8125rem; line-height: 1.5; }
+.import-option-card__arrow { flex-shrink: 0; color: #64748b; }
+.import-option-card:hover:not(:disabled) { border-color: #aebdcc; background: #fcfdfe; }
+.import-option-card:focus-visible { outline: 2px solid var(--color-brand-700); outline-offset: 3px; }
+.import-option-card:disabled { opacity: .55; cursor: wait; }
+html.theme-dark .import-option-card { background: var(--dark-surface); border-color: var(--dark-border); }
+html.theme-dark .import-option-card__title { color: var(--dark-text); }
+html.theme-dark .import-option-card__description,
+html.theme-dark .import-option-card__arrow { color: var(--dark-text-muted); }
+html.theme-dark .import-option-card__icon { background: var(--dark-surface-raised); color: var(--dark-text-secondary); }
+html.theme-dark .import-option-card:hover:not(:disabled) { background: var(--dark-surface-muted); border-color: var(--dark-border-strong); }
+html.theme-dark .import-option-card:focus-visible { outline-color: var(--dark-text-secondary); }
+@media (max-width: 640px) {
+  .import-option-grid { grid-template-columns: minmax(0, 1fr); }
+  .import-option-card { padding: 1rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .import-option-card { transition: none; }
+}

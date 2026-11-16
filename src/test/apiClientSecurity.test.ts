@@ -1,3 +1,5 @@
+import { vi as realTransportVi } from "vitest";
+realTransportVi.unmock("../services/apiClient");
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });

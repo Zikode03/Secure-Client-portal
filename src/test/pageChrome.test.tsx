@@ -1,3 +1,5 @@
+// Isolated state/UI unit test; application data is not used.
+vi.mock("../services/apiClient", async original => ({ ...await original<typeof import("../services/apiClient")>(), hasApiBaseUrl: () => false }));
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { PageHeader } from "../components/ui/PageHeader";

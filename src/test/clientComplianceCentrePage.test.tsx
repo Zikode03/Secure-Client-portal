@@ -1,3 +1,4 @@
+// Isolated state/UI unit test; application data is not used.
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -9,6 +10,7 @@ import { apiGetJson, apiPostForm } from "../services/apiClient";
 
 vi.mock("../services/apiClient", async original => ({
   ...await original<typeof import("../services/apiClient")>(),
+  hasApiBaseUrl: () => false,
   apiGetJson: vi.fn(),
   apiPostJson: vi.fn(),
   apiPutJson: vi.fn(),
@@ -94,45 +96,44 @@ describe("ClientComplianceCentrePage", () => {
   it("renders the client compliance overview and required actions", async () => {
     renderPage();
     expect(screen.getByRole("heading", { name: "Compliance Centre" })).toBeInTheDocument();
-    await screen.findByText("VAT201");
+    await screen.findByRole("heading", { name: "VAT201 return" });
     expect(apiGetJson).toHaveBeenCalledWith("/api/compliance/history");
     expect(apiGetJson).not.toHaveBeenCalledWith("/api/client/compliance-centre");
     fireEvent.click(within(screen.getByRole("navigation", { name: "Compliance sections" })).getByRole("button", { name: "Action required" }));
-    expect(screen.getByRole("heading", { name: /^Action required/ })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /^Checklist/ })).toBeInTheDocument();
     expect(screen.getByText("VAT201 return")).toBeInTheDocument();
     expect(within(screen.getByRole("article")).getByText(/SARS/)).toBeInTheDocument();
     expect(screen.getByText("Provide sales invoices")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Upload" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Upload documents" })).toBeInTheDocument();
   });
 
   it("does not expose accountant automation actions to clients", async () => {
     renderPage();
-    await screen.findByText("VAT201");
+    await screen.findByRole("heading", { name: "VAT201 return" });
     expect(screen.queryByRole("button", { name: "Run automation" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Compliance profile" })).not.toBeInTheDocument();
   });
 
   it("shows the obligation workflow details", async () => {
     renderPage();
-    await screen.findByText("VAT201");
-    fireEvent.click(screen.getByRole("button", { name: "View" }));
-    expect(screen.getByText("Supporting evidence")).toBeInTheDocument();
+    await screen.findByRole("heading", { name: "VAT201 return" });
+    fireEvent.click(screen.getByRole("button", { name: "View details for VAT201 return" }));
+    expect(screen.getByText("Documents received")).toBeInTheDocument();
     expect(screen.getByText("2 of 3 received")).toBeInTheDocument();
-    expect(screen.getByText("Waiting For Client")).toBeInTheDocument();
-    expect(screen.getByText("Provide sales invoices.")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Close" }));
-    expect(screen.queryByText("Supporting evidence")).not.toBeInTheDocument();
+    await screen.findByText("No documents uploaded yet.");
+    fireEvent.click(screen.getByRole("button", { name: "Close details for VAT201 return" }));
+    expect(screen.queryByText("Documents received")).not.toBeInTheDocument();
   });
 
   it("combines search with authority filtering and clears an empty result", async () => {
     vi.mocked(apiGetJson).mockResolvedValueOnce([obligation, { ...obligation, id: "cipc-1", code: "CIPC", name: "Annual return", authority: "CIPC", workflowStatus: "complete" }]);
     renderPage();
-    await screen.findByText("VAT201");
+    await screen.findByRole("heading", { name: "VAT201 return" });
     fireEvent.change(screen.getByRole("combobox", { name: "Filter by authority" }), { target: { value: "CIPC" } });
     expect(screen.getByRole("heading", { name: "Annual return" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "VAT201 return" })).not.toBeInTheDocument();
     fireEvent.change(screen.getByRole("textbox", { name: "Search compliance items" }), { target: { value: "VAT" } });
-    expect(screen.getByText("No matching obligations")).toBeInTheDocument();
+    expect(screen.getByText("No matching items")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
     expect(screen.getAllByRole("article")).toHaveLength(2);
   });
@@ -155,7 +156,7 @@ describe("ClientComplianceCentrePage", () => {
 
   it("filters the history timeline by activity and search", async () => {
     renderPage();
-    await screen.findByText("VAT201");
+    await screen.findByRole("heading", { name: "VAT201 return" });
     fireEvent.click(screen.getByRole("button", { name: "History" }));
     expect(screen.getByText("VAT documents approved")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Review Approved" })).toBeInTheDocument();
@@ -172,20 +173,20 @@ describe("ClientComplianceCentrePage", () => {
     });
     vi.mocked(apiGetJson).mockRejectedValueOnce(new Error("Offline"));
     renderPage();
-    expect(await screen.findByRole("alert")).toHaveTextContent("Compliance information is unavailable.");
+    expect(await screen.findByText("Compliance information is unavailable.")).toBeInTheDocument();
     expect(screen.queryByText("No obligations yet")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
-    await screen.findByText("VAT201");
+    await screen.findByRole("heading", { name: "VAT201 return" });
     fireEvent.click(screen.getByRole("button", { name: "History" }));
-    expect(screen.getByRole("alert")).toHaveTextContent("Compliance history is unavailable");
+    expect(screen.getByText(/Compliance history is unavailable/)).toBeInTheDocument();
   });
 
   it("directs payment questions to the accountant rather than a document upload", async () => {
     vi.mocked(apiGetJson).mockResolvedValueOnce([{ ...obligation, workflowStatus: "payment_outstanding" }]);
     renderPage();
-    await screen.findByText("VAT201");
+    await screen.findByRole("heading", { name: "VAT201 return" });
     expect(screen.getByRole("link", { name: "Contact accountant" })).toHaveAttribute("href", "/client/inbox");
-    expect(screen.queryByRole("link", { name: "Upload" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Upload documents" })).not.toBeInTheDocument();
   });
 
   it("attaches evidence to the selected obligation and refreshes backend status and history", async () => {
@@ -200,13 +201,13 @@ describe("ClientComplianceCentrePage", () => {
     });
     vi.mocked(apiPostForm).mockImplementation(async () => { saved = true; return { obligation: updated, evidence }; });
     renderPage();
-    await screen.findByText("VAT201");
-    fireEvent.click(screen.getByRole("button", { name: /^Upload$/ }));
-    await screen.findByText("No evidence uploaded yet.");
+    await screen.findByRole("heading", { name: "VAT201 return" });
+    fireEvent.click(screen.getByRole("button", { name: /^Upload documents$/ }));
+    await screen.findByText("No documents uploaded yet.");
     const file = new File(["vat"], "vat.pdf", { type: "application/pdf" });
     fireEvent.change(screen.getByLabelText("VAT201 supporting document"), { target: { files: [file] } });
     fireEvent.change(screen.getByLabelText("Note (optional)"), { target: { value: "VAT receipt" } });
-    fireEvent.click(screen.getByRole("button", { name: "Upload evidence" }));
+    fireEvent.click(screen.getByRole("button", { name: "Upload document" }));
     await screen.findByText("Evidence uploaded for VAT201.");
     await screen.findByText("3 of 3 received");
     expect(screen.getByRole("button", { name: "Download vat.pdf" })).toBeInTheDocument();
@@ -221,15 +222,63 @@ describe("ClientComplianceCentrePage", () => {
   it("preserves selected evidence and readiness when a backend upload fails", async () => {
     vi.mocked(apiPostForm).mockRejectedValue(new Error("File scan failed"));
     renderPage();
-    await screen.findByText("VAT201");
-    fireEvent.click(screen.getByRole("button", { name: /^Upload$/ }));
-    await screen.findByText("No evidence uploaded yet.");
+    await screen.findByRole("heading", { name: "VAT201 return" });
+    fireEvent.click(screen.getByRole("button", { name: /^Upload documents$/ }));
+    await screen.findByText("No documents uploaded yet.");
     const input = screen.getByLabelText("VAT201 supporting document");
     fireEvent.change(input, { target: { files: [new File(["vat"], "vat.pdf")] } });
-    fireEvent.click(screen.getByRole("button", { name: "Upload evidence" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("File scan failed");
+    fireEvent.click(screen.getByRole("button", { name: "Upload document" }));
+    expect(await screen.findByText("File scan failed")).toBeInTheDocument();
     expect(screen.getByText("2 of 3 received")).toBeInTheDocument();
     expect(screen.queryByText("Evidence uploaded for VAT201.")).not.toBeInTheDocument();
-    await waitFor(() => expect(screen.getByRole("button", { name: "Upload evidence" })).toBeEnabled());
+    await waitFor(() => expect(screen.getByRole("button", { name: "Upload document" })).toBeEnabled());
   });
+});
+
+it("loads authority checks only when the client asks to view them", async () => {
+  const originalGet = vi.mocked(apiGetJson).getMockImplementation()!;
+  vi.mocked(apiGetJson).mockImplementation(async (path, init) => path === "/api/compliance/monitoring/client-apex" ? {
+    clientId: "client-apex", clientName: "Business", checks: [{code: "cipc_registration", source: "CIPC", name: "Company registration", description: "Registration check", applicability: "applies", verificationStatus: "not_checked", latestVerification: null}],
+  } : originalGet(path, init));
+  renderPage();
+  await screen.findByRole("heading", { name: "VAT201 return" });
+  expect(vi.mocked(apiGetJson).mock.calls.some(([path]) => path.startsWith("/api/compliance/monitoring/"))).toBe(false);
+  const button = screen.getByRole("button", {name: /Business verification checks/});
+  expect(button).toHaveAttribute("aria-expanded", "false");
+  fireEvent.click(button);
+  expect(await screen.findByText("Company registration")).toBeInTheDocument();
+  expect(screen.getByText("Not checked yet", {selector: ".cv-status"})).toBeInTheDocument();
+  expect(button).toHaveAttribute("aria-expanded", "true");
+});
+
+it("keeps accountant and completed filters working after consolidating the summary controls", async () => {
+  vi.mocked(apiGetJson).mockImplementation(async path => path === "/api/compliance/automation/obligations" ? [obligation,
+    {...obligation, id: "preparing", name: "Payroll return", code: "EMP201", workflowStatus: "in_preparation"},
+    {...obligation, id: "done", name: "Annual return", code: "CIPC", workflowStatus: "complete"},
+  ] : []);
+  renderPage();
+  await screen.findByRole("heading", {name: "VAT201 return"});
+  fireEvent.click(screen.getByRole("button", {name: "With accountant"}));
+  expect(screen.getAllByRole("article")).toHaveLength(1);
+  expect(screen.getByRole("heading", {name: "Payroll return"})).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", {name: "Completed"}));
+  expect(screen.getAllByRole("article")).toHaveLength(1);
+  expect(screen.getByRole("heading", {name: "Annual return"})).toBeInTheDocument();
+});
+
+it("distinguishes repeated requirements by month and uploads to the selected month's obligation", async () => {
+  const august = {...obligation, id:"august-paye", code:"EMP201", name:"Employer declaration", periodStartUtc:"2026-08-01T00:00:00Z", periodEndUtc:"2026-08-31T23:59:59Z"};
+  const october = {...august, id:"october-paye", periodStartUtc:"2026-10-01T00:00:00Z", periodEndUtc:"2026-10-31T23:59:59Z"};
+  vi.mocked(apiGetJson).mockImplementation(async path => path === "/api/compliance/automation/obligations" ? [august, october] : []);
+  renderPage();
+  await screen.findAllByRole("heading", {name:"Employer declaration"});
+  expect(screen.getByText("Aug 2026", {selector: ".cc-due span"})).toBeInTheDocument();
+  expect(screen.getByText("Oct 2026", {selector: ".cc-due span"})).toBeInTheDocument();
+  expect(screen.getAllByRole("article")).toHaveLength(2);
+  fireEvent.change(screen.getByRole("combobox", {name:"Reporting period"}), {target:{value:"2026-10-01:2026-10-31"}});
+  expect(screen.getAllByRole("article")).toHaveLength(1);
+  expect(screen.queryByText("Aug 2026", {selector: ".cc-due span"})).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", {name:"Upload documents"}));
+  await screen.findByText("No documents uploaded yet.");
+  expect(apiGetJson).toHaveBeenCalledWith("/api/compliance/automation/obligations/october-paye/evidence");
 });

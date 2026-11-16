@@ -12,7 +12,7 @@ import { MfaChallengePage } from "../../components/auth/MfaChallengePage";
 export function InviteSetupPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const inviteEmail = searchParams.get("email") ?? "client@example.com";
+  const inviteEmail = searchParams.get("email") ?? "";
   const inviteToken = searchParams.get("token") ?? "";
   const flowMode = searchParams.get("mode") ?? "invite";
   const { completeInvite, pendingMfa } = useAuth();

@@ -1,15 +1,18 @@
+import { BulkInvoiceScan } from "../../components/invoice-review/BulkInvoiceScan";
+import { InvoiceReviewPanel, type InvoiceReviewReady } from "../../components/invoice-review/InvoiceReviewPanel";
+import { reviewQueueApi } from "../../services/reviewQueueApi";
 // Friendly guide: this module (AccountantReviewPage) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
 import { Button } from "../../components/ui/Button";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
-import { ApiError, apiGetBlob, apiGetJson, apiPostJson, hasApiBaseUrl } from "../../services/apiClient";
+import { ApiError, apiGetBlob, apiGetJson, hasApiBaseUrl } from "../../services/apiClient";
 import type {
   AuditTrailEntry,
   DocumentComment,
@@ -24,7 +27,7 @@ import {
 } from "../../utils/formatters";
 import { getScopedReviewQueue } from "../../utils/permissions";
 
-const reviewSnapshotDate = new Date("2026-05-08T08:00:00.000Z");
+const reviewSnapshotDate = new Date();
 
 // Shared shape notes: these types keep UI and data contracts aligned.
 type QueueStatusFilter = "all" | "under_review" | "overdue" | "attention" | "on_track";
@@ -159,6 +162,9 @@ interface BackendReviewQueueItem {
   uploadedAtUtc: string;
   submittedAtUtc?: string | null;
   rejectionReason?: string | null;
+  assistantState?: string | null;
+  assistantAttentionCount?: number;
+  assistantUnverifiedCount?: number;
 }
 
 interface BackendReviewQueueComment {
@@ -269,7 +275,10 @@ export function mapBackendQueueRecord(item: BackendReviewQueueItem): DocumentRec
     monthLabel: monthLabelFromParts(item.year, item.month),
     description: `${documentType} is waiting in the live review queue.`,
     status: mapBackendStatus(item.documentStatus),
-    uploadedBy: "Client user",
+    uploadedBy: "Portal user",
+    versionNumber: item.currentVersionNumber,
+    monthlyPackId: item.monthlyPackId,
+    documentSlotId: item.documentSlotId ?? undefined,
     uploadedAt,
     sizeLabel: "Available when opened",
     keywordTags: [item.documentCategory, item.slotLabel, item.documentName].filter(
@@ -281,7 +290,7 @@ export function mapBackendQueueRecord(item: BackendReviewQueueItem): DocumentRec
       {
         id: `queue-${item.documentId}`,
         status: "Submitted for review",
-        actor: "Client user",
+        actor: "Portal user",
         timestamp: uploadedAt,
         note: "Loaded from the live review queue.",
       },
@@ -293,7 +302,7 @@ function mapBackendWorkspace(
   workspace: BackendReviewWorkspace,
   fileUrl?: { url: string; mimeType: string },
 ): DocumentRecord {
-  const latestDecision = workspace.reviewHistory[workspace.reviewHistory.length - 1];
+  const latestDecision = [...workspace.reviewHistory].sort((left, right) => Date.parse(right.decidedAtUtc) - Date.parse(left.decidedAtUtc))[0];
   const auditTrail: AuditTrailEntry[] = [
     ...workspace.versions.map((version) => ({
       id: `version-${version.id}`,
@@ -313,6 +322,9 @@ function mapBackendWorkspace(
 
   return {
     id: workspace.item.documentId,
+    versionNumber: workspace.item.currentVersionNumber,
+    monthlyPackId: workspace.item.monthlyPackId,
+    documentSlotId: workspace.item.documentSlotId ?? undefined,
     clientId: workspace.item.clientId,
     clientName: workspace.item.clientName,
     documentType: workspace.item.slotLabel || workspace.item.documentCategory,
@@ -320,7 +332,7 @@ function mapBackendWorkspace(
     monthLabel: monthLabelFromParts(workspace.item.year, workspace.item.month),
     description: `${workspace.item.documentCategory} review workspace record.`,
     status: mapBackendStatus(workspace.item.documentStatus),
-    uploadedBy: "Client user",
+    uploadedBy: "Portal user",
     uploadedAt: workspace.item.uploadedAtUtc,
     reviewedBy: latestDecision ? "Accountant reviewer" : undefined,
     reviewedAt: latestDecision?.decidedAtUtc,
@@ -876,8 +888,17 @@ export function AccountantReviewPage() {
   const { user } = useAuth();
   const portal = usePortal();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const requestedDocumentId = searchParams.get("documentId");
   const backendMode = hasApiBaseUrl();
   const workspaceRef = useRef<HTMLDivElement | null>(null);
+  const workspaceCache = useRef<Record<string, BackendReviewWorkspace>>({});
+  const fileUrls = useRef(new Map<string, string>());
+  useEffect(() => () => { for (const url of fileUrls.current.values()) URL.revokeObjectURL(url); fileUrls.current.clear(); }, []);
+  const [queueLoading, setQueueLoading] = useState(true);
+  const [queueRevision, setQueueRevision] = useState(0);
+  const [assistantFilter, setAssistantFilter] = useState("all");
+  const [assistantSummaries, setAssistantSummaries] = useState<Record<string, BackendReviewQueueItem>>({});
   const [liveQueueItems, setLiveQueueItems] = useState<ReviewQueueItem[] | null>(null);
   const [liveQueueRecordsByDocumentId, setLiveQueueRecordsByDocumentId] = useState<
     Record<string, DocumentRecord>
@@ -889,9 +910,7 @@ export function AccountantReviewPage() {
   const [workspaceCommentDraft, setWorkspaceCommentDraft] = useState("");
   const queue = useMemo(
     () =>
-      backendMode && liveQueueItems
-        ? liveQueueItems
-        : getScopedReviewQueue(user, portal.getReviewQueue(), portal.adminClients),
+      backendMode ? liveQueueItems ?? [] : getScopedReviewQueue(user, portal.getReviewQueue(), portal.adminClients),
     [backendMode, liveQueueItems, portal, user],
   );
 
@@ -904,6 +923,8 @@ export function AccountantReviewPage() {
   const [queueOrder, setQueueOrder] = useState<QueueOrder>("priority");
   const [selectedRecordId, setSelectedRecordId] = useState(queue[0]?.id ?? "");
   const [viewerOpen, setViewerOpen] = useState(false);
+  const openedReviewLink = useRef("");
+  const [invoiceReviewReady, setInvoiceReviewReady] = useState<InvoiceReviewReady | null>(null);
   const [reviewMessage, setReviewMessage] = useState("");
   const [previewPage, setPreviewPage] = useState(1);
   const [previewZoom, setPreviewZoom] = useState(100);
@@ -921,12 +942,16 @@ export function AccountantReviewPage() {
     let isActive = true;
 
     async function loadQueue() {
+      setQueueLoading(true);
+      setReviewMessage("");
       try {
         const items = await apiGetJson<BackendReviewQueueItem[]>("/api/review-queue");
         if (!isActive) {
           return;
         }
 
+        if (!Array.isArray(items) || items.some(item => !item.documentId || !item.documentStatus || !Number.isFinite(Date.parse(item.submittedAtUtc || item.uploadedAtUtc)))) throw new Error("The review queue response is incomplete. Reload the queue or check the API error log.");
+        setAssistantSummaries(Object.fromEntries(items.map(item => [item.documentId, item])));
         setLiveQueueItems(items.map((item) => mapBackendQueueItem(item, user?.fullName)));
         setLiveQueueRecordsByDocumentId(
           Object.fromEntries(items.map((item) => [item.documentId, mapBackendQueueRecord(item)])),
@@ -937,9 +962,9 @@ export function AccountantReviewPage() {
         }
 
         setReviewMessage(
-          error instanceof ApiError ? error.message : "Could not load the live review queue.",
+          error instanceof Error ? error.message : "Could not load the live review queue.",
         );
-      }
+      } finally { if (isActive) setQueueLoading(false); }
     }
 
     void loadQueue();
@@ -947,7 +972,7 @@ export function AccountantReviewPage() {
     return () => {
       isActive = false;
     };
-  }, [backendMode, user?.fullName]);
+  }, [backendMode, user?.fullName, queueRevision]);
 
   const queueRows = useMemo(
     () =>
@@ -991,6 +1016,7 @@ export function AccountantReviewPage() {
   const filteredRows = useMemo(
     () =>
       queueRows.filter((row) => {
+        if (assistantFilter !== "all" && assistantSummaries[row.item.id]?.assistantState !== assistantFilter) return false;
         if (selectedAccountant !== "all" && row.item.assignedAccountant !== selectedAccountant) {
           return false;
         }
@@ -1013,7 +1039,7 @@ export function AccountantReviewPage() {
 
         return true;
       }),
-    [queueRows, selectedAccountant, selectedClient, selectedDueWindow, selectedStatus, selectedType],
+    [queueRows, selectedAccountant, selectedClient, selectedDueWindow, selectedStatus, selectedType, assistantFilter, assistantSummaries],
   );
 
   const queueStatusCounts = useMemo(
@@ -1060,6 +1086,7 @@ export function AccountantReviewPage() {
   }, [filteredRows, queueOrder]);
 
   const hasActiveFilters =
+    assistantFilter !== "all" ||
     selectedAccountant !== "all" ||
     selectedClient !== "all" ||
     selectedType !== "all" ||
@@ -1113,6 +1140,7 @@ export function AccountantReviewPage() {
     [queueRows, selectedRecordId],
   );
   const activeDocument = activeRow?.record ?? null;
+  const invoiceDocument = Boolean(activeDocument && (activeDocument.keywordTags[0] || activeDocument.documentType).toLowerCase().includes("invoice"));
   const activePriority = activeRow ? queuePriorityMeta(activeRow.item) : null;
   const selectedRowIndex = useMemo(
     () => orderedRows.findIndex((row) => row.item.id === selectedRecordId),
@@ -1172,6 +1200,14 @@ export function AccountantReviewPage() {
   }, [filteredRows, selectedRecordId]);
 
   useEffect(() => {
+    if (requestedDocumentId && openedReviewLink.current !== requestedDocumentId && filteredRows.some(row => row.item.id === requestedDocumentId)) {
+      openedReviewLink.current = requestedDocumentId;
+      setSelectedRecordId(requestedDocumentId);
+      setViewerOpen(true);
+    }
+  }, [requestedDocumentId, filteredRows]);
+
+  useEffect(() => {
     if (!activeDocument) {
       return;
     }
@@ -1181,7 +1217,7 @@ export function AccountantReviewPage() {
   }, [activeDocument?.id, activeDocument]);
 
   useEffect(() => {
-    if (!backendMode || !viewerOpen || !selectedRecordId || liveWorkspaceByDocumentId[selectedRecordId]) {
+    if (!backendMode || !viewerOpen || !selectedRecordId || workspaceCache.current[selectedRecordId]) {
       return;
     }
 
@@ -1195,7 +1231,10 @@ export function AccountantReviewPage() {
         if (!isActive) {
           return;
         }
+        if (!workspace?.item || !Array.isArray(workspace.versions) || !Array.isArray(workspace.comments) || !Array.isArray(workspace.reviewHistory))
+          throw new Error("The review workspace response is incomplete. Refresh the queue and try again.");
 
+        workspaceCache.current[selectedRecordId] = workspace;
         setLiveWorkspaceByDocumentId((current) => ({
           ...current,
           [selectedRecordId]: workspace,
@@ -1210,6 +1249,9 @@ export function AccountantReviewPage() {
           }
 
           const url = URL.createObjectURL(blob);
+          const previous = fileUrls.current.get(selectedRecordId);
+          if (previous) URL.revokeObjectURL(previous);
+          fileUrls.current.set(selectedRecordId, url);
           setLiveFileUrlsByDocumentId((current) => ({
             ...current,
             [selectedRecordId]: { url, mimeType: contentType },
@@ -1223,7 +1265,7 @@ export function AccountantReviewPage() {
         }
 
         setReviewMessage(
-          error instanceof ApiError ? error.message : "Could not load the review workspace.",
+          error instanceof Error ? error.message : "Could not load the review workspace.",
         );
       }
     }
@@ -1233,7 +1275,7 @@ export function AccountantReviewPage() {
     return () => {
       isActive = false;
     };
-  }, [backendMode, liveWorkspaceByDocumentId, selectedRecordId, viewerOpen]);
+  }, [backendMode, selectedRecordId, viewerOpen, queueRevision]);
 
   useEffect(() => {
     if (!viewerOpen || !activeDocument || !workspaceRef.current) {
@@ -1259,6 +1301,7 @@ export function AccountantReviewPage() {
 
   function clearFilters() {
     setSelectedClient("all");
+    setAssistantFilter("all");
     setSelectedType("all");
     setSelectedStatus("all");
     setSelectedDueWindow("all");
@@ -1323,6 +1366,7 @@ export function AccountantReviewPage() {
       apiGetJson<BackendReviewWorkspace>(`/api/review-queue/${encodeURIComponent(documentId)}`),
     ]);
 
+    setAssistantSummaries(Object.fromEntries(queueItems.map(item => [item.documentId, item])));
     setLiveQueueItems(queueItems.map((item) => mapBackendQueueItem(item, user?.fullName)));
     setLiveQueueRecordsByDocumentId(
       Object.fromEntries(
@@ -1346,10 +1390,13 @@ export function AccountantReviewPage() {
     }
 
     try {
-      await apiPostJson(`/api/review-queue/${encodeURIComponent(activeDocument.id)}/review`, {
+      await reviewQueueApi.review(activeDocument.id, {
         decision: "accepted",
         reason: null,
         internalNote: null,
+        invoiceReview: invoiceDocument && invoiceReviewReady?.documentId === activeDocument.id
+          ? { expectedVersionNumber: invoiceReviewReady.versionNumber, expectedRevision: invoiceReviewReady.revision }
+          : undefined,
       });
       await refreshBackendWorkspace(activeDocument.id);
       handleWorkspaceActionSuccess("Document approved and queue refreshed.");
@@ -1369,10 +1416,11 @@ export function AccountantReviewPage() {
     }
 
     try {
-      await apiPostJson(`/api/review-queue/${encodeURIComponent(activeDocument.id)}/review`, {
+      await reviewQueueApi.review(activeDocument.id, {
         decision: "rejected",
         reason: reason.trim(),
         internalNote: null,
+        invoiceReview: invoiceDocument ? { expectedVersionNumber: activeDocument.versionNumber ?? 1, expectedRevision: invoiceReviewReady?.revision ?? 0 } : undefined,
       });
       await refreshBackendWorkspace(activeDocument.id);
       handleWorkspaceActionSuccess("Document rejected and queue refreshed.");
@@ -1392,13 +1440,12 @@ export function AccountantReviewPage() {
     }
 
     try {
-      await apiPostJson(
-        `/api/review-queue/${encodeURIComponent(activeDocument.id)}/request-reupload`,
-        {
-          reason: reason.trim(),
-          internalNote: null,
-        },
-      );
+      await reviewQueueApi.review(activeDocument.id, {
+        decision: "request_reupload",
+        reason: reason.trim(),
+        internalNote: null,
+        invoiceReview: invoiceDocument ? { expectedVersionNumber: activeDocument.versionNumber ?? 1, expectedRevision: invoiceReviewReady?.revision ?? 0 } : undefined,
+      });
       await refreshBackendWorkspace(activeDocument.id);
       handleWorkspaceActionSuccess("Re-upload request sent and queue refreshed.");
     } catch (error) {
@@ -1418,8 +1465,8 @@ export function AccountantReviewPage() {
     }
 
     try {
-      await apiPostJson(
-        `/api/review-queue/${encodeURIComponent(activeDocument.id)}/comments`,
+      await reviewQueueApi.comment(
+        activeDocument.id,
         { message },
       );
       await refreshBackendWorkspace(activeDocument.id);
@@ -1432,7 +1479,7 @@ export function AccountantReviewPage() {
   function closeViewer() {
     if (
       hasUnsavedDraft &&
-      !window.confirm("You have unsaved notes or comments. Close the review anyway?")
+      !window.confirm("You have unsaved notes or invoice details. Close the review anyway?")
     ) {
       return;
     }
@@ -1559,7 +1606,7 @@ export function AccountantReviewPage() {
   }, [viewerOpen, previousRecordId, nextRecordId, hasUnsavedDraft]);
 
   return (
-    <div className="mx-auto max-w-[1500px] space-y-5">
+    <div className="flex min-h-0 w-full flex-1 flex-col gap-5">
       <header className="portal-page-header border-b border-slate-200 pb-6">
         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
           {user?.role === "admin" ? "Firm operations" : "Accountant workspace"}
@@ -1578,35 +1625,36 @@ export function AccountantReviewPage() {
       </header>
 
       {reviewMessage ? (
-        <div className="rounded-[1.05rem] border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-700">
+        <div role="status" className="rounded-[1.05rem] border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-700">
           {reviewMessage}
         </div>
       ) : null}
 
-      {queueRows.length === 0 ? (
+      {backendMode && queueLoading ? <p role="status">Loading review queue...</p> : null}
+      {queueRows.length === 0 && !queueLoading ? (
         <section className="space-y-5 border-y border-slate-200 bg-white px-5 py-10">
           <EmptyState
             description={
               user?.role === "admin"
-                ? "There are no firm records waiting in the review queue right now. Reload the demo queue if you want to inspect this workspace again."
-                : "There are no records waiting in your assigned review queue right now. Reload the demo queue if you want to inspect this workspace again."
+                ? "There are no firm records waiting in the review queue right now. Use Refresh queue to check for new submissions."
+                : "There are no records waiting in your assigned review queue right now. Use Refresh queue to check for new submissions."
             }
-            title="No review queue items"
+            title={backendMode && liveQueueItems === null ? "Review queue unavailable" : "No review queue items"}
           />
           <div className="flex justify-center">
             <Button
               className="h-10 rounded-xl px-4"
-              onClick={() => portal.resetClientPortalDemoState()}
+              onClick={() => { workspaceCache.current = {}; setLiveWorkspaceByDocumentId({}); setQueueRevision(value => value + 1); }}
               size="sm"
             >
-              Reload demo queue
+              Refresh queue
             </Button>
           </div>
         </section>
       ) : (
         <>
-          <div className="grid gap-6">
-          <section className="overflow-hidden border-y border-slate-200 bg-white">
+          <div className="flex min-h-0 flex-1 flex-col gap-6">
+          <section className="flex-1 overflow-hidden border-y border-slate-200 bg-white">
             <div className="space-y-4 border-b border-[#e6edf4] bg-white px-1 pb-5 pt-2 sm:px-5 sm:pt-5">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
@@ -1713,6 +1761,20 @@ export function AccountantReviewPage() {
               </div>
             </div>
 
+            {backendMode ? <>
+              <div className="px-5 py-3">
+                <label className="flex flex-wrap items-center gap-3 text-sm text-slate-600">Saved invoice checks
+                  <select aria-label="Saved invoice checks" className="rounded-lg border border-slate-200 bg-white px-3 py-2" value={assistantFilter} onChange={event => setAssistantFilter(event.target.value)}>
+                    <option value="all">All results</option><option value="not_started">Not read yet</option>
+                    <option value="needs_attention">Needs attention</option><option value="unable_to_verify">Unable to verify</option>
+                    <option value="no_issue_detected">No issue detected</option><option value="stale">Recheck needed</option>
+                  </select>
+                </label>
+                <p className="mt-1 text-xs text-slate-500">Saved findings guide prioritisation. Opening an invoice rechecks its current details and possible duplicates.</p>
+              </div>
+              <BulkInvoiceScan disabled={viewerOpen || queueLoading} invoices={orderedRows.filter(row => (row.record.keywordTags[0] || row.record.documentType).toLowerCase().includes("invoice")).map(row => ({ id: row.item.id, fileName: row.record.fileName, versionNumber: row.record.versionNumber ?? 1 }))} onFinished={() => setQueueRevision(value => value + 1)} />
+            </> : null}
+
             <div className="hidden border-b border-slate-100 px-5 py-4 text-[0.78rem] uppercase tracking-[0.12em] text-slate-400 lg:grid lg:grid-cols-[1.7fr_0.9fr_0.9fr_4.5rem] lg:gap-4">
               <div>Task</div>
               <div>Submitted</div>
@@ -1748,6 +1810,7 @@ export function AccountantReviewPage() {
                           <p className="mt-1 text-[0.88rem] text-slate-500">
                             {row.item.clientName} | {row.item.monthLabel}
                           </p>
+                          {assistantSummaries[row.item.id]?.assistantState ? <p className="mt-1 text-xs text-slate-500">Saved checks: {{not_started: "Not read yet", needs_attention: "Needs attention", unable_to_verify: "Unable to verify", no_issue_detected: "No issue detected", stale: "Recheck needed"}[assistantSummaries[row.item.id].assistantState!] ?? "Recheck needed"}</p> : null}
                         </div>
                       </div>
 
@@ -1864,7 +1927,7 @@ export function AccountantReviewPage() {
               onClick={closeViewer}
               ref={workspaceRef}
             >
-              <div className="mx-auto h-full w-full max-w-[1320px] overflow-y-auto" onClick={(event) => event.stopPropagation()}>
+              <div className={cn("mx-auto h-full w-full overflow-y-auto", invoiceDocument ? "max-w-[1600px]" : "max-w-[1320px]")} onClick={(event) => event.stopPropagation()}>
               <SurfaceCard className="overflow-hidden rounded-[1.65rem] border border-slate-200/90 bg-white p-0 shadow-[0_16px_36px_rgba(15,23,42,0.05)]">
               <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 px-5 py-4">
                 <button
@@ -2055,12 +2118,20 @@ export function AccountantReviewPage() {
                         </div>
                       ) : null}
 
-                      <PreviewCanvas
+                      {backendMode && invoiceDocument ? <InvoiceReviewPanel
+                        key={activeDocument.id}
+                        documentId={activeDocument.id}
+                        versionNumber={activeDocument.versionNumber ?? 1}
+                        fileName={activeDocument.fileName}
+                        fileUrl={activeDocument.fileDataUrl}
+                        mimeType={activeDocument.fileMimeType}
+                        onReady={setInvoiceReviewReady}
+                      /> : <PreviewCanvas
                         document={activeDocument}
                         previewPage={previewPage}
                         previewPages={previewPages}
                         previewZoom={previewZoom}
-                      />
+                      />}
                     </section>
 
                     {versionHistory.length > 1 ? (
@@ -2216,6 +2287,7 @@ export function AccountantReviewPage() {
                           <Button
                             className="h-10 rounded-xl px-3"
                             onClick={() => void approveActiveDocument()}
+                            disabled={invoiceDocument && (invoiceReviewReady?.documentId !== activeDocument.id || !invoiceReviewReady.ready)}
                             size="sm"
                           >
                             Approve

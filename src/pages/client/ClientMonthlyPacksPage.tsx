@@ -1,3 +1,5 @@
+import { monthlyPacksApi, documentSlotsApi } from "../../services/monthlyPacksApi";
+import { documentsApi } from "../../services/documentsApi";
 // Friendly guide: this module (ClientMonthlyPacksPage) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
@@ -20,7 +22,7 @@ import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
 import { useDisclosure } from "../../hooks/useDisclosure";
 import { useClientWorkflow } from "../../hooks/useClientWorkflow";
-import { ApiError, apiGetBlob, apiGetJson, apiPostForm, apiPostJson, hasApiBaseUrl } from "../../services/apiClient";
+import { ApiError, apiGetBlob, hasApiBaseUrl } from "../../services/apiClient";
 import {
   acceptedFilesForSlot,
   buildDefaultDueDate,
@@ -85,25 +87,6 @@ interface BackendMonthlyPackResponse {
   year: number;
   month: number;
   status: string;
-  createdAtUtc: string;
-  updatedAtUtc: string;
-}
-
-interface BackendDocumentSlotResponse {
-  id: string;
-  monthlyPackId: string;
-  clientId: string;
-  category: string;
-  label: string;
-  isRequired: boolean;
-  status: string;
-  canCurrentlyBeSubmitted: boolean;
-  currentDocumentId?: string | null;
-  dueDateUtc?: string | null;
-  submittedAtUtc?: string | null;
-  submittedByUserId?: string | null;
-  reviewStatus?: string | null;
-  rejectionReason?: string | null;
   createdAtUtc: string;
   updatedAtUtc: string;
 }
@@ -234,9 +217,7 @@ export function ClientMonthlyPacksPage() {
     setLiveLoadStatus("loading");
 
     try {
-      const packs = await apiGetJson<BackendMonthlyPackResponse[]>(
-        `/api/monthly-packs?clientId=${encodeURIComponent(backendClientId)}`,
-      );
+      const packs = await monthlyPacksApi.list(backendClientId);
       const currentPack = packs[0];
 
       if (!currentPack) {
@@ -251,10 +232,8 @@ export function ClientMonthlyPacksPage() {
       }
 
       const [slots, documents] = await Promise.all([
-        apiGetJson<BackendDocumentSlotResponse[]>(
-          `/api/document-slots/${encodeURIComponent(currentPack.id)}`,
-        ),
-        apiGetJson<BackendDocumentRecord[]>("/api/documents"),
+        documentSlotsApi.list(currentPack.id),
+        documentsApi.list(),
       ]);
 
       const documentsForClient = documents.filter(
@@ -263,7 +242,7 @@ export function ClientMonthlyPacksPage() {
       const packById = new Map(
         packs.map((pack) => [pack.id, pack] satisfies [string, BackendMonthlyPackResponse]),
       );
-      const businessName = clientName ?? user?.company ?? "Client";
+      const businessName = user?.company?.trim() || clientName?.trim() || "";
 
       const mappedSlots = slots.map<MonthlyDocumentSlot>((slot) => {
         const mappedStatus = mapBackendSlotStatus(slot.status, slot.isRequired);
@@ -373,7 +352,7 @@ export function ClientMonthlyPacksPage() {
             slot.id,
             {
               currentDocumentId: slot.currentDocumentId ?? undefined,
-              canCurrentlyBeSubmitted: slot.canCurrentlyBeSubmitted,
+              canCurrentlyBeSubmitted: slot.canSubmit,
             },
           ]),
         ),
@@ -625,10 +604,7 @@ export function ClientMonthlyPacksPage() {
     }
 
     try {
-      await apiPostJson<BackendMonthlyPackResponse, Record<string, never>>(
-        `/api/monthly-packs/${encodeURIComponent(livePackId)}/submit`,
-        {},
-      );
+      await monthlyPacksApi.submit(livePackId);
       await loadBackendMonthlyPack();
       showFeedbackNotice(
         "success",
@@ -653,10 +629,7 @@ export function ClientMonthlyPacksPage() {
     }
 
     try {
-      await apiPostJson<BackendDocumentSlotResponse, Record<string, never>>(
-        `/api/document-slots/${encodeURIComponent(slot.id)}/submit`,
-        {},
-      );
+      await documentSlotsApi.submit(slot.id);
       await loadBackendMonthlyPack();
       showFeedbackNotice(
         "success",
@@ -700,7 +673,7 @@ export function ClientMonthlyPacksPage() {
       return;
     }
 
-    const businessName = clientName ?? user?.company ?? "Apex Trading Ltd";
+    const businessName = clientName ?? user?.company ?? "Your business";
     downloadSlotFile(slot, businessName);
     showFeedbackNotice("success", "Download started", `${slot.documentType} was prepared for download.`);
   }
@@ -846,7 +819,8 @@ export function ClientMonthlyPacksPage() {
       </section>
 
       <DocumentUploadModal
-        clientName={clientName ?? user?.company ?? "Apex Trading Ltd"}
+        clientId={user?.clientIds[0]}
+        clientName={user?.company?.trim() || clientName?.trim() || ""}
         existingFileNames={existingSlotFileNames}
         isOpen={uploadModal.isOpen}
         onClose={uploadModal.close}
@@ -873,15 +847,7 @@ export function ClientMonthlyPacksPage() {
             currentDocumentId: targetSlotMeta?.currentDocumentId,
           });
 
-          void apiPostForm<{
-            id: string;
-            clientId: string;
-            monthlyPackId: string;
-            documentSlotId: string;
-            documentType: string;
-            name: string;
-            status: string;
-          }>("/api/documents/upload", form)
+          void documentsApi.uploadForm(form)
             .then(async () => {
               await loadBackendMonthlyPack();
               showFeedbackNotice(

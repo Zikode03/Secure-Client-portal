@@ -14,6 +14,7 @@ import { useDisclosure } from "../../hooks/useDisclosure";
 import { ApiError, apiGetBlob, apiGetJson, apiPostForm, hasApiBaseUrl } from "../../services/apiClient";
 import { buildReviewDocumentFromInvoice } from "../../services/workflowEngine";
 import {
+  acceptedFilesForSlot,
   buildSlotUploadForm,
   formatSizeLabel,
   mapBackendDocumentStatus,
@@ -63,6 +64,7 @@ interface BackendDocumentSlotResponse {
   monthlyPackId: string;
   clientId: string;
   label: string;
+  category?: string;
   isRequired: boolean;
   status: string;
   canCurrentlyBeSubmitted: boolean;
@@ -186,7 +188,7 @@ export function ClientDocumentsPage() {
             status: mapBackendSlotStatus(slot.status, slot.isRequired),
             month: currentPack ? monthLabelFromParts(currentPack.year, currentPack.month).split(" ")[0] ?? "Month" : "Month",
             year: currentPack?.year ?? new Date().getUTCFullYear(),
-            acceptedFiles: ["PDF", "PNG", "JPG", "DOCX", "XLSX"],
+            acceptedFiles: acceptedFilesForSlot(slot.category ?? slot.label, slot.label),
             progress: slot.canCurrentlyBeSubmitted ? 70 : slot.status === "accepted" ? 100 : 0,
             autoName: slot.label.replace(/\s+/g, "_"),
             isRequired: slot.isRequired,
@@ -453,7 +455,8 @@ export function ClientDocumentsPage() {
       ) : null}
 
       <DocumentUploadModal
-        clientName={user?.company ?? "Client"}
+        clientId={user?.clientIds[0]}
+        clientName={user?.company ?? ""}
         existingFileNames={documents.map((document) => document.fileName)}
         isOpen={uploadModal.isOpen}
         onClose={() => { uploadModal.close(); setSelectedSlot(null); }}

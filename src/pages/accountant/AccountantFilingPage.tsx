@@ -1,3 +1,5 @@
+import { hasApiBaseUrl } from "../../services/apiClient";
+import { LiveFilingRegister } from "../../components/documents/LiveFilingRegister";
 // Friendly guide: this module (AccountantFilingPage) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
@@ -939,6 +941,10 @@ function Pagination({
 }
 
 export function AccountantFilingPage() {
+  return hasApiBaseUrl() ? <LiveFilingRegister /> : <DemoFilingRegister />;
+}
+
+function DemoFilingRegister() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const portal = usePortal();

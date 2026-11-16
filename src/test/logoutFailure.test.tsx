@@ -1,0 +1,31 @@
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { beforeEach, expect, it, vi } from "vitest";
+import type { ReactNode } from "react";
+import { AuthProvider, useAuth } from "../app/auth";
+import { apiGetJson, apiPostJson } from "../services/apiClient";
+vi.mock("../services/apiClient", async original => ({ ...await original<typeof import("../services/apiClient")>(), hasApiBaseUrl: () => true, apiGetJson: vi.fn(), apiPostJson: vi.fn() }));
+const wrapper = ({ children }: { children: ReactNode }) => <AuthProvider>{children}</AuthProvider>;
+beforeEach(() => {
+  window.localStorage.clear(); window.sessionStorage.clear(); vi.clearAllMocks();
+  vi.mocked(apiGetJson).mockResolvedValue({ user: { id: "a", role: "client", fullName: "Client A", email: "a@example.test", clientIds: ["business-a"] } });
+});
+it("reports failed logout, clears local data and blocks cookie-based restoration until retry succeeds", async () => {
+  vi.mocked(apiPostJson).mockRejectedValue(new Error("Network unavailable"));
+  const first = renderHook(useAuth, { wrapper });
+  await waitFor(() => expect(first.result.current.user?.id).toBe("a"));
+  window.sessionStorage.setItem("portal-private:a:draft", "private");
+  await act(async () => { expect((await first.result.current.logout()).ok).toBe(false); });
+  expect(first.result.current.user).toBeNull();
+  expect(first.result.current.authNotice).toMatch(/server sign-out could not be confirmed/);
+  expect(first.result.current.logoutPending).toBe(true);
+  expect(window.sessionStorage.getItem("portal-private:a:draft")).toBeNull();
+  first.unmount();
+  const second = renderHook(useAuth, { wrapper });
+  await waitFor(() => expect(second.result.current.ready).toBe(true));
+  expect(second.result.current.user).toBeNull();
+  expect(apiGetJson).toHaveBeenCalledTimes(1);
+  vi.mocked(apiPostJson).mockResolvedValue(undefined);
+  await act(async () => { expect((await second.result.current.logout()).ok).toBe(true); });
+  expect(second.result.current.logoutPending).toBe(false);
+  expect(window.localStorage.getItem("portal-logout-pending")).toBeNull();
+});

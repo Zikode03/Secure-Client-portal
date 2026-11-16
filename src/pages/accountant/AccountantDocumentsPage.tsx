@@ -6,6 +6,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
 import { ApiError, apiGetBlob, apiGetJson, apiPostJson, hasApiBaseUrl } from "../../services/apiClient";
+import { portalApiClient, apiData } from "../../services/portalApiClient";
 import { portalServiceApi } from "../../services/portalApi";
 import { AuditTrail } from "../../components/workflow/AuditTrail";
 import { Button } from "../../components/ui/Button";
@@ -14,7 +15,6 @@ import { SurfaceCard } from "../../components/ui/SurfaceCard";
 import {
   buildReviewDocumentFromInvoice,
   buildUnifiedSearchResults,
-  parseAmountLabel,
 } from "../../services/workflowEngine";
 import type {
   DocumentRecord,
@@ -524,45 +524,6 @@ function downloadDocumentFile(fileRecord: DocumentRecord) {
   downloadPreview(fileRecord.fileName, buildPreviewText(fileRecord));
 }
 
-function formatPreviewMoney(value: number) {
-  return `R ${value.toLocaleString("en-ZA", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
-
-function buildInvoiceLineItems(amountLabel?: string) {
-  const total = parseAmountLabel(amountLabel) || 2497;
-  const subtotal = Number((total / 1.1).toFixed(2));
-  const tax = Number((total - subtotal).toFixed(2));
-  const amounts = [
-    Number((subtotal * 0.55).toFixed(2)),
-    Number((subtotal * 0.3).toFixed(2)),
-  ];
-  const remainder = Number((subtotal - amounts[0] - amounts[1]).toFixed(2));
-
-  return {
-    subtotal,
-    tax,
-    total,
-    rows: [
-      { description: "Consulting Services", quantity: 1, rate: amounts[0], amount: amounts[0] },
-      {
-        description: "Implementation Support",
-        quantity: 4,
-        rate: Number((amounts[1] / 4).toFixed(2)),
-        amount: amounts[1],
-      },
-      {
-        description: "Software Subscription",
-        quantity: 1,
-        rate: remainder,
-        amount: remainder,
-      },
-    ],
-  };
-}
-
 function detailValue(value: string | undefined, fallback = "-") {
   return value && value.trim().length > 0 ? value : fallback;
 }
@@ -601,194 +562,11 @@ function ResultFilterSelect({
   );
 }
 
-function PreviewShell({
-  document,
-  result,
-  zoomLevel,
-}: {
-  document: DocumentRecord;
-  result: UnifiedSearchResult;
-  zoomLevel: number;
-}) {
-  const previewScale = Math.max(0.85, zoomLevel / 100);
-  const previewLines = documentPreviewLines(document);
-  const hasRealFile = Boolean(document.fileDataUrl);
-  const mimeType = (document.fileMimeType ?? "").toLowerCase();
-  const dataUrl = document.fileDataUrl ?? "";
-  const isImage =
-    mimeType.startsWith("image/") ||
-    dataUrl.startsWith("data:image/") ||
-    /\.(png|jpe?g|gif|bmp|webp|svg)$/i.test(document.fileName);
-  const isPdf =
-    mimeType === "application/pdf" ||
-    dataUrl.startsWith("data:application/pdf") ||
-    /\.pdf$/i.test(document.fileName);
-  const showInvoicePreview =
-    result.resultType === "invoice" || document.documentType.toLowerCase().includes("invoice");
-
-  if (hasRealFile) {
-    return (
-      <div
-        className="mx-auto w-full max-w-[900px] origin-top rounded-[1rem] bg-white p-4 shadow-[0_10px_32px_rgba(15,23,42,0.08)]"
-        style={{ transform: `scale(${previewScale})`, transformOrigin: "top center" }}
-      >
-        {isImage ? (
-          <img
-            alt={document.fileName}
-            className="max-h-[72vh] w-full rounded-lg border border-slate-200 object-contain"
-            src={document.fileDataUrl}
-          />
-        ) : isPdf ? (
-          <iframe
-            className="h-[72vh] w-full rounded-lg border border-slate-200 bg-white"
-            src={document.fileDataUrl}
-            title={document.fileName}
-          />
-        ) : (
-          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-            This file type cannot be embedded here. Use Open in new tab to view it.
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  if (showInvoicePreview) {
-    const invoiceLayout = buildInvoiceLineItems(document.amountLabel);
-
-    return (
-      <div
-        className="mx-auto w-full max-w-[540px] origin-top rounded-[1rem] bg-white px-8 py-7 shadow-[0_10px_32px_rgba(15,23,42,0.08)]"
-        style={{ transform: `scale(${previewScale})`, transformOrigin: "top center" }}
-      >
-        <div className="flex items-start justify-between gap-6">
-          <div>
-            <p className="text-[1.95rem] font-medium uppercase tracking-tight text-brand-700">
-              Invoice
-            </p>
-            <p className="mt-3 text-[1.05rem] font-medium text-slate-950">
-              {document.clientName}
-            </p>
-            <p className="mt-1 text-sm leading-6 text-slate-500">
-              12 Market Street
-              <br />
-              Sandton, Johannesburg
-              <br />
-              ABN 12 345 678 901
-            </p>
-          </div>
-          <div className="space-y-2 text-sm text-slate-600">
-            <p>
-              <span className="font-medium text-slate-400">Invoice No:</span>{" "}
-              {result.title.replace(/^Invoice\s+/i, "")}
-            </p>
-            <p>
-              <span className="font-medium text-slate-400">Date:</span>{" "}
-              {formatDateLabel(document.uploadedAt)}
-            </p>
-            <p>
-              <span className="font-medium text-slate-400">Due Date:</span>{" "}
-              {formatDateLabel(document.reviewedAt ?? document.uploadedAt)}
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-7 overflow-hidden rounded-[0.95rem] border border-slate-200">
-          <table className="min-w-full text-left text-sm">
-            <thead className="bg-slate-100 text-slate-500">
-              <tr>
-                <th className="px-4 py-3 font-medium">Description</th>
-                <th className="px-4 py-3 font-medium">Qty</th>
-                <th className="px-4 py-3 font-medium">Rate</th>
-                <th className="px-4 py-3 font-medium">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {invoiceLayout.rows.map((row) => (
-                <tr className="border-t border-slate-100" key={row.description}>
-                  <td className="px-4 py-3 text-slate-700">{row.description}</td>
-                  <td className="px-4 py-3 text-slate-500">{row.quantity}</td>
-                  <td className="px-4 py-3 text-slate-500">{formatPreviewMoney(row.rate)}</td>
-                  <td className="px-4 py-3 text-slate-700">{formatPreviewMoney(row.amount)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="ml-auto mt-6 max-w-[220px] space-y-2 text-sm text-slate-600">
-          <div className="flex items-center justify-between">
-            <span>Subtotal</span>
-            <span>{formatPreviewMoney(invoiceLayout.subtotal)}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <span>GST (10%)</span>
-            <span>{formatPreviewMoney(invoiceLayout.tax)}</span>
-          </div>
-          <div className="flex items-center justify-between border-t border-slate-200 pt-2 text-base font-medium text-slate-950">
-            <span>Total Due</span>
-            <span>{formatPreviewMoney(invoiceLayout.total)}</span>
-          </div>
-        </div>
-
-        <p className="mt-10 text-sm text-slate-500">Thank you for your business.</p>
-      </div>
-    );
-  }
-
-  return (
-    <div
-      className="mx-auto w-full max-w-[540px] origin-top rounded-[1rem] bg-white px-7 py-6 shadow-[0_10px_32px_rgba(15,23,42,0.08)]"
-      style={{ transform: `scale(${previewScale})`, transformOrigin: "top center" }}
-    >
-      <div className="flex items-start justify-between gap-4 border-b border-slate-200 pb-5">
-        <div>
-          <p className="text-[0.75rem] font-medium uppercase tracking-[0.18em] text-brand-600">
-            {document.documentType}
-          </p>
-          <h3 className="mt-2 text-[1.35rem] font-medium text-slate-950">
-            {displayResultTitle(result)}
-          </h3>
-          <p className="mt-2 text-sm text-slate-500">
-            {document.clientName} | {document.monthLabel}
-          </p>
-        </div>
-        <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-500">
-          {document.sizeLabel}
-        </span>
-      </div>
-
-      <div className="mt-5 grid gap-3 sm:grid-cols-2">
-        <div className="rounded-[0.95rem] border border-slate-200 bg-slate-50 px-4 py-3">
-          <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-slate-400">
-            Uploaded
-          </p>
-          <p className="mt-2 text-sm font-medium text-slate-900">
-            {formatDateTimeLabel(document.uploadedAt)}
-          </p>
-        </div>
-        <div className="rounded-[0.95rem] border border-slate-200 bg-slate-50 px-4 py-3">
-          <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-slate-400">
-            Reviewed by
-          </p>
-          <p className="mt-2 text-sm font-medium text-slate-900">
-            {detailValue(document.reviewedBy, "Waiting for review")}
-          </p>
-        </div>
-      </div>
-
-      <div className="mt-5 rounded-[1rem] border border-slate-200 px-5 py-4">
-        <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-slate-400">
-          Preview snapshot
-        </p>
-        <div className="mt-4 space-y-3 font-mono text-[0.84rem] leading-7 text-slate-600">
-          {previewLines.map((line, index) => (
-            <p key={`${document.id}-preview-${index}`}>{line}</p>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+function PreviewShell({document,zoomLevel}:{document:DocumentRecord;result:UnifiedSearchResult;zoomLevel:number}) {
+  if (!document.fileDataUrl) return <p role="status" className="p-5 text-sm text-slate-500">The original document is loading or unavailable. Download the original to review its contents.</p>;
+  const image=document.fileMimeType?.startsWith("image/")||/\.(?:png|jpe?g|webp)$/i.test(document.fileName);
+  const pdf=document.fileMimeType==="application/pdf"||/\.pdf$/i.test(document.fileName);
+  return <div className="origin-top bg-white p-2" style={{transform:`scale(${Math.max(.85,zoomLevel/100)})`,transformOrigin:"top center"}}>{image?<img src={document.fileDataUrl} alt={document.fileName} className="h-auto w-full"/>:pdf?<iframe src={document.fileDataUrl} title={document.fileName} className="h-[72vh] w-full"/>:<p className="p-4 text-sm text-slate-600">Download the original to view this document type.</p>}</div>;
 }
 
 function Pagination({
@@ -876,6 +654,7 @@ export function AccountantDocumentsPage() {
   const [viewerTab, setViewerTab] = useState<ViewerTab>("details");
   const [openMenuResultId, setOpenMenuResultId] = useState("");
   const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [reviewActionBusy, setReviewActionBusy] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [previewZoom, setPreviewZoom] = useState(100);
   const [liveClients, setLiveClients] = useState<FirmClientAccount[] | null>(null);
@@ -1352,6 +1131,37 @@ export function AccountantDocumentsPage() {
 
   function handleOpenResult(result: UnifiedSearchResult) {
     handleOpenResultTab(result, "details");
+  }
+
+  async function fileAcceptedDocument() {
+    if (!selectedDocument || reviewActionBusy) return;
+    setReviewActionBusy(true);
+    try {
+      await apiData(portalApiClient.PUT("/api/documents/{id}/status", {
+        params: { path: { id: selectedDocument.id } },
+        body: { status: "filed" },
+      }));
+      setLiveDocuments(documents => documents.map(document => document.id === selectedDocument.id ? { ...document, status: "filed" as const } : document));
+      setFeedbackMessage("Document filed. It is available in the Filing Register.");
+    } catch (error) {
+      setFeedbackMessage(error instanceof Error ? error.message : "The document could not be filed.");
+    } finally { setReviewActionBusy(false); }
+  }
+
+  async function openInvoiceReview() {
+    if (!selectedDocument || reviewActionBusy) return;
+    setReviewActionBusy(true);
+    try {
+      if (selectedDocument.status === "uploaded" || selectedDocument.status === "draft") {
+        await apiData(portalApiClient.POST("/api/documents/{id}/review", {
+          params: { path: { id: selectedDocument.id } },
+          body: { decision: "under_review", reason: null, internalNote: "Sent to the invoice review workspace." },
+        }));
+      }
+      navigate(`/firm/review?documentId=${encodeURIComponent(selectedDocument.id)}`);
+    } catch (error) {
+      setFeedbackMessage(error instanceof Error ? error.message : "The document could not be sent for review.");
+    } finally { setReviewActionBusy(false); }
   }
 
   async function handleDownloadResult(result: UnifiedSearchResult) {
@@ -1890,6 +1700,8 @@ export function AccountantDocumentsPage() {
               </Button>
             </div>
 
+            {backendMode && selectedDocument.documentType.toLowerCase().includes("invoice") && (!selectedDocument.documentSlotId || selectedDocument.status === "under_review") && ["uploaded", "under_review"].includes(selectedDocument.status) ? <Button className="mt-3 w-full" disabled={reviewActionBusy} onClick={()=>void openInvoiceReview()}>{reviewActionBusy ? "Opening review…" : "Review invoice"}</Button> : null}
+            {backendMode && selectedDocument.status === "accepted" ? <Button className="mt-3 w-full" disabled={reviewActionBusy} onClick={()=>void fileAcceptedDocument()}>{reviewActionBusy ? "Filing…" : "File document"}</Button> : null}
             <div className="mt-5 rounded-[1.4rem] border border-slate-200 bg-slate-50 p-3">
               <div className="flex items-center justify-between rounded-[1rem] border border-slate-200 bg-white px-3 py-2">
                 <div className="flex items-center gap-2">

@@ -11,6 +11,8 @@ import {
   useState,
 } from "react";
 import { hasApiBaseUrl } from "../services/apiClient";
+import { useOptionalAuth } from "./auth";
+import { privateStateKey } from "../utils/privateBrowserState";
 import { buildComplianceCentreDataFromStatuses } from "../services/complianceData";
 import { portalService } from "../services/portalData";
 import { portalServiceApi } from "../services/portalApi";
@@ -87,294 +89,8 @@ import type {
 
 const clone = <Value,>(value: Value): Value => JSON.parse(JSON.stringify(value)) as Value;
 
-function escapeXml(value: string) {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
-}
-
-function buildMockPreviewDataUrl(lines: string[], accent: string, surface: string) {
-  const safeLines = lines.map((line) => escapeXml(line));
-  const textNodes = safeLines
-    .map(
-      (line, index) =>
-        `<text x="64" y="${150 + index * 42}" font-family="Segoe UI, Arial, sans-serif" font-size="${
-          index === 0 ? 28 : index <= 2 ? 20 : 17
-        }" fill="#10213f"${index === 0 ? ' font-weight="700"' : ""}>${line}</text>`,
-    )
-    .join("");
-
-  const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="1240" height="1600" viewBox="0 0 1240 1600">
-      <rect width="1240" height="1600" fill="#eef3f8"/>
-      <rect x="32" y="32" width="1176" height="1536" rx="28" fill="${surface}" stroke="#d8e2ef"/>
-      <rect x="32" y="32" width="1176" height="24" rx="28" fill="${accent}"/>
-      <text x="64" y="98" font-family="Segoe UI, Arial, sans-serif" font-size="18" letter-spacing="5" fill="#66758f">SECURE CLIENT PORTAL</text>
-      ${textNodes}
-      <rect x="64" y="360" width="1112" height="2" fill="#d8e2ef"/>
-      <rect x="64" y="408" width="1112" height="64" rx="14" fill="#f8fbff" stroke="#d8e2ef"/>
-      <rect x="64" y="486" width="1112" height="64" rx="14" fill="#ffffff" stroke="#e3ebf5"/>
-      <rect x="64" y="564" width="1112" height="64" rx="14" fill="#ffffff" stroke="#e3ebf5"/>
-      <rect x="64" y="642" width="1112" height="64" rx="14" fill="#ffffff" stroke="#e3ebf5"/>
-      <text x="88" y="448" font-family="Segoe UI, Arial, sans-serif" font-size="18" fill="#314664">Reference</text>
-      <text x="88" y="526" font-family="Segoe UI, Arial, sans-serif" font-size="18" fill="#314664">Description</text>
-      <text x="88" y="604" font-family="Segoe UI, Arial, sans-serif" font-size="18" fill="#314664">Prepared for review workflow</text>
-      <text x="88" y="682" font-family="Segoe UI, Arial, sans-serif" font-size="18" fill="#314664">Mock supporting file seeded for UI validation</text>
-      <rect x="64" y="1456" width="1112" height="56" rx="16" fill="#f7faff" stroke="#d8e2ef"/>
-      <text x="88" y="1492" font-family="Segoe UI, Arial, sans-serif" font-size="18" fill="#53617f">Mock document preview generated from seeded workspace data.</text>
-    </svg>
-  `.trim();
-
-  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
-}
-
-function buildMockDocumentPreview(document: Pick<DocumentRecord, "clientName" | "documentType" | "monthLabel" | "fileName" | "amountLabel" | "uploadedBy">) {
-  if (document.documentType === "Bank Statement") {
-    return buildMockPreviewDataUrl(
-      [
-        "Business Bank Statement",
-        `Account holder: ${document.clientName}`,
-        `Statement period: ${document.monthLabel}`,
-        "Account number: 2104 88 41",
-        "Opening balance: R 184,220.14",
-        "Closing balance: R 167,905.88",
-      ],
-      "#315b9c",
-      "#ffffff",
-    );
-  }
-
-  if (document.documentType === "Invoices") {
-    return buildMockPreviewDataUrl(
-      [
-        "Tax Invoice Bundle",
-        `Client: ${document.clientName}`,
-        `Period: ${document.monthLabel}`,
-        `Bundle file: ${document.fileName}`,
-        `Total value: ${document.amountLabel ?? "R 52,400.00"}`,
-        "Prepared for accountant review and VAT tie-out",
-      ],
-      "#0f7f56",
-      "#ffffff",
-    );
-  }
-
-  if (document.documentType === "Signed Documents") {
-    return buildMockPreviewDataUrl(
-      [
-        "Signed Approval Pack",
-        `Client: ${document.clientName}`,
-        `Period: ${document.monthLabel}`,
-        "Includes filing authorisation and sign-off memo",
-        `Submitted by: ${document.uploadedBy}`,
-        "Authorised signatory recorded",
-      ],
-      "#7a5af8",
-      "#ffffff",
-    );
-  }
-
-  if (document.documentType === "Compliance Record") {
-    return buildMockPreviewDataUrl(
-      [
-        "Compliance Support Record",
-        `Client: ${document.clientName}`,
-        `Review period: ${document.monthLabel}`,
-        "Supporting compliance evidence attached",
-        "Tax / CIPC / address checks consolidated",
-        "Prepared for annual audit trail",
-      ],
-      "#c47f00",
-      "#fffdf7",
-    );
-  }
-
-  return buildMockPreviewDataUrl(
-    [
-      document.documentType,
-      `Client: ${document.clientName}`,
-      `Period: ${document.monthLabel}`,
-      `File: ${document.fileName}`,
-      "Structured document uploaded to workspace",
-      "Prepared for accountant review",
-    ],
-    "#315b9c",
-    "#ffffff",
-  );
-}
-
-function attachMockPreviewToDocument(document: DocumentRecord): DocumentRecord {
-  if (document.fileDataUrl) {
-    return document;
-  }
-
-  return {
-    ...document,
-    fileDataUrl: buildMockDocumentPreview(document),
-    fileMimeType: "image/svg+xml",
-  };
-}
-
-function attachMockPreviewToInvoice(invoice: InvoiceRecord): InvoiceRecord {
-  if (invoice.fileDataUrl) {
-    return invoice;
-  }
-
-  return {
-    ...invoice,
-    fileDataUrl: buildMockDocumentPreview({
-      clientName: invoice.clientName,
-      documentType: "Invoices",
-      monthLabel: invoice.monthLabel,
-      fileName: invoice.fileName,
-      amountLabel: invoice.amountLabel,
-      uploadedBy: invoice.clientName,
-    }),
-    fileMimeType: "image/svg+xml",
-  };
-}
-
-const initialProfile: BusinessProfile = {
-  clientId: "client-apex",
-  legalName: "Apex Trading Ltd",
-  tradingName: "Apex Trading",
-  registrationNumber: "2017/118822/07",
-  taxNumber: "9305174281",
-  vatNumber: "4780294112",
-  primaryContact: "Sarah Jacobs",
-  financeEmail: "finance@apextrading.co.za",
-  phone: "+27 11 555 0198",
-  addressLine: "21 Rivonia Road",
-  city: "Sandton",
-  country: "South Africa",
-};
-
-const initialRequests: WorkflowRequest[] = [
-  {
-    id: "request-1",
-    clientId: "client-apex",
-    clientName: "Apex Trading Ltd",
-    title: "Submit April invoice evidence bundle",
-    description:
-      "Please upload the full April supplier and customer invoice evidence so review can begin.",
-    monthLabel: "April 2026",
-    status: "open",
-    isStarred: false,
-    priority: "high",
-    relatedDocumentId: "doc-1002",
-    requestedBy: "Daniel Mokoena",
-    requestedByRole: "accountant",
-    assignedTo: "Sarah Jacobs",
-    dueDate: "2026-05-05T17:00:00.000Z",
-    createdAt: "2026-04-30T09:15:00.000Z",
-    comments: [
-      {
-        id: "request-1-comment-1",
-        author: "Daniel Mokoena",
-        role: "accountant",
-        message:
-          "Please upload the full April supplier and customer invoice evidence bundle so I can complete the review.",
-        createdAt: "2026-04-30T09:15:00.000Z",
-      },
-      {
-        id: "request-1-comment-2",
-        author: "Sarah Jacobs",
-        role: "client",
-        message:
-          "I have most of it ready. Do you also need the supporting customer credit notes in the same upload?",
-        createdAt: "2026-04-30T10:02:00.000Z",
-      },
-      {
-        id: "request-1-comment-3",
-        author: "Daniel Mokoena",
-        role: "accountant",
-        message:
-          "Yes, please include the supporting credit notes as part of the same evidence bundle so I can tie everything out in one pass.",
-        createdAt: "2026-04-30T10:18:00.000Z",
-      },
-      {
-        id: "request-1-comment-4",
-        author: "Sarah Jacobs",
-        role: "client",
-        message:
-          "Understood. I will upload the full bundle this afternoon and let you know once it is in the portal.",
-        createdAt: "2026-04-30T10:31:00.000Z",
-      },
-    ],
-    auditTrail: [
-      {
-        id: "request-audit-1",
-        status: "Follow-up sent",
-        actor: "Daniel Mokoena",
-        timestamp: "2026-04-30T09:15:00.000Z",
-        note: "Initial invoice evidence request opened for the April month pack.",
-      },
-    ],
-  },
-  {
-    id: "request-2",
-    clientId: "client-apex",
-    clientName: "Apex Trading Ltd",
-    title: "Monthly pack action: upload April bank statement",
-    description:
-      "Go to Monthly Packs and upload the April bank statement in the Bank Statement slot.",
-    monthLabel: "April 2026",
-    status: "open",
-    isStarred: false,
-    priority: "high",
-    requestedBy: "Daniel Mokoena",
-    requestedByRole: "accountant",
-    assignedTo: "Sarah Jacobs",
-    dueDate: "2026-05-06T17:00:00.000Z",
-    createdAt: "2026-05-03T09:15:00.000Z",
-    comments: [
-      {
-        id: "request-2-comment-1",
-        author: "Daniel Mokoena",
-        role: "accountant",
-        message:
-          "The April bank statement is still missing from the Monthly Packs workspace. Please upload it in the Bank Statement slot.",
-        createdAt: "2026-05-03T09:15:00.000Z",
-      },
-      {
-        id: "request-2-comment-2",
-        author: "Sarah Jacobs",
-        role: "client",
-        message:
-          "I can see the slot. The statement I downloaded from the bank is password protected. Is that okay or should I remove the password first?",
-        createdAt: "2026-05-03T09:42:00.000Z",
-      },
-      {
-        id: "request-2-comment-3",
-        author: "Daniel Mokoena",
-        role: "accountant",
-        message:
-          "Please remove the password before uploading, otherwise the review tools will not be able to extract the transactions cleanly.",
-        createdAt: "2026-05-03T09:55:00.000Z",
-      },
-      {
-        id: "request-2-comment-4",
-        author: "Sarah Jacobs",
-        role: "client",
-        message:
-          "Thanks, I will export an unlocked copy and upload it into Monthly Packs before lunch.",
-        createdAt: "2026-05-03T10:08:00.000Z",
-      },
-    ],
-    auditTrail: [
-      {
-        id: "request-audit-2",
-        status: "Follow-up sent",
-        actor: "Daniel Mokoena",
-        timestamp: "2026-05-03T09:15:00.000Z",
-        note: "Bank Statement slot is still pending for April. Upload it in Monthly Packs.",
-      },
-    ],
-  },
-];
+const initialProfile: BusinessProfile = { clientId: "", legalName: "", tradingName: "", registrationNumber: "", taxNumber: "", vatNumber: "", primaryContact: "", financeEmail: "", phone: "", addressLine: "", city: "", country: "" };
+const initialRequests: WorkflowRequest[] = [];
 
 function mergeSeededRequestComments(requests: WorkflowRequest[]) {
   return requests.map((request) => {
@@ -394,62 +110,8 @@ function mergeSeededRequestComments(requests: WorkflowRequest[]) {
   });
 }
 
-const initialAccountants: ManagedAccountant[] = [
-  {
-    id: "user-accountant-1",
-    name: "Daniel Mokoena",
-    email: "accountant@example.com",
-    title: "Senior Accountant",
-    assignedClientCount: 8,
-    openReviews: 5,
-    status: "busy",
-  },
-  {
-    id: "user-accountant-2",
-    name: "Lerato Nkosi",
-    email: "lerato@finwelladvisory.co.za",
-    title: "Accounting Manager",
-    assignedClientCount: 7,
-    openReviews: 3,
-    status: "active",
-  },
-  {
-    id: "user-accountant-3",
-    name: "Sipho Maseko",
-    email: "sipho@finwelladvisory.co.za",
-    title: "Compliance Accountant",
-    assignedClientCount: 5,
-    openReviews: 2,
-    status: "capacity_available",
-  },
-];
-
-const initialUsers: UserAccountRecord[] = [
-  {
-    id: "user-client-1",
-    name: "Sarah Jacobs",
-    email: "client@example.com",
-    role: "client",
-    status: "active",
-    company: "Apex Trading Ltd",
-  },
-  {
-    id: "user-accountant-1",
-    name: "Daniel Mokoena",
-    email: "accountant@example.com",
-    role: "accountant",
-    status: "active",
-    company: "Finwell Advisory",
-  },
-  {
-    id: "user-admin-1",
-    name: "Priya Naidoo",
-    email: "admin@example.com",
-    role: "admin",
-    status: "active",
-    company: "Finwell Advisory",
-  },
-];
+const initialAccountants: ManagedAccountant[] = [];
+const initialUsers: UserAccountRecord[] = [];
 
 const initialDocumentRequirementRules: DocumentRequirementRule[] = [
   { id: "bank_statement", name: "Bank statement", required: true, acceptedFormats: ["PDF"] },
@@ -507,7 +169,6 @@ function findAccountantByName(accountantName: string) {
   return initialAccountants.find((accountant) => accountant.name === accountantName);
 }
 
-const CLIENT_PORTAL_STORAGE_KEY = "accounting-document-control-client-portal-v3";
 
 // Component flow: gather data first, then render a focused UI state.
 function createInitialMonthPack(seed: ClientWorkflowSeed) {
@@ -535,24 +196,9 @@ function createInitialClientSettings(
     },
     security: {
       mfaEnabled: false,
-      passwordLastChangedAt: "2026-04-19T09:00:00.000Z",
+      passwordLastChangedAt: "",
       recoveryEmail: profile.financeEmail,
-      activeSessions: [
-        {
-          id: "session-current-browser",
-          label: "Chrome on Windows",
-          lastActiveAt: "2026-05-07T07:45:00.000Z",
-          location: "Johannesburg, South Africa",
-          isCurrent: true,
-        },
-        {
-          id: "session-mobile",
-          label: "Safari on iPhone",
-          lastActiveAt: "2026-05-06T18:20:00.000Z",
-          location: "Johannesburg, South Africa",
-          isCurrent: false,
-        },
-      ],
+      activeSessions: [],
     },
     documentPreferences: {
       structuredUploadsOnly: true,
@@ -564,15 +210,7 @@ function createInitialClientSettings(
   };
 }
 
-const defaultScheduledReports: ScheduledReport[] = [
-  {
-    id: "client-report-monthly",
-    frequency: "monthly",
-    nextRunAt: "2026-06-01T06:00:00.000Z",
-    recipients: ["finance@apextrading.co.za"],
-    lastScheduledAt: "2026-05-01T09:00:00.000Z",
-  },
-];
+const defaultScheduledReports: ScheduledReport[] = [];
 
 interface PersistedClientPortalState {
   monthPack: MonthlyPack;
@@ -618,14 +256,15 @@ function createInitialClientPortalState(
 function readPersistedClientPortalState(
   seed: ClientWorkflowSeed,
   compliance: ComplianceCentreData,
+  storageKey: string | null,
 ): PersistedClientPortalState {
   const fallback = createInitialClientPortalState(seed, compliance);
 
-  if (typeof window === "undefined") {
+  if (typeof window === "undefined" || !storageKey || hasApiBaseUrl()) {
     return fallback;
   }
 
-  const storedValue = window.localStorage.getItem(CLIENT_PORTAL_STORAGE_KEY);
+  const storedValue = window.sessionStorage.getItem(storageKey);
   if (!storedValue) {
     return fallback;
   }
@@ -688,12 +327,12 @@ function readPersistedClientPortalState(
   }
 }
 
-function writePersistedClientPortalState(state: PersistedClientPortalState) {
-  if (typeof window === "undefined") {
+function writePersistedClientPortalState(state: PersistedClientPortalState, storageKey: string | null) {
+  if (typeof window === "undefined" || !storageKey || hasApiBaseUrl()) {
     return;
   }
 
-  window.localStorage.setItem(CLIENT_PORTAL_STORAGE_KEY, JSON.stringify(state));
+  window.sessionStorage.setItem(storageKey, JSON.stringify(state));
 }
 
 export interface PortalActionResult {
@@ -910,7 +549,6 @@ interface PortalContextValue {
     results: UnifiedSearchResult[],
     filters: UnifiedSearchFilters,
   ) => UnifiedSearchResult[];
-  resetClientPortalDemoState: () => PortalActionResult;
   getClientWorkspace: (clientId: string) => ClientWorkspaceView;
   getReviewQueue: () => ReviewQueueItem[];
   getReviewRecord: (recordId: string) => DocumentRecord;
@@ -1087,14 +725,8 @@ function buildFallbackReviewRecord(item: ReviewQueueItem): DocumentRecord {
   };
 }
 
-function isApexWorkspaceId(clientId: string) {
-  return clientId === "client-apex" || clientId === "firm-client-1";
-}
-
 function requestBelongsToClient(request: WorkflowRequest, clientId: string) {
-  return isApexWorkspaceId(clientId)
-    ? isApexWorkspaceId(request.clientId)
-    : request.clientId === clientId;
+  return request.clientId === clientId;
 }
 
 function buildComplianceReadinessSummary(client: ComplianceClientStatus) {
@@ -1206,208 +838,19 @@ function findComplianceItem(
     ?.documents.find((document) => document.id === complianceItemId);
 }
 
-function buildCurrentMonthWorkspaceDocument(
-  client: FirmClientAccount,
-  source: ClientWorkspaceView,
-  documentType: string,
-  monthLabel: string,
-  index: number,
-  overrides: Partial<DocumentRecord> = {},
-): DocumentRecord {
-  const clientToken = client.clientName.replace(/[^A-Za-z0-9]/g, "");
-  const uploadedBy = `${client.clientName} Finance Team`;
-  const monthToken = monthLabel.replace(/\s+/g, "_");
-  const baseDocument = source.documents[0]
-    ? clone(source.documents[0])
-    : ({
-        id: "",
-        clientId: client.id,
-        clientName: client.clientName,
-        documentType,
-        fileName: "",
-        monthLabel,
-        description: "",
-        status: "uploaded",
-        uploadedBy,
-        uploadedAt: "2026-05-03T10:15:00.000Z",
-        sizeLabel: "1.4 MB",
-        keywordTags: [],
-        comments: [],
-        auditTrail: [],
-      } satisfies DocumentRecord);
 
-  return {
-    ...baseDocument,
-    id: `${client.id}-seeded-current-${index + 1}`,
-    clientId: client.id,
-    clientName: client.clientName,
-    documentType,
-    fileName: `${clientToken}_${documentType.replace(/[^A-Za-z0-9]+/g, "")}_${monthToken}.pdf`,
-    monthLabel,
-    description: `${documentType} uploaded for ${monthLabel}.`,
-    status: "uploaded",
-    uploadedBy,
-    uploadedAt: "2026-05-03T10:15:00.000Z",
-    reviewedBy: undefined,
-    reviewedAt: undefined,
-    sizeLabel: "1.4 MB",
-    keywordTags: [documentType.toLowerCase(), "mock", "workspace"],
-    supplierName: undefined,
-    amountLabel: undefined,
-    extractedText: `${client.clientName} ${documentType} for ${monthLabel}.`,
-    expiryDate: undefined,
-    rejectionReason: undefined,
-    comments: [],
-    auditTrail: [
-      {
-        id: `${client.id}-seeded-current-${index + 1}-audit-1`,
-        status: "Uploaded",
-        actor: uploadedBy,
-        timestamp: "2026-05-03T10:15:00.000Z",
-        note: `Seeded current-month ${documentType.toLowerCase()} for workspace preview.`,
-      },
-    ],
-    ...overrides,
-  };
-}
 
 function buildTemplateWorkspace(client: FirmClientAccount, source: ClientWorkspaceView): ClientWorkspaceView {
-  const rename = (value: string) =>
-    value
-      .replace(/Apex Trading Ltd/g, client.clientName)
-      .replace(/ApexTrading/g, client.clientName.replace(/[^A-Za-z0-9]/g, ""));
-
-  const documents = source.documents.map((document, index) =>
-    attachMockPreviewToDocument({
-      ...clone(document),
-    id: `${client.id}-doc-${index + 1}`,
-    clientId: client.id,
-    clientName: client.clientName,
-    fileName: rename(document.fileName),
-    description: rename(document.description),
-    uploadedBy:
-      document.uploadedBy === "Sarah Jacobs"
-        ? `${client.clientName} Finance Team`
-        : document.uploadedBy,
-    extractedText: document.extractedText ? rename(document.extractedText) : document.extractedText,
-    comments: clone(document.comments).map((comment, commentIndex) => ({
-      ...comment,
-      id: `${client.id}-doc-${index + 1}-comment-${commentIndex + 1}`,
-      author: comment.author === "Sarah Jacobs" ? `${client.clientName} Finance Team` : comment.author,
-      message: rename(comment.message),
-    })),
-    auditTrail: clone(document.auditTrail).map((entry, auditIndex) => ({
-      ...entry,
-      id: `${client.id}-doc-${index + 1}-audit-${auditIndex + 1}`,
-      actor: entry.actor === "Sarah Jacobs" ? `${client.clientName} Finance Team` : entry.actor,
-      note: rename(entry.note),
-    })),
-  }),
-    );
-  const invoices = source.invoices.map((invoice, index) =>
-    attachMockPreviewToInvoice({
-      ...clone(invoice),
-    id: `${client.id}-inv-${index + 1}`,
-    clientId: client.id,
-    clientName: client.clientName,
-    fileName: rename(invoice.fileName),
-    description: rename(invoice.description),
-    extractedText: invoice.extractedText ? rename(invoice.extractedText) : invoice.extractedText,
-  }),
-    );
-  const monthPack = recalculatePack({
-    ...clone(source.monthPack),
-    progressPercent: client.completionRate,
-    slots: clone(source.monthPack.slots).map((slot) => ({
-      ...slot,
-      autoName: rename(slot.autoName),
-    })),
-  });
-  const requests = source.requests.slice(0, 2).map((request, index) => ({
-    ...clone(request),
-    id: `${client.id}-request-${index + 1}`,
-    clientId: client.id,
-    clientName: client.clientName,
-  }));
-
-  const seededDocuments = [...documents];
-  const ensureCurrentMonthDocument = (
-    documentType: string,
-    overrides: Partial<DocumentRecord> = {},
-  ) => {
-    const exists = seededDocuments.some(
-      (document) =>
-        document.documentType === documentType &&
-        document.monthLabel === monthPack.monthLabel,
-    );
-    if (exists) {
-      return;
-    }
-
-    seededDocuments.push(
-      attachMockPreviewToDocument(
-        buildCurrentMonthWorkspaceDocument(
-          client,
-          source,
-          documentType,
-          monthPack.monthLabel,
-          seededDocuments.length,
-          overrides,
-        ),
-      ),
-    );
-  };
-
-  ensureCurrentMonthDocument("Bank Statement", {
-    status: client.completionRate >= 65 ? "accepted" : "uploaded",
-    description: `Operating account bank statement for ${monthPack.monthLabel}.`,
-    sizeLabel: "2.2 MB",
-    keywordTags: ["bank statement", "monthly pack", "mock"],
-    reviewedBy: client.completionRate >= 65 ? client.assignedAccountant : undefined,
-    reviewedAt: client.completionRate >= 65 ? "2026-05-04T09:20:00.000Z" : undefined,
-  });
-  ensureCurrentMonthDocument("Signed Documents", {
-    status: client.completionRate >= 75 ? "accepted" : "under_review",
-    description: `Signed approvals and filing authorisations for ${monthPack.monthLabel}.`,
-    sizeLabel: "1.1 MB",
-    keywordTags: ["signed documents", "authorisation", "mock"],
-    reviewedBy: client.assignedAccountant,
-    reviewedAt: "2026-05-03T14:10:00.000Z",
-  });
-  ensureCurrentMonthDocument("Compliance Record", {
-    status: client.completionRate >= 85 ? "accepted" : "under_review",
-    description: `Compliance support pack for ${monthPack.monthLabel}.`,
-    sizeLabel: "960 KB",
-    keywordTags: ["compliance", "record", "mock"],
-    reviewedBy: client.assignedAccountant,
-    reviewedAt: "2026-05-05T08:30:00.000Z",
-    expiryDate: "2026-08-31T00:00:00.000Z",
-  });
-
-  return {
-    client,
-    monthPack,
-    documents: seededDocuments,
-    invoices,
-    requests,
-    compliance: source.compliance,
-    missingDocuments: buildMissingDocuments(monthPack, client.clientName),
-    expiringDocuments: buildExpiringDocuments(seededDocuments),
-    rejectedDocuments: buildRejectedDocuments(seededDocuments, invoices),
-    latestOverallDocuments: buildLatestOverallDocuments(seededDocuments, invoices),
-    auditTrail: [
-      {
-        id: `${client.id}-audit-1`,
-        status: "Workspace generated",
-        actor: "Workflow engine",
-        timestamp: new Date().toISOString(),
-        note: "This is a seeded client workspace for role-based workflow testing.",
-      },
-    ],
-  };
+  return { ...source, client, monthPack: { ...source.monthPack, slots: [] }, documents: source.documents.filter(document => document.clientId === client.id), invoices: source.invoices.filter(invoice => invoice.clientId === client.id), requests: source.requests.filter(request => request.clientId === client.id), missingDocuments: [], expiringDocuments: [], rejectedDocuments: [], latestOverallDocuments: [], auditTrail: [] };
 }
 
 export function PortalProvider({ children }: { children: ReactNode }) {
+  const auth = useOptionalAuth();
+  const scope = auth?.user ? `${auth.user.id}:${auth.user.role}:${[...(auth.user.clientIds ?? []), ...(auth.user.assignedClientIds ?? [])].sort().join(",")}` : "signed-out";
+  return <PortalStateProvider key={scope} role={auth?.user?.role ?? null} storageKey={auth?.user ? privateStateKey(auth.user.id, `portal:${scope}`) : null}>{children}</PortalStateProvider>;
+}
+
+function PortalStateProvider({ children, storageKey, role }: { children: ReactNode; storageKey: string | null; role: Role | null }) {
   const [clientSeed] = useState(() => portalService.getClientWorkflowSeed());
   const [baseAccountantDashboard] = useState(() =>
     portalService.getAccountantDashboard(),
@@ -1417,12 +860,12 @@ export function PortalProvider({ children }: { children: ReactNode }) {
   const [baseClientComplianceCentre] = useState(() =>
     portalService.getClientComplianceCentre(),
   );
-  const [seededAccountantComplianceCentre] = useState(() =>
+  const [initialAccountantComplianceCentre] = useState(() =>
     portalService.getAccountantComplianceCentre(),
   );
   const initialClientState = useMemo(
-    () => readPersistedClientPortalState(clientSeed, baseClientComplianceCentre),
-    [baseClientComplianceCentre, clientSeed],
+    () => readPersistedClientPortalState(clientSeed, baseClientComplianceCentre, storageKey),
+    [baseClientComplianceCentre, clientSeed, storageKey],
   );
 // Local UI state: keeps track of what the user is seeing or editing right now.
   const [monthPack, setMonthPack] = useState(() => initialClientState.monthPack);
@@ -1439,7 +882,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     () => initialClientState.scheduledReports,
   );
   const [complianceClients, setComplianceClients] = useState<ComplianceClientStatus[]>(
-    () => clone(seededAccountantComplianceCentre.clientStatuses ?? []),
+    () => clone(initialAccountantComplianceCentre.clientStatuses ?? []),
   );
   const [complianceAuditTrail, setComplianceAuditTrail] = useState(
     () => initialClientState.complianceAuditTrail,
@@ -1469,15 +912,15 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     let isActive = true;
 
     const hydrateFromApi = async () => {
-      if (!hasApiBaseUrl()) {
+      if (!hasApiBaseUrl() || !role || role === "client") {
         return;
       }
 
-      // Composite demo endpoints are intentionally not used in backend mode. Pages load their
+      // Pages load their
       // live domain APIs directly; this provider only hydrates shared administration records.
       const [clientsResult, usersResult] = await Promise.allSettled([
         portalServiceApi.getAdminClients({ allowFallback: false }),
-        portalServiceApi.getAdminUsers(),
+        role === "admin" ? portalServiceApi.getAdminUsers() : Promise.resolve([]),
       ]);
       if (!isActive) return;
 
@@ -1513,7 +956,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     return () => {
       isActive = false;
     };
-  }, []);
+  }, [role]);
 
   useEffect(() => {
     writePersistedClientPortalState({
@@ -1528,7 +971,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       scheduledReports,
       complianceAuditTrail,
       reportGeneratedAt,
-    });
+    }, storageKey);
   }, [
     activity,
     clientProfile,
@@ -1541,6 +984,7 @@ export function PortalProvider({ children }: { children: ReactNode }) {
     reportGeneratedAt,
     requests,
     scheduledReports,
+    storageKey,
   ]);
 
   const clientComplianceStatus = useMemo(
@@ -1705,26 +1149,26 @@ export function PortalProvider({ children }: { children: ReactNode }) {
           industry: "Wholesale",
           assignedAccountant:
             adminClients.find((client) => client.id === "firm-client-1")?.assignedAccountant ??
-            "Daniel Mokoena",
+            "Assigned accountant",
           requiredPack: "Trading monthly pack",
           completionRate: monthPack.progressPercent,
           deadlinePolicy: "6th working day",
           status: monthPack.canComplete ? "on_track" : "attention",
         },
       monthPack,
-      documents: documents.map((document) => attachMockPreviewToDocument(document)),
-      invoices: invoices.map((invoice) => attachMockPreviewToInvoice(invoice)),
+      documents: documents,
+      invoices: invoices,
       requests: liveClientRequests,
       compliance: clientComplianceStatus,
       missingDocuments: buildMissingDocuments(monthPack, clientProfile.legalName),
-      expiringDocuments: buildExpiringDocuments(documents.map((document) => attachMockPreviewToDocument(document))),
+      expiringDocuments: buildExpiringDocuments(documents),
       rejectedDocuments: buildRejectedDocuments(
-        documents.map((document) => attachMockPreviewToDocument(document)),
-        invoices.map((invoice) => attachMockPreviewToInvoice(invoice)),
+        documents,
+        invoices,
       ),
       latestOverallDocuments: buildLatestOverallDocuments(
-        documents.map((document) => attachMockPreviewToDocument(document)),
-        invoices.map((invoice) => attachMockPreviewToInvoice(invoice)),
+        documents,
+        invoices,
       ),
       auditTrail: documents.flatMap((document) => document.auditTrail).slice(0, 10),
     }),
@@ -1838,9 +1282,9 @@ function normaliseFileToken(value: string) {
   return value.trim().toLowerCase();
 }
 
-const assignedAccountantForApex =
+const assignedAccountantName =
     adminClients.find((client) => client.id === "firm-client-1")?.assignedAccountant ??
-    "Daniel Mokoena";
+    "Assigned accountant";
 
   function resolveAssignedAccountantByClientName(
     clientName: string,
@@ -2719,7 +2163,7 @@ const assignedAccountantForApex =
       ...current,
     ]);
 
-    if (isApexWorkspaceId(payload.clientId)) {
+    if (payload.clientId === clientProfile.clientId) {
       setActivity((current) =>
         appendActivity(
           current,
@@ -2850,7 +2294,7 @@ const assignedAccountantForApex =
       ),
     );
 
-    if (isApexWorkspaceId(payload.clientId)) {
+    if (payload.clientId === clientProfile.clientId) {
       setActivity((current) =>
         appendActivity(
           current,
@@ -2887,7 +2331,7 @@ const assignedAccountantForApex =
       ),
     );
 
-    if (isApexWorkspaceId(payload.clientId)) {
+    if (payload.clientId === clientProfile.clientId) {
       setActivity((current) =>
         appendActivity(
           current,
@@ -3334,8 +2778,8 @@ const assignedAccountantForApex =
         apiResult.delivery === "smtp"
           ? "User account created. Setup instructions were emailed to the new user."
           : apiResult.delivery === "failed"
-            ? `User account created, but the invite email could not be sent. ${apiResult.deliveryError ?? "Use the invite link from the backend response or check SMTP settings."}`
-          : "User account created, but email delivery is not active. Use the generated invite link from the backend response.",
+            ? `User account created, but the invite email could not be sent. ${apiResult.deliveryError ?? "Configure and verify SMTP, then resend the invitation."}`
+          : "User account created, but email delivery is not active. Configure and verify SMTP, then resend the invitation.",
     };
   }
 
@@ -3423,7 +2867,7 @@ const assignedAccountantForApex =
     return {
       ok: true,
       message:
-        "Email delivery is not active. Use the generated setup link from the backend response or enable SMTP.",
+        "Email delivery is not active. Configure and verify SMTP, then resend the invitation.",
     };
   }
 
@@ -3482,110 +2926,21 @@ const assignedAccountantForApex =
     return { ok: true, message: "User role updated." };
   }
 
-  function addClientBusiness(payload: {
+  function addClientBusiness(_payload: {
     clientName: string;
     industry: string;
     requiredPack: string;
     deadlinePolicy: string;
     assignedAccountantUserId?: string;
     backupAccountantUserId?: string;
-  }): PortalActionResult {
-    if (!payload.clientName.trim() || !payload.industry.trim()) {
-      return { ok: false, message: "Client name and industry are required." };
-    }
-
-    const primary = payload.assignedAccountantUserId
-      ? findAccountantById(payload.assignedAccountantUserId)
-      : undefined;
-    const backup = payload.backupAccountantUserId
-      ? findAccountantById(payload.backupAccountantUserId)
-      : undefined;
-    const nextClient: FirmClientAccount = {
-      id: `firm-client-local-${Date.now()}`,
-      clientName: payload.clientName.trim(),
-      industry: payload.industry.trim(),
-      assignedAccountant: primary?.name ?? "Unassigned",
-      assignedAccountantUserId: primary?.id,
-      backupAccountant: backup?.name,
-      backupAccountantUserId: backup?.id,
-      requiredPack: payload.requiredPack.trim() || "Standard monthly pack",
-      completionRate: 0,
-      deadlinePolicy: payload.deadlinePolicy.trim() || "6th working day",
-      status: "attention",
-      isActive: true,
-    };
-
-    setAdminClients((current) => [nextClient, ...current]);
-    void portalServiceApi.createClientBusiness({
-      id: nextClient.id,
-      name: nextClient.clientName,
-      entityType: nextClient.industry,
-      status: "active",
-      complianceHealth: nextClient.completionRate,
-      assignedAccountantId: nextClient.assignedAccountantUserId ?? "",
-      primaryContact: "Primary contact",
-      email: "client@example.com",
-    });
-    return { ok: true, message: "Client business added." };
-  }
+  }): PortalActionResult { return { ok: false, message: "Use the authenticated client onboarding and management workflow to save business details." }; }
 
   function updateClientBusiness(
-    clientId: string,
-    updates: Partial<Pick<FirmClientAccount, "clientName" | "industry" | "requiredPack" | "deadlinePolicy">>,
-  ): PortalActionResult {
-    let found = false;
-    setAdminClients((current) =>
-      current.map((client) => {
-        if (client.id !== clientId) return client;
-        found = true;
-        return { ...client, ...updates };
-      }),
-    );
-    const client = adminClients.find((item) => item.id === clientId);
-    if (client) {
-      void portalServiceApi.updateClientBusiness(clientId, {
-        id: clientId,
-        name: updates.clientName ?? client.clientName,
-        entityType: updates.industry ?? client.industry,
-        status: client.status === "overdue" ? "at_risk" : "active",
-        complianceHealth: client.completionRate,
-        assignedAccountantId: client.assignedAccountantUserId ?? "",
-        primaryContact: "Primary contact",
-        email: "client@example.com",
-      });
-    }
+    _clientId: string,
+    _updates: Partial<Pick<FirmClientAccount, "clientName" | "industry" | "requiredPack" | "deadlinePolicy">>,
+  ): PortalActionResult { return { ok: false, message: "Use the authenticated client onboarding and management workflow to save business details." }; }
 
-    return found
-      ? { ok: true, message: "Client details updated." }
-      : { ok: false, message: "Client not found." };
-  }
-
-  function setClientActiveState(clientId: string, isActive: boolean): PortalActionResult {
-    let found = false;
-    setAdminClients((current) =>
-      current.map((client) => {
-        if (client.id !== clientId) return client;
-        found = true;
-        return { ...client, isActive, status: isActive ? client.status : "overdue" };
-      }),
-    );
-    const client = adminClients.find((item) => item.id === clientId);
-    if (client) {
-      void portalServiceApi.updateClientBusiness(clientId, {
-        id: clientId,
-        name: client.clientName,
-        entityType: client.industry,
-        status: isActive ? "active" : "archived",
-        complianceHealth: client.completionRate,
-        assignedAccountantId: client.assignedAccountantUserId ?? "",
-        primaryContact: "Primary contact",
-        email: "client@example.com",
-      });
-    }
-    return found
-      ? { ok: true, message: `Client ${isActive ? "activated" : "deactivated"}.` }
-      : { ok: false, message: "Client not found." };
-  }
+  function setClientActiveState(_clientId: string, _isActive: boolean): PortalActionResult { return { ok: false, message: "Use the authenticated client onboarding and management workflow to save business details." }; }
 
   function updateDocumentRequirements(rules: DocumentRequirementRule[]): PortalActionResult {
     setDocumentRequirementRules(clone(rules));
@@ -3623,28 +2978,6 @@ const assignedAccountantForApex =
     return { ok: true, message: "Deadline policy updated." };
   }
 
-  function resetClientPortalDemoState(): PortalActionResult {
-    const fresh = createInitialClientPortalState(clientSeed, baseClientComplianceCentre);
-
-    setMonthPack(fresh.monthPack);
-    setDocuments(fresh.documents);
-    setInvoices(fresh.invoices);
-    setNotifications(fresh.notifications);
-    setActivity(fresh.activity);
-    setRequests(fresh.requests);
-    setClientProfile(fresh.clientProfile);
-    setClientSettings(fresh.clientSettings);
-    setScheduledReports(fresh.scheduledReports);
-    setComplianceClients(clone(seededAccountantComplianceCentre.clientStatuses ?? []));
-    setComplianceAuditTrail(fresh.complianceAuditTrail);
-    setReportGeneratedAt(fresh.reportGeneratedAt);
-
-    return {
-      ok: true,
-      message: "Demo workflow state has been restored, including review queue records.",
-    };
-  }
-
   function getReviewQueue() {
     const dynamicDocumentQueue = documents
       .filter((document) => ["uploaded", "under_review"].includes(document.status))
@@ -3655,15 +2988,15 @@ const assignedAccountantForApex =
         monthLabel: document.monthLabel,
         submittedAt: document.uploadedAt,
         status: document.status === "under_review" ? "under_review" : "uploaded",
-        assignedAccountant: assignedAccountantForApex,
+        assignedAccountant: assignedAccountantName,
       }));
     const dynamicInvoiceQueue = buildInvoiceReviewQueue(
       invoices,
-      assignedAccountantForApex,
+      assignedAccountantName,
     );
     const dynamicQueue = [...dynamicDocumentQueue, ...dynamicInvoiceQueue];
     const dynamicIds = new Set(dynamicQueue.map((item) => item.id));
-    const seededFirmQueue = baseAccountantDashboard.reviewQueue
+    const initialFirmQueue = baseAccountantDashboard.reviewQueue
       .filter((item) => !dynamicIds.has(item.id))
       .map((item) => ({
         ...item,
@@ -3673,7 +3006,7 @@ const assignedAccountantForApex =
         ),
       }));
 
-    return [...dynamicQueue, ...seededFirmQueue]
+    return [...dynamicQueue, ...initialFirmQueue]
       .sort(
         (left, right) =>
           new Date(right.submittedAt).getTime() - new Date(left.submittedAt).getTime(),
@@ -3701,7 +3034,7 @@ const assignedAccountantForApex =
   }
 
   function getClientWorkspace(clientId: string): ClientWorkspaceView {
-    if (isApexWorkspaceId(clientId)) {
+    if (clientId === clientProfile.clientId) {
       return currentClientWorkspace;
     }
 
@@ -3720,7 +3053,7 @@ const assignedAccountantForApex =
 
   const accountantDashboard = useMemo<AccountantDashboardData>(() => {
     const otherPortfolioRows = baseAccountantDashboard.portfolio
-      .filter((row) => row.clientName !== "Apex Trading Ltd")
+      .filter((row) => row.clientName !== clientProfile.legalName)
       .map((row) => ({
         ...row,
         assignedAccountant: resolveAssignedAccountantByClientName(
@@ -3742,20 +3075,20 @@ const assignedAccountantForApex =
             ? "on_track"
             : "attention"
       ) as PortfolioStatus,
-      assignedAccountant: assignedAccountantForApex,
+      assignedAccountant: assignedAccountantName,
       missingCount: apexMissingDocuments.length,
       overdueCount: 0,
       deadline: "06 May 2026",
     };
     const portfolio = [apexPortfolioRow, ...otherPortfolioRows];
     const staticMissing = baseAccountantDashboard.missingDocuments.filter(
-      (item) => item.clientName !== "Apex Trading Ltd",
+      (item) => item.clientName !== clientProfile.legalName,
     );
     const staticRejected = baseAccountantDashboard.rejectedDocuments.filter(
-      (item) => item.clientName !== "Apex Trading Ltd",
+      (item) => item.clientName !== clientProfile.legalName,
     );
     const staticExpiring = baseAccountantDashboard.expiringDocuments.filter(
-      (item) => item.owner !== "Apex Trading Ltd",
+      (item) => item.owner !== clientProfile.legalName,
     );
     const latestCombined = buildLatestOverallDocuments(documents, invoices);
     const latestOverall = [...latestCombined, ...baseAccountantDashboard.latestOverallDocuments]
@@ -3819,7 +3152,7 @@ const assignedAccountantForApex =
       smartAlerts: [
         ...smartAlerts,
         ...baseAccountantDashboard.smartAlerts.filter(
-          (item) => !item.message.includes("Apex Trading"),
+          (item) => !item.message.includes(clientProfile.tradingName),
         ),
       ].slice(0, 6),
       reconciliationIssues: [
@@ -3836,7 +3169,7 @@ const assignedAccountantForApex =
     };
   }, [
       adminClients,
-      assignedAccountantForApex,
+      assignedAccountantName,
       baseAccountantDashboard,
       clientProfile.legalName,
     documents,
@@ -3984,7 +3317,6 @@ const assignedAccountantForApex =
       updateRolePermissionMatrix,
       updateClientDeadlinePolicy,
       filterSearchResults: filterUnifiedSearchResults,
-      resetClientPortalDemoState,
       getClientWorkspace,
       getReviewQueue,
       getReviewRecord,
@@ -4019,7 +3351,6 @@ const assignedAccountantForApex =
       previousMonthComparison,
       previousMonthDocuments,
       reconciliationIssues,
-      resetClientPortalDemoState,
       scheduleComplianceReport,
       scheduledReports,
       createClientRequest,

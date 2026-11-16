@@ -351,7 +351,7 @@ export function ClientSettingsPage() {
 
       {activeSection === "notifications" && (backendMode
         ? <div className="settings-group"><div className="settings-group-label"><span>WORKFLOW UPDATES</span><h3>Stay up to date</h3><p>Find requests, document updates and reminders in your inbox.</p></div>
-          <div className="settings-notification-info"><Mail size={28} aria-hidden="true" /><h3>Your updates, in one place</h3><p>Notification preferences cannot be changed on this page yet. You can still read and manage the notifications you receive.</p><Button variant="secondary" onClick={() => navigate("/client/notifications")}>Open notification inbox <ArrowUpRight size={16} aria-hidden="true" /></Button></div>
+          <div className="settings-notification-info"><Mail size={28} aria-hidden="true" /><h3>Your updates, in one place</h3><p>Manage reminder preferences saved to your account across devices.</p><Button variant="secondary" onClick={() => navigate("/client/notifications/preferences")}>Manage notification preferences <ArrowUpRight size={16} aria-hidden="true" /></Button></div>
         </div>
         : <><div className="settings-group"><div className="settings-group-label"><span>YOUR PREFERENCES</span><h3>Choose your updates</h3><p>Adjust reminders and summaries to suit your workflow.</p></div><div className="settings-toggles">
           <Toggle checked={deadlineAlerts} label="Deadline reminders" description="When a monthly pack deadline is approaching." onChange={() => setDeadlineAlerts(value => !value)} />

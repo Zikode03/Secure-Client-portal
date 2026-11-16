@@ -1,3 +1,4 @@
+// Isolated state/UI unit test; application data is not used.
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -8,6 +9,7 @@ import { apiGetJson, apiPostJson, apiPutJson } from "../services/apiClient";
 vi.mock("../app/auth", () => ({ useAuth: vi.fn() }));
 vi.mock("../services/apiClient", async original => ({
   ...await original<typeof import("../services/apiClient")>(),
+  hasApiBaseUrl: () => false,
   apiGetJson: vi.fn(),
   apiPostJson: vi.fn(),
   apiPutJson: vi.fn(),
@@ -89,7 +91,11 @@ beforeEach(() => {
   vi.mocked(apiPutJson).mockReset();
 });
 
-const renderPage = () => render(<MemoryRouter><AccountantComplianceCentrePage /></MemoryRouter>);
+const renderPage = () => {
+  const view = render(<MemoryRouter><AccountantComplianceCentrePage /></MemoryRouter>);
+  fireEvent.click(screen.getByRole("button", { name: "Document records" }));
+  return view;
+};
 
 describe("Phase 4 compliance centre", () => {
   it.each(["admin", "accountant"])("shows the obligation workflow for %s", async role => {

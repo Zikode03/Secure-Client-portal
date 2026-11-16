@@ -4,8 +4,9 @@ import { securityHeaders, productionSecurityPlugin } from './security-headers.mj
 describe('frontend security headers', () => {
   it('limits scripts and API connections while permitting document previews', () => {
     const headers = securityHeaders('https://portal.example');
-    expect(headers['Content-Security-Policy']).toContain("script-src 'self';");
-    expect(headers['Content-Security-Policy']).not.toContain('unsafe-eval');
+    expect(headers['Content-Security-Policy']).toContain("script-src 'self' 'wasm-unsafe-eval';");
+    expect(headers['Content-Security-Policy']).not.toContain("'unsafe-eval'");
+    expect(headers['Content-Security-Policy']).toContain("worker-src 'self';");
     expect(headers['Content-Security-Policy']).toContain("connect-src 'self' https://portal.example;");
     expect(headers['Content-Security-Policy']).toContain("frame-src 'self' blob:");
     expect(headers['Content-Security-Policy']).toContain("frame-ancestors 'none'");

@@ -1,3 +1,5 @@
+// Isolated state/UI unit test; application data is not used.
+vi.mock("../services/apiClient", async original => ({ ...await original<typeof import("../services/apiClient")>(), hasApiBaseUrl: () => false }));
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
@@ -68,7 +70,7 @@ describe("client page smoke coverage", () => {
   it("opens the upload flow from the document register header", () => {
     renderClientPage(<ClientDocumentsPage />);
     fireEvent.click(screen.getByRole("button", { name: "Upload document" }));
-    expect(screen.getByRole("heading", { name: "Smart document upload" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /^Upload (?:document|invoice|bank statement|signed document)$/ })).toBeInTheDocument();
   });
 
   it("links outstanding monthly-pack work back to Monthly Packs", () => {

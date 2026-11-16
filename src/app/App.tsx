@@ -19,6 +19,7 @@ const AdminDashboardPage = lazy(() =>
 const AdminClientsPage = lazy(() =>
   import("../pages/admin/AdminClientsPage").then((module) => ({ default: module.AdminClientsPage })),
 );
+const AdminMigrationPage = lazy(() => import("../pages/admin/AdminMigrationPage").then(m => ({ default: m.AdminMigrationPage })));
 const AdminUsersPage = lazy(() =>
   import("../pages/admin/AdminUsersPage").then((module) => ({ default: module.AdminUsersPage })),
 );
@@ -45,9 +46,6 @@ const AdminMonthlyPacksPage = lazy(() =>
 );
 const ClientComplianceCentrePage = lazy(() =>
   import("../pages/client/ClientComplianceCentrePage").then((module) => ({ default: module.ClientComplianceCentrePage })),
-);
-const ClientBankingPage = lazy(() =>
-  import("../pages/client/ClientBankingPage").then((module) => ({ default: module.ClientBankingPage })),
 );
 const ClientDashboardPage = lazy(() =>
   import("../pages/client/ClientDashboardPage").then((module) => ({ default: module.ClientDashboardPage })),
@@ -249,7 +247,7 @@ export default function App() {
           <Route element={<ClientDocumentsPage />} path="documents" />
           <Route element={<Navigate replace to="/client/documents" />} path="invoices" />
           <Route element={<ClientComplianceCentrePage />} path="compliance" />
-          <Route element={<ClientBankingPage />} path="banking" />
+          <Route element={<Navigate replace to="/client/packs" />} path="banking" />
           <Route element={<ClientNotificationsPage />} path="notifications" />
           <Route element={<NotificationPreferencesPage />} path="notifications/preferences" />
           <Route element={<Navigate replace to="/client/inbox" />} path="messages" />
@@ -282,6 +280,7 @@ export default function App() {
           <Route element={<HelpSupportPage />} path="help" />
           <Route element={<FirmClient360Page />} path="clients/:clientId/profile" />
 
+          <Route element={<RequirePermission permission="manage:users"><AdminMigrationPage /></RequirePermission>} path="admin/migration" />
           <Route element={<RequirePermission permission="manage:users"><AdminUsersPage /></RequirePermission>} path="admin/users" />
           <Route element={<RequirePermission permission="manage:roles"><AdminRolesPage /></RequirePermission>} path="admin/roles" />
           <Route element={<RequirePermission permission="manage:users"><AdminAccountantsPage /></RequirePermission>} path="admin/accountants" />

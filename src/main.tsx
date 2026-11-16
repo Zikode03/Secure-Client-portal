@@ -18,11 +18,11 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>
       <ThemeProvider>
-        <PortalProvider>
-          <AuthProvider>
+        <AuthProvider>
+          <PortalProvider>
             <App />
-          </AuthProvider>
-        </PortalProvider>
+          </PortalProvider>
+        </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>
   </React.StrictMode>,

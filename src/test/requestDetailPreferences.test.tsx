@@ -1,3 +1,5 @@
+// Isolated state/UI unit test; application data is not used.
+vi.mock("../services/apiClient", async original => ({ ...await original<typeof import("../services/apiClient")>(), hasApiBaseUrl: () => false }));
 // Friendly guide: this module (requestDetailPreferences.test) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 

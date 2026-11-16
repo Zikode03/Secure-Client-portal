@@ -2,7 +2,8 @@ export function securityHeaders(apiBaseUrl) {
   const apiOrigin = new URL(apiBaseUrl).origin;
   const policy = [
     "default-src 'self'",
-    "script-src 'self'",
+    "script-src 'self' 'wasm-unsafe-eval'",
+    "worker-src 'self'",
     "style-src 'self' 'unsafe-inline'", // React progress bars and positioning use style attributes.
     `connect-src 'self' ${apiOrigin}`,
     "img-src 'self' data: blob:",

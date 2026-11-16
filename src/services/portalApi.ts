@@ -118,49 +118,18 @@ function mapBackendClientRecord(
   };
 }
 
-async function getOrFallback<T>(path: string, fallback: () => T): Promise<T> {
-  if (!hasApiBaseUrl()) {
-    return fallback();
-  }
 
-  return apiGetJson<T>(path);
-}
 
 export const portalServiceApi = {
-  getDemoUser(role: Role) {
-    return getOrFallback(`/api/session/demo-user?role=${encodeURIComponent(role)}`, () =>
-      portalService.getDemoUser(role),
-    );
-  },
-  getClientWorkflowSeed() {
-    return getOrFallback("/api/client/workflow-seed", () => portalService.getClientWorkflowSeed());
-  },
-  getClientNotifications() {
-    return getOrFallback("/api/client/notifications", () => portalService.getClientNotifications());
-  },
-  getClientComplianceCentre() {
-    return getOrFallback("/api/client/compliance-centre", () => portalService.getClientComplianceCentre());
-  },
-  getClientDocumentCenter() {
-    return getOrFallback("/api/client/document-centre", () => portalService.getClientDocumentCenter());
-  },
-  getAccountantDashboard() {
-    return getOrFallback("/api/accountant/dashboard", () => portalService.getAccountantDashboard());
-  },
-  getAccountantComplianceCentre() {
-    return getOrFallback("/api/accountant/compliance-centre", () => portalService.getAccountantComplianceCentre());
-  },
-  getAccountantNotifications() {
-    return getOrFallback("/api/accountant/notifications", () =>
-      portalService.getAccountantNotifications(),
-    );
-  },
-  getReviewWorkspace() {
-    return getOrFallback("/api/accountant/review-workspace", () => portalService.getReviewWorkspace());
-  },
-  getAdminDashboard() {
-    return getOrFallback("/api/admin/dashboard", () => portalService.getAdminDashboard());
-  },
+
+
+
+
+
+
+
+
+
   async getAssignments(clientId?: string): Promise<BackendAssignmentRecord[]> {
     if (!hasApiBaseUrl()) {
       return [];
@@ -293,7 +262,7 @@ export const portalServiceApi = {
     }
   },
   async createUserAccount(payload: { fullName: string; email: string; role: Role; company?: string }) {
-    if (!hasApiBaseUrl()) return { ok: true };
+    if (!hasApiBaseUrl()) throw new Error("The portal requires a backend connection.");
     try {
       const response = await apiPostJson<BackendCreateUserResponse, typeof payload>("/api/admin/users", payload);
       return {
@@ -316,7 +285,7 @@ export const portalServiceApi = {
     }
   },
   async setUserStatus(userId: string, status: "active" | "suspended") {
-    if (!hasApiBaseUrl()) return { ok: true };
+    if (!hasApiBaseUrl()) throw new Error("The portal requires a backend connection.");
     try {
       await apiPutJson(`/api/admin/users/${encodeURIComponent(userId)}/status`, { status });
       return { ok: true };
@@ -325,7 +294,7 @@ export const portalServiceApi = {
     }
   },
   async setUserRole(userId: string, role: Role) {
-    if (!hasApiBaseUrl()) return { ok: true };
+    if (!hasApiBaseUrl()) throw new Error("The portal requires a backend connection.");
     try {
       await apiPutJson(`/api/admin/users/${encodeURIComponent(userId)}/role`, { role });
       return { ok: true };
@@ -334,7 +303,7 @@ export const portalServiceApi = {
     }
   },
   async resetUserAccess(userId: string, reason = "admin_reset") {
-    if (!hasApiBaseUrl()) return { ok: true };
+    if (!hasApiBaseUrl()) throw new Error("The portal requires a backend connection.");
     try {
       const response = await apiPostJson<{
         delivery?: string;
@@ -361,7 +330,7 @@ export const portalServiceApi = {
     key: "document-requirements" | "monthly-pack-rules" | "compliance-templates" | "role-permission-matrix",
     value: unknown,
   ) {
-    if (!hasApiBaseUrl()) return { ok: true };
+    if (!hasApiBaseUrl()) throw new Error("The portal requires a backend connection.");
     try {
       await apiPutJson(`/api/admin/settings/${key}`, { valueJson: JSON.stringify(value) });
       return { ok: true };
@@ -380,7 +349,7 @@ export const portalServiceApi = {
     primaryContact: string;
     email: string;
   }) {
-    if (!hasApiBaseUrl()) return { ok: true };
+    if (!hasApiBaseUrl()) throw new Error("The portal requires a backend connection.");
     try {
       await apiPostJson("/api/clients", payload);
       return { ok: true };
@@ -389,7 +358,7 @@ export const portalServiceApi = {
     }
   },
   async updateClientBusiness(clientId: string, payload: Record<string, unknown>) {
-    if (!hasApiBaseUrl()) return { ok: true };
+    if (!hasApiBaseUrl()) throw new Error("The portal requires a backend connection.");
     try {
       await apiPutJson(`/api/clients/${encodeURIComponent(clientId)}`, payload);
       return { ok: true };
@@ -397,14 +366,8 @@ export const portalServiceApi = {
       return { ok: false };
     }
   },
-  getAdminPolicies() {
-    return getOrFallback("/api/admin/policies", () => portalService.getAdminPolicies());
-  },
-  getDocumentById(documentId: string) {
-    return getOrFallback(`/api/documents/${encodeURIComponent(documentId)}`, () =>
-      portalService.getDocumentById(documentId),
-    );
-  },
+
+
   // Filing register is read-only and only contains auto-filed documents.
   getFilingRegister(clientId?: string) {
     const suffix = clientId ? `?clientId=${encodeURIComponent(clientId)}` : "";
@@ -414,7 +377,7 @@ export const portalServiceApi = {
     return apiGetJson("/api/documents/filing-rules");
   },
   async updateFilingRule(category: string, isEnabled: boolean) {
-    if (!hasApiBaseUrl()) return { ok: true };
+    if (!hasApiBaseUrl()) throw new Error("The portal requires a backend connection.");
     try {
       await apiPutJson(`/api/documents/filing-rules/${encodeURIComponent(category)}`, { isEnabled });
       return { ok: true };
@@ -423,7 +386,7 @@ export const portalServiceApi = {
     }
   },
   async updateDocumentStatus(documentId: string, status: string) {
-    if (!hasApiBaseUrl()) return { ok: true };
+    if (!hasApiBaseUrl()) throw new Error("The portal requires a backend connection.");
     try {
       await apiPutJson(`/api/documents/${encodeURIComponent(documentId)}/status`, { status });
       return { ok: true };
@@ -432,7 +395,7 @@ export const portalServiceApi = {
     }
   },
   async addRequestComment(requestId: string, message: string, isInternal = false) {
-    if (!hasApiBaseUrl()) return { ok: true };
+    if (!hasApiBaseUrl()) throw new Error("The portal requires a backend connection.");
     try {
       const comment = await apiPostJson<DocumentComment, { message: string; isInternal: boolean }>(
         `/api/requests/${encodeURIComponent(requestId)}/comments`,
@@ -444,7 +407,7 @@ export const portalServiceApi = {
     }
   },
   async updateRequestStatus(requestId: string, status: string) {
-    if (!hasApiBaseUrl()) return { ok: true };
+    if (!hasApiBaseUrl()) throw new Error("The portal requires a backend connection.");
     try {
       await apiPatchJson(`/api/requests/${encodeURIComponent(requestId)}/status`, { status });
       return { ok: true };

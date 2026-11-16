@@ -1523,7 +1523,8 @@ export function ClientDashboardPage() {
       </section>
 
       <DocumentUploadModal
-        clientName={user?.company ?? "Apex Trading Ltd"}
+        clientId={user?.clientIds[0]}
+        clientName={user?.company ?? ""}
         existingFileNames={existingSlotFileNames}
         isOpen={uploadModal.isOpen}
         onClose={uploadModal.close}

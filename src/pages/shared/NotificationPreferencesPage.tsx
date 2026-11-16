@@ -6,6 +6,11 @@ import { Button } from "../../components/ui/Button";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
 import { PageSection } from "../../components/ui/PageSection";
 import type { Tone } from "../../types/portal";
+import { apiGetJson, apiPutJson, hasApiBaseUrl } from "../../services/apiClient";
+
+interface ServerPreferences extends RoleNotificationPreferences {
+  deadlineAlerts: boolean; rejectionAlerts: boolean; complianceAlerts: boolean; weeklySummary: boolean; browserAlerts: boolean;
+}
 
 interface RoleNotificationPreferences {
   emailReminders: boolean;
@@ -53,6 +58,7 @@ export function NotificationPreferencesPage() {
   const [feedbackNotice, setFeedbackNotice] = useState<FeedbackNotice | null>(null);
 
   const isClient = user?.role === "client";
+  const demoPreferences = hasApiBaseUrl() ? null : portal.clientSettings.notificationPreferences;
   const storageKey = useMemo(
     () =>
       user
@@ -61,14 +67,30 @@ export function NotificationPreferencesPage() {
     [user],
   );
 
+  const [deadlineAlerts, setDeadlineAlerts] = useState(true);
   const [emailReminders, setEmailReminders] = useState(DEFAULT_PREFERENCES.emailReminders);
   const [escalationAlerts, setEscalationAlerts] = useState(DEFAULT_PREFERENCES.escalationAlerts);
   const [quietHours, setQuietHours] = useState(DEFAULT_PREFERENCES.quietHours);
   const [rejectionAlerts, setRejectionAlerts] = useState(false);
   const [weeklySummary, setWeeklySummary] = useState(false);
   const [browserAlerts, setBrowserAlerts] = useState(false);
+  const [loading, setLoading] = useState(hasApiBaseUrl());
+  const [saving, setSaving] = useState(false);
+  const [serverPreferences, setServerPreferences] = useState<ServerPreferences | null>(null);
+  const [loadRevision, setLoadRevision] = useState(0);
 
   useEffect(() => {
+    if (hasApiBaseUrl()) {
+      let active = true;
+      setLoading(true); setServerPreferences(null);
+      apiGetJson<ServerPreferences>("/api/notifications/preferences").then((value) => {
+        if (!active) return;
+        setServerPreferences(value); setEmailReminders(value.emailReminders); setEscalationAlerts(value.escalationAlerts);
+        setDeadlineAlerts(value.deadlineAlerts); setQuietHours(value.quietHours); setRejectionAlerts(value.rejectionAlerts); setWeeklySummary(value.weeklySummary); setBrowserAlerts(value.browserAlerts);
+      }).catch(() => { if (active) setFeedbackNotice({ tone: "danger", title: "Preferences unavailable", message: "Could not load saved preferences. Reload before editing." }); })
+        .finally(() => { if (active) setLoading(false); });
+      return () => { active = false; };
+    }
     if (!user) {
       return;
     }
@@ -106,10 +128,23 @@ export function NotificationPreferencesPage() {
       setEscalationAlerts(DEFAULT_PREFERENCES.escalationAlerts);
       setQuietHours(DEFAULT_PREFERENCES.quietHours);
     }
-  }, [isClient, portal.clientSettings.notificationPreferences, storageKey, user]);
+  }, [isClient, demoPreferences, storageKey, user?.id, loadRevision]);
 
-  function savePreferences() {
+  async function savePreferences() {
     setFeedbackNotice(null);
+    if (hasApiBaseUrl()) {
+      if (!serverPreferences) return;
+      setSaving(true);
+      try {
+        const saved = await apiPutJson<ServerPreferences, ServerPreferences>("/api/notifications/preferences", {
+          ...serverPreferences, deadlineAlerts, emailReminders, escalationAlerts, quietHours, rejectionAlerts, weeklySummary, browserAlerts,
+        });
+        setServerPreferences(saved);
+        setFeedbackNotice({ tone: "success", title: "Preferences saved", message: "Notification preferences saved to your account." });
+      } catch { setFeedbackNotice({ tone: "danger", title: "Save failed", message: "Preferences were not saved. Retry when the connection is available." }); }
+      finally { setSaving(false); }
+      return;
+    }
 
     if (isClient) {
       const result = portal.updateClientNotificationPreferences({
@@ -156,6 +191,7 @@ export function NotificationPreferencesPage() {
 
   return (
     <div className="space-y-4">
+      {hasApiBaseUrl() && !loading && !serverPreferences && <Button variant="secondary" onClick={() => setLoadRevision(n => n + 1)}>Retry loading preferences</Button>}
       {feedbackNotice ? (
         <FeedbackBanner
           message={feedbackNotice.message}
@@ -168,12 +204,14 @@ export function NotificationPreferencesPage() {
       <PageSection className="">
         <PageHeader title="Notification Preferences" description="Configure reminders, escalation channels, and quiet hours per role." />
 
+        <p className="mt-3 text-sm text-slate-500">In-app alerts appear under the bell. Email updates also require your firm’s email delivery to be configured and enabled.</p>
         <div className="mt-4 space-y-3">
+          <PreferenceToggle checked={emailReminders} label="Email notifications" description="Also receive workflow updates by email. Document contents stay in the portal." onChange={setEmailReminders} />
           <PreferenceToggle
-            checked={emailReminders}
+            checked={deadlineAlerts}
             description="Receive reminders before monthly pack deadlines arrive."
             label="Deadline reminders"
-            onChange={setEmailReminders}
+            onChange={setDeadlineAlerts}
           />
 
           <PreferenceToggle
@@ -191,18 +229,7 @@ export function NotificationPreferencesPage() {
                 label="Rejected document alerts"
                 onChange={setRejectionAlerts}
               />
-              <PreferenceToggle
-                checked={weeklySummary}
-                description="Receive a weekly summary of your open tasks, packs, and reviews."
-                label="Weekly summary"
-                onChange={setWeeklySummary}
-              />
-              <PreferenceToggle
-                checked={browserAlerts}
-                description="Allow browser notifications for high-priority workflow events."
-                label="Browser alerts"
-                onChange={setBrowserAlerts}
-              />
+              <p className="text-xs text-slate-500">Weekly summaries and browser push notifications are not available yet.</p>
             </>
           ) : (
             <label className="block rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm">
@@ -220,7 +247,7 @@ export function NotificationPreferencesPage() {
         </div>
 
         <div className="mt-4">
-          <Button onClick={savePreferences}>Save preferences</Button>
+          <Button disabled={loading || saving || (hasApiBaseUrl() && !serverPreferences)} onClick={() => void savePreferences()}>{saving ? "Saving…" : "Save preferences"}</Button>
         </div>
       </PageSection>
     </div>

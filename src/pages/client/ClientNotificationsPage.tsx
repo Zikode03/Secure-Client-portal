@@ -1,8 +1,9 @@
+import { notificationsChanged } from "../../components/notifications/NotificationBell";
 // Friendly guide: this module (ClientNotificationsPage) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
 import { Button } from "../../components/ui/Button";
@@ -574,6 +575,7 @@ export function ClientNotificationsPage() {
     void (async () => {
       try {
         await apiPostJson(`/api/notifications/${encodeURIComponent(notificationId)}/mark-read`, {});
+        notificationsChanged();
         setLiveNotifications((current) =>
           current.map((item) =>
             item.id === notificationId
@@ -635,6 +637,7 @@ export function ClientNotificationsPage() {
     <div className="portal-page mx-auto max-w-[1280px] space-y-4">
       <div className="portal-page-header space-y-2 border-b border-slate-200 pb-6">
         <h1 className="portal-page-title text-slate-950">Notifications</h1>
+        <Link to="/client/notifications/preferences" className="inline-block text-sm font-medium text-brand-700 hover:underline">Notification preferences</Link>
         <p className="max-w-2xl text-[0.94rem] leading-6 text-slate-500">
           Review updates, required actions, and linked client records.
         </p>

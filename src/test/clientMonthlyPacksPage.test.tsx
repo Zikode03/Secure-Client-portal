@@ -1,3 +1,5 @@
+// Isolated state/UI unit test; application data is not used.
+vi.mock("../services/apiClient", async original => ({ ...await original<typeof import("../services/apiClient")>(), hasApiBaseUrl: () => false }));
 // Friendly guide: this module (clientMonthlyPacksPage.test) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
@@ -173,7 +175,7 @@ function buildWorkflowState(overrides: Record<string, unknown> = {}) {
 
 function renderPage(workflowOverrides: Record<string, unknown> = {}) {
   mockedUseAuth.mockReturnValue({
-    pendingMfa: null, verifyMfa: vi.fn(), finishMfa: vi.fn(), cancelMfa: vi.fn(),
+    pendingMfa: null, logoutPending: false, verifyMfa: vi.fn(), finishMfa: vi.fn(), cancelMfa: vi.fn(),
     ready: true,
     user: {
       id: "user-client-1",
@@ -276,7 +278,7 @@ describe("ClientMonthlyPacksPage", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /upload into slot/i }));
 
-    const dialog = screen.getByRole("dialog", { name: "Smart document upload" });
+    const dialog = screen.getByRole("dialog", { name: "Upload invoice" });
 
     expect(within(dialog).getByText("Checklist slot")).toBeInTheDocument();
     expect(within(dialog).getAllByText("Invoices").length).toBeGreaterThan(0);
@@ -288,7 +290,7 @@ describe("ClientMonthlyPacksPage", () => {
     fireEvent.click(screen.getAllByRole("button", { name: /open actions for invoices/i })[0]);
     fireEvent.click(screen.getAllByRole("button", { name: "Re-upload" })[0]);
 
-    const dialog = screen.getByRole("dialog", { name: "Smart document upload" });
+    const dialog = screen.getByRole("dialog", { name: "Upload invoice" });
 
     expect(dialog).toBeInTheDocument();
     expect(within(dialog).getByText("Checklist slot")).toBeInTheDocument();

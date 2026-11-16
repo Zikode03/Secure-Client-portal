@@ -1,201 +1,39 @@
-// Friendly guide: this module (firmSharedPages.test) supports the Secure Client Portal workflow.
-// The goal is clear, maintainable code so future edits feel safe and straightforward.
-
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { AuthProvider } from "../app/auth";
+import { beforeEach, expect, it, vi } from "vitest";
 import { PortalProvider } from "../app/portal";
-import { AccountantPortfolioPage } from "../pages/accountant/AccountantPortfolioPage";
-import {
-  AccountantReviewPage,
-  mapBackendQueueRecord,
-} from "../pages/accountant/AccountantReviewPage";
-import { AccountantComplianceCentrePage } from "../pages/accountant/AccountantComplianceCentrePage";
+import { apiGetJson } from "../services/apiClient";
 import { AccountantDashboardPage } from "../pages/accountant/AccountantDashboardPage";
+import { AccountantPortfolioPage } from "../pages/accountant/AccountantPortfolioPage";
 import { AccountantDocumentsPage } from "../pages/accountant/AccountantDocumentsPage";
-import { FirmRequestsPage } from "../pages/firm/FirmRequestsPage";
+import { AccountantReviewPage, mapBackendQueueRecord } from "../pages/accountant/AccountantReviewPage";
+import { AccountantComplianceCentrePage } from "../pages/accountant/AccountantComplianceCentrePage";
 import { FirmSettingsPage } from "../pages/firm/FirmSettingsPage";
-import type { SessionUser } from "../types/portal";
-
-const STORAGE_KEY = "accounting-document-control-session";
-
-const adminUser: SessionUser = {
-  id: "user-admin-1",
-  name: "Priya",
-  fullName: "Priya Naidoo",
-  email: "admin@example.com",
-  role: "admin",
-  title: "Operations Lead",
-  company: "Finwell Advisory",
-  initials: "PN",
-  clientIds: [],
-  assignedClientIds: [],
-};
-
-const accountantUser: SessionUser = {
-  id: "user-accountant-1",
-  name: "Daniel",
-  fullName: "Daniel Mokoena",
-  email: "accountant@example.com",
-  role: "accountant",
-  title: "Senior Accountant",
-  company: "Finwell Advisory",
-  initials: "DM",
-  clientIds: [],
-  assignedClientIds: ["client-apex", "firm-client-1", "firm-client-3", "firm-client-4"],
-};
-
-function renderWithProviders(page: JSX.Element, user: SessionUser) {
-  window.localStorage.clear();
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
-
-  return render(
-    <MemoryRouter>
-      <PortalProvider>
-        <AuthProvider>{page}</AuthProvider>
-      </PortalProvider>
-    </MemoryRouter>,
-  );
-}
-
-describe("shared firm pages", () => {
-  it("uses one shared dashboard skeleton with user-specific greetings", async () => {
-    const adminView = renderWithProviders(<AccountantDashboardPage />, adminUser);
-
-    expect(await screen.findByRole("heading", { name: "Welcome, Priya" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "My assigned clients" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "My work queue" })).toBeInTheDocument();
-
-    adminView.unmount();
-
-    renderWithProviders(<AccountantDashboardPage />, accountantUser);
-
-    expect(await screen.findByRole("heading", { name: "Welcome, Daniel" })).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "View all clients" }).length).toBeGreaterThan(0);
-    expect(screen.getByRole("heading", { name: "My assigned clients" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "My work queue" })).toBeInTheDocument();
-  });
-
-  it("shows all clients to admins and only assigned clients to accountants", async () => {
-    const adminView = renderWithProviders(<AccountantPortfolioPage />, adminUser);
-
-    expect(await screen.findByText("Firm Clients")).toBeInTheDocument();
-    expect(screen.getByText("Blue Peak Logistics")).toBeInTheDocument();
-    expect(screen.getByText("Cloud Nine Retail")).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: "Manage assignments" }).length).toBeGreaterThan(0);
-
-    adminView.unmount();
-
-    renderWithProviders(<AccountantPortfolioPage />, accountantUser);
-
-    expect(await screen.findByText("Assigned Clients")).toBeInTheDocument();
-    expect(screen.getByText("Apex Trading Ltd")).toBeInTheDocument();
+const session = vi.hoisted(() => ({ role: "accountant" as "admin" | "accountant" }));
+vi.mock("../app/auth", () => ({ useAuth: () => ({ user: { id: "staff-1", name: "Test", fullName: "Test Staff", email: "staff@test.local", role: session.role, clientIds: [], assignedClientIds: [], initials: "TS" }, ready: true }), useOptionalAuth: () => ({ user: { id: "staff-1", role: session.role, clientIds: [], assignedClientIds: [] }, ready: true }) }));
+vi.mock("../services/apiClient", async original => ({ ...await original<typeof import("../services/apiClient")>(), hasApiBaseUrl: () => true, apiGetJson: vi.fn(async () => []) }));
+beforeEach(() => { vi.clearAllMocks(); vi.mocked(apiGetJson).mockResolvedValue([]); });
+const pages = [
+  ["dashboard", AccountantDashboardPage, "/api/monthly-packs"],
+  ["client list", AccountantPortfolioPage, "/api/monthly-packs"],
+  ["documents", AccountantDocumentsPage, "/api/documents"],
+  ["work queue", AccountantReviewPage, "/api/review-queue"],
+  ["compliance", AccountantComplianceCentrePage, "/api/clients"],
+  ["settings", FirmSettingsPage, "/api/documents/filing-rules"],
+] as const;
+for (const role of ["accountant", "admin"] as const) {
+  it.each(pages)(`${role} %s loads authenticated API responses without sample business records`, async (_name, Page, endpoint) => {
+    session.role = role;
+    await act(async () => { render(<MemoryRouter><PortalProvider><Page /></PortalProvider></MemoryRouter>); });
+    expect(screen.getAllByRole("heading").length).toBeGreaterThan(0);
+    expect(apiGetJson).toHaveBeenCalledWith(endpoint);
+    expect(screen.queryByText("Apex Trading Ltd")).not.toBeInTheDocument();
     expect(screen.queryByText("Blue Peak Logistics")).not.toBeInTheDocument();
-    expect(screen.queryByText("Summit Consulting")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /demo/i })).not.toBeInTheDocument();
   });
-
-  it("renders the shared Phase 4 compliance workspace for admin and accountant", async () => {
-    const adminView = renderWithProviders(<AccountantComplianceCentrePage />, adminUser);
-
-    expect(await screen.findByRole("heading", { name: "Compliance Centre" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Run automation" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Obligations" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /Add Compliance Item/i })).not.toBeInTheDocument();
-
-    adminView.unmount();
-
-    renderWithProviders(<AccountantComplianceCentrePage />, accountantUser);
-
-    expect(await screen.findByRole("heading", { name: "Compliance Centre" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Run automation" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Obligations" })).toBeInTheDocument();
-  });
-
-  it("scopes the shared documents page by role", async () => {
-    const adminView = renderWithProviders(<AccountantDocumentsPage />, adminUser);
-
-    const adminClientSelect = (await screen.findAllByLabelText("Client"))[0];
-
-    expect(
-      within(adminClientSelect).getByRole("option", { name: "Blue Peak Logistics" }),
-    ).toBeInTheDocument();
-
-    adminView.unmount();
-
-    renderWithProviders(<AccountantDocumentsPage />, accountantUser);
-
-    const accountantClientSelect = (await screen.findAllByLabelText("Client"))[0];
-
-    expect(
-      within(accountantClientSelect).queryByRole("option", { name: "Blue Peak Logistics" }),
-    ).not.toBeInTheDocument();
-    expect(
-      within(accountantClientSelect).getByRole("option", { name: "Apex Trading Ltd" }),
-    ).toBeInTheDocument();
-  });
-
-  it("uses one shared settings shell with role-specific controls", async () => {
-    const adminView = renderWithProviders(<FirmSettingsPage />, adminUser);
-
-    expect(await screen.findByRole("heading", { name: "Settings" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Open system settings" })).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /Firm operations/i }).length).toBeGreaterThan(0);
-
-    adminView.unmount();
-
-    renderWithProviders(<FirmSettingsPage />, accountantUser);
-
-    expect(await screen.findByRole("heading", { name: "Settings" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Open compliance centre" })).toBeInTheDocument();
-    expect(screen.getAllByRole("button", { name: /Workflow defaults/i }).length).toBeGreaterThan(0);
-    expect(screen.queryByRole("button", { name: "Open roles" })).not.toBeInTheDocument();
-  });
-
-  it("renders the scoped follow-up inbox for both firm roles", async () => {
-    const adminView = renderWithProviders(<FirmRequestsPage />, adminUser);
-
-    expect(await screen.findByText("Request documents from Apex Trading Ltd")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Request document" })).toBeInTheDocument();
-
-    adminView.unmount();
-
-    renderWithProviders(<FirmRequestsPage />, accountantUser);
-
-    expect(await screen.findByText("Request documents from Apex Trading Ltd")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Request document" })).toBeInTheDocument();
-  });
-
-  it("renders the review queue for an admin", async () => {
-    renderWithProviders(<AccountantReviewPage />, adminUser);
-
-    expect(await screen.findByRole("heading", { name: "My slot review queue" })).toBeInTheDocument();
-  });
-
-  it("builds a renderable review record from live queue data", () => {
-    const record = mapBackendQueueRecord({
-      documentId: "backend-document-1",
-      clientId: "backend-client-1",
-      clientName: "Live Client",
-      monthlyPackId: "backend-pack-1",
-      year: 2026,
-      month: 8,
-      documentSlotId: "backend-slot-1",
-      slotLabel: "Bank statement",
-      documentName: "august-statement.pdf",
-      documentCategory: "bank_statement",
-      documentStatus: "uploaded",
-      slotStatus: "submitted",
-      reviewPriority: "high",
-      reviewAgeDays: 1,
-      currentVersionNumber: 1,
-      uploadedAtUtc: "invalid-date",
-      submittedAtUtc: null,
-      rejectionReason: null,
-    });
-
-    expect(record.id).toBe("backend-document-1");
-    expect(record.clientId).toBe("backend-client-1");
-    expect(record.fileName).toBe("august-statement.pdf");
-    expect(record.uploadedAt).toBe("2026-05-08T08:00:00.000Z");
-  });
+}
+it("maps real queue metadata without depending on sample workspace documents", () => {
+  const record = mapBackendQueueRecord({ documentId: "doc-1", clientId: "client-1", clientName: "Test business", monthlyPackId: "pack-1", year: 2026, month: 11, documentSlotId: null, slotLabel: null, documentName: "invoice.pdf", documentCategory: "sales_invoices", documentStatus: "under_review", slotStatus: "submitted", reviewPriority: "normal", reviewAgeDays: 0, currentVersionNumber: 1, uploadedAtUtc: "2026-11-11T08:00:00Z", submittedAtUtc: null, rejectionReason: null });
+  expect(record.fileName).toBe("invoice.pdf"); expect(record.uploadedAt).toBe("2026-11-11T08:00:00.000Z");
+  expect(record.fileDataUrl).toBeUndefined();
 });

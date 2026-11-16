@@ -19,6 +19,7 @@ function formatDate(value: string | null) {
 }
 
 const statuses: Record<string, { label: string; classes: string }> = {
+  manual: { label: "Manual statements", classes: "text-blue-700 bg-blue-50" },
   not_connected: { label: "Not connected", classes: "text-slate-600 bg-slate-50" },
   current: { label: "Current", classes: "text-blue-700 bg-blue-50" },
   complete: { label: "Complete", classes: "text-emerald-700 bg-emerald-50" },
@@ -28,6 +29,7 @@ const statuses: Record<string, { label: string; classes: string }> = {
 
 function readinessMessage(status: MonthlyPackBankingStatusDto) {
   switch (status.status) {
+    case "manual": return "Upload a statement for each business account and month. Accountant review controls completion; CSV imports do not replace statement evidence.";
     case "not_connected": return "Bank statements are being handled manually.";
     case "complete": return "Bank data covers the full monthly-pack period.";
     case "current": return `Bank data is current through ${formatDate(status.requiredThroughUtc)}. The month is still in progress.`;
@@ -77,6 +79,17 @@ export function MonthlyPackBankingStatusPanel({
   const blocked = !verified || (status.hasActiveConnection && (!status.isPeriodComplete || status.status !== "complete"));
   const activeConnections = overview?.connections.filter((connection) => connection.status !== "disconnected") ?? [];
   const StatusIcon = status?.status === "complete" ? CheckCircle2 : blocked ? TriangleAlert : Building2;
+
+  if (!loading && !error && status?.status === "manual") {
+    return <section aria-label="Monthly pack bank data" className="rounded border border-slate-200 bg-white p-4">
+      <h2 className="text-sm font-semibold text-slate-950">Manual bank statements</h2>
+      <p className="mt-2 text-sm text-slate-600">{readinessMessage(status)}</p>
+      <p className="mt-2 text-sm text-slate-600">Required period: {formatDate(status.periodStartUtc)} - {formatDate(status.periodEndUtc)}</p>
+      <p className="mt-2 text-xs font-semibold text-slate-700">Manual bank-statement requirements control readiness.</p>
+      {bankingPath && <Link className="mt-2 inline-block text-sm font-semibold text-brand-700" to={bankingPath}>Manage bank statements</Link>}
+      <button className="ml-3 text-sm font-semibold text-brand-700" type="button" onClick={() => setRevision((v) => v + 1)}>Refresh statement requirements</button>
+    </section>;
+  }
 
   return (
     <section aria-label="Monthly pack bank data" className="border-y border-slate-200 bg-white">

@@ -1,0 +1,21 @@
+name: Frontend API contract
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      # The existing React Vite plugin declares Vite <=7; this project uses Vite 8.
+      - run: npm ci --legacy-peer-deps
+      - run: npm run build:check
+      - run: npm run api:test
+      - run: npm test

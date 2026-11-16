@@ -913,6 +913,7 @@ export function AccountantDashboardPage() {
       return;
     }
 
+    let active = true;
     void (async () => {
       try {
         const [clients, packs, reviewQueue, notifications] = await Promise.all([
@@ -922,7 +923,7 @@ export function AccountantDashboardPage() {
           apiGetJson<BackendNotificationRecord[]>("/api/notifications"),
         ]);
 
-        const slotResponses = await Promise.all(
+        const slotResults = await Promise.allSettled(
           packs.map(async (pack) => ({
             monthlyPackId: pack.id,
             slots: await apiGetJson<BackendDocumentSlotRecord[]>(
@@ -931,6 +932,9 @@ export function AccountantDashboardPage() {
           })),
         );
 
+        if (!active) return;
+        const slotResponses = slotResults.flatMap(result => result.status === "fulfilled" ? [result.value] : []);
+        const failedPackCount = slotResults.filter(result => result.status === "rejected").length;
         const slotsByPackId = new Map(
           slotResponses.map((entry) => [entry.monthlyPackId, entry.slots]),
         );
@@ -1061,8 +1065,9 @@ export function AccountantDashboardPage() {
           smartAlerts: [],
           latestOverallDocuments: [],
         });
-        setDashboardNotice("");
+        setDashboardNotice(failedPackCount ? `Checklist data for ${failedPackCount} monthly pack(s) could not be loaded. Dashboard totals may be incomplete; retry or open the affected client workspace.` : "");
       } catch (error) {
+        if (!active) return;
         setDashboardNotice(
           error instanceof ApiError
             ? error.message
@@ -1070,6 +1075,7 @@ export function AccountantDashboardPage() {
         );
       }
     })();
+    return () => { active = false; };
   }, [backendMode, portal.accountantDashboard, portal.adminClients, user?.fullName]);
 
   const scopedClients = useMemo(() => getScopedClients(user, clientAccounts), [clientAccounts, user]);

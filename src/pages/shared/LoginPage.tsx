@@ -143,7 +143,7 @@ function PopiaNotice({ accepted, onChange }: { accepted: boolean; onChange: (acc
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { clearAuthNotice, login, pendingMfa } = useAuth();
+  const { clearAuthNotice, login, pendingMfa, logoutPending, logout, authNotice } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -180,6 +180,12 @@ export function LoginPage() {
   if (pendingMfa) return <MfaChallengePage />;
   return (
     <main className="relative h-svh overflow-hidden bg-canvas text-slate-950">
+      {logoutPending && <div role="alert" className="absolute inset-x-4 top-3 z-50 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+        {authNotice || "Server sign-out is pending."}
+        <button type="button" className="ml-3 font-semibold underline" disabled={isSubmitting} onClick={async () => {
+          setIsSubmitting(true); await logout(); setIsSubmitting(false);
+        }}>Retry sign out</button>
+      </div>}
 
       <div className="relative mx-auto flex h-full w-full max-w-[1480px] items-stretch p-0 lg:p-5 xl:p-7">
         <div className="grid h-full min-h-0 w-full overflow-hidden bg-white shadow-[0_30px_90px_rgba(7,25,48,0.16)] lg:grid-cols-[1.08fr_0.92fr] lg:rounded-[30px]">

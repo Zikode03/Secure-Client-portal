@@ -1,3 +1,4 @@
+import { monthlyPacksApi } from "../../services/monthlyPacksApi";
 import { useEffect, useMemo, useState } from "react";
 import { Building2, Check, ClipboardPlus, Pencil, Plus, Repeat2, Trash2, X } from "lucide-react";
 import { useParams } from "react-router-dom";
@@ -215,7 +216,7 @@ export function AccountantClientPackWorkspacePage() {
     if (!backendMode) return;
     try {
       const [packs, packProfile, clientRecord] = await Promise.all([
-        apiGetJson<MonthlyPackRecord[]>(`/api/monthly-packs?clientId=${encodeURIComponent(clientId)}`),
+        monthlyPacksApi.list(clientId),
         apiGetJson<ClientPackProfile>(`/api/monthly-pack-profiles/${encodeURIComponent(clientId)}`),
         apiGetJson<ClientRecord>(`/api/clients/${encodeURIComponent(clientId)}`),
       ]);

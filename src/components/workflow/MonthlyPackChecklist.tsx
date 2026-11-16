@@ -531,6 +531,8 @@ export function MonthlyPackChecklist({
         </div>
       </div>
 
+      <p className="border-t border-slate-100 px-5 py-3 text-sm text-slate-600">Upload and submit available documents individually. Missing items remain on this checklist and do not block other uploads. Submitted documents wait for accountant review.</p>
+
       {headerActionHelper ? (
         <div
           className={`border-y px-5 py-3 text-sm ${

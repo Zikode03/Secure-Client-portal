@@ -8,20 +8,21 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import type { Role, SessionUser } from "../types/portal";
-import { applyPermissionOverride } from "../utils/userPermissionOverrides";
+import { clearLegacyPrivateState, clearPrivateBrowserState } from "../utils/privateBrowserState";
 import {
   ApiError,
   apiGetJson,
   apiPostJson,
   apiPutJson,
-  hasApiBaseUrl,
 } from "../services/apiClient";
 
 const STORAGE_KEY = "accounting-document-control-session";
 const AUTH_NOTICE_KEY = "accounting-document-control-auth-notice";
+const LOGOUT_PENDING_KEY = "portal-logout-pending";
 const LEGACY_TOKEN_KEYS = [
   "accounting-document-control-auth-token",
   "accounting-document-control-refresh-token",
@@ -67,55 +68,11 @@ interface AuthContextValue {
   completeInvite: (payload: InviteSetupPayload) => Promise<AuthResult>;
   requestPasswordReset: (email: string) => Promise<AuthResult>;
   changePassword: (currentPassword: string, nextPassword: string) => Promise<AuthResult>;
-  logout: () => Promise<void>;
+  logout: () => Promise<AuthResult>;
+  logoutPending: boolean;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
-
-const mockUsersByEmail: Record<string, SessionUser> = {
-  "client@example.com": {
-    id: "user-client-1",
-    name: "Sarah",
-    fullName: "Sarah Jacobs",
-    email: "client@example.com",
-    role: "client",
-    title: "Finance Manager",
-    company: "Apex Trading Ltd",
-    initials: "SJ",
-    clientIds: ["client-apex"],
-    assignedClientIds: [],
-  },
-  "accountant@example.com": {
-    id: "user-accountant-1",
-    name: "Daniel",
-    fullName: "Daniel Mokoena",
-    email: "accountant@example.com",
-    role: "accountant",
-    title: "Senior Accountant",
-    company: "Finwell Advisory",
-    initials: "DM",
-    clientIds: [],
-    assignedClientIds: [],
-  },
-  "admin@example.com": {
-    id: "user-admin-1",
-    name: "Priya",
-    fullName: "Priya Naidoo",
-    email: "admin@example.com",
-    role: "admin",
-    title: "Operations Lead",
-    company: "Finwell Advisory",
-    initials: "PN",
-    clientIds: [],
-    assignedClientIds: [],
-  },
-};
-
-const defaultCredentialsByEmail: Record<string, string> = {
-  "client@example.com": "Client@2026",
-  "accountant@example.com": "Accountant@2026",
-  "admin@example.com": "Admin@2026",
-};
 
 interface BackendLoginResponse extends Partial<MfaChallenge> {
   expiresAtUtc?: string;
@@ -126,6 +83,7 @@ interface BackendMeResponse {
   user: {
     title?: string;
     phone?: string;
+    company?: string;
     id: string;
     fullName: string;
     email: string;
@@ -147,9 +105,7 @@ function createInitials(fullName: string) {
   return initials || "U";
 }
 
-function getMockUserByEmail(email: string) {
-  return mockUsersByEmail[email.trim().toLowerCase()];
-}
+
 
 function buildUserName(fullName: string) {
   return fullName.trim().split(/\s+/)[0] ?? "User";
@@ -166,7 +122,7 @@ function mapBackendUser(payload: BackendMeResponse["user"]): SessionUser {
     role: payload.role,
     title: payload.title ?? "",
     phone: payload.phone ?? "",
-    company: "",
+    company: payload.company ?? "",
     initials: createInitials(payload.fullName),
     clientIds,
     assignedClientIds: payload.role === "client" ? [] : clientIds,
@@ -304,8 +260,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [user, setUser] = useState<SessionUser | null>(null);
   const [authNotice, setAuthNotice] = useState<string | null>(readAuthNotice);
+  const [logoutPending, setLogoutPending] = useState(() => Boolean(window.localStorage.getItem(LOGOUT_PENDING_KEY)));
   const [persistSession, setPersistSession] = useState(() => !hasSessionValue(STORAGE_KEY));
-  const [mockCredentials, setMockCredentials] = useState(defaultCredentialsByEmail);
+  const previousUserId = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (previousUserId.current && previousUserId.current !== (user?.id ?? null)) clearPrivateBrowserState(user?.id);
+    previousUserId.current = user?.id ?? null;
+    if (user) {
+      clearPrivateBrowserState(user.id);
+      window.localStorage.setItem("portal-auth-identity", user.id);
+    }
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === LOGOUT_PENDING_KEY) {
+        setLogoutPending(Boolean(event.newValue));
+        if (event.newValue) {
+          clearPrivateBrowserState(); setUser(null); setPendingMfa(null);
+          updateAuthNotice("Sign-out is pending in another tab. Retry sign out if it cannot be confirmed.");
+        } else updateAuthNotice(null);
+      }
+      if (event.key === "portal-auth-identity" && user && event.newValue !== user.id) {
+        clearPrivateBrowserState(); setUser(null); setPendingMfa(null);
+        updateAuthNotice("The signed-in account changed in another tab. Sign in again to continue.");
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [user?.id]);
 
   function updateAuthNotice(message: string | null) {
     setAuthNotice(message);
@@ -322,11 +303,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let isMounted = true;
 
     async function restoreSession() {
+      clearLegacyPrivateState();
+      if (window.localStorage.getItem(LOGOUT_PENDING_KEY)) {
+        updateAuthNotice("Sign-out has not been confirmed by the server. Retry sign out before signing in again.");
+        setReady(true);
+        return;
+      }
       LEGACY_TOKEN_KEYS.forEach((key) => {
         window.localStorage.removeItem(key);
         window.sessionStorage.removeItem(key);
       });
-      if (hasApiBaseUrl()) {
+
         try {
           const nextUser = await loadBackendSessionUser();
           if (isMounted) {
@@ -370,29 +357,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      const storedSession = readStoredValue(STORAGE_KEY);
-      if (!storedSession) {
-        if (isMounted) {
-          setReady(true);
-        }
-        return;
-      }
-
-      try {
-        const parsedUser = JSON.parse(storedSession) as SessionUser;
-        if (isMounted) {
-          setPersistSession(!hasSessionValue(STORAGE_KEY));
-          setUser(applyPermissionOverride(parsedUser));
-        }
-      } catch {
-        clearStoredFrontendSession();
-      } finally {
-        if (isMounted) {
-          setReady(true);
-        }
-      }
-    }
-
     void restoreSession();
 
     return () => {
@@ -414,6 +378,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       ready,
       user,
       authNotice,
+      logoutPending,
       pendingMfa,
       cancelMfa() { setPendingMfa(null); },
       async verifyMfa(code, recovery) {
@@ -436,6 +401,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         updateAuthNotice(null);
       },
       async login({ email, password, rememberMe }) {
+        if (window.localStorage.getItem(LOGOUT_PENDING_KEY))
+          return { ok: false, message: "Sign-out is pending. Retry sign out before signing in again." };
+        clearPrivateBrowserState();
         const trimmedEmail = email.trim().toLowerCase();
 
         if (!trimmedEmail.includes("@")) {
@@ -449,7 +417,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           };
         }
 
-        if (hasApiBaseUrl()) {
+
           try {
             const loginResponse = await apiPostJson<BackendLoginResponse, LoginPayload>(
               "/api/auth/login",
@@ -472,35 +440,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               ),
             };
           }
-        }
-
-        const matchedUser = getMockUserByEmail(trimmedEmail);
-        if (!matchedUser) {
-          return {
-            ok: false,
-            message:
-              "That account is not available in the mock workspace yet. Try client@example.com, accountant@example.com, or admin@example.com.",
-          };
-        }
-
-        if (mockCredentials[trimmedEmail] !== password) {
-          return {
-            ok: false,
-            message: "The password does not match this portal account.",
-          };
-        }
-
-        const nextUser = applyPermissionOverride(matchedUser);
-        setPersistSession(rememberMe);
-        updateAuthNotice(null);
-        setUser(nextUser);
-        return { ok: true, user: nextUser };
-      },
+        },
       async completeInvite({ email, token, fullName, password }) {
         const trimmedEmail = email.trim().toLowerCase();
-        const matchedUser = getMockUserByEmail(trimmedEmail);
 
-        if (hasApiBaseUrl()) {
+
           if (!token?.trim()) {
             return {
               ok: false,
@@ -535,39 +479,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               ),
             };
           }
-        }
-
-        if (!matchedUser) {
-          return {
-            ok: false,
-            message: "This invite email is not recognised in the mocked portal users.",
-          };
-        }
-
-        if (Array.from(password).length < 15) {
-          return {
-            ok: false,
-            message: "Use a password with at least 15 characters.",
-          };
-        }
-
-        const nextUser: SessionUser = {
-          ...matchedUser,
-          fullName: fullName.trim(),
-          name: fullName.trim().split(/\s+/)[0] ?? matchedUser.name,
-          initials: createInitials(fullName.trim()),
-        };
-        setMockCredentials((current) => ({
-          ...current,
-          [trimmedEmail]: password.trim(),
-        }));
-        const resolvedUser = applyPermissionOverride(nextUser);
-        setPersistSession(true);
-        updateAuthNotice(null);
-        setUser(resolvedUser);
-
-        return { ok: true, user: resolvedUser };
-      },
+        },
       async requestPasswordReset(email) {
         const trimmedEmail = email.trim().toLowerCase();
 
@@ -575,7 +487,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return { ok: false, message: "Use the email tied to your portal account." };
         }
 
-        if (hasApiBaseUrl()) {
+
           try {
             const response = await apiPostJson<{ message?: string }, { email: string }>(
               "/api/auth/forgot-password",
@@ -596,20 +508,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               ),
             };
           }
-        }
-
-        return {
-          ok: true,
-          message:
-            "Reset instructions have been prepared for this frontend workspace. Backend integration can wire this form to the real identity service later.",
-        };
-      },
+        },
       async changePassword(currentPassword, nextPassword) {
         if (!user) {
           return { ok: false, message: "You need an active session before changing the password." };
         }
 
-        if (hasApiBaseUrl()) {
+
           try {
             const response = await apiPostJson<BackendLoginResponse, { currentPassword: string; nextPassword: string }>(
               "/api/auth/change-password",
@@ -625,28 +530,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               message: getApiErrorMessage(error, "Password change failed. Please try again."),
             };
           }
-        }
-
-        if (Array.from(nextPassword).length < 15) {
-          return { ok: false, message: "Use a new password with at least 15 characters." };
-        }
-
-        if (currentPassword.trim() === nextPassword.trim()) {
-          return { ok: false, message: "Choose a new password that is different from the current one." };
-        }
-
-        const currentCredential = mockCredentials[user.email.toLowerCase()];
-
-        if (currentCredential !== currentPassword) {
-          return { ok: false, message: "Your current password is incorrect." };
-        }
-
-        setMockCredentials((current) => ({
-          ...current,
-          [user.email.toLowerCase()]: nextPassword.trim(),
-        }));
-        return { ok: true, message: "Password updated for this portal account." };
-      },
+        },
       async updateProfile(profile) {
         if (!user) return { ok: false, message: "Sign in to edit your profile." };
         const fullName = profile.fullName.trim();
@@ -654,7 +538,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return { ok: false, message: "Enter your full name and keep your details within the field limits." };
         }
         const details = { fullName, title: profile.title.trim(), phone: profile.phone.trim() };
-        if (hasApiBaseUrl()) {
+
           try {
             const response = await apiPutJson<BackendMeResponse, ProfileUpdate>("/api/auth/profile", details);
             const nextUser = mapBackendUser(response.user);
@@ -663,26 +547,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           } catch (error) {
             return { ok: false, message: getApiErrorMessage(error, "Your profile could not be saved. Please try again.") };
           }
-        }
-        const nextUser = { ...user, ...details, name: buildUserName(fullName), initials: createInitials(fullName) };
-        setUser(nextUser);
-        return { ok: true, user: nextUser, message: "Your profile has been updated." };
-      },
+        },
       async logout() {
-        if (hasApiBaseUrl()) {
-          try {
-            await apiPostJson<void, Record<string, never>>("/api/auth/logout", {});
-          } catch {
-            // Clear the local session even if the backend is already unavailable.
-          }
-        }
-
+        clearPrivateBrowserState();
         clearStoredFrontendSession();
+        setUser(null);
+        setPendingMfa(null);
+        window.localStorage.setItem(LOGOUT_PENDING_KEY, "1");
+        setLogoutPending(true);
+
+          try {
+            try {
+              await apiPostJson<void, Record<string, never>>("/api/auth/logout", {});
+            } catch (error) {
+              if (!(error instanceof ApiError) || error.status !== 401) throw error;
+              // An expired access cookie may still have a valid refresh session.
+              try { await refreshBackendSession(); }
+              catch (refreshError) {
+                if (!(refreshError instanceof ApiError) || refreshError.status !== 401) throw refreshError;
+                window.localStorage.removeItem(LOGOUT_PENDING_KEY);
+                setLogoutPending(false); updateAuthNotice(null);
+                return { ok: true };
+              }
+              await apiPostJson<void, Record<string, never>>("/api/auth/logout", {});
+            }
+          } catch {
+            const message = "Your local workspace is cleared, but server sign-out could not be confirmed. Retry sign out when the connection is available.";
+            updateAuthNotice(message);
+            return { ok: false, message };
+          }
+
+
+        window.localStorage.removeItem(LOGOUT_PENDING_KEY);
+        setLogoutPending(false);
         updateAuthNotice(null);
         setUser(null);
+        return { ok: true };
       },
     }),
-    [authNotice, mockCredentials, persistSession, ready, user, pendingMfa],
+    [authNotice, logoutPending, persistSession, ready, user, pendingMfa],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -697,3 +600,5 @@ export function useAuth() {
 
   return value;
 }
+
+export function useOptionalAuth() { return useContext(AuthContext); }

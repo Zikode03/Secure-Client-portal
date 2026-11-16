@@ -1,8 +1,9 @@
+import { notificationsChanged } from "../../components/notifications/NotificationBell";
 // Friendly guide: this module (AccountantNotificationsPage) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
 import { Button } from "../../components/ui/Button";
@@ -482,6 +483,7 @@ export function AccountantNotificationsPage() {
       void (async () => {
         try {
           await apiPostJson(`/api/notifications/${encodeURIComponent(notification.id)}/mark-read`, {});
+          notificationsChanged();
           setLiveNotifications((current) =>
             current.map((item) =>
               item.id === notification.id
@@ -544,6 +546,7 @@ export function AccountantNotificationsPage() {
       ) : null}
 
       <section className="portal-page-header space-y-2 border-b border-slate-200 pb-6">
+        <Link to="/firm/notifications/preferences" className="inline-block text-sm font-medium text-brand-700 hover:underline">Notification preferences</Link>
         <div>
           <p className="text-[0.82rem] font-semibold uppercase tracking-[0.18em] text-brand-600">Inbox</p>
           <h1 className="mt-2 text-[2.2rem] font-semibold tracking-tight text-slate-950">

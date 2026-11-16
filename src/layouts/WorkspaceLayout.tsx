@@ -1,3 +1,4 @@
+import { NotificationBell } from "../components/notifications/NotificationBell";
 // Friendly guide: this module (WorkspaceLayout) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
@@ -288,6 +289,7 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
     : location.pathname.includes("/notifications/preferences")
       ? "Notification Preferences"
       : activeItem.label;
+  const useFullContentCanvas = location.pathname === "/firm/review";
   const useWideContentCanvas =
     location.pathname.startsWith("/firm/inbox") || location.pathname.startsWith("/client/inbox");
 
@@ -531,14 +533,14 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
                   <h2>{activePageLabel}</h2>
                 </div>
               </div>
-              <WorkspaceAccountMenu />
+              <div className="flex items-center gap-3"><NotificationBell /><WorkspaceAccountMenu /></div>
             </div>
           </header>
 
           <div
             className={cn(
               "mx-auto flex min-h-0 w-full flex-1 flex-col py-4",
-              useWideContentCanvas ? "max-w-[1720px] px-3 sm:px-4 lg:px-6" : "max-w-[1320px] px-4 sm:px-6 lg:px-8",
+              useFullContentCanvas ? "max-w-none px-3 sm:px-4 lg:px-6" : useWideContentCanvas ? "max-w-[1720px] px-3 sm:px-4 lg:px-6" : "max-w-[1320px] px-4 sm:px-6 lg:px-8",
             )}
           >
             <Outlet />

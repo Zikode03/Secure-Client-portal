@@ -1,3 +1,5 @@
+import { noSampleDataPlugin } from "./config/no-sample-data.mjs";
+import { ocrAssetsPlugin } from "./config/ocr-assets.mjs";
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
@@ -19,6 +21,8 @@ export default defineConfig(({ mode, command }) => {
     },
     plugins: [
       react(),
+      ocrAssetsPlugin(),
+      noSampleDataPlugin(),
       tailwindcss(),
       ...(isDeployableBuild ? [productionSecurityPlugin(env.VITE_API_BASE_URL)] : []),
     ],
@@ -29,7 +33,7 @@ export default defineConfig(({ mode, command }) => {
       port: 5173,
       proxy: {
         "/api": {
-          target: env.VITE_PROXY_TARGET || "http://localhost:4000",
+          target: env.VITE_PROXY_TARGET || "http://localhost:5127",
           changeOrigin: true,
         },
       },

@@ -14,7 +14,7 @@ Important folders:
 - `src/app`: routing and lightweight auth/session wiring
 - `src/components`: shared layout and UI building blocks
 - `src/pages`: accountant and client workspace screens
-- `src/services/portalData.ts`: mock domain data behind the current workflow layer
+- `src/services/portalData.ts`: empty loading-state shapes; domain records come from authenticated APIs
 
 Run locally:
 
@@ -32,7 +32,7 @@ Connect the frontend to the backend:
 
 Notes:
 - `src/services/portalApi.ts` is the backend-connected service wrapper.
-- Backend failures are surfaced as errors. Mock data is available only in local development/test mode with the backend disabled.
+- Backend failures are surfaced as errors. The application has no demo mode, built-in login credentials or sample business records. Test fixtures are isolated under `src/test/fixtures` and excluded from shipped bundles.
 
 Build:
 
@@ -46,3 +46,14 @@ localhost URLs, and demo mode fail the build. CI environment variables override
 local `.env` values. Use `npm run dev` for the existing localhost setup.
 
 See [Phase 1 production configuration](docs/phase-1-production.md) for the backend settings and startup checks.
+
+API requests use a generated OpenAPI client, starting with Banking. See
+[OpenAPI client workflow](docs/openapi-client.md) for synchronization and migration.
+`npm run api:generate` generates types from the committed backend contract;
+`npm run api:check` rejects stale generated types and runs before either build.
+
+Client and document import setup, limits and confirmation workflow:
+[Import Clients & Documents](docs/data-migration-centre.md).
+
+Invoice-focused review assistant proposal and implementation requirements:
+[Document Review Assistant V1 specification](docs/document-review-assistant-v1-spec.md).

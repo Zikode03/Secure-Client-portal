@@ -1,0 +1,30 @@
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, expect, it, vi } from "vitest";
+import { BulkInvoiceScan } from "../components/invoice-review/BulkInvoiceScan";
+import { scanBulkInvoice } from "../services/invoiceBulkScanner";
+vi.mock("../services/invoiceBulkScanner", () => ({ scanBulkInvoice: vi.fn() }));
+const invoices = [{id: "one", fileName: "one.pdf", versionNumber: 1}, {id: "two", fileName: "two.pdf", versionNumber: 1}];
+beforeEach(() => vi.clearAllMocks());
+it("continues after one file fails and retries only that file", async () => {
+  const finished = vi.fn();
+  vi.mocked(scanBulkInvoice).mockRejectedValueOnce(new Error("Unreadable first invoice")).mockResolvedValue("saved");
+  render(<BulkInvoiceScan invoices={invoices} onFinished={finished} />);
+  fireEvent.click(screen.getByRole("button", {name: "Scan invoices (2)"}));
+  const retry = await screen.findByRole("button", {name: "Retry failed or cancelled (1)"});
+  expect(screen.getByText("Unreadable first invoice")).toBeInTheDocument();
+  expect(scanBulkInvoice).toHaveBeenCalledTimes(2);
+  fireEvent.click(retry);
+  await waitFor(() => expect(finished).toHaveBeenCalledTimes(2));
+  expect(scanBulkInvoice).toHaveBeenCalledTimes(3);
+  expect(vi.mocked(scanBulkInvoice).mock.calls[2][0].id).toBe("one");
+});
+it("cancels the current read and prevents later files from starting", async () => {
+  vi.mocked(scanBulkInvoice).mockImplementation(async (_, signal) => new Promise((_, reject) => signal.addEventListener("abort", () => reject(new DOMException("Cancelled", "AbortError")), {once: true})));
+  const finished = vi.fn();
+  render(<BulkInvoiceScan invoices={invoices} onFinished={finished} />);
+  fireEvent.click(screen.getByRole("button", {name: "Scan invoices (2)"}));
+  fireEvent.click(await screen.findByRole("button", {name: "Cancel batch"}));
+  await waitFor(() => expect(finished).toHaveBeenCalledOnce());
+  expect(scanBulkInvoice).toHaveBeenCalledOnce();
+  expect(screen.getByRole("button", {name: "Retry failed or cancelled (2)"})).toBeInTheDocument();
+});

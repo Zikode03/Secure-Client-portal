@@ -1,3 +1,4 @@
+import { InboxListControls } from "../../components/inbox/InboxListControls";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarDays,
@@ -9,7 +10,6 @@ import {
   Paperclip,
   RefreshCw,
   Reply,
-  Search,
   Send,
   ShieldAlert,
   Star,
@@ -135,11 +135,6 @@ function plainMessageText(message: string) {
   return message.slice(0, start).trim();
 }
 
-function priorityBadgeClass(priority: WorkflowRequest["priority"]) {
-  if (priority === "high") return "bg-amber-100 text-amber-800";
-  if (priority === "medium") return "bg-brand-100 text-brand-700";
-  return "bg-slate-100 text-slate-700";
-}
 
 function initials(value: string) {
   return value
@@ -330,65 +325,13 @@ function ThreadListPane({
   searchValue: string;
   onChangeSearch: (value: string) => void;
 }) {
-  const totalUnread = requests.reduce(
-    (sum, request) => sum + (readThreadIds.has(request.id) ? 0 : trailingClientUnreadCount(request)),
-    0,
-  );
-  const filterOptions: Array<{ label: string; value: ThreadFilter }> = [
-    { label: "All", value: "all" },
-    { label: "Unread", value: "unread" },
-    { label: "Needs action", value: "unresolved" },
-    { label: "Resolved", value: "resolved" },
-  ];
-
   return (
-    <section className="flex h-full min-h-[660px] flex-col overflow-hidden bg-white min-[1080px]:min-h-0 min-[1080px]:border-r min-[1080px]:border-slate-200">
-      <div className="inbox-thread-controls shrink-0 border-b border-slate-200 bg-slate-50/70 px-4 py-3.5">
-        <div className="mb-2 flex items-center justify-between gap-3 px-1">
-          <div>
-            <p className="text-[0.72rem] font-medium uppercase tracking-[0.12em] text-[#7b879e]">Threads</p>
-            <p className="text-[0.88rem] font-medium text-[#091333]">{requests.length} active conversations</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="rounded-full bg-[#edf6f2] px-2.5 py-1 text-[0.68rem] font-medium text-[#087d69]">
-              {totalUnread} unread
-            </span>
-            <select
-              aria-label="Sort conversations"
-              className="h-8 rounded-lg border border-slate-200 bg-white px-2 text-[0.68rem] font-semibold text-slate-600 outline-none"
-              onChange={(event) => onChangeSort(event.target.value as ThreadSort)}
-              value={sortMode}
-            >
-              <option value="activity">Latest</option>
-              <option value="priority">Priority</option>
-              <option value="due">Due date</option>
-            </select>
-          </div>
-        </div>
-        <div className="flex h-10 items-center gap-3 rounded-xl border border-slate-200/80 bg-white px-3 shadow-[0_8px_18px_rgba(15,23,42,0.05)]">
-          <Search aria-hidden="true" className="h-4 w-4 text-slate-500" />
-          <input
-            className="h-full w-full bg-transparent text-sm text-[#091333] outline-none placeholder:text-[#7b879e]"
-            onChange={(event) => onChangeSearch(event.target.value)}
-            placeholder="Search threads..."
-            value={searchValue}
-          />
-        </div>
-        <div className="mt-3 grid grid-cols-4 gap-1 rounded-xl bg-slate-100 p-1">
-          {filterOptions.map((option) => (
-            <button
-              className={`min-w-0 rounded-lg px-2 py-2 text-[0.68rem] font-semibold transition ${
-                filter === option.value ? "bg-white text-[#091333] shadow-sm" : "text-[#64748b] hover:text-[#091333]"
-              }`}
-              key={option.value}
-              onClick={() => onChangeFilter(option.value)}
-              type="button"
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-      </div>
+    <section className="flex h-full min-h-0 max-h-[420px] flex-col min-[1080px]:max-h-none overflow-hidden bg-white min-[1080px]:min-h-0 min-[1080px]:border-r min-[1080px]:border-slate-200">
+      <InboxListControls filter={filter} onChangeFilter={onChangeFilter} searchValue={searchValue} onChangeSearch={onChangeSearch} actions={<label className="flex items-center gap-2">Sort by
+          <select aria-label="Sort conversations" value={sortMode} onChange={event => onChangeSort(event.target.value as ThreadSort)} className="rounded border border-slate-200 bg-white px-2 py-1.5">
+            <option value="activity">Latest activity</option><option value="priority">Priority</option><option value="due">Due date</option>
+          </select>
+        </label>} />
 
       <div className="inbox-scroll-region min-h-0 flex-1 bg-white pb-3 pr-1">
         {requests.map((request, index) => {
@@ -404,14 +347,14 @@ function ThreadListPane({
             <div key={request.id}>
               {showSection ? (
                 <div className="flex h-9 w-full items-center gap-2 border-b border-slate-100 bg-[#f7f9fc] px-4 text-left text-[0.82rem] font-medium text-[#091333] sm:px-4 lg:px-4">
-                  <ChevronDown aria-hidden="true" className="h-4 w-4 text-[#35466d]" />
                   {sectionLabel}
                 </div>
               ) : null}
               <button
-                className={`relative grid w-full grid-cols-[auto_1fr_auto] items-start gap-3 px-4 py-3 text-left transition sm:px-4 lg:px-4 lg:py-3.5 ${
+                className={`relative grid w-full grid-cols-[auto_minmax(0,1fr)] items-start gap-3 px-4 py-3 text-left transition sm:px-4 lg:px-4 lg:py-3.5 ${
                   selected ? "bg-[#eef3fb] shadow-[inset_0_0_0_1px_rgba(127,155,203,0.14)]" : "hover:bg-slate-50/80"
                 }`}
+                aria-current={selected ? "true" : undefined}
                 onClick={() => onSelectRequest(request.id)}
                 type="button"
               >
@@ -429,8 +372,8 @@ function ThreadListPane({
                     {lastComment?.message ?? request.description}
                   </p>
                 </div>
-                <div className="flex min-h-12 shrink-0 flex-col items-end justify-between gap-1 pt-0.5">
-                  <InboxStatusBadge audience="firm" className="max-w-[112px] justify-center text-center text-[0.6rem]" status={request.status} />
+                <div className="col-start-2 flex items-center justify-between gap-2 pb-1">
+                  <InboxStatusBadge audience="firm" className="text-[0.65rem]" status={request.status} />
                   {unread > 0 ? (
                     <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-[#087d69] px-1.5 text-[0.58rem] font-semibold leading-none text-white">
                       {unread}
@@ -557,21 +500,16 @@ function ConversationPane({
   }
 
   return (
-    <section className="flex h-full min-h-[720px] flex-col overflow-y-auto bg-white min-[1080px]:min-h-0">
+    <section className="flex h-full min-h-[520px] flex-col overflow-y-auto bg-white min-[1080px]:min-h-0">
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white">
         <div className="inbox-conversation-header shrink-0 flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 px-4 py-4 sm:px-5 lg:px-6">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2.5">
-              <p className={`inline-flex rounded-full px-3 py-1 text-[0.62rem] font-medium ${priorityBadgeClass(request.priority)}`}>
-                {request.priority.toUpperCase()} PRIORITY
-              </p>
               <InboxStatusBadge audience="firm" status={request.status} />
               <p className="text-xs font-medium text-[#6f7d96]">
                 {formatDateLabel(lastActivity(request))}, {formatThreadTime(lastActivity(request))}
               </p>
-              <span className="rounded-full bg-[#eef3fb] px-2.5 py-1 text-[0.66rem] font-medium text-[#315b9c]">
-                {request.comments.length} messages
-              </span>
+
             </div>
             <h2 className="mt-3 max-w-[760px] text-[1.12rem] font-medium leading-7 text-[#091333] sm:text-[1.2rem]">
               {request.title}
@@ -581,7 +519,7 @@ function ConversationPane({
               <p>Assigned to: <span className="text-[#4b5f7c]">{request.assignedTo}</span></p>
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-1 rounded-full border border-slate-200/80 bg-white px-2 py-1 shadow-[0_8px_20px_rgba(15,23,42,0.06)]">
+          <div className="flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-1 py-1">
             <button
               aria-label="Open conversation details"
               className="h-9 rounded-full px-3 text-xs font-semibold text-[#315b9c] transition hover:bg-slate-50"
@@ -903,6 +841,12 @@ export function AccountantFollowUpsPage() {
   const portal = usePortal();
   const [searchParams] = useSearchParams();
   const backendMode = hasApiBaseUrl();
+  const inboxFlight = useRef<number | null>(null);
+  const inboxGeneration = useRef(0);
+  const threadCache = useRef(new Map<string, BackendRequestWorkspace>());
+  const [requestVersions, setRequestVersions] = useState<Record<string, string>>({});
+  const [threadRevision, setThreadRevision] = useState(0);
+  const [threadLoading, setThreadLoading] = useState(false);
   const [liveClients, setLiveClients] = useState<FirmClientAccount[]>([]);
   const [liveRequests, setLiveRequests] = useState<WorkflowRequest[]>([]);
   const [liveLoading, setLiveLoading] = useState(false);
@@ -958,7 +902,9 @@ export function AccountantFollowUpsPage() {
     if (!backendMode || !user) {
       return;
     }
-
+    const generation = inboxGeneration.current;
+    if (inboxFlight.current === generation) return;
+    inboxFlight.current = generation;
     setLiveLoading(true);
 
     try {
@@ -969,11 +915,13 @@ export function AccountantFollowUpsPage() {
       ]);
       hydrateRead(readStates.map((state) => state.requestId));
 
-      const workspaces = await Promise.all(
-        requests.map((request) =>
-          apiGetJson<BackendRequestWorkspace>(`/api/requests/${encodeURIComponent(request.id)}/workspace`),
-        ),
-      );
+      if (generation !== inboxGeneration.current) return;
+      const workspaces = requests.map(request => {
+        const cached = threadCache.current.get(request.id);
+        return cached?.request.updatedAtUtc === request.updatedAtUtc ? cached : { request, comments: [] };
+      });
+      setRequestVersions(Object.fromEntries(requests.map(request => [request.id, request.updatedAtUtc])));
+      setInboxNotice("");
 
       const clientsById = new Map(clients.map((client) => [client.id, client]));
 
@@ -990,11 +938,13 @@ export function AccountantFollowUpsPage() {
         }),
       );
     } catch (error) {
+      if (generation !== inboxGeneration.current) return;
       const message =
         error instanceof ApiError ? error.message : "The live follow-up inbox could not be loaded right now.";
       setInboxNotice(message);
     } finally {
-      setLiveLoading(false);
+      if (inboxFlight.current === generation) inboxFlight.current = null;
+      if (generation === inboxGeneration.current) setLiveLoading(false);
     }
   }
 
@@ -1004,8 +954,8 @@ export function AccountantFollowUpsPage() {
     }
 
     void loadLiveInbox();
-    const refreshTimer = window.setInterval(() => void loadLiveInbox(), 20_000);
-    return () => window.clearInterval(refreshTimer);
+    const refreshTimer = window.setInterval(() => { if (document.visibilityState !== "hidden") void loadLiveInbox(); }, 20_000);
+    return () => { inboxGeneration.current++; window.clearInterval(refreshTimer); };
   }, [backendMode, user?.id]);
 
   useEffect(() => {
@@ -1100,6 +1050,25 @@ export function AccountantFollowUpsPage() {
     () => pagedRequests.find((request) => request.id === selectedRequestId) ?? pagedRequests[0] ?? null,
     [pagedRequests, selectedRequestId],
   );
+  const activeRequestId = activeRequest?.id;
+  const activeRequestVersion = activeRequestId ? requestVersions[activeRequestId] : undefined;
+  useEffect(() => {
+    setThreadLoading(false);
+    if (!backendMode || !user || !activeRequestId) return;
+    const cached = threadCache.current.get(activeRequestId);
+    if (cached?.request.updatedAtUtc === activeRequestVersion) return;
+    let active = true;
+    setThreadLoading(true);
+    void apiGetJson<BackendRequestWorkspace>(`/api/requests/${encodeURIComponent(activeRequestId)}/workspace`)
+      .then(workspace => {
+        if (!active) return;
+        threadCache.current.set(activeRequestId, workspace);
+        setLiveRequests(current => current.map(request => request.id === activeRequestId
+          ? mapBackendAccountantRequest(workspace, user.fullName, request.clientName, user.id) : request));
+      }).catch(error => { if (active) setInboxNotice(error instanceof Error ? error.message : "This conversation could not be loaded. Select it again to retry."); })
+      .finally(() => { if (active) setThreadLoading(false); });
+    return () => { active = false; };
+  }, [backendMode, user?.id, activeRequestId, activeRequestVersion, threadRevision]);
   const [messageDraft, setMessageDraft] = useInboxDraft("firm", activeRequest?.id ?? "new-thread");
 
   useEffect(() => {
@@ -1368,9 +1337,11 @@ export function AccountantFollowUpsPage() {
 
     if (backendMode && !selectedClient) {
       return (
-        <div className={`accountant-inbox-page ${inboxPanelClass} rounded-lg p-6 text-sm text-[#53617f]`}>
-          No accessible clients found for this workspace.
-        </div>
+        <section className={`accountant-inbox-page ${inboxPanelClass} rounded-lg p-6 text-sm text-[#53617f]`}>
+          <h1 className="text-xl font-semibold text-slate-950">Inbox</h1>
+          {inboxNotice ? <div role="alert" className="mt-3 text-rose-700">{inboxNotice}</div> : <p className="mt-3">No accessible clients found for this workspace.</p>}
+          <Button className="mt-4" variant="secondary" onClick={() => void loadLiveInbox()}>Retry inbox</Button>
+        </section>
       );
     }
 
@@ -1382,7 +1353,7 @@ export function AccountantFollowUpsPage() {
   }
 
   return (
-    <div className="accountant-inbox-page mx-auto flex w-full max-w-[1440px] flex-col gap-5 pb-8 min-[1080px]:h-full min-[1080px]:min-h-0 min-[1080px]:overflow-hidden min-[1080px]:pb-0">
+    <div className="accountant-inbox-page mx-auto flex w-full max-w-none flex-col gap-5 pb-8 min-[1080px]:h-full min-[1080px]:min-h-0 min-[1080px]:overflow-hidden min-[1080px]:pb-0">
       <header className="portal-page-header flex flex-wrap items-center justify-between gap-5 border-b border-slate-200 pb-6">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">Firm workspace</p>
@@ -1393,7 +1364,6 @@ export function AccountantFollowUpsPage() {
           <span className="sr-only">Request documents from {selectedClient.clientName}</span>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <span className="text-sm font-medium text-slate-500">{visibleRequests.length} conversations</span>
           <Button
             aria-label="Request document"
             className="client-inbox-primary-button h-11 rounded-xl border-0 px-4 text-sm font-medium ring-0"
@@ -1402,19 +1372,21 @@ export function AccountantFollowUpsPage() {
               setIsRequestModalOpen(true);
             }}
           >
-            New request
+            Request documents
           </Button>
         </div>
       </header>
 
+      {backendMode && activeRequestId ? <Button variant="secondary" disabled={threadLoading} onClick={() => { threadCache.current.delete(activeRequestId); setThreadRevision(value => value + 1); }}>Refresh conversation</Button> : null}
+      {threadLoading ? <p role="status" className="text-sm text-slate-600">Loading selected conversation...</p> : null}
       {inboxNotice ? (
         <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-[#53617f] shadow-[0_8px_18px_rgba(4,24,52,0.05)]">
           {inboxNotice}
         </div>
       ) : null}
 
-      {visibleRequests.length > 0 && activeRequest ? (
-        <div className="grid grid-cols-1 items-start overflow-hidden rounded-2xl border border-slate-200 bg-white min-[1080px]:min-h-0 min-[1080px]:flex-1 min-[1080px]:items-stretch min-[1080px]:grid-cols-[minmax(300px,340px)_minmax(0,1fr)]">
+      {scopedRequests.length > 0 ? (
+        <div className="grid grid-cols-1 items-start overflow-hidden rounded-2xl border border-slate-200 bg-white min-[1080px]:min-h-0 min-[1080px]:flex-1 min-[1080px]:items-stretch min-[1080px]:grid-cols-[minmax(320px,380px)_minmax(0,1fr)]">
           <ThreadListPane
             filter={threadFilter}
             onChangeFilter={setThreadFilter}
@@ -1429,9 +1401,9 @@ export function AccountantFollowUpsPage() {
             readThreadIds={readThreadIds}
             requests={pagedRequests}
             searchValue={threadSearch}
-            selectedRequestId={activeRequest.id}
+            selectedRequestId={activeRequest?.id ?? ""}
           />
-          <ConversationPane
+          {activeRequest ? <ConversationPane
             isInternal={sendAsInternal}
             messageDraft={messageDraft}
             onChangeInternal={setSendAsInternal}
@@ -1519,7 +1491,10 @@ export function AccountantFollowUpsPage() {
             }}
             onUpdateAssignment={handleUpdateAssignment}
             request={activeRequest}
-          />
+          /> : <section className="flex min-h-64 flex-col items-center justify-center p-8 text-center">
+            <h2 className="text-base font-semibold text-slate-900">No conversations match your filters</h2>
+            <p className="mt-2 text-sm text-slate-500">Change the filter or clear your search to find a conversation.</p>
+          </section>}
         </div>
       ) : (
         <section className={`${inboxPanelClass} rounded-lg px-6 py-10 text-center`}>

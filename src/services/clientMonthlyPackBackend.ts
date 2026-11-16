@@ -37,11 +37,11 @@ export function acceptedFilesForSlot(category: string, label: string) {
   const normalized = `${normaliseDocumentType(category)} ${normaliseDocumentType(label)}`;
 
   if (normalized.includes("bank statement")) {
-    return ["PDF", "CSV", "XLSX"];
+    return ["PDF"];
   }
 
-  if (normalized.includes("invoice")) {
-    return ["PDF", "ZIP", "CSV", "XLSX"];
+  if (normalized.includes("invoice") || normalized.includes("receipt")) {
+    return ["PDF", "PNG", "JPG"];
   }
 
   if (normalized.includes("signed")) {
@@ -187,6 +187,12 @@ export function buildSlotUploadForm(args: {
   form.append("DocumentType", args.submission.documentType);
   if (args.currentDocumentId) {
     form.append("DocumentId", args.currentDocumentId);
+  }
+  form.append("DisplayName", args.submission.autoName);
+  if (args.submission.invoiceDetails) {
+    form.append("InvoiceDetailsJson", JSON.stringify(args.submission.invoiceDetails));
+    form.append("DetailsConfirmed", String(args.submission.detailsConfirmed === true));
+    form.append("AllowDuplicate", String(args.submission.allowDuplicate === true));
   }
   if (args.submission.file) {
     form.append("File", args.submission.file, args.submission.fileName);

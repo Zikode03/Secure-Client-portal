@@ -213,7 +213,7 @@ export function FirmSettingsPage() {
   const [feedbackNotice, setFeedbackNotice] = useState<FeedbackNotice | null>(null);
 
 // Local UI state: keeps track of what the user is seeing or editing right now.
-  const [reviewSignature, setReviewSignature] = useState(user?.fullName ?? "Daniel Mokoena");
+  const [reviewSignature, setReviewSignature] = useState(user?.fullName ?? "");
   const [clientFacingTitle, setClientFacingTitle] = useState(user?.title ?? "Senior Accountant");
   const [followUpWindow, setFollowUpWindow] = useState("2 business days");
   const [defaultEscalation, setDefaultEscalation] = useState("Open request");
@@ -235,13 +235,9 @@ export function FirmSettingsPage() {
   const [expiredEscalation, setExpiredEscalation] = useState("Notify admin after 3 days");
   const [reportCadence, setReportCadence] = useState("Weekly portfolio digest");
 
-  const [workspaceName, setWorkspaceName] = useState(user?.fullName ?? "Priya Naidoo");
+  const [workspaceName, setWorkspaceName] = useState(user?.fullName ?? "");
   const [workspaceTitle, setWorkspaceTitle] = useState(user?.title ?? "Operations Lead");
-  const [emailSignature, setEmailSignature] = useState(
-    isAdmin
-      ? "Regards,\nPriya Naidoo\nOperations Lead | Finwell Advisory"
-      : "Kind regards,\nDaniel Mokoena\nSenior Accountant | Finwell Advisory",
-  );
+  const [emailSignature, setEmailSignature] = useState(["Kind regards,", user?.fullName, user?.title, user?.company].filter(Boolean).join("\n"));
   const [internalNote, setInternalNote] = useState(
     isAdmin
       ? "Review cross-firm blockers daily and keep assignment changes visible to the operations team."

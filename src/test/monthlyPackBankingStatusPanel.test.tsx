@@ -25,7 +25,7 @@ function mount(showConnections = false) {
 beforeEach(() => {
   vi.resetAllMocks();
   getStatus.mockResolvedValue({ ...base });
-  getOverview.mockResolvedValue({ clientId: "client-a", sandboxEnabled: false, connections: [], accounts: [], recentTransactions: [], syncRuns: [] });
+  getOverview.mockResolvedValue({ clientId: "client-a", integrationEnabled: false, sandboxEnabled: false, connections: [], accounts: [], recentTransactions: [], syncRuns: [] });
 });
 
 it("loads the scoped period, displays dates/count and blocks current-month finalisation", async () => {
@@ -47,6 +47,14 @@ it("keeps not-connected readiness under the manual document workflow", async () 
   expect(await screen.findByText("Bank statements are being handled manually.")).toBeInTheDocument();
   expect(screen.getByText("Manual bank-statement requirements control readiness.")).toBeInTheDocument();
   expect(screen.queryByText(/Missing period:/)).not.toBeInTheDocument();
+});
+
+it("uses document readiness when direct integration is paused", async () => {
+  getStatus.mockResolvedValue({ ...base, status: "manual", hasActiveConnection: false, isPeriodComplete: false });
+  mount();
+  expect(await screen.findByText("Manual bank statements")).toBeInTheDocument();
+  expect(screen.getByText("Manual bank-statement requirements control readiness.")).toBeInTheDocument();
+  expect(screen.queryByText("Banking is blocking submission and closure.")).not.toBeInTheDocument();
 });
 
 it("shows missing dates and the incomplete blocker", async () => {
@@ -97,7 +105,7 @@ it("refreshes when returning from Banking in another window", async () => {
 });
 
 it("shows only active scoped banks/accounts for the accountant", async () => {
-  getOverview.mockResolvedValue({ clientId: "client-a", sandboxEnabled: false,
+  getOverview.mockResolvedValue({ clientId: "client-a", integrationEnabled: false, sandboxEnabled: false,
     connections: [
       { id: "active", clientId: "client-a", provider: "Test bank", status: "connected", connectedAtUtc: "2026-09-01", lastSyncedAtUtc: null, consentExpiresAtUtc: null, disconnectedAtUtc: null, failureReason: null },
       { id: "old", clientId: "client-a", provider: "Old bank", status: "disconnected", connectedAtUtc: "2026-08-01", lastSyncedAtUtc: null, consentExpiresAtUtc: null, disconnectedAtUtc: "2026-09-01", failureReason: null },

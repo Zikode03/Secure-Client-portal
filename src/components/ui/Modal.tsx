@@ -1,7 +1,8 @@
 // Friendly guide: this module (Modal) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
+import { X } from "lucide-react";
 import { cn } from "../../utils/cn";
 
 // Shared shape notes: these types keep UI and data contracts aligned.
@@ -12,10 +13,14 @@ interface ModalProps {
   children: ReactNode;
   onClose: () => void;
   panelClassName?: string;
+  footer?: ReactNode;
+  scrollBody?: boolean;
 }
 
 // Component flow: gather data first, then render a focused UI state.
-export function Modal({ children, description, isOpen, onClose, panelClassName, title }: ModalProps) {
+export function Modal({ children, description, isOpen, onClose, panelClassName, title, footer, scrollBody = false }: ModalProps) {
+  const titleId = useId();
+  const descriptionId = useId();
   if (!isOpen) {
     return null;
   }
@@ -30,20 +35,24 @@ export function Modal({ children, description, isOpen, onClose, panelClassName, 
       />
       <div
         className={cn(
-          "relative z-10 max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-[2rem] border border-white/40 bg-white p-6 shadow-2xl shadow-slate-900/20",
+          "relative z-10 w-full border border-white/40 bg-white shadow-2xl shadow-slate-900/20",
+          scrollBody
+            ? "flex max-h-[90dvh] max-w-2xl flex-col overflow-hidden rounded-2xl"
+            : "max-h-[90vh] max-w-3xl overflow-y-auto rounded-[2rem] p-6",
           panelClassName,
         )}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="modal-title"
+        aria-labelledby={titleId}
+        aria-describedby={description ? descriptionId : undefined}
       >
-        <div className="mb-6 flex items-start justify-between gap-4">
+        <div className={cn("flex items-start justify-between gap-4", scrollBody ? "shrink-0 border-b border-slate-100 px-5 py-4 sm:px-6" : "mb-6")}>
           <div className="space-y-1">
-            <h2 className="text-xl font-semibold text-slate-950" id="modal-title">
+            <h2 className="text-xl font-semibold text-slate-950" id={titleId}>
               {title}
             </h2>
             {description ? (
-              <p className="max-w-2xl text-sm leading-6 text-slate-500">{description}</p>
+              <p id={descriptionId} className="max-w-2xl text-sm leading-6 text-slate-500">{description}</p>
             ) : null}
           </div>
           <button
@@ -52,10 +61,11 @@ export function Modal({ children, description, isOpen, onClose, panelClassName, 
             type="button"
           >
             <span className="sr-only">Close modal</span>
-            X
+            <X aria-hidden="true" className="h-5 w-5" />
           </button>
         </div>
-        {children}
+        {scrollBody ? <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6">{children}</div> : children}
+        {footer ? <div className="shrink-0 border-t border-slate-200 bg-white px-5 py-4 sm:px-6">{footer}</div> : null}
       </div>
     </div>
   );

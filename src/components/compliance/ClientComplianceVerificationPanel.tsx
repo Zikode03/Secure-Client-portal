@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Building2, CheckCircle2, CircleAlert, Clock3, RefreshCw, ShieldCheck } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ChevronDown, RefreshCw, ShieldCheck } from "lucide-react";
 import { useAuth } from "../../app/auth";
 import { apiGetJson } from "../../services/apiClient";
 import { formatDateLabel } from "../../utils/formatters";
@@ -22,14 +22,14 @@ const verificationLabels: Record<string, string> = {
 
 function verificationSource(check: MonitoringProfile["checks"][number]) {
   const latest = check.latestVerification;
-  if (!latest) return `${check.source} · No verification recorded`;
-  if (latest.method === "authority_verified") return `${check.source} · Authority verification`;
-  return `${check.source} · Checked by your accountant`;
+  if (!latest) return "Not recorded";
+  if (latest.method === "authority_verified") return "Authorised authority response";
+  return "Manual accountant check";
 }
 
 function statusLabel(check: MonitoringProfile["checks"][number]) {
-  if (check.latestVerification?.method === "authority_verified" && check.verificationStatus === "authority_verified") {
-    return "Verified by authority";
+  if (check.verificationStatus === "authority_verified") {
+    return check.latestVerification?.method === "authority_verified" ? "Verified by authority" : "Verification unavailable";
   }
   return verificationLabels[check.verificationStatus] ?? "Verification unavailable";
 }
@@ -48,74 +48,57 @@ export function ClientComplianceVerificationPanel() {
   const [profile, setProfile] = useState<MonitoringProfile | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const generation = useRef(0);
 
   async function load() {
     if (!clientId) return;
+    const current = ++generation.current;
     setLoading(true);
     setError("");
     try {
-      setProfile(await apiGetJson<MonitoringProfile>(`/api/compliance/monitoring/${encodeURIComponent(clientId)}`));
+      const result = await apiGetJson<MonitoringProfile>(`/api/compliance/monitoring/${encodeURIComponent(clientId)}`);
+      if (!Array.isArray(result.checks)) throw new Error("Business checks could not be read. Please try again.");
+      if (current === generation.current) setProfile(result);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Verification information could not be loaded.");
+      if (current === generation.current) setError(caught instanceof Error ? caught.message : "Verification information could not be loaded.");
     } finally {
-      setLoading(false);
+      if (current === generation.current) setLoading(false);
     }
   }
 
-  useEffect(() => { void load(); }, [clientId]);
-
-  const counts = useMemo(() => {
-    const checks = profile?.checks ?? [];
-    return {
-      confirmed: checks.filter(check => check.verificationStatus === "accountant_confirmed" || check.verificationStatus === "authority_verified").length,
-      review: checks.filter(check => check.verificationStatus === "stale" || check.verificationStatus === "identifiers_changed").length,
-      unchecked: checks.filter(check => check.verificationStatus === "not_checked").length,
-    };
-  }, [profile]);
+  useEffect(() => { setProfile(null); void load(); return () => { generation.current++; }; }, [clientId]);
 
   if (!clientId) return null;
 
-  return <section className="client-verification" aria-labelledby="client-verification-title">
-    <div className="cv-heading">
-      <div>
-        <span className="cv-eyebrow"><ShieldCheck size={14} aria-hidden="true" /> Compliance verification</span>
-        <h2 id="client-verification-title">Authority checks</h2>
-        <p>See what has been checked, who checked it and when it should be reviewed again.</p>
-      </div>
-      <button type="button" className="cv-refresh" disabled={loading} onClick={() => void load()}>
-        <RefreshCw size={15} className={loading ? "cv-spin" : ""} aria-hidden="true" /> Refresh
-      </button>
+  return <section className="client-verification" aria-label="Recorded business checks">
+    <div className="cv-toolbar">
+      <button type="button" className="cv-refresh" disabled={loading} onClick={() => void load()}><RefreshCw size={15} className={loading ? "cv-spin" : ""} aria-hidden="true" />Refresh checks</button>
     </div>
-
-    <div className="cv-note">
-      <CircleAlert size={17} aria-hidden="true" />
-      <p>Manual accountant checks are labelled <strong>Accountant confirmed</strong>. This portal only shows <strong>Verified by authority</strong> when the saved verification method came from an authorised authority integration.</p>
-    </div>
-
-    {error ? <div className="cv-error" role="alert">{error}</div> : loading && !profile ? <div className="cv-loading">Loading verification information…</div> : profile ? <>
-      <div className="cv-summary" aria-label="Verification summary">
-        <span><CheckCircle2 size={16} aria-hidden="true" /><strong>{counts.confirmed}</strong> confirmed</span>
-        <span><Clock3 size={16} aria-hidden="true" /><strong>{counts.review}</strong> need review</span>
-        <span><Building2 size={16} aria-hidden="true" /><strong>{counts.unchecked}</strong> not checked</span>
-      </div>
-
-      <div className="cv-table-wrap">
-        <table className="cv-table">
-          <thead><tr><th>Check</th><th>Status</th><th>Result</th><th>Source</th><th>Checked</th><th>Checked by</th><th>Next review</th></tr></thead>
-          <tbody>{profile.checks.map(check => {
-            const latest = check.latestVerification;
-            return <tr key={check.code}>
-              <td><strong>{check.name}</strong><small>{check.source}</small></td>
-              <td><span className={`cv-status cv-status--${statusTone(check)}`}>{check.applicability === "not_applicable" ? "Not applicable" : statusLabel(check)}</span></td>
-              <td>{check.applicability === "not_applicable" ? "—" : latest ? outcomeLabels[latest.outcome] ?? "Inconclusive" : "Not checked"}</td>
-              <td>{verificationSource(check)}</td>
-              <td>{latest ? formatDateLabel(latest.checkedAtUtc) : "—"}</td>
-              <td>{latest ? latest.recordedByName : "—"}</td>
-              <td>{latest ? formatDateLabel(latest.reviewAfterUtc) : "—"}</td>
-            </tr>;
-          })}</tbody>
-        </table>
-      </div>
-    </> : null}
+    <p className="cv-note"><ShieldCheck size={16} aria-hidden="true" /><span>“Accountant confirmed” is a manual check. “Verified by authority” identifies an authorised authority response. Neither label guarantees overall business compliance.</span></p>
+    {error ? <div className="cv-error" role="alert"><span>{error}</span><button type="button" className="cv-refresh" disabled={loading} onClick={() => void load()}>Try again</button></div>
+      : loading && !profile ? <p role="status" className="cv-loading">Loading business checks…</p>
+      : profile ? <div className="cv-checks">{profile.checks.map(check => {
+        const latest = check.latestVerification;
+        const notApplicable = check.applicability === "not_applicable";
+        const hasDetails = (!!latest && !notApplicable) || !!check.reason || check.applicability === "undecided";
+        const Row = hasDetails ? "details" : "div";
+        const Header = hasDetails ? "summary" : "div";
+        return <Row key={check.code} className="cv-check">
+          <Header className="cv-check-header"><div className="cv-check-name"><strong>{check.name}</strong><span>{check.source}</span></div>
+            <span className={`cv-status cv-status--${statusTone(check)}`}>{notApplicable ? "Not applicable" : statusLabel(check)}</span>{hasDetails ? <ChevronDown size={15} aria-hidden="true" /> : null}</Header>
+          {hasDetails ? <div className="cv-check-details">
+            {check.reason ? <p>{check.reason}</p> : null}
+            {check.applicability === "undecided" ? <p>Your accountant still needs to confirm whether this check applies to your business.</p> : null}
+            {latest && !notApplicable ? <dl><div><dt>Recorded result</dt><dd>{outcomeLabels[latest.outcome] ?? "Inconclusive"}</dd></div>
+              <div><dt>How it was checked</dt><dd>{verificationSource(check)}</dd></div>
+              <div><dt>Checked on</dt><dd>{checkDate(latest.checkedAtUtc)}</dd></div>
+              <div><dt>Recorded by</dt><dd>{latest.recordedByName || "Name not recorded"}</dd></div>
+              <div><dt>Next review</dt><dd>{checkDate(latest.reviewAfterUtc)}</dd></div></dl> : null}
+          </div> : null}
+        </Row>;
+      })}</div> : null}
   </section>;
+}
+function checkDate(value: string) {
+  return Number.isFinite(new Date(value).getTime()) ? formatDateLabel(value) : "Date not recorded";
 }

@@ -1,4 +1,6 @@
-import { act, render, renderHook, screen } from "@testing-library/react";
+// Isolated state/UI unit test; application data is not used.
+vi.mock("../services/apiClient", async original => ({ ...await original<typeof import("../services/apiClient")>(), hasApiBaseUrl: () => false }));
+import { act, fireEvent, render, renderHook, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { AuthProvider } from "../app/auth";
@@ -102,6 +104,7 @@ describe("compliance lifecycle", () => {
 
   it("renders the Phase 4 accountant compliance shell even when the API is unavailable", async () => {
     renderWithProviders(<AccountantComplianceCentrePage />, accountantUser);
+    fireEvent.click(screen.getByRole("button", { name: "Document records" }));
 
     expect(screen.getByRole("heading", { name: "Compliance Centre" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Obligations" })).toBeInTheDocument();
@@ -173,6 +176,6 @@ describe("compliance lifecycle", () => {
     expect(screen.queryByRole("button", { name: "Run automation" })).not.toBeInTheDocument();
     expect(getClientFacingComplianceLabel("EMP201")).toBe("Monthly payroll submission (EMP201)");
     expect(await screen.findByText("Compliance information is unavailable.")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Your compliance at a glance" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeEnabled();
   });
 });

@@ -82,13 +82,6 @@ export const navigationByRole: Record<Role, NavigationItem[]> = {
       section: "Compliance",
       icon: "compliance",
     },
-    {
-      label: "Banking",
-      to: "/client/banking",
-      description: "Manage connected bank accounts, transactions, and sync health",
-      section: "Banking",
-      icon: "banking",
-    },
     { label: "Settings", to: "/client/settings", description: "Manage business and account settings", section: "Configuration", icon: "settings" },
     { label: "Help & Support", to: "/client/help", description: "Find help and contact your portal support team", section: "Configuration", icon: "help" },
   ],
@@ -194,6 +187,13 @@ export const navigationByRole: Record<Role, NavigationItem[]> = {
       description: "Manage accountant capacity and workload",
       section: "Management",
       icon: "accountants",
+    },
+    {
+      label: "Import Clients & Documents",
+      to: "/firm/admin/migration",
+      description: "Bring in an existing client list or documents",
+      section: "Management",
+      icon: "documents",
     },
     {
       label: "Assignments",

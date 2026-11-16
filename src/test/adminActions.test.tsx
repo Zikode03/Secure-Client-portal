@@ -1,3 +1,5 @@
+// Isolated state/UI unit test; application data is not used.
+vi.mock("../services/apiClient", async original => ({ ...await original<typeof import("../services/apiClient")>(), hasApiBaseUrl: () => false }));
 import { act, renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { PortalProvider, usePortal } from "../app/portal";

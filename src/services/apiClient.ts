@@ -1,8 +1,4 @@
 const RAW_API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim();
-const RAW_USE_BACKEND = (import.meta.env.VITE_USE_BACKEND as string | undefined)?.trim();
-declare const __PORTAL_DEPLOYMENT_BUILD__: boolean;
-const IS_DEPLOYMENT_BUILD = typeof __PORTAL_DEPLOYMENT_BUILD__ !== "undefined" && __PORTAL_DEPLOYMENT_BUILD__;
-
 interface ApiErrorBody {
   code?: string;
   message?: string;
@@ -29,11 +25,7 @@ function normalizeBaseUrl(url?: string) {
 }
 
 const API_BASE_URL = normalizeBaseUrl(RAW_API_BASE_URL);
-const USE_BACKEND =
-  IS_DEPLOYMENT_BUILD ||
-  RAW_USE_BACKEND === "1" ||
-  RAW_USE_BACKEND?.toLowerCase() === "true" ||
-  Boolean(API_BASE_URL);
+const USE_BACKEND = true;
 
 function buildUrl(path: string) {
   const origin = new URL(API_BASE_URL || window.location.origin).origin;
@@ -79,14 +71,18 @@ function getCsrfToken() {
   return csrfTokenPromise;
 }
 
-async function apiMutation(path: string, init: RequestInit): Promise<Response> {
+async function apiMutation(path: string, init: RequestInit, request?: Request): Promise<Response> {
   const url = buildUrl(path);
   for (let attempt = 0; attempt < 2; attempt++) {
     const pending = getCsrfToken();
     const token = await pending;
     const headers = new Headers(init.headers);
     headers.set("X-CSRF-Token", token);
-    const response = await fetch(url, { ...init, credentials: "include", headers });
+    // Keep an unused original Request so an explicit CSRF rejection can replay
+    // JSON, FormData or file bodies without buffering/serializing them again.
+    const response = request
+      ? await fetch(new Request(request.clone(), { credentials: "include", headers }))
+      : await fetch(url, { ...init, credentials: "include", headers });
     if (attempt === 0 && response.status === 403) {
       const body = await response.clone().json().catch(() => null) as ApiErrorBody | null;
       if (body?.code === "CSRF_INVALID") {
@@ -100,6 +96,22 @@ async function apiMutation(path: string, init: RequestInit): Promise<Response> {
     return response;
   }
   throw new ApiError(403, "Could not validate the security token.", "CSRF_INVALID");
+}
+
+/** Absolute API base for clients that construct native Request objects. */
+export function getApiBaseUrl() {
+  return API_BASE_URL || window.location.origin;
+}
+
+/** Shared transport for the generated OpenAPI client; preserves ApiError behavior. */
+export async function apiContractFetch(request: Request): Promise<Response> {
+  buildUrl(request.url); // Reject another origin before obtaining tokens or sending cookies.
+  const method = request.method.toUpperCase();
+  const response = ["GET", "HEAD", "OPTIONS"].includes(method)
+    ? await fetch(new Request(request, { credentials: "include", headers: buildHeaders({ headers: request.headers }) }))
+    : await apiMutation(request.url, { headers: buildHeaders({ headers: request.headers }) }, request);
+  if (!response.ok) await throwApiError(response, new URL(request.url).pathname);
+  return response;
 }
 
 async function readJsonResponse<T>(response: Response): Promise<T> {

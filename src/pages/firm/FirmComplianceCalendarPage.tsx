@@ -1,7 +1,10 @@
 // Friendly guide: this module (FirmComplianceCalendarPage) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
-import { useMemo, useState } from "react";
+import { apiGetJson, hasApiBaseUrl } from "../../services/apiClient";
+import { Button } from "../../components/ui/Button";
+import type { ComplianceObligation } from "../../components/compliance/complianceAutomation";
+import { useEffect, useMemo, useState } from "react";
 import { usePortal } from "../../app/portal";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
 import { formatDateLabel } from "../../utils/formatters";
@@ -74,10 +77,34 @@ function buildMonthGrid(monthDate: Date, events: DeadlineItem[]): CalendarCell[]
 
 export function FirmComplianceCalendarPage() {
   const portal = usePortal();
+  const backendMode = hasApiBaseUrl();
+  const [liveDeadlines, setLiveDeadlines] = useState<DeadlineItem[]>([]);
+  const [loading, setLoading] = useState(backendMode);
+  const [error, setError] = useState("");
+  const [revision, setRevision] = useState(0);
+  useEffect(() => {
+    if (!backendMode) return;
+    let active = true;
+    setLoading(true); setError(""); setLiveDeadlines([]);
+    void Promise.all([
+      apiGetJson<ComplianceObligation[]>("/api/compliance/automation/obligations"),
+      apiGetJson<Array<{ id: string; clientId: string; name: string; expiryDateUtc?: string | null }>>("/api/compliance/items"),
+    ]).then(([obligations, items]) => {
+      if (!active) return;
+      const names = new Map(portal.adminClients.map(client => [client.id, client.clientName]));
+      const filings: DeadlineItem[] = obligations.filter(item => item.dueDateUtc && !["submitted", "paid", "complete", "closed", "not_applicable"].includes(item.workflowStatus))
+        .map(item => ({ id: item.id, clientName: item.clientName, label: item.name, dueDate: item.dueDateUtc!, type: "filing" }));
+      const expiries: DeadlineItem[] = items.filter(item => item.expiryDateUtc).map(item => ({ id: `expiry-${item.id}`, clientName: names.get(item.clientId) ?? "Client", label: item.name, dueDate: item.expiryDateUtc!, type: "expiry" }));
+      setLiveDeadlines([...filings, ...expiries].filter(item => Number.isFinite(Date.parse(item.dueDate))).sort((a, b) => Date.parse(a.dueDate) - Date.parse(b.dueDate)));
+    }).catch(error => { if (active) setError(error instanceof Error ? error.message : "Deadlines could not be loaded."); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [backendMode, revision, portal.adminClients]);
   const [view, setView] = useState<CalendarView>("month");
   const [activeMonth, setActiveMonth] = useState(() => atMidnight(new Date()));
 
   const deadlines = useMemo<DeadlineItem[]>(() => {
+    if (backendMode) return liveDeadlines;
     const filingItems =
       portal.accountantComplianceCentre.clientStatuses?.flatMap((client) =>
         client.topPriorities
@@ -102,7 +129,7 @@ export function FirmComplianceCalendarPage() {
     return [...filingItems, ...expiryItems].sort(
       (a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime(),
     );
-  }, [portal.accountantComplianceCentre]);
+  }, [portal.accountantComplianceCentre, backendMode, liveDeadlines]);
 
   const monthGrid = useMemo(() => buildMonthGrid(activeMonth, deadlines), [activeMonth, deadlines]);
 
@@ -144,6 +171,7 @@ export function FirmComplianceCalendarPage() {
         </div>
       </div>
 
+      {loading ? <p role="status">Loading live deadlines...</p> : error ? <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-4"><p>{error}</p><Button variant="secondary" className="mt-3" onClick={() => setRevision(value => value + 1)}>Retry deadlines</Button></div> : null}
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
         <SurfaceCard className="rounded-2xl border border-slate-200 bg-white p-4 shadow-none">
           <div className="mb-4 flex items-center justify-between">
@@ -244,7 +272,7 @@ export function FirmComplianceCalendarPage() {
                 <p className="text-xs text-slate-500">{item.clientName}</p>
               </div>
             ))}
-            {upcoming.length === 0 ? (
+            {upcoming.length === 0 && !loading && !error ? (
               <p className="text-sm text-slate-500">No deadlines in this window.</p>
             ) : null}
           </div>

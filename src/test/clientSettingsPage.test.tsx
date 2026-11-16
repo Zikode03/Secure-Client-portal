@@ -74,10 +74,10 @@ describe("client settings redesign", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Update password" })).toBeEnabled());
   });
 
-  it("does not invent editable notification preferences in live mode", async () => {
+  it("links live users to their server-backed notification preferences", async () => {
     show(); await screen.findByDisplayValue("Acme Business");
     fireEvent.click(screen.getByRole("tab", { name: "Notifications" }));
-    expect(screen.getByRole("button", { name: /Open notification inbox/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Manage notification preferences/ })).toBeInTheDocument();
     expect(screen.queryByRole("switch")).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Save preferences" })).not.toBeInTheDocument();
   });
