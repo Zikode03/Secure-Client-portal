@@ -30,7 +30,7 @@ export function ExpiringDocumentsPanel({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold text-slate-950">Expiring Documents</h2>
-          <p className="mt-1 text-[0.82rem] text-slate-500">
+          <p className="mt-1 text-sm text-slate-500">
             Expiry-sensitive records are tracked here before they become compliance failures.
           </p>
         </div>

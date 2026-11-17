@@ -6,18 +6,24 @@ snapshot at `openapi/portal-api.json` and generates
 `portalApiClient.ts` uses those generated types with `openapi-fetch` to check
 paths, HTTP methods, parameters, request bodies and responses at compile time.
 
-The Banking, monthly-pack, supporting-document upload and document-review mutation
-clients now use generated contracts. Core pack screens use these clients directly.
-All 186 operations have a declared success schema or explicitly documented empty
-response. Legacy `IActionResult` response shapes are derived from their actual C#
-return expressions by `tools/ContractMetadata` in the backend, including mapped
-DTOs, anonymous projections, multipart uploads and binary downloads. Framework
-result wrappers and error branches are excluded from success payloads. Missing
-shapes fail generation/export; client type checks catch field mismatches such as
-the corrected `canSubmit` monthly-slot property.
+Client, admin and accountant screens now use generated contracts throughout their
+backend calls, including authentication, settings, users, roles, assignments,
+inboxes, documents, compliance and monthly packs. The route-aware helpers in
+`apiClient.ts` infer request/response types from `paths` through
+`apiContractTypes.ts`; callers cannot provide a replacement response interface.
+The feature clients built with `portalApiClient` continue using the same generated
+contracts and protected transport. Binary requests are limited to documented file
+endpoints, and multipart uploads preserve their existing FormData handling.
 
-Other screen wrappers may migrate incrementally using the complete contract.
-Do not invent schemas or cast unknown payloads to make a migration compile.
+The contract currently describes 202 operations. Roles and assignments have explicit
+backend response DTOs. Other success responses are derived from actual C# return
+expressions by `tools/ContractMetadata`. Correct genuine field, nullability and union
+mismatches instead of casting payloads to make the build pass. Screen view models
+may remain local; their incoming values must satisfy the generated response types.
+
+Generic transport overrides exist only in `src/test/fixtures/apiTransportFixture.ts`
+for isolated transport and component tests. Production imports of fixtures are
+rejected. No fixture data or test adapter is included in product workflows.
 
 ## Updating a backend contract
 
@@ -44,8 +50,12 @@ Do not invent schemas or cast unknown payloads to make a migration compile.
    ```
 
 `npm run api:generate` regenerates types from the committed frontend snapshot.
-`npm run api:check` compares generated types to that snapshot without writing files.
-Both build commands run this check first. `npm run api:test` checks that missing
+`npm run api:check` compares generated types to that snapshot and checks every
+production API helper call for resolved OpenAPI types and test-transport imports,
+without writing files.
+Both build commands run this check first. Compile-only assertions in
+`src/test/openApiCoverage.types.ts` verify that unknown routes, wrong methods,
+invalid request bodies and response overrides are rejected. `npm run api:test` checks that missing
 and modified generated files cause a failure.
 
 Frontend CI verifies its snapshot/types, TypeScript, bundle and client tests.
@@ -61,13 +71,9 @@ Use `api:sync --check` with the intended backend checkout and coordinate release
 ```ts
 import { apiData, portalApiClient } from "./portalApiClient";
 
-const overview = await apiData(portalApiClient.GET("/api/banking/overview", {
-  params: { query: { clientId } },
-}));
+const users = await apiData(portalApiClient.GET("/api/admin/users"));
+const documents = await apiData(portalApiClient.GET("/api/documents"));
 
-const imported = await apiData(portalApiClient.POST("/api/banking/manual/import", {
-  body: { accountId, sourceName, rows, preview: true },
-}));
 ```
 
 Use `apiData` only when the endpoint promises a JSON payload. For a documented
@@ -75,7 +81,7 @@ Use `apiData` only when the endpoint promises a JSON payload. For a documented
 submit requests from the compile-only examples in `openApiContract.typecheck.ts`.
 
 The adapter in `apiClient.ts` reuses the existing trusted API origin, includes
-HttpOnly session cookies, shares CSRF token bootstrap with legacy requests and
+HttpOnly session cookies, shares CSRF token bootstrap with the route-aware helpers and
 invalidates tokens after authentication changes. It retries a write once only
 when the server explicitly returns `CSRF_INVALID`. Native Request clones preserve
 the body for that retry, including FormData, without reserializing files.

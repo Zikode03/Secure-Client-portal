@@ -33,7 +33,7 @@ export function InboxStatusBadge({
   return (
     <span
       className={cn(
-        "inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-[0.68rem] font-semibold ring-1 ring-inset",
+        "inline-flex whitespace-nowrap rounded-full px-2.5 py-1 text-sm font-semibold ring-1 ring-inset",
         tone,
         className,
       )}

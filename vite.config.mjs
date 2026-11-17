@@ -1,3 +1,4 @@
+import { pdfAssetsPlugin } from "./config/pdf-assets.mjs";
 import { noSampleDataPlugin } from "./config/no-sample-data.mjs";
 import { ocrAssetsPlugin } from "./config/ocr-assets.mjs";
 import { defineConfig, loadEnv } from "vite";
@@ -22,6 +23,7 @@ export default defineConfig(({ mode, command }) => {
     plugins: [
       react(),
       ocrAssetsPlugin(),
+      pdfAssetsPlugin(),
       noSampleDataPlugin(),
       tailwindcss(),
       ...(isDeployableBuild ? [productionSecurityPlugin(env.VITE_API_BASE_URL)] : []),

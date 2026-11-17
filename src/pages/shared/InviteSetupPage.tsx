@@ -148,7 +148,7 @@ export function InviteSetupPage() {
 
             <div className="mx-auto w-full max-w-[420px]">
               <div className="mb-8">
-                <h2 className="text-[2.25rem] font-light tracking-[-0.04em] text-white">
+                <h2 className="text-4xl font-light tracking-[-0.04em] text-white">
                   {successState
                     ? isPasswordReset
                       ? "Password reset complete"

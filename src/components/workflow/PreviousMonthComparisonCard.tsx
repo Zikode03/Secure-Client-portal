@@ -167,8 +167,8 @@ export function PreviousMonthComparisonCard({
       <div className="space-y-2">
         <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 rounded-xl bg-[#fbfcff] px-4 py-3 ring-1 ring-[#e8ecf5]">
           <div>
-            <p className="text-[0.78rem] font-semibold text-[#091333]">Previous month</p>
-            <p className="mt-0.5 text-[0.74rem] text-[#53617f]">
+            <p className="text-sm font-semibold text-[#091333]">Previous month</p>
+            <p className="mt-0.5 text-sm text-[#53617f]">
               {selectedOption.previousMonthLabel} - {selectedOption.label}
             </p>
           </div>
@@ -177,8 +177,8 @@ export function PreviousMonthComparisonCard({
         </div>
         <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 rounded-xl bg-[#fbfcff] px-4 py-3 ring-1 ring-[#e8ecf5]">
           <div>
-            <p className="text-[0.78rem] font-semibold text-[#091333]">Current month</p>
-            <p className="mt-0.5 text-[0.74rem] text-[#53617f]">
+            <p className="text-sm font-semibold text-[#091333]">Current month</p>
+            <p className="mt-0.5 text-sm text-[#53617f]">
               {selectedOption.currentMonthLabel} - {selectedOption.label}
             </p>
           </div>
@@ -187,8 +187,8 @@ export function PreviousMonthComparisonCard({
         </div>
         <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-3 rounded-xl bg-[#fbfcff] px-4 py-3 ring-1 ring-[#e8ecf5]">
           <div>
-            <p className="text-[0.78rem] font-semibold text-[#091333]">Monthly variance</p>
-            <p className="mt-0.5 text-[0.74rem] text-[#53617f]">{isImproved ? "On track" : "Needs attention"}</p>
+            <p className="text-sm font-semibold text-[#091333]">Monthly variance</p>
+            <p className="mt-0.5 text-sm text-[#53617f]">{isImproved ? "On track" : "Needs attention"}</p>
           </div>
           <span className={`text-sm font-semibold ${isImproved ? "text-emerald-700" : "text-rose-700"}`}>
             {deltaLabel}
@@ -224,8 +224,8 @@ export function PreviousMonthComparisonCard({
               </svg>
             </span>
             <div>
-              <h3 className="text-[0.95rem] font-semibold text-[#091333]">Document Volume Trend</h3>
-              <div className="mt-2 flex flex-wrap items-center gap-4 text-[0.72rem] font-semibold text-[#53617f]">
+              <h3 className="text-base font-semibold text-[#091333]">Document Volume Trend</h3>
+              <div className="mt-2 flex flex-wrap items-center gap-4 text-sm font-semibold text-[#53617f]">
                 <span className="inline-flex items-center gap-1.5">
                   <span className="h-2.5 w-2.5 rounded-full bg-[#93c5fd]" />
                   {selectedOption.previousMonthLabel}
@@ -239,7 +239,7 @@ export function PreviousMonthComparisonCard({
           </div>
           <select
             aria-label="Trend grouping"
-            className="h-9 rounded-lg border border-[#dce6ef] bg-white px-3 text-[0.74rem] font-semibold text-[#091333] shadow-sm"
+            className="h-9 rounded-lg border border-[#dce6ef] bg-white px-3 text-sm font-semibold text-[#091333] shadow-sm"
             defaultValue="day"
           >
             <option value="day">By day</option>
@@ -247,7 +247,7 @@ export function PreviousMonthComparisonCard({
         </div>
 
         <div className="mt-5 grid grid-cols-[2.25rem_minmax(0,1fr)] gap-3">
-          <div className="flex h-64 flex-col justify-between text-right text-[0.68rem] font-semibold text-[#7b879e]">
+          <div className="flex h-64 flex-col justify-between text-right text-sm font-semibold text-[#7b879e]">
             {yAxisTicks.map((tick) => (
               <span key={tick}>{tick}</span>
             ))}
@@ -295,7 +295,7 @@ export function PreviousMonthComparisonCard({
                           <span className="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rounded-full bg-[#062044] ring-2 ring-white" />
                         </div>
                       </div>
-                      <span className="h-4 text-[0.68rem] font-semibold text-[#53617f]">{point.day}</span>
+                      <span className="h-4 text-sm font-semibold text-[#53617f]">{point.day}</span>
                     </div>
                   );
                 })}
@@ -303,18 +303,18 @@ export function PreviousMonthComparisonCard({
 
               {hoveredTrendPoint ? (
                 <div className="pointer-events-none absolute right-5 top-5 z-10 min-w-[190px] rounded-xl border border-[#dce6ef] bg-white px-4 py-3 text-left shadow-[0_18px_38px_rgba(15,23,42,0.14)]">
-                  <p className="text-[0.72rem] font-semibold text-[#091333]">
+                  <p className="text-sm font-semibold text-[#091333]">
                     {hoveredTrendPoint.day} {selectedOption.currentMonthLabel}
                   </p>
                   <div className="mt-3 space-y-2">
-                    <div className="flex items-center justify-between gap-4 text-[0.74rem]">
+                    <div className="flex items-center justify-between gap-4 text-sm">
                       <span className="inline-flex items-center gap-2 font-semibold text-[#53617f]">
                         <span className="h-2.5 w-2.5 rounded-full bg-[#062044]" />
                         {selectedOption.currentMonthLabel}
                       </span>
                       <span className="font-semibold text-[#091333]">{hoveredTrendPoint.current} files</span>
                     </div>
-                    <div className="flex items-center justify-between gap-4 text-[0.74rem]">
+                    <div className="flex items-center justify-between gap-4 text-sm">
                       <span className="inline-flex items-center gap-2 font-semibold text-[#53617f]">
                         <span className="h-2.5 w-2.5 rounded-full bg-[#93c5fd]" />
                         {selectedOption.previousMonthLabel}
@@ -325,7 +325,7 @@ export function PreviousMonthComparisonCard({
                 </div>
               ) : null}
             </div>
-            <div className="mt-2 text-center text-[0.72rem] font-semibold text-[#53617f]">Day of month</div>
+            <div className="mt-2 text-center text-sm font-semibold text-[#53617f]">Day of month</div>
           </div>
         </div>
       </div>
@@ -333,7 +333,7 @@ export function PreviousMonthComparisonCard({
       <div className="mt-auto flex flex-wrap items-center justify-center gap-2.5">
         {actionLabel && onAction ? (
           <button
-            className="client-dashboard-action-button h-8 w-28 rounded-lg px-2 text-[0.76rem] font-semibold"
+            className="client-dashboard-action-button h-8 w-28 rounded-lg px-2 text-sm font-semibold"
             onClick={onAction}
             type="button"
           >
@@ -341,14 +341,14 @@ export function PreviousMonthComparisonCard({
           </button>
         ) : null}
         <button
-          className="client-dashboard-action-button h-8 w-28 rounded-lg px-2 text-[0.76rem] font-semibold"
+          className="client-dashboard-action-button h-8 w-28 rounded-lg px-2 text-sm font-semibold"
           onClick={onOpenAffectedRecords}
           type="button"
         >
           Records
         </button>
         <button
-          className="client-dashboard-action-button h-8 w-28 rounded-lg px-2 text-[0.76rem] font-semibold"
+          className="client-dashboard-action-button h-8 w-28 rounded-lg px-2 text-sm font-semibold"
           onClick={onCreateFollowUps}
           type="button"
         >

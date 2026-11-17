@@ -20,12 +20,12 @@ export type ClientInput =
   Schemas["SecureClientPortal.Backend.Application.Contracts.Modules.Migration.MigrationClientInput"];
 export type DocumentInput =
   Schemas["SecureClientPortal.Backend.Application.Contracts.Modules.Migration.MigrationDocumentInput"];
-const root = "/api/admin/migrations";
-export const listMigrations = () => apiGetJson<MigrationSummary[]>(root);
+const root = "/api/admin/migrations" as const;
+export const listMigrations = () => apiGetJson(root);
 export const getMigration = (id: string) =>
-  apiGetJson<MigrationDetail>(`${root}/${id}`);
+  apiGetJson(`${root}/${id}`);
 export const createMigration = (requestId: string, name: string) =>
-  apiPostJson<MigrationDetail, { requestId: string; name: string }>(root, {
+  apiPostJson(root, {
     requestId,
     name,
   });
@@ -33,7 +33,7 @@ export function stageSpreadsheet(id: string, version: number, file: File) {
   const data = new FormData();
   data.append("version", String(version));
   data.append("file", file);
-  return apiPostForm<MigrationDetail>(`${root}/${id}/clients`, data);
+  return apiPostForm(`${root}/${id}/clients`, data);
 }
 export function stageDocument(
   id: string,
@@ -44,7 +44,7 @@ export function stageDocument(
   const data = new FormData();
   data.append("version", String(version));
   data.append("file", file);
-  return apiPostForm<MigrationDetail>(
+  return apiPostForm(
     `${root}/${id}/documents/${fileId}`,
     data,
   );
@@ -56,25 +56,16 @@ export const editClient = (
   values: ClientInput,
   skip: boolean,
 ) =>
-  apiPutJson<
-    MigrationDetail,
-    Schemas["SecureClientPortal.Backend.Application.Contracts.Modules.Migration.EditMigrationClientRequest"]
-  >(`${root}/${id}/clients/${rowId}`, { version, values, skip });
+  apiPutJson(`${root}/${id}/clients/${rowId}`, { version, values, skip });
 export const editDocument = (
   id: string,
   rowId: string,
   version: number,
   values: DocumentInput,
 ) =>
-  apiPutJson<
-    MigrationDetail,
-    Schemas["SecureClientPortal.Backend.Application.Contracts.Modules.Migration.EditMigrationDocumentRequest"]
-  >(`${root}/${id}/documents/${rowId}`, { version, values });
+  apiPutJson(`${root}/${id}/documents/${rowId}`, { version, values });
 export const approveMigration = (id: string, version: number) =>
-  apiPostJson<
-    MigrationDetail,
-    Schemas["SecureClientPortal.Backend.Application.Contracts.Modules.Migration.ApproveMigrationRequest"]
-  >(`${root}/${id}/approve`, { version, confirmOwnershipAndPeriods: true });
+  apiPostJson(`${root}/${id}/approve`, { version, confirmOwnershipAndPeriods: true });
 export const downloadStagedDocument = (id: string, rowId: string) =>
   apiGetBlob(`${root}/${id}/documents/${rowId}/content`);
 

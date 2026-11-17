@@ -52,7 +52,7 @@ export function NotificationBell() {
       if (pending || document.visibilityState === "hidden") return;
       pending = true;
       try {
-        const result = await apiGetJson<Alert[]>("/api/notifications", {signal: controller.signal});
+        const result = await apiGetJson("/api/notifications", {signal: controller.signal});
         if (!Array.isArray(result)) throw new Error("Invalid notification response");
         if (!controller.signal.aborted) { setItems(result); setError(""); }
       } catch { if (!controller.signal.aborted) setError("Notifications could not be loaded. Please try again."); }

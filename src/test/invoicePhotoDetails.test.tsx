@@ -3,8 +3,8 @@ import { useState } from "react";
 import { beforeEach, expect, it, vi } from "vitest";
 import { InvoicePhotoDetails } from "../components/workflow/InvoicePhotoDetails";
 import { emptyInvoiceDetails, scanInvoicePhoto } from "../services/invoiceScanner";
-import { apiGetJson } from "../services/apiClient";
-vi.mock("../services/apiClient", () => ({ apiGetJson: vi.fn(), hasApiBaseUrl: () => true }));
+import { apiGetJson } from "./fixtures/apiTransportFixture";
+vi.mock("../services/apiClient", async original => ({ ...await original<typeof import("../services/apiClient")>(), apiGetJson: vi.fn(), hasApiBaseUrl: () => true }));
 vi.mock("../services/invoiceScanner", async original => ({ ...await original<typeof import("../services/invoiceScanner")>(), scanInvoicePhoto: vi.fn() }));
 const details = { supplierName: "Acme", invoiceNumber: "INV-1", invoiceDate: "2026-11-11", amount: "115.00" };
 function Harness() {

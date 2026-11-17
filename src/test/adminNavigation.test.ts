@@ -5,6 +5,9 @@ describe("admin navigation", () => {
     const routes = navigationByRole.admin.map((item) => item.to);
 
     expect(routes).toContain("/firm/dashboard");
+    expect(routes).toContain("/firm/admin/team-progress");
+    expect(routes).not.toContain("/firm/review");
+    expect(navigationByRole.admin.some(item => item.label === "Work Queue")).toBe(false);
     expect(routes).toContain("/firm/admin/users");
     expect(routes).toContain("/firm/admin/roles");
     expect(routes).toContain("/firm/clients");

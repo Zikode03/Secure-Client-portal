@@ -1,11 +1,12 @@
-import { buildDocumentTextPreview } from "../../utils/documentTextPreview";
-import { BulkInvoiceScan } from "../../components/invoice-review/BulkInvoiceScan";
+import { DocumentPdfPreview } from "../../components/documents/DocumentPdfPreview";
+import { RefreshCw, Search } from "lucide-react";
+import "./workQueue.css";
 import { InvoiceReviewPanel, type InvoiceReviewReady } from "../../components/invoice-review/InvoiceReviewPanel";
 import { reviewQueueApi } from "../../services/reviewQueueApi";
 // Friendly guide: this module (AccountantReviewPage) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../app/auth";
@@ -31,9 +32,6 @@ import { hasPermission, getScopedReviewQueue } from "../../utils/permissions";
 const reviewSnapshotDate = new Date();
 
 // Shared shape notes: these types keep UI and data contracts aligned.
-type QueueStatusFilter = "all" | "under_review" | "overdue" | "attention" | "on_track";
-type DueWindowFilter = "all" | "overdue" | "soon" | "later";
-type QueueOrder = "priority" | "recent";
 interface ReviewVersionEntry {
   id: string;
   isLatest: boolean;
@@ -59,89 +57,14 @@ function fileExtensionLabel(fileName: string) {
   return extension && extension.length <= 4 ? extension : "DOC";
 }
 
-function addDays(value: string, days: number) {
-  const timestamp = Date.parse(value);
-  const date = Number.isFinite(timestamp) ? new Date(timestamp) : new Date(reviewSnapshotDate);
-  date.setUTCDate(date.getUTCDate() + days);
-  return date.toISOString();
-}
-
-function dueInDays(value: string) {
-  const difference = new Date(value).getTime() - reviewSnapshotDate.getTime();
-  return Math.ceil(difference / (1000 * 60 * 60 * 24));
-}
-
 function queueStatusMeta(item: ReviewQueueItem) {
-  if (item.status === "under_review") {
-    return {
-      key: "under_review" as const,
-      label: "Under review",
-      pill: "bg-brand-50 text-brand-700 ring-brand-200",
-      accent: "border-l-brand-500",
-    };
-  }
-
-  const dueDate = addDays(item.submittedAt, 4);
-  const remainingDays = dueInDays(dueDate);
-
-  if (remainingDays < 0) {
-    return {
-      key: "overdue" as const,
-      label: "Overdue",
-      pill: "bg-rose-50 text-rose-700 ring-rose-200",
-      accent: "border-l-rose-500",
-    };
-  }
-
-  if (remainingDays <= 1) {
-    return {
-      key: "attention" as const,
-      label: "Attention",
-      pill: "bg-amber-50 text-amber-700 ring-amber-200",
-      accent: "border-l-amber-500",
-    };
-  }
-
-  return {
-    key: "on_track" as const,
-    label: "On track",
-    pill: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-    accent: "border-l-emerald-500",
-  };
+  return item.status === "under_review"
+    ? { key: "under_review", label: "Under review", pill: "bg-brand-50 text-brand-700 ring-brand-200" }
+    : { key: "awaiting_review", label: "Awaiting review", pill: "bg-slate-50 text-slate-700 ring-slate-200" };
 }
 
 function queueDueMeta(item: ReviewQueueItem) {
-  const dueDate = addDays(item.submittedAt, 4);
-  const remainingDays = dueInDays(dueDate);
-
-  if (remainingDays < 0) {
-    const lateDays = Math.abs(remainingDays);
-    return {
-      filterKey: "overdue" as const,
-      label: formatDateLabel(dueDate),
-      helper: `Overdue by ${lateDays} day${lateDays === 1 ? "" : "s"}`,
-      helperClass: "text-rose-600",
-    };
-  }
-
-  if (remainingDays <= 3) {
-    return {
-      filterKey: "soon" as const,
-      label: formatDateLabel(dueDate),
-      helper:
-        remainingDays === 0
-          ? "Due today"
-          : `Due in ${remainingDays} day${remainingDays === 1 ? "" : "s"}`,
-      helperClass: "text-amber-600",
-    };
-  }
-
-  return {
-    filterKey: "later" as const,
-    label: formatDateLabel(dueDate),
-    helper: `Due in ${remainingDays} days`,
-    helperClass: "text-slate-500",
-  };
+  return { label: "Not specified", helper: `Received ${formatDateLabel(item.submittedAt)}`, helperClass: "text-slate-500" };
 }
 
 interface BackendReviewQueueItem {
@@ -257,7 +180,7 @@ function mapBackendQueueItem(
     documentType: item.slotLabel || item.documentCategory,
     monthLabel: monthLabelFromParts(item.year, item.month),
     submittedAt: validBackendTimestamp(item.submittedAtUtc, item.uploadedAtUtc),
-    status: mapBackendStatus(item.documentStatus),
+    status: mapBackendStatus(item.slotStatus || item.documentStatus),
     assignedAccountant: currentUserName || "Assigned accountant",
   };
 }
@@ -351,27 +274,21 @@ function mapBackendWorkspace(
   };
 }
 
-function queuePriorityMeta(item: ReviewQueueItem) {
-  const statusMeta = queueStatusMeta(item);
+function queuePriorityMeta(priority?: string) {
+  if (priority === "high") return { label: "High", pill: "bg-rose-50 text-rose-700 ring-rose-200" };
+  if (priority === "medium") return { label: "Medium", pill: "bg-amber-50 text-amber-700 ring-amber-200" };
+  return { label: "Normal", pill: "bg-slate-50 text-slate-700 ring-slate-200" };
+}
 
-  if (statusMeta.key === "overdue" || statusMeta.key === "under_review") {
-    return {
-      label: "High",
-      pill: "bg-rose-50 text-rose-700 ring-rose-200",
-    };
-  }
+function awaitingDecision(item: BackendReviewQueueItem) {
+  if (["accepted", "approved", "filed", "rejected", "reupload_required", "deleted", "archived"].includes(item.documentStatus.toLowerCase())) return false;
+  return ["submitted", "under_review"].includes((item.slotStatus || item.documentStatus).toLowerCase());
+}
 
-  if (statusMeta.key === "attention") {
-    return {
-      label: "Medium",
-      pill: "bg-amber-50 text-amber-700 ring-amber-200",
-    };
-  }
-
-  return {
-    label: "Low",
-    pill: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-  };
+function reviewReason(item: BackendReviewQueueItem | undefined) {
+  if (item?.currentVersionNumber && item.currentVersionNumber > 1) return "Updated document to review";
+  if ((item?.slotStatus || item?.documentStatus) === "under_review") return "Review in progress";
+  return "Awaiting your review";
 }
 
 function queueTypeClasses(documentType: string) {
@@ -479,27 +396,15 @@ function downloadPreview(fileName: string, content: string) {
   window.URL.revokeObjectURL(url);
 }
 
-function openDocumentInNewTab(record: DocumentRecord) {
-  if (record.fileDataUrl) {
-    const fileWindow = window.open(record.fileDataUrl, "_blank", "noopener,noreferrer");
-    return Boolean(fileWindow);
+async function downloadDocumentFile(record: DocumentRecord, backendMode: boolean) {
+  if (backendMode && !record.fileDataUrl) {
+    const { blob } = await apiGetBlob(`/api/documents/${encodeURIComponent(record.id)}/download`);
+    const url = URL.createObjectURL(blob);
+    const link = window.document.createElement("a");
+    link.href = url; link.download = record.fileName; link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return;
   }
-
-  const previewWindow = window.open("", "_blank", "noopener,noreferrer");
-  if (!previewWindow) {
-    return false;
-  }
-
-  const previewText =
-    record.extractedText ??
-    `${record.documentType}\n${record.fileName}\n${record.description}`;
-
-  previewWindow.document.write(buildDocumentTextPreview(record.fileName, previewText));
-  previewWindow.document.close();
-  return true;
-}
-
-function downloadDocumentFile(record: DocumentRecord) {
   if (record.fileDataUrl) {
     const link = window.document.createElement("a");
     link.href = record.fileDataUrl;
@@ -543,7 +448,7 @@ function QueueFileIcon({ documentType, fileName }: { documentType: string; fileN
           strokeWidth="1.8"
         />
       </svg>
-      <span className="absolute -bottom-1.5 rounded-full border border-white bg-white px-1.5 py-0.5 text-[0.56rem] font-medium uppercase leading-none text-slate-500 shadow-sm">
+      <span className="absolute -bottom-1.5 rounded-full border border-white bg-white px-1.5 py-0.5 text-sm font-medium uppercase leading-none text-slate-500 shadow-sm">
         {fileExtensionLabel(fileName)}
       </span>
     </div>
@@ -564,28 +469,6 @@ function DownloadIcon() {
   );
 }
 
-function CalendarIcon() {
-  return (
-    <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
-      <rect
-        height="14"
-        rx="2.5"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        width="16"
-        x="4"
-        y="6.5"
-      />
-      <path
-        d="M8 4.5v4m8-4v4M4 10.5h16"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
-}
 
 function ChevronDownIcon() {
   return (
@@ -657,19 +540,6 @@ function ZoomInIcon() {
   );
 }
 
-function MoreVerticalIcon() {
-  return (
-    <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
-      <path
-        d="M12 5.25a1.25 1.25 0 1 0 0 .001M12 12a1.25 1.25 0 1 0 0 .001M12 18.75a1.25 1.25 0 1 0 0 .001"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="2.2"
-      />
-    </svg>
-  );
-}
 
 function CloseIcon() {
   return (
@@ -803,6 +673,14 @@ function PreviewCanvas({
     dataUrl.startsWith("data:application/pdf") ||
     /\.pdf$/i.test(document.fileName);
 
+  if (hasRealFile) {
+    return <div className="review-file-canvas">
+      {isImage ? <img alt={document.fileName} src={dataUrl} />
+        : isPdf ? <iframe src={dataUrl} title={document.fileName} />
+        : <p className="review-preview-unavailable">Preview is unavailable for this file format. Download the original to inspect this file format.</p>}
+    </div>;
+  }
+
   return (
     <div className="flex min-h-[32rem] items-start justify-center overflow-auto bg-[linear-gradient(180deg,#f8fafc_0%,#eef2ff_100%)] px-4 py-6">
       <div
@@ -813,24 +691,24 @@ function PreviewCanvas({
           <div className="space-y-2">
             <span
               className={cn(
-                "inline-flex rounded-lg px-2.5 py-1 text-[0.72rem] font-medium uppercase ring-1 ring-inset",
+                "inline-flex rounded-lg px-2.5 py-1 text-sm font-medium uppercase ring-1 ring-inset",
                 queueTypeClasses(document.documentType),
               )}
             >
               {fileExtensionLabel(document.fileName)}
             </span>
             <div>
-              <h3 className="text-[1.04rem] font-medium text-slate-950">{document.fileName}</h3>
-              <p className="mt-1 text-[0.92rem] text-slate-500">
+              <h3 className="text-base font-medium text-slate-950">{document.fileName}</h3>
+              <p className="mt-1 text-base text-slate-500">
                 {document.clientName} / {document.monthLabel}
               </p>
             </div>
           </div>
           <div className="rounded-[1rem] border border-slate-200 bg-slate-50 px-4 py-3 text-right">
-            <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-slate-400">
+            <p className="text-sm font-medium uppercase tracking-[0.16em] text-slate-400">
               File type
             </p>
-            <p className="mt-2 text-[0.92rem] text-slate-700">{document.documentType}</p>
+            <p className="mt-2 text-base text-slate-700">{document.documentType}</p>
           </div>
         </div>
         {hasRealFile ? (
@@ -849,12 +727,12 @@ function PreviewCanvas({
               />
             ) : (
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-                This file type cannot be embedded here. Use Open in new tab to view it.
+                This file type cannot be embedded here. Download the original to view it.
               </div>
             )}
           </div>
         ) : (
-          <div className="mt-6 space-y-3 font-mono text-[0.88rem] leading-7 text-slate-600">
+          <div className="mt-6 space-y-3 font-mono text-base leading-7 text-slate-600">
             {previewPages[previewPage - 1].map((line, index) => (
               <div className="flex gap-4" key={`${document.id}-preview-${previewPage}-${index}`}>
                 <span className="w-7 shrink-0 text-right text-slate-300">
@@ -884,7 +762,7 @@ export function AccountantReviewPage() {
   useEffect(() => () => { for (const url of fileUrls.current.values()) URL.revokeObjectURL(url); fileUrls.current.clear(); }, []);
   const [queueLoading, setQueueLoading] = useState(true);
   const [queueRevision, setQueueRevision] = useState(0);
-  const [assistantFilter, setAssistantFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [assistantSummaries, setAssistantSummaries] = useState<Record<string, BackendReviewQueueItem>>({});
   const [liveQueueItems, setLiveQueueItems] = useState<ReviewQueueItem[] | null>(null);
   const [liveQueueRecordsByDocumentId, setLiveQueueRecordsByDocumentId] = useState<
@@ -902,24 +780,28 @@ export function AccountantReviewPage() {
   );
 
 // Local UI state: keeps track of what the user is seeing or editing right now.
-  const [selectedAccountant, setSelectedAccountant] = useState("all");
   const [selectedClient, setSelectedClient] = useState("all");
-  const [selectedType, setSelectedType] = useState("all");
-  const [selectedStatus, setSelectedStatus] = useState<QueueStatusFilter>("all");
-  const [selectedDueWindow, setSelectedDueWindow] = useState<DueWindowFilter>("all");
-  const [queueOrder, setQueueOrder] = useState<QueueOrder>("priority");
   const [selectedRecordId, setSelectedRecordId] = useState(queue[0]?.id ?? "");
   const [viewerOpen, setViewerOpen] = useState(false);
   const openedReviewLink = useRef("");
+  const [pdfPreviewReady, setPdfPreviewReady] = useState<{ id: string; ready: boolean } | null>(null);
+  const onPdfPreviewReady = useCallback((id: string, ready: boolean) => setPdfPreviewReady({ id, ready }), []);
+  const [reviewTab, setReviewTab] = useState<"decision" | "comments" | "details">("decision");
+  const [decisionForm, setDecisionForm] = useState<"rejected" | "request_reupload" | null>(null);
+  const [decisionReason, setDecisionReason] = useState("");
+  const [decisionError, setDecisionError] = useState("");
+  const [decisionSaving, setDecisionSaving] = useState(false);
+  const decisionPending = useRef(false);
+  useEffect(() => {
+    setDecisionForm(null); setDecisionReason(""); setDecisionError(""); setReviewTab("decision");
+  }, [selectedRecordId, viewerOpen]);
   const [invoiceReviewReady, setInvoiceReviewReady] = useState<InvoiceReviewReady | null>(null);
   const [reviewMessage, setReviewMessage] = useState("");
   const [previewPage, setPreviewPage] = useState(1);
   const [previewZoom, setPreviewZoom] = useState(100);
-  const [openActionMenuId, setOpenActionMenuId] = useState("");
   const [workspaceAuditEntries, setWorkspaceAuditEntries] = useState<
     Record<string, AuditTrailEntry[]>
   >({});
-  const rowActionMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!backendMode) {
@@ -932,14 +814,14 @@ export function AccountantReviewPage() {
       setQueueLoading(true);
       setReviewMessage("");
       try {
-        const items = await apiGetJson<BackendReviewQueueItem[]>("/api/review-queue");
+        const items = await apiGetJson("/api/review-queue");
         if (!isActive) {
           return;
         }
 
         if (!Array.isArray(items) || items.some(item => !item.documentId || !item.documentStatus || !Number.isFinite(Date.parse(item.submittedAtUtc || item.uploadedAtUtc)))) throw new Error("The review queue response is incomplete. Reload the queue or check the API error log.");
         setAssistantSummaries(Object.fromEntries(items.map(item => [item.documentId, item])));
-        setLiveQueueItems(items.map((item) => mapBackendQueueItem(item, user?.fullName)));
+        setLiveQueueItems(items.filter(awaitingDecision).map((item) => mapBackendQueueItem(item, user?.fullName)));
         setLiveQueueRecordsByDocumentId(
           Object.fromEntries(items.map((item) => [item.documentId, mapBackendQueueRecord(item)])),
         );
@@ -991,136 +873,19 @@ export function AccountantReviewPage() {
     () => Array.from(new Set(queueRows.map((row) => row.item.clientName))).sort(),
     [queueRows],
   );
-  const accountantOptions = useMemo(
-    () => Array.from(new Set(queueRows.map((row) => row.item.assignedAccountant))).sort(),
-    [queueRows],
-  );
-  const typeOptions = useMemo(
-    () => Array.from(new Set(queueRows.map((row) => row.item.documentType))).sort(),
-    [queueRows],
-  );
+  const filteredRows = useMemo(() => {
+    const search = searchQuery.trim().toLowerCase();
+    return queueRows.filter(row => (selectedClient === "all" || row.item.clientName === selectedClient) &&
+      (!search || [row.item.clientName, row.item.documentType, row.item.monthLabel, row.record.fileName].join(" ").toLowerCase().includes(search)));
+  }, [queueRows, selectedClient, searchQuery]);
 
-  const filteredRows = useMemo(
-    () =>
-      queueRows.filter((row) => {
-        if (assistantFilter !== "all" && assistantSummaries[row.item.id]?.assistantState !== assistantFilter) return false;
-        if (selectedAccountant !== "all" && row.item.assignedAccountant !== selectedAccountant) {
-          return false;
-        }
+  const orderedRows = useMemo(() => [...filteredRows].sort((left, right) => {
+    const rank = (id: string) => ({ high: 3, medium: 2, normal: 1 }[assistantSummaries[id]?.reviewPriority ?? "normal"] ?? 1);
+    return rank(right.item.id) - rank(left.item.id) || Date.parse(left.item.submittedAt) - Date.parse(right.item.submittedAt);
+  }), [filteredRows, assistantSummaries]);
 
-        if (selectedClient !== "all" && row.item.clientName !== selectedClient) {
-          return false;
-        }
-
-        if (selectedType !== "all" && row.item.documentType !== selectedType) {
-          return false;
-        }
-
-        if (selectedStatus !== "all" && row.statusMeta.key !== selectedStatus) {
-          return false;
-        }
-
-        if (selectedDueWindow !== "all" && row.dueMeta.filterKey !== selectedDueWindow) {
-          return false;
-        }
-
-        return true;
-      }),
-    [queueRows, selectedAccountant, selectedClient, selectedDueWindow, selectedStatus, selectedType, assistantFilter, assistantSummaries],
-  );
-
-  const queueStatusCounts = useMemo(
-    () => ({
-      all: queueRows.length,
-      under_review: queueRows.filter((row) => row.statusMeta.key === "under_review").length,
-      overdue: queueRows.filter((row) => row.statusMeta.key === "overdue").length,
-      attention: queueRows.filter((row) => row.statusMeta.key === "attention").length,
-      on_track: queueRows.filter((row) => row.statusMeta.key === "on_track").length,
-    }),
-    [queueRows],
-  );
-
-  const orderedRows = useMemo(() => {
-    const rows = [...filteredRows];
-
-    if (queueOrder === "recent") {
-      return rows.sort(
-        (left, right) =>
-          new Date(right.item.submittedAt).getTime() -
-          new Date(left.item.submittedAt).getTime(),
-      );
-    }
-
-    const priorityScore = (row: (typeof filteredRows)[number]) => {
-      const statusRank =
-        row.statusMeta.key === "overdue"
-          ? 4
-          : row.statusMeta.key === "attention"
-            ? 3
-            : row.statusMeta.key === "under_review"
-              ? 2
-              : 1;
-      const dueRank =
-        row.dueMeta.filterKey === "overdue"
-          ? 3
-          : row.dueMeta.filterKey === "soon"
-            ? 2
-            : 1;
-      return statusRank * 100 + dueRank * 10;
-    };
-
-    return rows.sort((left, right) => priorityScore(right) - priorityScore(left));
-  }, [filteredRows, queueOrder]);
-
-  const hasActiveFilters =
-    assistantFilter !== "all" ||
-    selectedAccountant !== "all" ||
-    selectedClient !== "all" ||
-    selectedType !== "all" ||
-    selectedStatus !== "all" ||
-    selectedDueWindow !== "all";
-
-  const emptyStateCopy = useMemo(() => {
-    if (selectedStatus === "overdue") {
-      return {
-        title: "No overdue records",
-        description: "There are no overdue items in the current queue view.",
-      };
-    }
-
-    if (selectedStatus === "under_review") {
-      return {
-        title: "No records under review",
-        description: "There are no items currently marked as under review for these filters.",
-      };
-    }
-
-    if (selectedStatus === "attention") {
-      return {
-        title: "No attention items",
-        description: "No records currently need attention in this filtered queue view.",
-      };
-    }
-
-    if (selectedClient !== "all") {
-      return {
-        title: "No records for this client",
-        description: "Try another client or clear the current queue filters.",
-      };
-    }
-
-    if (selectedType !== "all") {
-      return {
-        title: "No records for this type",
-        description: "No queue records match the selected document type and filters.",
-      };
-    }
-
-    return {
-      title: "Nothing in this view",
-      description: "No review records match the current filters.",
-    };
-  }, [selectedClient, selectedStatus, selectedType]);
+  const hasActiveFilters = searchQuery.trim() !== "" || selectedClient !== "all";
+  const emptyStateCopy = { title: "No matching documents", description: "Try another client or search term, or clear the filters." };
 
   const activeRow = useMemo(
     () => queueRows.find((row) => row.item.id === selectedRecordId) ?? null,
@@ -1128,7 +893,10 @@ export function AccountantReviewPage() {
   );
   const activeDocument = activeRow?.record ?? null;
   const invoiceDocument = Boolean(activeDocument && (activeDocument.keywordTags[0] || activeDocument.documentType).toLowerCase().includes("invoice"));
-  const activePriority = activeRow ? queuePriorityMeta(activeRow.item) : null;
+  const inlinePdf = Boolean(backendMode && activeDocument && !invoiceDocument && /\.pdf$/i.test(activeDocument.fileName));
+  const pdfPreviewBlocked = inlinePdf && (pdfPreviewReady?.id !== activeDocument?.id || !pdfPreviewReady?.ready);
+
+  const activePriority = activeRow ? queuePriorityMeta(assistantSummaries[activeRow.item.id]?.reviewPriority) : null;
   const selectedRowIndex = useMemo(
     () => orderedRows.findIndex((row) => row.item.id === selectedRecordId),
     [orderedRows, selectedRecordId],
@@ -1139,7 +907,6 @@ export function AccountantReviewPage() {
     selectedRowIndex >= 0 && selectedRowIndex < orderedRows.length - 1
       ? orderedRows[selectedRowIndex + 1]?.item.id ?? ""
       : "";
-  const hasUnsavedDraft = false;
 
   const combinedAuditTrail = useMemo(() => {
     if (!activeDocument) {
@@ -1212,7 +979,7 @@ export function AccountantReviewPage() {
 
     async function loadWorkspace() {
       try {
-        const workspace = await apiGetJson<BackendReviewWorkspace>(
+        const workspace = await apiGetJson(
           `/api/review-queue/${encodeURIComponent(selectedRecordId)}`,
         );
         if (!isActive) {
@@ -1226,6 +993,8 @@ export function AccountantReviewPage() {
           ...current,
           [selectedRecordId]: workspace,
         }));
+
+        if (/\.pdf$/i.test(workspace.item.documentName) && !`${workspace.item.documentCategory} ${workspace.item.slotLabel}`.toLowerCase().includes("invoice")) return;
 
         try {
           const { blob, contentType } = await apiGetBlob(
@@ -1287,12 +1056,8 @@ export function AccountantReviewPage() {
   }
 
   function clearFilters() {
+    setSearchQuery("");
     setSelectedClient("all");
-    setAssistantFilter("all");
-    setSelectedType("all");
-    setSelectedStatus("all");
-    setSelectedDueWindow("all");
-    setSelectedAccountant("all");
   }
 
   function openInClientWorkspace(recordId: string) {
@@ -1349,12 +1114,16 @@ export function AccountantReviewPage() {
     }
 
     const [queueItems, workspace] = await Promise.all([
-      apiGetJson<BackendReviewQueueItem[]>("/api/review-queue"),
-      apiGetJson<BackendReviewWorkspace>(`/api/review-queue/${encodeURIComponent(documentId)}`),
+      apiGetJson("/api/review-queue"),
+      apiGetJson(`/api/review-queue/${encodeURIComponent(documentId)}`),
     ]);
 
+    if (!queueItems.filter(awaitingDecision).some(item => item.documentId === documentId)) {
+      setViewerOpen(false);
+      setInvoiceReviewReady(null);
+    }
     setAssistantSummaries(Object.fromEntries(queueItems.map(item => [item.documentId, item])));
-    setLiveQueueItems(queueItems.map((item) => mapBackendQueueItem(item, user?.fullName)));
+    setLiveQueueItems(queueItems.filter(awaitingDecision).map((item) => mapBackendQueueItem(item, user?.fullName)));
     setLiveQueueRecordsByDocumentId(
       Object.fromEntries(
         queueItems.map((item) => [item.documentId, mapBackendQueueRecord(item)]),
@@ -1373,9 +1142,8 @@ export function AccountantReviewPage() {
 
   async function approveActiveDocument() {
     if (!canReviewDocuments) { setReviewMessage("Your account has read-only oversight. Accounting review permission is required for this action."); return; }
-    if (!backendMode || !activeDocument) {
-      return;
-    }
+    if (!backendMode || !activeDocument) return;
+    if (pdfPreviewBlocked) { setReviewMessage("View the document successfully before approving it."); return; }
 
     try {
       await reviewQueueApi.review(activeDocument.id, {
@@ -1393,54 +1161,27 @@ export function AccountantReviewPage() {
     }
   }
 
-  async function rejectActiveDocument() {
-    if (!canReviewDocuments) { setReviewMessage("Your account has read-only oversight. Accounting review permission is required for this action."); return; }
-    if (!backendMode || !activeDocument) {
-      return;
-    }
-
-    const reason = window.prompt("Enter the rejection reason for the client.");
-    if (!reason?.trim()) {
-      return;
-    }
-
-    try {
-      await reviewQueueApi.review(activeDocument.id, {
-        decision: "rejected",
-        reason: reason.trim(),
-        internalNote: null,
-        invoiceReview: invoiceDocument ? { expectedVersionNumber: activeDocument.versionNumber ?? 1, expectedRevision: invoiceReviewReady?.revision ?? 0 } : undefined,
-      });
-      await refreshBackendWorkspace(activeDocument.id);
-      handleWorkspaceActionSuccess("Document rejected and queue refreshed.");
-    } catch (error) {
-      setReviewMessage(error instanceof ApiError ? error.message : "Rejection failed.");
-    }
+  function startDecision(decision: "rejected" | "request_reupload") {
+    setDecisionForm(decision); setDecisionReason(""); setDecisionError("");
   }
 
-  async function requestReuploadForActiveDocument() {
-    if (!canReviewDocuments) { setReviewMessage("Your account has read-only oversight. Accounting review permission is required for this action."); return; }
-    if (!backendMode || !activeDocument) {
-      return;
-    }
-
-    const reason = window.prompt("Enter the re-upload request reason.");
-    if (!reason?.trim()) {
-      return;
-    }
-
+  async function submitDecision() {
+    if (!canReviewDocuments || !backendMode || !activeDocument || !decisionForm || decisionPending.current) return;
+    if (!decisionReason.trim()) { setDecisionError("Enter a reason so the client knows what to correct."); return; }
+    decisionPending.current = true; setDecisionSaving(true); setDecisionError("");
     try {
       await reviewQueueApi.review(activeDocument.id, {
-        decision: "request_reupload",
-        reason: reason.trim(),
+        decision: decisionForm,
+        reason: decisionReason.trim(),
         internalNote: null,
         invoiceReview: invoiceDocument ? { expectedVersionNumber: activeDocument.versionNumber ?? 1, expectedRevision: invoiceReviewReady?.revision ?? 0 } : undefined,
       });
       await refreshBackendWorkspace(activeDocument.id);
-      handleWorkspaceActionSuccess("Re-upload request sent and queue refreshed.");
+      setDecisionForm(null); setDecisionReason("");
+      handleWorkspaceActionSuccess(decisionForm === "rejected" ? "Document rejected and queue refreshed." : "Re-upload request sent and queue refreshed.");
     } catch (error) {
-      setReviewMessage(error instanceof ApiError ? error.message : "Request re-upload failed.");
-    }
+      setDecisionError(error instanceof ApiError ? error.message : "Could not save your decision. Your reason has been kept; please try again.");
+    } finally { decisionPending.current = false; setDecisionSaving(false); }
   }
 
   async function addWorkspaceComment() {
@@ -1467,13 +1208,7 @@ export function AccountantReviewPage() {
   }
 
   function closeViewer() {
-    if (
-      hasUnsavedDraft &&
-      !window.confirm("You have unsaved notes or invoice details. Close the review anyway?")
-    ) {
-      return;
-    }
-
+    if (decisionPending.current) return;
     setViewerOpen(false);
   }
 
@@ -1500,7 +1235,7 @@ export function AccountantReviewPage() {
   ) {
     return (
       <label className="space-y-2">
-        <span className="text-[0.82rem] font-medium text-slate-500">{label}</span>
+        <span className="text-sm font-medium text-slate-500">{label}</span>
         <div className="relative">
           {icon ? (
             <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
@@ -1529,36 +1264,22 @@ export function AccountantReviewPage() {
     );
   }
 
+
   useEffect(() => {
-    if (!openActionMenuId) {
-      return;
-    }
-
-    function handlePointerDown(event: MouseEvent) {
-      if (rowActionMenuRef.current && !rowActionMenuRef.current.contains(event.target as Node)) {
-        setOpenActionMenuId("");
-      }
-    }
-
-    function handleEscape(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        setOpenActionMenuId("");
-      }
-    }
-
-    document.addEventListener("mousedown", handlePointerDown);
-    document.addEventListener("keydown", handleEscape);
-
+    if (!viewerOpen) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    workspaceRef.current?.querySelector<HTMLElement>('[role="dialog"] button')?.focus();
     return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("keydown", handleEscape);
+      document.body.style.overflow = previousOverflow;
+      previousFocus?.focus();
     };
-  }, [openActionMenuId]);
+  }, [viewerOpen]);
 
   useEffect(() => {
-    if (!viewerOpen) {
-      return;
-    }
+    if (!viewerOpen) return;
+    const dialog = workspaceRef.current?.querySelector<HTMLElement>('[role="dialog"]');
 
     function handleViewerShortcuts(event: KeyboardEvent) {
       const target = event.target as HTMLElement | null;
@@ -1566,6 +1287,14 @@ export function AccountantReviewPage() {
         target?.tagName === "TEXTAREA" ||
         target?.tagName === "INPUT" ||
         target?.isContentEditable;
+
+      if (event.key === "Tab" && dialog) {
+        const controls = Array.from(dialog.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], input:not(:disabled), textarea:not(:disabled), select:not(:disabled), iframe, [tabindex="0"]')).filter(control => control.getClientRects().length > 0);
+        const first = controls[0];
+        const last = controls[controls.length - 1];
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+      }
 
       if (event.key === "Escape") {
         event.preventDefault();
@@ -1593,24 +1322,15 @@ export function AccountantReviewPage() {
 
     window.addEventListener("keydown", handleViewerShortcuts);
     return () => window.removeEventListener("keydown", handleViewerShortcuts);
-  }, [viewerOpen, previousRecordId, nextRecordId, hasUnsavedDraft]);
+  }, [viewerOpen, previousRecordId, nextRecordId]);
 
   return (
-    <div className="flex min-h-0 w-full flex-1 flex-col gap-5">
-      <header className="portal-page-header border-b border-slate-200 pb-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">
-          {user?.role === "admin" ? "Firm operations" : "Accountant workspace"}
-        </p>
-        <div className="mt-1 flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-semibold tracking-tight text-slate-950">Work Queue</h1>
-            <p className="mt-1 text-sm leading-6 text-slate-500">
-              Review submitted documents, resolve exceptions, and keep client work moving.
-            </p>
-          </div>
-          <p className="text-sm font-medium text-slate-600">
-            <span className="font-semibold text-slate-950">{queueRows.length}</span> active items
-          </p>
+    <div className="work-queue flex min-h-0 w-full flex-1 flex-col gap-5">
+      <header className="portal-page-header work-queue-heading">
+        <div><h1 className="workspace-duplicate-title ">Work Queue</h1><p>{canReviewDocuments ? "Documents waiting for an accounting decision." : "Monitor submitted documents and open their review history."}</p></div>
+        <div className="work-queue-heading-actions">
+          <Button variant="secondary" disabled={queueLoading} onClick={() => { workspaceCache.current = {}; setLiveWorkspaceByDocumentId({}); setQueueRevision(value => value + 1); }}><RefreshCw size={16} aria-hidden="true" />Refresh queue</Button>
+          <Button disabled={queueLoading || !orderedRows.length} onClick={() => openViewer(orderedRows[0].item.id)}>{canReviewDocuments ? "Review next" : "View next"}</Button>
         </div>
       </header>
 
@@ -1620,270 +1340,74 @@ export function AccountantReviewPage() {
         </div>
       ) : null}
 
-      {backendMode && queueLoading ? <p role="status">Loading review queue...</p> : null}
       {queueRows.length === 0 && !queueLoading ? (
         <section className="space-y-5 border-y border-slate-200 bg-white px-5 py-10">
           <EmptyState
-            description={
+            description={backendMode && liveQueueItems === null ? "The queue could not be loaded. Refresh to try again." :
               user?.role === "admin"
-                ? "There are no firm records waiting in the review queue right now. Use Refresh queue to check for new submissions."
-                : "There are no records waiting in your assigned review queue right now. Use Refresh queue to check for new submissions."
+                ? "No documents are waiting for a decision. Completed records remain in Documents and Filing."
+                : "No documents are waiting for your decision. Completed records remain in Documents and Filing."
             }
-            title={backendMode && liveQueueItems === null ? "Review queue unavailable" : "No review queue items"}
+            title={backendMode && liveQueueItems === null ? "Review queue unavailable" : "No documents awaiting review"}
           />
-          <div className="flex justify-center">
-            <Button
-              className="h-10 rounded-xl px-4"
-              onClick={() => { workspaceCache.current = {}; setLiveWorkspaceByDocumentId({}); setQueueRevision(value => value + 1); }}
-              size="sm"
-            >
-              Refresh queue
-            </Button>
-          </div>
+
         </section>
       ) : (
         <>
           <div className="flex min-h-0 flex-1 flex-col gap-6">
-          <section className="flex-1 overflow-hidden border-y border-slate-200 bg-white">
-            <div className="space-y-4 border-b border-[#e6edf4] bg-white px-1 pb-5 pt-2 sm:px-5 sm:pt-5">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-                    <h2 className="text-[1.18rem] font-medium text-[#091333]">My slot review queue</h2>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3" />
-              </div>
-
-              <div className="flex flex-wrap items-center gap-3">
-                {[
-                  { id: "all" as const, label: "All", count: queueStatusCounts.all },
-                  { id: "under_review" as const, label: "Under review", count: queueStatusCounts.under_review },
-                  { id: "overdue" as const, label: "Overdue", count: queueStatusCounts.overdue },
-                  { id: "attention" as const, label: "Attention", count: queueStatusCounts.attention },
-                  { id: "on_track" as const, label: "On track", count: queueStatusCounts.on_track },
-                ].map((item) => (
-                  <button
-                    className={cn(
-                      "inline-flex items-center gap-2 border-b-2 px-0.5 pb-2 text-[0.96rem] transition",
-                      selectedStatus === item.id
-                        ? "border-[#203a72] text-[#203a72]"
-                        : "border-transparent text-[#6b7894] hover:text-[#203a72]",
-                    )}
-                    key={item.id}
-                    onClick={() => setSelectedStatus(item.id)}
-                    type="button"
-                  >
-                    <span>{item.label}</span>
-                    <span className="rounded-full bg-[#eff3f8] px-2 py-0.5 text-[0.78rem] text-[#6b7894]">
-                      {item.count}
-                    </span>
-                  </button>
-                ))}
-              </div>
-
-              <div
-                className={cn(
-                  "grid gap-4 border-t border-[#edf2f7] pt-4 lg:items-end",
-                  user?.role === "admin"
-                    ? "lg:grid-cols-[repeat(5,minmax(0,1fr))_auto]"
-                    : "lg:grid-cols-[repeat(4,minmax(0,1fr))_auto]",
-                )}
-              >
-                {user?.role === "admin"
-                  ? renderSelectField(
-                      "Accountant",
-                      selectedAccountant,
-                      setSelectedAccountant,
-                      [
-                        { label: "All accountants", value: "all" },
-                        ...accountantOptions.map((accountant) => ({
-                          label: accountant,
-                          value: accountant,
-                        })),
-                      ],
-                    )
-                  : null}
-
-                {renderSelectField(
-                  "Client",
-                  selectedClient,
-                  setSelectedClient,
-                  [
-                    { label: "All clients", value: "all" },
-                    ...clientOptions.map((client) => ({ label: client, value: client })),
-                  ],
-                )}
-
-                {renderSelectField(
-                  "Record type",
-                  selectedType,
-                  setSelectedType,
-                  [
-                    { label: "All types", value: "all" },
-                    ...typeOptions.map((type) => ({ label: type, value: type })),
-                  ],
-                )}
-
-                {renderSelectField(
-                  "Due date",
-                  selectedDueWindow,
-                  (value) => setSelectedDueWindow(value as DueWindowFilter),
-                  [
-                    { label: "Any time", value: "all" },
-                    { label: "Overdue", value: "overdue" },
-                    { label: "Due soon", value: "soon" },
-                    { label: "Later", value: "later" },
-                  ],
-                  <CalendarIcon />,
-                )}
-
-                {renderSelectField(
-                  "Queue order",
-                  queueOrder,
-                  (value) => setQueueOrder(value as QueueOrder),
-                  [
-                    { label: "Priority first", value: "priority" },
-                    { label: "Most recent first", value: "recent" },
-                  ],
-                )}
-
-              </div>
+          <section className="work-queue-surface">
+            <div className="work-queue-toolbar">
+              <label className="work-queue-search"><span>Search documents</span><div><Search size={16} aria-hidden="true" /><input type="search" value={searchQuery} onChange={event => setSearchQuery(event.target.value)} placeholder="Search client or document" /></div></label>
+              {renderSelectField("Client", selectedClient, setSelectedClient, [{ label: "All clients", value: "all" }, ...clientOptions.map(client => ({ label: client, value: client }))])}
+              <p className="work-queue-order-note">Priority first, oldest waiting first</p>
             </div>
+            <div className="work-queue-results"><p aria-live="polite">{orderedRows.length} of {queueRows.length} {queueRows.length === 1 ? "document" : "documents"}</p>{hasActiveFilters ? <button type="button" onClick={clearFilters}>Clear filters</button> : null}</div>
+            <div className="work-queue-column-headings" aria-hidden="true"><div>Client</div><div>Document</div><div>Month</div><div>Why it needs review</div><div>Action</div></div>
 
-            {backendMode ? <>
-              <div className="px-5 py-3">
-                <label className="flex flex-wrap items-center gap-3 text-sm text-slate-600">Saved invoice checks
-                  <select aria-label="Saved invoice checks" className="rounded-lg border border-slate-200 bg-white px-3 py-2" value={assistantFilter} onChange={event => setAssistantFilter(event.target.value)}>
-                    <option value="all">All results</option><option value="not_started">Not read yet</option>
-                    <option value="needs_attention">Needs attention</option><option value="unable_to_verify">Unable to verify</option>
-                    <option value="no_issue_detected">No issue detected</option><option value="stale">Recheck needed</option>
-                  </select>
-                </label>
-                <p className="mt-1 text-xs text-slate-500">Saved findings guide prioritisation. Opening an invoice rechecks its current details and possible duplicates.</p>
-              </div>
-              <BulkInvoiceScan disabled={!canReviewDocuments || viewerOpen || queueLoading} invoices={orderedRows.filter(row => (row.record.keywordTags[0] || row.record.documentType).toLowerCase().includes("invoice")).map(row => ({ id: row.item.id, fileName: row.record.fileName, versionNumber: row.record.versionNumber ?? 1 }))} onFinished={() => setQueueRevision(value => value + 1)} />
-            </> : null}
-
-            <div className="hidden border-b border-slate-100 px-5 py-4 text-[0.78rem] uppercase tracking-[0.12em] text-slate-400 lg:grid lg:grid-cols-[1.7fr_0.9fr_0.9fr_4.5rem] lg:gap-4">
-              <div>Task</div>
-              <div>Submitted</div>
-              <div>Priority</div>
-              <div className="text-right">Action</div>
-            </div>
-
-            {orderedRows.length > 0 ? (
-              <div className="divide-y divide-slate-100">
+            {queueLoading && !queueRows.length ? <p className="px-5 py-8 text-sm text-slate-500" role="status">Loading review queue...</p> : orderedRows.length > 0 ? (
+              <div className="work-queue-list" role="list" aria-label="Documents awaiting review">
                 {orderedRows.map((row) => {
                   const selected = viewerOpen && row.item.id === selectedRecordId;
-                  const priority = queuePriorityMeta(row.item);
+                  const source = assistantSummaries[row.item.id];
 
                   return (
                     <div
                       className={cn(
-                        "relative border-l-[4px] px-5 py-4 transition lg:grid lg:grid-cols-[1.7fr_0.9fr_0.9fr_4.5rem] lg:items-center lg:gap-4",
-                        selected
-                          ? "border-l-brand-500 bg-brand-50/28 shadow-[inset_0_0_0_1px_rgba(84,66,255,0.14)]"
-                          : "border-l-transparent hover:bg-slate-50",
+                        "work-queue-row", selected && "is-selected",
                       )}
                       key={row.item.id}
+                      role="listitem"
                     >
-                      <div className="flex items-start gap-3">
+                      <div className="work-queue-client"><p>{row.item.clientName}</p></div>
+                      <div className="work-queue-document">
                         <QueueFileIcon
                           documentType={row.item.documentType}
                           fileName={row.record.fileName}
                         />
                         <div className="min-w-0">
-                          <p className="text-[0.98rem] font-medium text-slate-950">
-                            {row.item.documentType} slot review
+                          <p className="text-base font-medium text-slate-950">
+                            {row.record.fileName}
                           </p>
-                          <p className="mt-1 text-[0.88rem] text-slate-500">
-                            {row.item.clientName} | {row.item.monthLabel}
+                          <p className="mt-1 text-base text-slate-500">
+                            {row.item.documentType}
                           </p>
-                          {assistantSummaries[row.item.id]?.assistantState ? <p className="mt-1 text-xs text-slate-500">Saved checks: {{not_started: "Not read yet", needs_attention: "Needs attention", unable_to_verify: "Unable to verify", no_issue_detected: "No issue detected", stale: "Recheck needed"}[assistantSummaries[row.item.id].assistantState!] ?? "Recheck needed"}</p> : null}
                         </div>
                       </div>
 
-                      <div className="mt-3 lg:mt-0">
-                        <p className="text-[0.9rem] text-slate-950">
-                          {formatDateLabel(row.item.submittedAt)}
+                      <div className="work-queue-received">
+                        <span className="work-queue-mobile-label">Month</span>
+                        <p className="text-base text-slate-950">
+                          {row.item.monthLabel}
                         </p>
                       </div>
 
-                      <div className="mt-3 lg:mt-0">
-                        <span
-                          className={cn(
-                            "mt-2 inline-flex rounded-full px-2.5 py-1 text-[0.74rem] font-medium uppercase tracking-[0.04em] ring-1 ring-inset",
-                            priority.pill,
-                          )}
-                        >
-                          {priority.label}
-                        </span>
-                        <p className="mt-2 text-[0.78rem] text-slate-500">
-                          {row.dueMeta.helper}
-                        </p>
-                      </div>
+                      <div className="work-queue-reason"><p>{reviewReason(source)}</p><span>{source && source.reviewAgeDays > 0 ? `Waiting ${source.reviewAgeDays} ${source.reviewAgeDays === 1 ? "day" : "days"}` : `Received ${formatDateLabel(row.item.submittedAt)}`}</span></div>
 
                       <div
-                        className="relative mt-3 flex items-center lg:mt-0 lg:justify-end"
+                        className="work-queue-actions"
                         onClick={(event) => event.stopPropagation()}
                       >
-                        <div
-                          className="relative"
-                          ref={openActionMenuId === row.item.id ? rowActionMenuRef : undefined}
-                        >
-                          <button
-                            aria-expanded={openActionMenuId === row.item.id}
-                            aria-label={`Actions for ${row.item.documentType}`}
-                            className={cn(
-                              "inline-flex h-9 w-9 items-center justify-center rounded-lg text-brand-700 transition hover:bg-brand-50",
-                              openActionMenuId === row.item.id ? "bg-brand-50" : "",
-                            )}
-                            onClick={() =>
-                              setOpenActionMenuId((current) =>
-                                current === row.item.id ? "" : row.item.id,
-                              )
-                            }
-                            type="button"
-                          >
-                            <MoreVerticalIcon />
-                          </button>
-
-                          {openActionMenuId === row.item.id ? (
-                            <div className="absolute right-0 top-11 z-30 w-44 overflow-hidden rounded-lg border border-slate-200 bg-white p-1 text-left shadow-[0_18px_38px_rgba(15,23,42,0.16)]">
-                              <button
-                                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-[0.84rem] text-slate-700 transition hover:bg-slate-50"
-                                onClick={() => {
-                                  setOpenActionMenuId("");
-                                  openInClientWorkspace(row.item.id);
-                                }}
-                                type="button"
-                              >
-                                Open client slot history
-                              </button>
-                              <button
-                                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-[0.84rem] text-slate-700 transition hover:bg-slate-50"
-                                onClick={() => {
-                                  setOpenActionMenuId("");
-                                  openViewer(row.item.id);
-                                }}
-                                type="button"
-                              >
-                                Open review
-                              </button>
-                              <button
-                                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-[0.84rem] text-slate-700 transition hover:bg-slate-50"
-                                onClick={() => {
-                                  setOpenActionMenuId("");
-                                  void openDocumentInNewTab(row.record);
-                                }}
-                                type="button"
-                              >
-                                Open file
-                              </button>
-                            </div>
-                          ) : null}
-                        </div>
+                        <Button size="sm" variant="secondary" aria-label={`${canReviewDocuments ? "Review" : "View"} ${row.record.fileName} for ${row.item.clientName}`} onClick={() => openViewer(row.item.id)}>{canReviewDocuments ? "Review" : "View"}</Button>
                       </div>
                     </div>
                   );
@@ -1895,33 +1419,22 @@ export function AccountantReviewPage() {
                   description={emptyStateCopy.description}
                   title={emptyStateCopy.title}
                 />
-                {hasActiveFilters ? (
-                  <div className="mt-4 flex justify-center">
-                    <Button
-                      className="h-10 rounded-xl px-4"
-                      onClick={clearFilters}
-                      size="sm"
-                      variant="ghost"
-                    >
-                      Clear filters
-                    </Button>
-                  </div>
-                ) : null}
+
               </div>
             )}
           </section>
 
           {viewerOpen && activeDocument && activeRow ? (
             <div
-              className="fixed inset-0 z-40 bg-slate-950/45 px-3 py-4 sm:px-6 sm:py-6 lg:px-10"
+              className="review-overlay"
               onClick={closeViewer}
               ref={workspaceRef}
             >
-              <div className={cn("mx-auto h-full w-full overflow-y-auto", invoiceDocument ? "max-w-[1600px]" : "max-w-[1320px]")} onClick={(event) => event.stopPropagation()}>
-              <SurfaceCard className="overflow-hidden rounded-[1.65rem] border border-slate-200/90 bg-white p-0 shadow-[0_16px_36px_rgba(15,23,42,0.05)]">
-              <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 px-5 py-4">
+              <div className="review-dialog" role="dialog" aria-modal="true" aria-label="Document review" onClick={(event) => event.stopPropagation()}>
+              <SurfaceCard className="review-shell">
+              <div className="review-topbar">
                 <button
-                  className="inline-flex items-center gap-2 text-[0.96rem] text-slate-600 transition hover:text-slate-900"
+                  className="inline-flex items-center gap-2 text-base text-slate-600 transition hover:text-slate-900"
                   onClick={closeViewer}
                   type="button"
                 >
@@ -1931,11 +1444,12 @@ export function AccountantReviewPage() {
 
                 <div className="flex items-center gap-2">
                   <Button
-                    className="h-10 rounded-xl px-4"
+                    variant="ghost"
+                    className="h-9 rounded-lg px-3"
                     onClick={() => openInClientWorkspace(activeRow.item.id)}
                     size="sm"
                   >
-                    Open exact document context
+                    Client history
                   </Button>
                   <button
                     aria-label="Close review workspace"
@@ -1948,111 +1462,20 @@ export function AccountantReviewPage() {
                 </div>
               </div>
 
-              <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_380px]">
-                <div className="border-b border-slate-200 lg:border-b-0 lg:border-r lg:border-slate-200">
-                  <div className="space-y-6 px-5 py-5">
-                    <section className="rounded-[1.2rem] border border-slate-200 bg-white p-5">
-                      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                        <div className="flex min-w-0 items-start gap-4">
-                          <QueueFileIcon
-                            documentType={activeDocument.documentType}
-                            fileName={activeDocument.fileName}
-                          />
-                          <div className="min-w-0">
-                            <span
-                              className={cn(
-                                "inline-flex rounded-full px-2.5 py-1 text-[0.68rem] font-medium uppercase tracking-[0.06em] ring-1 ring-inset",
-                                activeRow.statusMeta.pill,
-                              )}
-                            >
-                              {activeRow.statusMeta.label}
-                            </span>
-                            <h2 className="mt-3 text-[1.16rem] font-medium text-slate-950">
-                              {activeDocument.fileName}
-                            </h2>
-                            <p className="mt-1 text-[0.9rem] text-slate-500">
-                              {activeDocument.clientName}  •  {activeDocument.monthLabel}
-                            </p>
-                          </div>
-                        </div>
+              <div className="review-layout">
+                <div className="review-document-pane">
+                  <div className="review-document-content">
+                    <header className="review-file-summary">
+                      <div className="review-file-heading"><h2 className="review-file-name">{activeDocument.documentType}</h2><span className="review-status">{activeRow.statusMeta.label}</span></div>
+                      <p className="review-file-context">{activeDocument.clientName} / {activeDocument.monthLabel}</p>
+                      <div className="review-file-original"><span>{activeDocument.fileName}</span><Button size="sm" variant="ghost" onClick={() => void downloadDocumentFile(activeDocument, backendMode).catch(() => setReviewMessage("Could not download the original document. Please try again."))}><DownloadIcon />Download</Button></div>
+                    </header>
 
-                        <div className="flex flex-wrap items-center gap-2 xl:justify-end">
-                          <Button
-                            className="h-9 rounded-xl px-3 text-slate-700"
-                            onClick={() => {
-                              if (!openDocumentInNewTab(activeDocument)) {
-                                setReviewMessage("Pop-up blocked. Please allow pop-ups to open the file.");
-                              }
-                            }}
-                            size="sm"
-                            variant="secondary"
-                          >
-                            <span>Open in new tab</span>
-                          </Button>
-                          <Button
-                            className="h-9 rounded-xl px-3 text-brand-700"
-                            onClick={() => downloadDocumentFile(activeDocument)}
-                            size="sm"
-                            variant="secondary"
-                          >
-                            <DownloadIcon />
-                            <span>Download</span>
-                          </Button>
-                        </div>
-                      </div>
-                    </section>
-
-                    <section className="rounded-[1.2rem] border border-slate-200 bg-white p-5">
-                      <h3 className="text-[1rem] font-medium text-slate-950">Key details</h3>
-                      <div className="mt-4 grid gap-0 overflow-hidden rounded-[1rem] border border-slate-200 sm:grid-cols-2 xl:grid-cols-4">
-                        <div className="border-b border-slate-200 px-4 py-3.5 sm:border-r xl:border-b-0">
-                          <p className="text-[0.72rem] font-medium uppercase tracking-[0.12em] text-slate-400">
-                            File type
-                          </p>
-                          <p className="mt-1.5 text-[0.92rem] text-slate-900">
-                            {activeDocument.documentType}
-                          </p>
-                        </div>
-                        <div className="border-b border-slate-200 px-4 py-3.5 xl:border-b-0 xl:border-r">
-                          <p className="text-[0.72rem] font-medium uppercase tracking-[0.12em] text-slate-400">
-                            Submitted
-                          </p>
-                          <p className="mt-1.5 text-[0.92rem] text-slate-900">
-                            {formatDateTimeLabel(activeDocument.uploadedAt)}
-                          </p>
-                        </div>
-                        <div className="border-b border-slate-200 px-4 py-3.5 sm:border-r sm:border-slate-200 xl:border-b-0">
-                          <p className="text-[0.72rem] font-medium uppercase tracking-[0.12em] text-slate-400">
-                            Due by
-                          </p>
-                          <p className="mt-1.5 text-[0.92rem] text-slate-900">
-                            {activeRow.dueMeta.label}
-                          </p>
-                          <p className={cn("mt-1 text-[0.8rem]", activeRow.dueMeta.helperClass)}>
-                            {activeRow.dueMeta.helper}
-                          </p>
-                        </div>
-                        <div className="px-4 py-3.5">
-                          <p className="text-[0.72rem] font-medium uppercase tracking-[0.12em] text-slate-400">
-                            Priority
-                          </p>
-                          <span
-                            className={cn(
-                              "mt-1.5 inline-flex rounded-full px-2.5 py-1 text-[0.72rem] font-medium uppercase tracking-[0.04em] ring-1 ring-inset",
-                              activePriority?.pill ?? "bg-slate-50 text-slate-600 ring-slate-200",
-                            )}
-                          >
-                            {activePriority?.label ?? "Normal"}
-                          </span>
-                        </div>
-                      </div>
-                    </section>
-
-                    <section className="overflow-hidden rounded-[1.2rem] border border-slate-200 bg-white">
+                    <section className="review-preview">
                       <div className="border-b border-slate-200 px-5 py-4">
-                        <h3 className="text-[1rem] font-medium text-slate-950">Document preview</h3>
+                        <h3 className="text-base font-medium text-slate-950">Document preview</h3>
                       </div>
-                      {!activeDocument.fileDataUrl ? (
+                      {!activeDocument.fileDataUrl && !inlinePdf ? (
                         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3">
                           <div className="flex items-center gap-2">
                             <button
@@ -2063,7 +1486,7 @@ export function AccountantReviewPage() {
                             >
                               <ChevronLeftIcon />
                             </button>
-                            <span className="min-w-[86px] text-center text-[0.92rem] text-slate-700">
+                            <span className="min-w-[86px] text-center text-base text-slate-700">
                               Page {previewPage} / {previewPages.length}
                             </span>
                             <button
@@ -2091,7 +1514,7 @@ export function AccountantReviewPage() {
                             >
                               <ZoomOutIcon />
                             </button>
-                            <span className="min-w-[62px] text-center text-[0.92rem] text-slate-700">
+                            <span className="min-w-[62px] text-center text-base text-slate-700">
                               {previewZoom}%
                             </span>
                             <button
@@ -2108,7 +1531,7 @@ export function AccountantReviewPage() {
                         </div>
                       ) : null}
 
-                      {backendMode && invoiceDocument && canReviewDocuments ? <InvoiceReviewPanel
+                      {inlinePdf ? <DocumentPdfPreview key={activeDocument.id} documentId={activeDocument.id} fileName={activeDocument.fileName} onReady={onPdfPreviewReady} /> : backendMode && invoiceDocument && canReviewDocuments ? <InvoiceReviewPanel
                         key={activeDocument.id}
                         documentId={activeDocument.id}
                         versionNumber={activeDocument.versionNumber ?? 1}
@@ -2124,161 +1547,27 @@ export function AccountantReviewPage() {
                       />}
                     </section>
 
-                    {versionHistory.length > 1 ? (
-                    <section className="border-t border-slate-200 pt-6">
-                      <div>
-                        <h3 className="text-[1rem] font-medium text-slate-950">
-                          File version history
-                        </h3>
-                        <p className="mt-1 text-sm text-slate-500">
-                          Each uploaded version keeps its own outcome and timeline.
-                        </p>
-                      </div>
-
-                      <div className="mt-4 space-y-3">
-                        {versionHistory.map((version) => (
-                          <div
-                            className={cn(
-                              "rounded-[1.15rem] border px-4 py-4",
-                              version.isLatest
-                                ? "border-brand-200 bg-brand-50/50"
-                                : "border-slate-200 bg-white",
-                            )}
-                            key={version.id}
-                          >
-                            <div className="flex flex-wrap items-start justify-between gap-3">
-                              <div className="space-y-1">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <p className="text-[0.92rem] font-medium text-slate-950">
-                                    Version {version.versionNumber}
-                                  </p>
-                                  {version.isLatest ? (
-                                    <span className="rounded-full bg-white px-2 py-0.5 text-[0.68rem] font-medium text-brand-700 ring-1 ring-brand-200">
-                                      Latest
-                                    </span>
-                                  ) : null}
-                                </div>
-                                <p className="text-sm text-slate-400">
-                                  {formatDateTimeLabel(version.uploadedAt)}
-                                </p>
-                              </div>
-                              <span
-                                className={cn(
-                                  "inline-flex rounded-full px-2.5 py-1 text-[0.72rem] font-medium uppercase tracking-[0.04em] ring-1 ring-inset",
-                                  documentStatusMeta(version.status).panel.includes("emerald")
-                                    ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
-                                    : version.status === "rejected"
-                                      ? "bg-rose-50 text-rose-700 ring-rose-200"
-                                      : version.status === "under_review"
-                                        ? "bg-amber-50 text-amber-700 ring-amber-200"
-                                        : "bg-brand-50 text-brand-700 ring-brand-200",
-                                )}
-                              >
-                                {formatStatusLabel(version.status)}
-                              </span>
-                            </div>
-
-                            {version.rejectionReason ? (
-                              <p className="mt-3 rounded-[0.95rem] border border-rose-100 bg-rose-50 px-3 py-2 text-sm text-rose-700">
-                                Rejection reason: {version.rejectionReason}
-                              </p>
-                            ) : null}
-                          </div>
-                        ))}
-                      </div>
-                    </section>
-                    ) : null}
                   </div>
                 </div>
 
-                <div className="space-y-6 px-5 py-5">
-                  <section className="rounded-[1.25rem] border border-slate-200 bg-white p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex h-2.5 w-2.5 rounded-full bg-brand-500" />
-                      <h3 className="text-[1rem] font-medium text-slate-950">
-                        Decision
-                      </h3>
-                    </div>
-                    <p className="mt-3 text-[0.92rem] leading-7 text-slate-500">
-                      Use this page to inspect the submitted slot version and decide whether it should be accepted, rejected, or sent back for a corrected upload.
-                    </p>
-                    <span
-                      className={cn(
-                        "mt-4 inline-flex rounded-full px-2.5 py-1 text-[0.72rem] font-medium uppercase tracking-[0.04em] ring-1 ring-inset",
-                        activeRow.statusMeta.pill,
-                      )}
-                    >
-                      {formatStatusLabel(activeDocument.status)}
-                    </span>
-
-                    <div className="mt-4 space-y-3">
-                      <div className="rounded-[0.95rem] border border-slate-200 bg-slate-50/60 px-3.5 py-3">
-                        <p className="text-[0.72rem] font-medium uppercase tracking-[0.12em] text-slate-400">
-                          Client
-                        </p>
-                        <p className="mt-1 text-[0.92rem] text-slate-900">
-                          {activeDocument.clientName}
-                        </p>
-                      </div>
-                      <div className="rounded-[0.95rem] border border-slate-200 bg-slate-50/60 px-3.5 py-3">
-                        <p className="text-[0.72rem] font-medium uppercase tracking-[0.12em] text-slate-400">
-                          Period
-                        </p>
-                        <p className="mt-1 text-[0.92rem] text-slate-900">
-                          {activeDocument.monthLabel}
-                        </p>
-                      </div>
-                      {activeDocument.rejectionReason ? (
-                        <div className="rounded-[0.95rem] border border-rose-100 bg-rose-50 px-3.5 py-3">
-                          <p className="text-[0.72rem] font-medium uppercase tracking-[0.12em] text-rose-500">
-                            Previous return reason
-                          </p>
-                          <p className="mt-1 text-[0.9rem] leading-6 text-rose-700">
-                            {activeDocument.rejectionReason}
-                          </p>
-                        </div>
-                      ) : null}
-                    </div>
+                <aside className="review-sidebar" aria-label="Review actions and discussion">
+                  <div className="review-tabs" role="tablist" aria-label="Review panels">{([['decision', 'Decision'], ['comments', 'Comments'], ['details', 'Details']] as const).map(([id, title]) => <button key={id} id={`review-tab-${id}`} role="tab" type="button" aria-selected={reviewTab === id} aria-controls={`review-panel-${id}`} onClick={() => setReviewTab(id)}>{title}</button>)}</div>
+                  <div className="review-sidebar-content">
+                  <section className="review-decision" role="tabpanel" id="review-panel-decision" aria-labelledby="review-tab-decision" hidden={reviewTab !== "decision"}>
+                    <h3>Review decision</h3>
+                    <p className="review-decision-hint">Review the original before approving.</p>
+                    {reviewMessage ? <p className="review-action-message" role="status">{reviewMessage}</p> : null}
+                    {activeDocument.rejectionReason ? <div className="review-return-reason"><strong>Previous return reason</strong><p>{activeDocument.rejectionReason}</p></div> : null}
 
                     <div className="mt-4 space-y-2">
-                      <Button
-                        className="h-11 w-full rounded-xl px-4"
-                        onClick={() => openInClientWorkspace(activeRow.item.id)}
-                        size="sm"
-                        variant="secondary"
-                      >
-                        Open client slot history
-                      </Button>
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        <Button
-                          className="h-10 rounded-xl px-3 text-slate-700"
-                          onClick={() => {
-                            if (!openDocumentInNewTab(activeDocument)) {
-                              setReviewMessage("Pop-up blocked. Please allow pop-ups to open the file.");
-                            }
-                          }}
-                          size="sm"
-                          variant="secondary"
-                        >
-                          Open in new tab
-                        </Button>
-                        <Button
-                          className="h-10 rounded-xl px-3 text-brand-700"
-                          onClick={() => downloadDocumentFile(activeDocument)}
-                          size="sm"
-                          variant="secondary"
-                        >
-                          <DownloadIcon />
-                          <span>Download</span>
-                        </Button>
-                      </div>
                       {backendMode ? (
                         <div className="grid gap-2">
                           {!canReviewDocuments ? <p className="text-xs text-slate-600">Read-only oversight. An authorised accountant must review this document.</p> : null}
+                          {pdfPreviewBlocked ? <p className="text-xs text-slate-500">Approval is available once the document preview loads.</p> : null}
                           <Button
                             className="h-10 rounded-xl px-3"
                             onClick={() => void approveActiveDocument()}
-                            disabled={!canReviewDocuments || (invoiceDocument && (invoiceReviewReady?.documentId !== activeDocument.id || !invoiceReviewReady.ready))}
+                            disabled={!canReviewDocuments || decisionSaving || Boolean(decisionForm) || pdfPreviewBlocked || (invoiceDocument && (invoiceReviewReady?.documentId !== activeDocument.id || !invoiceReviewReady.ready))}
                             size="sm"
                           >
                             Approve
@@ -2286,8 +1575,8 @@ export function AccountantReviewPage() {
                           <div className="grid gap-2 sm:grid-cols-2">
                             <Button
                               className="h-10 rounded-xl px-3 text-rose-700"
-                              disabled={!canReviewDocuments}
-                              onClick={() => void rejectActiveDocument()}
+                              disabled={!canReviewDocuments || decisionSaving}
+                              onClick={() => startDecision("rejected")}
                               size="sm"
                               variant="secondary"
                             >
@@ -2295,26 +1584,35 @@ export function AccountantReviewPage() {
                             </Button>
                             <Button
                               className="h-10 rounded-xl px-3 text-amber-700"
-                              disabled={!canReviewDocuments}
-                              onClick={() => void requestReuploadForActiveDocument()}
+                              disabled={!canReviewDocuments || decisionSaving}
+                              onClick={() => startDecision("request_reupload")}
                               size="sm"
                               variant="secondary"
                             >
                               Request re-upload
                             </Button>
                           </div>
+                          {decisionForm ? <form className="review-decision-form" noValidate onSubmit={event => { event.preventDefault(); void submitDecision(); }}>
+                            <h4>{decisionForm === "rejected" ? "Reject document" : "Request a corrected upload"}</h4>
+                            <p>This reason will be shared with the client.</p>
+                            <label htmlFor="review-decision-reason">Reason for the client</label>
+                            <textarea id="review-decision-reason" autoFocus rows={4} maxLength={2000} value={decisionReason} disabled={decisionSaving} aria-invalid={Boolean(decisionError)} aria-describedby={decisionError ? "review-decision-error" : undefined} onChange={event => { setDecisionReason(event.target.value); setDecisionError(""); }} />
+                            {decisionError ? <p id="review-decision-error" role="alert">{decisionError}</p> : null}
+                            <div><Button type="button" size="sm" variant="ghost" disabled={decisionSaving} onClick={() => { setDecisionForm(null); setDecisionReason(""); setDecisionError(""); }}>Cancel</Button>
+                            <Button type="submit" size="sm" disabled={decisionSaving}>{decisionSaving ? "Saving..." : decisionForm === "rejected" ? "Confirm rejection" : "Send request"}</Button></div>
+                          </form> : null}
                         </div>
                       ) : null}
                     </div>
                   </section>
 
-                  <section className="rounded-[1.25rem] border border-slate-200 bg-white p-4 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
+                  <section className="review-conversation" role="tabpanel" id="review-panel-comments" aria-labelledby="review-tab-comments" hidden={reviewTab !== "comments"}>
                     <div>
-                      <h3 className="text-[1rem] font-medium text-slate-950">
+                      <h3 className="text-base font-medium text-slate-950">
                         Conversation
                       </h3>
-                      <p className="mt-1 text-[0.9rem] text-slate-500">
-                        Conversation that may affect your decision on this file.
+                      <p className="mt-1 text-base text-slate-500">
+                        Notes and questions about this document.
                       </p>
                     </div>
 
@@ -2343,14 +1641,14 @@ export function AccountantReviewPage() {
                               </div>
                               <div className="min-w-0 flex-1">
                                 <div className="flex flex-wrap items-center gap-2">
-                                  <p className="text-[0.92rem] font-medium text-slate-950">
+                                  <p className="text-base font-medium text-slate-950">
                                     {comment.author}
                                   </p>
-                                  <span className="text-[0.8rem] text-slate-400">
+                                  <span className="text-sm text-slate-400">
                                     {formatDateTimeLabel(comment.createdAt)}
                                   </span>
                                 </div>
-                                <p className="mt-3 text-[0.9rem] leading-7 text-slate-600">
+                                <p className="mt-3 text-base leading-7 text-slate-600">
                                   {comment.message}
                                 </p>
                               </div>
@@ -2382,7 +1680,83 @@ export function AccountantReviewPage() {
                       </div>
                     ) : null}
                   </section>
-                </div>
+                  <section className="review-details" role="tabpanel" id="review-panel-details" aria-labelledby="review-tab-details" hidden={reviewTab !== "details"}>
+                    <h3>Document details</h3>
+                    <dl className="review-metadata" aria-label="Document details">
+                      <div><dt>Document type</dt><dd>{activeDocument.documentType}</dd></div>
+                      <div><dt>Submitted</dt><dd>{formatDateTimeLabel(activeDocument.uploadedAt)}</dd></div>
+                      <div><dt>Due date</dt><dd>{activeRow.dueMeta.label}</dd></div>
+                      <div><dt>Priority</dt><dd>{activePriority?.label ?? "Normal"}</dd></div>
+                    </dl>
+
+                    {versionHistory.length > 1 ? (
+                    <section className="border-t border-slate-200 pt-6">
+                      <div>
+                        <h3 className="text-base font-medium text-slate-950">
+                          File version history
+                        </h3>
+                        <p className="mt-1 text-sm text-slate-500">
+                          Each uploaded version keeps its own outcome and timeline.
+                        </p>
+                      </div>
+
+                      <div className="mt-4 space-y-3">
+                        {versionHistory.map((version) => (
+                          <div
+                            className={cn(
+                              "rounded-[1.15rem] border px-4 py-4",
+                              version.isLatest
+                                ? "border-brand-200 bg-brand-50/50"
+                                : "border-slate-200 bg-white",
+                            )}
+                            key={version.id}
+                          >
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                              <div className="space-y-1">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <p className="text-base font-medium text-slate-950">
+                                    Version {version.versionNumber}
+                                  </p>
+                                  {version.isLatest ? (
+                                    <span className="rounded-full bg-white px-2 py-0.5 text-sm font-medium text-brand-700 ring-1 ring-brand-200">
+                                      Latest
+                                    </span>
+                                  ) : null}
+
+                                </div>
+                                <p className="text-sm text-slate-400">
+                                  {formatDateTimeLabel(version.uploadedAt)}
+                                </p>
+                              </div>
+                              <span
+                                className={cn(
+                                  "inline-flex rounded-full px-2.5 py-1 text-sm font-medium uppercase tracking-[0.04em] ring-1 ring-inset",
+                                  documentStatusMeta(version.status).panel.includes("emerald")
+                                    ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+                                    : version.status === "rejected"
+                                      ? "bg-rose-50 text-rose-700 ring-rose-200"
+                                      : version.status === "under_review"
+                                        ? "bg-amber-50 text-amber-700 ring-amber-200"
+                                        : "bg-brand-50 text-brand-700 ring-brand-200",
+                                )}
+                              >
+                                {formatStatusLabel(version.status)}
+                              </span>
+                            </div>
+
+                            {version.rejectionReason ? (
+                              <p className="mt-3 rounded-[0.95rem] border border-rose-100 bg-rose-50 px-3 py-2 text-sm text-rose-700">
+                                Rejection reason: {version.rejectionReason}
+                              </p>
+                            ) : null}
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                    ) : null}
+                  </section>
+                  </div>
+                </aside>
               </div>
               </SurfaceCard>
               </div>

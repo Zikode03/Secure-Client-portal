@@ -1,6 +1,7 @@
+import { getTeamProgress, type TeamProgress } from "../../services/teamProgressApi";
 import { AdminOperationsPanel } from "./AdminOperationsPanel";
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, ArrowRight, BriefcaseBusiness, CheckCircle2, ClipboardCheck, ShieldX } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, Building2, CheckCircle2, FolderInput, Settings2, ShieldCheck, UserPlus, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/Button";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
@@ -34,15 +35,6 @@ interface AssignmentRecord {
   isPrimary: boolean;
 }
 
-interface ReviewRecord {
-  id: string;
-  clientId?: string | null;
-  clientName?: string | null;
-  status?: string | null;
-  assignedToUserId?: string | null;
-  assignedToName?: string | null;
-}
-
 interface AuditRecord {
   id: string;
   actorUserId?: string | null;
@@ -64,7 +56,7 @@ interface DashboardState {
   users: AdminUserRecord[];
   clients: ClientRecord[];
   assignments: AssignmentRecord[];
-  reviews: ReviewRecord[];
+  team: TeamProgress | null;
   audit: AuditRecord[];
 }
 
@@ -72,17 +64,12 @@ const emptyState: DashboardState = {
   users: [],
   clients: [],
   assignments: [],
-  reviews: [],
+  team: null,
   audit: [],
 };
 
 function securityStatus(user: AdminUserRecord) {
   return (user.securityStatus ?? "active").trim().toLowerCase();
-}
-
-function isOpenReview(review: ReviewRecord) {
-  const status = (review.status ?? "").trim().toLowerCase();
-  return status !== "approved" && status !== "rejected" && status !== "completed" && status !== "closed";
 }
 
 function formatAction(action: string) {
@@ -118,11 +105,11 @@ export function AdminDashboardPage() {
     async function load() {
       setLoading(true);
       const results = await Promise.allSettled([
-        apiGetJson<AdminUserRecord[]>("/api/admin/users"),
-        apiGetJson<ClientRecord[]>("/api/clients"),
-        apiGetJson<AssignmentRecord[]>("/api/assignments"),
-        apiGetJson<ReviewRecord[]>("/api/review-queue"),
-        apiGetJson<AuditRecord[]>("/api/audit-logs?limit=50"),
+        apiGetJson("/api/admin/users"),
+        apiGetJson("/api/clients"),
+        apiGetJson("/api/assignments"),
+        getTeamProgress(),
+        apiGetJson("/api/audit-logs?limit=50"),
       ]);
 
       if (!mounted) return;
@@ -155,7 +142,7 @@ export function AdminDashboardPage() {
         users: users.status === "fulfilled" ? users.value : [],
         clients: clients.status === "fulfilled" ? clients.value : [],
         assignments: assignments.status === "fulfilled" ? assignments.value : [],
-        reviews: reviews.status === "fulfilled" ? reviews.value : [],
+        team: reviews.status === "fulfilled" ? reviews.value : null,
         audit: audit.status === "fulfilled" ? audit.value : [],
       });
       setLoading(false);
@@ -177,8 +164,9 @@ export function AdminDashboardPage() {
 
   const unassignedClients = useMemo(() => {
     return data.clients.filter((client) => {
-      const hasAssignment = data.assignments.some((assignment) => assignment.clientId === client.id);
-      return !hasAssignment && !client.assignedAccountantId;
+      const hasPrimary = data.assignments.some((assignment) => assignment.clientId === client.id && assignment.isPrimary);
+      const hasLegacyPrimary = client.assignedAccountantId && client.assignedAccountantId !== "00000000-0000-0000-0000-000000000000";
+      return !hasPrimary && !hasLegacyPrimary;
     });
   }, [data.assignments, data.clients]);
 
@@ -189,23 +177,10 @@ export function AdminDashboardPage() {
     [data.clients],
   );
 
-  const openReviews = useMemo(() => data.reviews.filter(isOpenReview), [data.reviews]);
-
-  const capacityRows = useMemo(() => {
-    return accountants
-      .map((accountant) => {
-        const assignedClients = data.assignments.filter((assignment) => assignment.accountantUserId === accountant.id).length;
-        const reviews = openReviews.filter((review) => review.assignedToUserId === accountant.id).length;
-        const score = assignedClients + reviews * 2;
-        return { accountant, assignedClients, reviews, score };
-      })
-      .sort((left, right) => right.score - left.score);
-  }, [accountants, data.assignments, openReviews]);
-
-  const overloadedAccountants = useMemo(
-    () => capacityRows.filter((row) => row.assignedClients >= 8 || row.reviews >= 5),
-    [capacityRows],
-  );
+  const capacityRows = useMemo(() => accountants.map(accountant => {
+    const progress = data.team?.accountants.find(person => person.accountantId === accountant.id);
+    return { accountant, assignedClients: progress?.primaryClients ?? 0, reviews: (progress?.awaitingReview ?? 0) + (progress?.inReview ?? 0), inReview: progress?.inReview ?? 0 };
+  }).sort((left, right) => right.reviews - left.reviews), [accountants, data.team]);
 
   const recentAudit = useMemo(
     () => [...data.audit]
@@ -217,37 +192,23 @@ export function AdminDashboardPage() {
   const actorName = (actorUserId?: string | null) =>
     data.users.find((user) => user.id === actorUserId)?.fullName ?? "System";
 
-  const interventionCount = unassignedClients.length + restrictedUsers.length + overloadedAccountants.length + atRiskClients.length;
+  const interventionCount = unassignedClients.length + restrictedUsers.length + atRiskClients.length + data.users.filter(user => securityStatus(user) === "invited").length;
 
+  const invitedUsers = data.users.filter(user => securityStatus(user) === "invited");
+  const staffAccounts = data.users.filter(user => ["admin", "accountant"].includes(user.role.toLowerCase()));
   const summaryCards = [
-    {
-      label: "Needs attention",
-      value: interventionCount,
-      icon: <AlertTriangle />,
-      available: available.core && available.reviews,
-      action: () => document.getElementById("admin-attention")?.focus(),
-    },
-    {
-      label: "Unassigned clients",
-      value: unassignedClients.length,
-      icon: <BriefcaseBusiness />,
-      available: available.core,
-      action: () => navigate("/firm/admin/assignments"),
-    },
-    {
-      label: "Restricted users",
-      value: restrictedUsers.length,
-      icon: <ShieldX />,
-      available: available.core,
-      action: () => navigate("/firm/admin/users"),
-    },
-    {
-      label: "Open reviews",
-      value: openReviews.length,
-      icon: <ClipboardCheck />,
-      available: available.reviews,
-      action: () => navigate("/firm/review"),
-    },
+    { label: "Client businesses", value: data.clients.length, icon: <Building2 />, available: available.core, hint: "Registered with your firm", action: () => navigate("/firm/clients") },
+    { label: "Staff accounts", value: staffAccounts.length, icon: <Users />, available: available.core, hint: "Administrators and accountants", action: () => navigate("/firm/admin/users") },
+    { label: "Pending invitations", value: invitedUsers.length, icon: <UserPlus />, available: available.core, hint: "Waiting for account setup", action: () => navigate("/firm/admin/users") },
+    { label: "Unassigned clients", value: unassignedClients.length, icon: <BriefcaseBusiness />, available: available.core, hint: "Need a primary accountant", action: () => navigate("/firm/admin/assignments") },
+  ];
+  const managementAreas = [
+    { label: "Users & access", description: "Manage staff invitations, accounts and sign-in access.", icon: Users, path: "/firm/admin/users" },
+    { label: "Client businesses", description: "Set up businesses and maintain their profiles.", icon: Building2, path: "/firm/clients" },
+    { label: "Team progress", description: "See assignments, recorded activity and work progress.", icon: BriefcaseBusiness, path: "/firm/admin/team-progress" },
+    { label: "Roles & permissions", description: "Control who can view records and take action.", icon: ShieldCheck, path: "/firm/admin/roles" },
+    { label: "Import clients & documents", description: "Bring existing client records into the firm.", icon: FolderInput, path: "/firm/admin/migration" },
+    { label: "Firm settings", description: "Maintain firm details, reminders and email settings.", icon: Settings2, path: "/firm/admin/system-settings" },
   ];
 
   const allAvailable = available.core && available.reviews;
@@ -260,6 +221,7 @@ export function AdminDashboardPage() {
     </button>
   );
   const attentionItems = [
+    ...invitedUsers.map(user => ({ id: `invite-${user.id}`, name: user.fullName, detail: "Invitation awaiting account setup", action: "Review invitation", path: "/firm/admin/users", category: "User onboarding" })),
     ...unassignedClients.map(client => ({
       id: `unassigned-${client.id}`, name: client.name, detail: "No accountant assigned",
       action: "Assign owner", path: "/firm/admin/assignments", category: "Ownership",
@@ -268,11 +230,6 @@ export function AdminDashboardPage() {
       id: `restricted-${user.id}`, name: user.fullName,
       detail: securityStatus(user).replace(/_/g, " "),
       action: "Review access", path: "/firm/admin/users", category: "Access",
-    })),
-    ...overloadedAccountants.map(row => ({
-      id: `capacity-${row.accountant.id}`, name: row.accountant.fullName,
-      detail: `${row.assignedClients} clients · ${row.reviews} open reviews`,
-      action: "Review workload", path: "/firm/admin/accountants", category: "Workload",
     })),
     ...atRiskClients.map(client => ({
       id: `risk-${client.id}`, name: client.name,
@@ -284,12 +241,9 @@ export function AdminDashboardPage() {
   return (
     <div className="admin-overview space-y-6">
       <PageHeader
-        actions={<>
-          <Button onClick={() => navigate("/firm/admin/users")} variant="secondary">Manage users</Button>
-          <Button onClick={() => navigate("/firm/admin/assignments")}>Manage assignments</Button>
-        </>}
-        description="Manage client ownership, team workload and account access."
-        title="Firm overview"
+        actions={<Button onClick={() => navigate("/firm/clients?add=1")}><Building2 size={16} aria-hidden="true" />Add client</Button>}
+        description="Manage your firm’s users, client businesses and system controls."
+        title="Administration"
       />
       {feedback ? <FeedbackBanner message={feedback.message} onDismiss={() => setFeedback(null)} title={feedback.title} tone={feedback.tone} /> : null}
 
@@ -298,10 +252,19 @@ export function AdminDashboardPage() {
           <button key={card.label} className="admin-overview-metric" onClick={card.action} type="button">
             <span className="admin-overview-metric-top"><span>{card.label}</span><span className="admin-overview-metric-icon" aria-hidden="true">{card.icon}</span></span>
             <span className="admin-overview-metric-value">{loading ? "…" : card.available ? card.value : "—"}</span>
-            <span className="admin-overview-metric-link">View details <ArrowRight size={13} aria-hidden="true" /></span>
+            <span className="admin-overview-metric-link">{card.hint}</span>
           </button>
         ))}
       </section>
+
+      <nav aria-label="Firm administration" className="admin-management">
+        <div className="admin-management-heading"><h2>Manage your firm</h2><span>People, records and configuration</span></div>
+        <div className="admin-management-grid">{managementAreas.map(({ label, description, icon: Icon, path }) => <button key={path} type="button" className="admin-management-area" onClick={() => navigate(path)}>
+          <span className="admin-management-icon"><Icon size={20} aria-hidden="true" /></span>
+          <span className="admin-management-copy"><strong>{label}</strong><small>{description}</small></span>
+          <ArrowRight className="admin-management-arrow" size={16} aria-hidden="true" />
+        </button>)}</div>
+      </nav>
 
       <div className="admin-overview-columns">
         <div className="admin-overview-workspace min-w-0">
@@ -309,7 +272,7 @@ export function AdminDashboardPage() {
             <div className="admin-overview-section-heading">
               <div>
                 <h2 id="admin-attention-heading" className="admin-overview-section-title text-slate-950">Needs attention</h2>
-                <p className="mt-1 text-sm text-slate-500">Ownership, access and risk decisions to follow up.</p>
+                <p className="mt-1 text-sm text-slate-500">Invitations, access changes and client ownership to follow up.</p>
               </div>
               {allAvailable && !loading && <span className="admin-overview-count">{interventionCount}</span>}
             </div>
@@ -331,7 +294,7 @@ export function AdminDashboardPage() {
                 <CheckCircle2 aria-hidden="true" size={24} />
                 <div>
                   <p className="text-sm font-semibold text-slate-950">You're up to date</p>
-                  <p className="mt-1 text-sm text-slate-500">No ownership, access, workload or client-risk exceptions.</p>
+                  <p className="mt-1 text-sm text-slate-500">No pending invitations, access or client-ownership exceptions.</p>
                 </div>
               </div>
             )}
@@ -341,18 +304,16 @@ export function AdminDashboardPage() {
           <section aria-labelledby="admin-team-heading" className="admin-overview-section">
             <div className="admin-overview-section-heading">
               <div>
-                <h2 id="admin-team-heading" className="admin-overview-section-title text-slate-950">Team workload</h2>
+                <h2 id="admin-team-heading" className="admin-overview-section-title text-slate-950">Accountant coverage</h2>
                 <p className="mt-1 text-sm text-slate-500">Client coverage and open reviews by accountant.</p>
               </div>
-              {sectionLink("Manage team", "/firm/admin/accountants")}
+              {sectionLink("Team progress", "/firm/admin/team-progress")}
             </div>
             {loading || !allAvailable || !capacityRows.length ? notice(allAvailable, "No accountants have been added yet.") : (
               <div className="overflow-x-auto">
                 <table className="admin-overview-table">
-                  <thead><tr><th scope="col">Accountant</th><th scope="col">Clients</th><th scope="col">Reviews</th><th scope="col">Workload</th></tr></thead>
+                  <thead><tr><th scope="col">Accountant</th><th scope="col">Clients</th><th scope="col">Awaiting decision</th><th scope="col">Recorded status</th><th scope="col">Actions</th></tr></thead>
                   <tbody>{capacityRows.slice(0, 6).map(row => {
-                    const high = row.assignedClients >= 8 || row.reviews >= 5;
-                    const low = row.assignedClients <= 2 && row.reviews <= 2;
                     return <tr key={row.accountant.id}>
                       <th scope="row"><span className="admin-overview-person">
                         <span aria-hidden="true" className="admin-overview-avatar">{row.accountant.fullName.split(/\s+/).slice(0, 2).map(part => part[0]).join("")}</span>
@@ -360,11 +321,12 @@ export function AdminDashboardPage() {
                       </span></th>
                       <td className="tabular-nums">{row.assignedClients}</td>
                       <td className="tabular-nums">{row.reviews}</td>
-                      <td><span className={`admin-overview-status ${high ? "is-warning" : "is-normal"}`}>{high ? "High workload" : low ? "Available" : "Balanced"}</span></td>
+                      <td><span className="admin-overview-status is-normal">{row.inReview ? "Reviews in progress" : row.reviews ? "Awaiting review" : "No pending reviews"}</span></td>
+                      <td><Button variant="ghost" size="sm" aria-label={`View progress for ${row.accountant.fullName}`} onClick={() => navigate(`/firm/admin/team-progress?accountantId=${encodeURIComponent(row.accountant.id)}`)}>View</Button></td>
                     </tr>;
                   })}</tbody>
                 </table>
-                <p className="mt-3 text-xs text-slate-500">High workload: 8+ clients or 5+ open reviews.</p>
+                <p className="mt-3 text-xs text-slate-500">Primary assignments and saved review states. Open Team progress for client and month details.</p>
               </div>
             )}
           </section>
@@ -400,14 +362,7 @@ export function AdminDashboardPage() {
         <div id="admin-system-details" hidden={!operationsOpen}>{operationsOpen ? <AdminOperationsPanel /> : null}</div>
       </section>
 
-      <nav aria-label="Administration shortcuts" className="admin-overview-shortcuts">
-        <span className="admin-overview-category">Quick access</span>
-        {sectionLink("Users & access", "/firm/admin/users")}
-        {sectionLink("Roles & permissions", "/firm/admin/roles")}
-        {sectionLink("Assignments", "/firm/admin/assignments")}
-        {sectionLink("Audit & security", "/firm/admin/audit")}
-        {sectionLink("System settings", "/firm/admin/system-settings")}
-      </nav>
+
     </div>
   );
 }

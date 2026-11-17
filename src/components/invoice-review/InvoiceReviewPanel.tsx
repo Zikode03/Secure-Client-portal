@@ -1,3 +1,4 @@
+import { useActionDialog } from "../ui/useActionDialog";
 import { InvoiceLineItems } from "./InvoiceLineItems";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -94,6 +95,7 @@ export function InvoiceReviewPanel({
   mimeType,
   onReady,
 }: Props) {
+  const actionDialog = useActionDialog();
   const [data, setData] = useState<InvoiceReviewResponse | null>(null);
   const [suggestions, setSuggestions] = useState<ReviewInvoiceValues | null>(
     null,
@@ -271,6 +273,7 @@ export function InvoiceReviewPanel({
   ).length;
   return (
     <section aria-label="Invoice review assistant" className="space-y-4">
+      {actionDialog.dialog}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="font-semibold text-slate-950">
@@ -285,10 +288,10 @@ export function InvoiceReviewPanel({
           size="sm"
           variant="secondary"
           disabled={busy || loading}
-          onClick={() => {
+          onClick={async () => {
             if (
               dirty &&
-              !window.confirm("Discard unsaved invoice details and reload?")
+              !await actionDialog.confirm("Discard unsaved invoice details and reload?")
             )
               return;
             setLoading(true);

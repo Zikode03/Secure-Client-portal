@@ -1,0 +1,36 @@
+.accountant-clients { display: grid; gap: 20px; color: #172747; }
+.accountant-clients-header { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+.accountant-clients h1 { font-size: var(--ui-text-metric); font-weight: 600; letter-spacing: -.025em; }
+.accountant-clients-header p { margin-top: 6px; color: #64748b; font-size: var(--ui-text-secondary); line-height: 1.6; }
+.accountant-clients-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.accountant-clients .ui-btn { box-shadow: none; border-radius: 7px; font-size: var(--ui-text-secondary); }
+.accountant-clients-panel { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; }
+.accountant-clients-toolbar { display: flex; align-items: center; gap: 12px; padding: 18px 20px; border-bottom: 1px solid #edf1f5; }
+.accountant-clients-search { display: flex; align-items: center; gap: 8px; flex: 1; padding: 9px 12px; border: 1px solid #dce3ed; border-radius: 7px; color: #64748b; min-width: 160px; }
+.accountant-clients-search input { min-width: 0; width: 100%; background: transparent; font-size: var(--ui-text-secondary); outline: none; }
+.accountant-clients-toolbar > label:not(:first-child) { display: flex; align-items: center; gap: 8px; color: #64748b; font-size: var(--ui-text-secondary); white-space: nowrap; }
+.accountant-clients select { padding: 9px 10px; background: #fff; border: 1px solid #dce3ed; border-radius: 7px; color: #334155; font-size: var(--ui-text-secondary); }
+.accountant-clients-count { display: flex; justify-content: space-between; gap: 12px; padding: 10px 20px; font-size: var(--ui-text-secondary); color: #64748b; }
+.accountant-clients-count button { color: #253e68; text-decoration: underline; text-underline-offset: 3px; }
+.accountant-clients-table { overflow-x: auto; }
+.accountant-clients table { width: 100%; border-collapse: collapse; text-align: left; font-size: var(--ui-text-body); }
+.accountant-clients th, .accountant-clients td { padding: 20px; border-top: 1px solid #edf1f5; vertical-align: middle; }
+.accountant-clients thead th { padding-block: 12px; background: #fafbfd; color: #64748b; font-size: var(--ui-text-secondary); font-weight: 500; white-space: nowrap; }
+.accountant-clients tbody th { width: 30%; min-width: 180px; }
+.accountant-clients strong { font-size: var(--ui-text-body); font-weight: 500; }
+.accountant-clients small { display: block; margin-top: 5px; font-size: var(--ui-text-secondary); font-weight: 400; color: #64748b; line-height: 1.5; }
+.accountant-clients-progress { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; min-width: 100px; }
+.accountant-clients progress { width: 80px; height: 4px; accent-color: #557e68; }
+.accountant-clients-status { display: inline-block; font-size: var(--ui-text-secondary); color: #475569; white-space: nowrap; }
+.accountant-clients-status.is-overdue { color: #a34f3f; }
+.accountant-clients-muted { color: #64748b; font-size: var(--ui-text-secondary); }
+.accountant-clients .accountant-clients-open { width: 1%; white-space: nowrap; }
+.accountant-clients-empty { padding: 40px 24px; text-align: center; }
+.accountant-clients-empty h2 { font-size: var(--ui-text-body); font-weight: 500; }
+.accountant-clients-empty p { margin-top: 8px; font-size: var(--ui-text-secondary); line-height: 1.6; color: #64748b; }
+.accountant-clients-notice { padding: 12px 16px; border: 1px solid #ead7b8; background: #fcf8f0; color: #875f26; border-radius: 8px; font-size: var(--ui-text-secondary); }
+.accountant-clients button:focus-visible, .accountant-clients summary:focus-visible, .accountant-clients select:focus-visible, .accountant-clients-search:focus-within { outline: 2px solid #718cb2; outline-offset: 3px; }
+@media (max-width: 900px) { .accountant-clients-toolbar { flex-wrap: wrap; } .accountant-clients-search { flex-basis: 100%; } }
+@media (max-width: 639px) { .accountant-clients-toolbar { padding: 14px; gap: 10px; } .accountant-clients-toolbar > label:not(:first-child) { flex: 1; flex-direction: column; align-items: flex-start; } .accountant-clients select { width: 100%; } .accountant-clients-count { padding-inline: 14px; } .accountant-clients-count > span:last-child:not(:first-child) { display: none; } .accountant-clients th, .accountant-clients td { padding: 16px; } }
+html.theme-dark .accountant-clients { color: #e2e8f0; }
+html.theme-dark .accountant-clients-panel, html.theme-dark .accountant-clients thead th, html.theme-dark .accountant-clients select { background: #191f2b; border-color: #303949; color: #cbd5e1; }

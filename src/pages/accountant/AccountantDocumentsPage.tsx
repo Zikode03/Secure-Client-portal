@@ -1,3 +1,6 @@
+import { RecordActions } from "../../components/ui/RecordActions";
+import "./accountantDocuments.css";
+import { DocumentPdfPreview } from "../../components/documents/DocumentPdfPreview";
 // Friendly guide: this module (AccountantDocumentsPage) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
@@ -59,11 +62,9 @@ function mapBackendComment(comment: BackendDocumentComment): DocumentComment {
   };
 }
 
-const previewReferenceDate = new Date("2026-05-08T08:00:00.000Z");
 const resultsPerPage = 7;
 
 // Shared shape notes: these types keep UI and data contracts aligned.
-type ResultTab = "all" | "documents" | "invoices" | "compliance";
 type ViewerTab = "details" | "comments" | "history" | "related";
 
 interface BackendDocumentComment {
@@ -73,23 +74,6 @@ interface BackendDocumentComment {
   authorRole: string;
   message: string;
   createdAtUtc: string;
-}
-
-interface BackendDocumentRecord {
-  id: string;
-  clientId: string;
-  monthlyPackId: string;
-  name: string;
-  category: string;
-  documentSlotId?: string | null;
-  status: string;
-  fileType: string;
-  sizeBytes: number;
-  storageKey?: string | null;
-  uploadedByUserId: string;
-  currentVersionNumber: number;
-  uploadedAtUtc: string;
-  updatedAtUtc: string;
 }
 
 // Component flow: gather data first, then render a focused UI state.
@@ -137,77 +121,11 @@ function ChevronDownIcon() {
   );
 }
 
-function MoreHorizontalIcon() {
-  return (
-    <svg aria-hidden="true" className="h-4.5 w-4.5" fill="currentColor" viewBox="0 0 24 24">
-      <circle cx="5" cy="12" r="1.7" />
-      <circle cx="12" cy="12" r="1.7" />
-      <circle cx="19" cy="12" r="1.7" />
-    </svg>
-  );
-}
-
-function OpenInNewIcon() {
-  return (
-    <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
-      <path
-        d="M13 5.75h5.25V11m-6.25 6.25L18.25 11m-8.5-4.25H7A1.25 1.25 0 0 0 5.75 8v9A1.25 1.25 0 0 0 7 18.25h9A1.25 1.25 0 0 0 17.25 17v-2.75"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
-}
-
 function CloseIcon() {
   return (
     <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
       <path
         d="m6 6 12 12M18 6 6 18"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
-}
-
-function ZoomOutIcon() {
-  return (
-    <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24">
-      <path
-        d="M7 12h10"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
-}
-
-function ZoomInIcon() {
-  return (
-    <svg aria-hidden="true" className="h-4 w-4" fill="none" viewBox="0 0 24 24">
-      <path
-        d="M12 7v10M7 12h10"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
-    </svg>
-  );
-}
-
-function ExpandIcon() {
-  return (
-    <svg aria-hidden="true" className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24">
-      <path
-        d="M8 4.75H4.75V8M20 8V4.75h-3.25M16 19.25h3.25V16M4.75 16v3.25H8"
         stroke="currentColor"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -229,27 +147,6 @@ function ChevronRightIcon() {
       />
     </svg>
   );
-}
-
-function belongsToResultTab(result: UnifiedSearchResult, tab: ResultTab) {
-  if (tab === "all") {
-    return true;
-  }
-
-  if (tab === "invoices") {
-    return result.resultType === "invoice";
-  }
-
-  if (tab === "compliance") {
-    return result.resultType === "compliance_document";
-  }
-
-  return [
-    "document",
-    "bank_statement",
-    "signed_document",
-    "monthly_pack_item",
-  ].includes(result.resultType);
 }
 
 function buildSelectOptions(values: string[], allLabel: string) {
@@ -327,14 +224,6 @@ function fileLabelClasses(label: string) {
   }
 
   return "border-slate-200 bg-slate-50 text-slate-600";
-}
-
-function isNewResult(value: string) {
-  const submittedAt = new Date(value).getTime();
-  const ageInDays =
-    (previewReferenceDate.getTime() - submittedAt) / (1000 * 60 * 60 * 24);
-
-  return ageInDays <= 10;
 }
 
 function mapLiveDocumentStatus(status: string): DocumentRecord["status"] {
@@ -453,15 +342,6 @@ function documentPreviewLines(document: DocumentRecord) {
     .slice(0, 18);
 }
 
-function escapeHtml(value: string) {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
 function buildPreviewText(document: DocumentRecord) {
   return documentPreviewLines(document).join("\n");
 }
@@ -474,42 +354,6 @@ function downloadPreview(fileName: string, content: string) {
   link.download = fileName.replace(/\.[^.]+$/, "") + "-preview.txt";
   link.click();
   window.URL.revokeObjectURL(url);
-}
-
-function openPreviewInNewTab(document: DocumentRecord) {
-  if (document.fileDataUrl) {
-    const fileWindow = window.open(document.fileDataUrl, "_blank", "noopener,noreferrer");
-    return Boolean(fileWindow);
-  }
-
-  const previewWindow = window.open("", "_blank", "noopener,noreferrer");
-  if (!previewWindow) {
-    return false;
-  }
-
-  previewWindow.document.write(`<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>${escapeHtml(document.fileName)}</title>
-    <style>
-      body { margin: 0; padding: 32px; font-family: Inter, Arial, sans-serif; background: #f8fafc; color: #0f172a; }
-      article { max-width: 880px; margin: 0 auto; background: white; border: 1px solid #e2e8f0; border-radius: 24px; padding: 32px; box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08); }
-      h1 { margin: 0 0 8px; font-size: 28px; }
-      p { margin: 0 0 8px; color: #475569; }
-      pre { margin-top: 24px; padding: 20px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 18px; white-space: pre-wrap; word-break: break-word; color: #0f172a; }
-    </style>
-  </head>
-  <body>
-    <article>
-      <h1>${escapeHtml(document.fileName)}</h1>
-      <p>${escapeHtml(document.documentType)} | ${escapeHtml(document.clientName)} | ${escapeHtml(document.monthLabel)}</p>
-      <pre>${escapeHtml(buildPreviewText(document))}</pre>
-    </article>
-  </body>
-</html>`);
-  previewWindow.document.close();
-  return true;
 }
 
 function downloadDocumentFile(fileRecord: DocumentRecord) {
@@ -541,7 +385,7 @@ function ResultFilterSelect({
 }) {
   return (
     <label className="space-y-2">
-      <span className="text-[0.78rem] font-medium text-slate-500">{label}</span>
+      <span className="text-sm font-medium text-slate-500">{label}</span>
       <div className="relative">
         <select
           className="h-10 w-full appearance-none rounded-xl border border-slate-200 bg-white px-3 pr-10 text-sm text-slate-700 outline-none transition focus:border-brand-300 focus:ring-4 focus:ring-brand-100"
@@ -647,16 +491,13 @@ export function AccountantDocumentsPage() {
   const [searchParams] = useSearchParams();
   const [filters, setFilters] = useState<UnifiedSearchFilters>(defaultFilters);
   const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
-  const [activeResultTab, setActiveResultTab] = useState<ResultTab>("all");
 // Local UI state: keeps track of what the user is seeing or editing right now.
   const [selectedResultId, setSelectedResultId] = useState("");
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerTab, setViewerTab] = useState<ViewerTab>("details");
-  const [openMenuResultId, setOpenMenuResultId] = useState("");
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [reviewActionBusy, setReviewActionBusy] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [previewZoom, setPreviewZoom] = useState(100);
   const [liveClients, setLiveClients] = useState<FirmClientAccount[] | null>(null);
   const [liveDocuments, setLiveDocuments] = useState<DocumentRecord[]>([]);
   const [versionsByDocumentId, setVersionsByDocumentId] = useState<Record<string, DocumentVersionRecord[]>>({});
@@ -687,7 +528,7 @@ export function AccountantDocumentsPage() {
       try {
         const [clients, records] = await Promise.all([
           portalServiceApi.getAdminClients({ allowFallback: false }),
-          apiGetJson<BackendDocumentRecord[]>("/api/documents"),
+          apiGetJson("/api/documents"),
         ]);
 
         if (!isActive) {
@@ -779,7 +620,7 @@ export function AccountantDocumentsPage() {
     }
 
     const selectedLiveDocument = liveDocuments.find((document) => document.id === selectedResultId);
-    if (!selectedLiveDocument || selectedLiveDocument.fileDataUrl) {
+    if (!selectedLiveDocument || selectedLiveDocument.fileDataUrl || /\.pdf$/i.test(selectedLiveDocument.fileName)) {
       return;
     }
 
@@ -847,10 +688,7 @@ export function AccountantDocumentsPage() {
     [allResults, filters, portal],
   );
 
-  const visibleResults = useMemo(
-    () => filteredResults.filter((result) => belongsToResultTab(result, activeResultTab)),
-    [activeResultTab, filteredResults],
-  );
+  const visibleResults = filteredResults;
 
   const totalPages = Math.max(1, Math.ceil(visibleResults.length / resultsPerPage));
 
@@ -901,7 +739,7 @@ export function AccountantDocumentsPage() {
     if (!backendMode || !selectedDocument || versionsByDocumentId[selectedDocument.id]) return;
     let isActive = true;
     const documentId = selectedDocument.id;
-    void apiGetJson<DocumentVersionRecord[]>(`/api/documents/${encodeURIComponent(documentId)}/versions`)
+    void apiGetJson(`/api/documents/${encodeURIComponent(documentId)}/versions`)
       .then((versions) => {
         if (isActive) setVersionsByDocumentId((current) => ({ ...current, [documentId]: versions }));
       })
@@ -915,7 +753,7 @@ export function AccountantDocumentsPage() {
     if (!backendMode || !selectedDocument || commentsByDocumentId[selectedDocument.id]) return;
     let isActive = true;
     const documentId = selectedDocument.id;
-    void apiGetJson<BackendDocumentComment[]>(`/api/documents/${encodeURIComponent(documentId)}/comments`)
+    void apiGetJson(`/api/documents/${encodeURIComponent(documentId)}/comments`)
       .then((comments) => {
         if (isActive) setCommentsByDocumentId((current) => ({ ...current, [documentId]: comments.map(mapBackendComment) }));
       })
@@ -924,19 +762,6 @@ export function AccountantDocumentsPage() {
       });
     return () => { isActive = false; };
   }, [backendMode, commentsByDocumentId, selectedDocument]);
-
-  const tabCounts = useMemo(
-    () => ({
-      all: filteredResults.length,
-      documents: filteredResults.filter((result) => belongsToResultTab(result, "documents"))
-        .length,
-      invoices: filteredResults.filter((result) => belongsToResultTab(result, "invoices"))
-        .length,
-      compliance: filteredResults.filter((result) => belongsToResultTab(result, "compliance"))
-        .length,
-    }),
-    [filteredResults],
-  );
 
   const clientOptions = useMemo(
     () => buildSelectOptions(assignedClients.map((client) => client.clientName), "All clients"),
@@ -1047,9 +872,9 @@ export function AccountantDocumentsPage() {
     }
 
     return (
-      portal.adminClients.find((client) => client.id === selectedResult.clientId)
+      sourceClients.find((client) => client.id === selectedResult.clientId)
         ?.assignedAccountant ??
-      portal.adminClients.find((client) => client.clientName === selectedResult.clientName)
+      sourceClients.find((client) => client.clientName === selectedResult.clientName)
         ?.assignedAccountant ??
       user?.fullName ??
       "Assigned accountant"
@@ -1059,7 +884,7 @@ export function AccountantDocumentsPage() {
 // Reactive sync: this block responds when dependencies change.
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeResultTab, filters]);
+  }, [filters]);
 
   useEffect(() => {
     if (currentPage > totalPages) {
@@ -1085,11 +910,6 @@ export function AccountantDocumentsPage() {
     setFilters((current) => ({ ...current, clientId: clientFromQuery }));
   }, [filters.clientId, searchParams]);
 
-  useEffect(() => {
-    if (openMenuResultId && !pagedResults.some((result) => result.id === openMenuResultId)) {
-      setOpenMenuResultId("");
-    }
-  }, [openMenuResultId, pagedResults]);
 
   function resolveDocumentForResult(result: UnifiedSearchResult) {
     if (backendMode) {
@@ -1125,8 +945,6 @@ export function AccountantDocumentsPage() {
     setSelectedResultId(result.id);
     setViewerOpen(true);
     setViewerTab(tab);
-    setPreviewZoom(100);
-    setOpenMenuResultId("");
   }
 
   function handleOpenResult(result: UnifiedSearchResult) {
@@ -1187,7 +1005,6 @@ export function AccountantDocumentsPage() {
       setFeedbackMessage(`${displayResultTitle(result)} downloaded as a preview file.`);
     }
 
-    setOpenMenuResultId("");
   }
 
   function handleSubmitComment() {
@@ -1199,7 +1016,7 @@ export function AccountantDocumentsPage() {
     }
 
     if (backendMode) {
-      void apiPostJson<BackendDocumentComment, { message: string }>(
+      void apiPostJson(
         `/api/documents/${encodeURIComponent(selectedDocument.id)}/comments`,
         { message },
       )
@@ -1241,7 +1058,6 @@ export function AccountantDocumentsPage() {
 
   function handleClearFilters() {
     setFilters(defaultFilters);
-    setActiveResultTab("all");
     setSelectedResultId("");
     setViewerOpen(false);
     setViewerTab("details");
@@ -1272,391 +1088,54 @@ export function AccountantDocumentsPage() {
   }
 
   return (
-    <div
-      className="mx-auto max-w-[1280px] space-y-6"
-      onClick={() => setOpenMenuResultId("")}
-    >
-      <section className="portal-page-header border-b border-slate-200 pb-6">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
-          <div className="max-w-2xl">
-            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-brand-600">
-              Accountant workspace
-            </p>
-            <h1 className="mt-2 text-[2.15rem] font-semibold tracking-[-0.035em] text-slate-950">
-              Client documents
-            </h1>
-            <p className="mt-2 text-[0.95rem] leading-7 text-slate-500">
-              Review, trace and organise every client record from one controlled document register.
-            </p>
-          </div>
-
-          <div className="flex w-full flex-col gap-3 sm:flex-row xl:w-auto">
-            <label className="relative block min-w-0 flex-1 xl:w-[22rem]">
-              <span className="sr-only">Search client documents</span>
-              <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
-                <SearchIcon />
-              </span>
-              <input
-                className="h-11 w-full rounded-xl border border-slate-300 bg-white pl-11 pr-4 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-brand-400 focus:ring-4 focus:ring-brand-100"
-                onChange={(event) => setFilters((current) => ({ ...current, query: event.target.value }))}
-                placeholder="Search client, file or reference"
-                value={filters.query}
-              />
-            </label>
-            <Button
-              className="h-11 whitespace-nowrap rounded-xl px-5"
-              onClick={() => navigate("/firm/inbox")}
-            >
-              Request documents
-            </Button>
-            {backendMode ? (
-              <Button
-                aria-label="Refresh documents"
-                className="h-11 rounded-xl border border-slate-200 bg-white px-4 text-sm text-slate-700 hover:bg-slate-50"
-                onClick={() => setLiveRefreshKey((current) => current + 1)}
-                variant="secondary"
-              >
-                Refresh
-              </Button>
-            ) : null}
-          </div>
+    <div className="documents-page">
+      <header className="documents-header"><div><h1 className="workspace-duplicate-title ">Documents</h1><p>Find client files, view their history and download the original.</p></div><Button variant="secondary" onClick={() => navigate("/firm/inbox")}>Request documents</Button></header>
+      {feedbackMessage ? <p role="status" className="documents-notice">{feedbackMessage}</p> : null}
+      <section className="documents-register" aria-label="Client document register">
+        <div className="documents-toolbar">
+          <label className="documents-search"><SearchIcon /><input aria-label="Search client documents" type="search" placeholder="Find a document or reference" value={filters.query} onChange={event => setFilters(current => ({ ...current, query: event.target.value }))} /></label>
+          <ResultFilterSelect label="Client" options={clientOptions} value={assignedClients.find(client => client.id === filters.clientId)?.clientName ?? ""} onChange={value => setFilters(current => ({ ...current, clientId: assignedClients.find(client => client.clientName === value)?.id ?? "" }))} />
+          <ResultFilterSelect label="Status" options={statusOptions} value={filters.status} onChange={value => setFilters(current => ({ ...current, status: value }))} />
+          <button type="button" className="documents-filter-button" aria-expanded={advancedFiltersOpen} aria-controls="documents-extra-filters" onClick={() => setAdvancedFiltersOpen(value => !value)}>More filters<ChevronDownIcon /></button>
         </div>
+        {advancedFiltersOpen ? <div id="documents-extra-filters" className="documents-extra-filters">
+          <ResultFilterSelect label="Document type" options={documentTypeOptions} value={filters.documentType} onChange={value => setFilters(current => ({ ...current, documentType: value }))} />
+          <ResultFilterSelect label="Period" options={monthOptions} value={filters.month} onChange={value => setFilters(current => ({ ...current, month: value }))} />
+          <ResultFilterSelect label="Year" options={yearOptions} value={filters.year} onChange={value => setFilters(current => ({ ...current, year: value }))} />
+          <ResultFilterSelect label="Uploaded by" options={uploadedByOptions} value={filters.uploadedBy} onChange={value => setFilters(current => ({ ...current, uploadedBy: value }))} />
+          <ResultFilterSelect label="Reviewed by" options={reviewedByOptions} value={filters.reviewedBy} onChange={value => setFilters(current => ({ ...current, reviewedBy: value }))} />
+          <ResultFilterSelect label="Expiry status" options={[{label:"All",value:""},{label:"Expiring soon",value:"expiring"},{label:"Expired",value:"expired"}]} value={filters.expiryStatus} onChange={value => setFilters(current => ({ ...current, expiryStatus: value }))} />
+        </div> : null}
+        <div className="documents-result-count"><span>{visibleResults.length} {visibleResults.length === 1 ? "document" : "documents"}</span>{Object.entries(filters).some(([key, value]) => value && !(key === "requiredFlag" && value === "all")) ? <button type="button" onClick={handleClearFilters}>Clear filters</button> : null}</div>
+        {visibleResults.length ? <div className="documents-table"><table><thead><tr><th scope="col">Document</th><th scope="col">Client</th><th scope="col">Status</th><th scope="col">Uploaded</th><th scope="col" className="documents-actions-heading">Actions</th></tr></thead><tbody>{pagedResults.map(result => <tr key={result.id}>
+          <th scope="row"><button type="button" className="documents-file-title" onClick={() => handleOpenResult(result)}>{displayResultTitle(result)}</button><small>{result.typeLabel}</small></th>
+          <td>{result.clientName}</td>
+          <td><span className={cn("documents-status",toneToAccentClass(statusToTone(result.status)))}>{formatStatusLabel(result.status)}</span></td>
+          <td className="documents-uploaded">{formatDateLabel(result.date)}</td>
+          <td><div className="documents-row-actions"><RecordActions iconOnly label={`Actions for ${displayResultTitle(result)}`} actions={[{ label: "Open", onSelect: () => handleOpenResult(result) }, { label: "Download", onSelect: () => void handleDownloadResult(result) }]} /></div></td>
+        </tr>)}</tbody></table></div> : <div className="documents-empty"><EmptyState title={allResults.length ? "No matching documents" : "No documents yet"} description={allResults.length ? "Change the search or clear your filters." : "Client documents will appear here after they are uploaded."} /></div>}
+        {visibleResults.length ? <footer className="documents-pagination"><span>Showing {(currentPage - 1) * resultsPerPage + 1}-{Math.min(currentPage * resultsPerPage, visibleResults.length)} of {visibleResults.length}</span><Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} /></footer> : null}
       </section>
-
-      {feedbackMessage ? (
-        <div className="rounded-[1.35rem] border border-brand-100 bg-brand-50 px-5 py-4 text-sm text-brand-700">
-          {feedbackMessage}
-        </div>
-      ) : null}
-
       <div>
-        <div className="space-y-5">
-          <section aria-label="Document filters" className="border-b border-slate-200 pb-5">
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.1em] text-slate-500">Filter documents</p>
-                <div className="flex items-center gap-2">
-                  <button
-                    className={cn(
-                      "inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-xs font-semibold transition",
-                      advancedFiltersOpen
-                        ? "border-brand-200 bg-brand-50 text-brand-700"
-                        : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50",
-                    )}
-                    onClick={() => setAdvancedFiltersOpen((current) => !current)}
-                    type="button"
-                  >
-                    More filters
-                    <span className={cn("transition", advancedFiltersOpen ? "rotate-180" : "")}><ChevronDownIcon /></span>
-                  </button>
-                  <button className="h-9 px-2 text-xs font-semibold text-brand-700" onClick={handleClearFilters} type="button">
-                    Clear all
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <ResultFilterSelect
-                  label="Client"
-                  onChange={(value) => {
-                    const clientId =
-                      assignedClients.find((client) => client.clientName === value)?.id ?? "";
-                    setFilters((current) => ({ ...current, clientId }));
-                  }}
-                  options={clientOptions}
-                  value={
-                    assignedClients.find((client) => client.id === filters.clientId)?.clientName ??
-                    ""
-                  }
-                />
-                <ResultFilterSelect
-                  label="Month / period"
-                  onChange={(value) => setFilters((current) => ({ ...current, month: value }))}
-                  options={monthOptions}
-                  value={filters.month}
-                />
-                <ResultFilterSelect
-                  label="Document type"
-                  onChange={(value) =>
-                    setFilters((current) => ({ ...current, documentType: value }))
-                  }
-                  options={documentTypeOptions}
-                  value={filters.documentType}
-                />
-                <ResultFilterSelect
-                  label="Status"
-                  onChange={(value) => setFilters((current) => ({ ...current, status: value }))}
-                  options={statusOptions}
-                  value={filters.status}
-                />
-              </div>
-
-              {advancedFiltersOpen ? (
-              <div className="grid gap-3 border-t border-slate-200 bg-slate-50/70 px-3 py-3 sm:grid-cols-2 lg:grid-cols-4">
-                <ResultFilterSelect
-                  label="Uploaded by"
-                  onChange={(value) =>
-                    setFilters((current) => ({ ...current, uploadedBy: value }))
-                  }
-                  options={uploadedByOptions}
-                  value={filters.uploadedBy}
-                />
-                <ResultFilterSelect
-                  label="Reviewed by"
-                  onChange={(value) =>
-                    setFilters((current) => ({ ...current, reviewedBy: value }))
-                  }
-                  options={reviewedByOptions}
-                  value={filters.reviewedBy}
-                />
-                <ResultFilterSelect
-                  label="Expiry status"
-                  onChange={(value) =>
-                    setFilters((current) => ({ ...current, expiryStatus: value }))
-                  }
-                  options={[
-                    { label: "All", value: "" },
-                    { label: "Expiring soon", value: "expiring" },
-                    { label: "Expired", value: "expired" },
-                  ]}
-                  value={filters.expiryStatus}
-                />
-                <ResultFilterSelect
-                  label="Year"
-                  onChange={(value) => setFilters((current) => ({ ...current, year: value }))}
-                  options={yearOptions}
-                  value={filters.year}
-                />
-              </div>
-              ) : null}
-            </div>
-          </section>
-
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <div className="flex flex-col gap-3 border-b border-slate-100 px-5 pt-4 sm:flex-row sm:items-start sm:justify-between">
-              <div className="pb-3">
-                <h2 className="text-base font-semibold text-slate-950">Document register</h2>
-                <p className="mt-1 text-sm text-slate-500">A controlled record of files across your assigned clients.</p>
-              </div>
-              <div className="flex flex-nowrap items-center gap-6 overflow-x-auto pb-1">
-                {[
-                  { id: "all" as const, label: "All results", count: tabCounts.all },
-                  { id: "documents" as const, label: "Documents", count: tabCounts.documents },
-                  { id: "invoices" as const, label: "Invoices", count: tabCounts.invoices },
-                  { id: "compliance" as const, label: "Compliance", count: tabCounts.compliance },
-                ].map((tab) => (
-                  <button
-                    className={cn(
-                      "relative flex items-center gap-2 pb-4 text-sm font-medium transition",
-                      activeResultTab === tab.id
-                        ? "text-brand-700"
-                        : "text-slate-500 hover:text-slate-700",
-                    )}
-                    key={tab.id}
-                    onClick={() => setActiveResultTab(tab.id)}
-                    type="button"
-                  >
-                    <span>{tab.label}</span>
-                    <span
-                      className={cn(
-                        "rounded-full px-2 py-0.5 text-[0.72rem] font-medium",
-                        activeResultTab === tab.id
-                          ? "bg-brand-50 text-brand-700"
-                          : "bg-slate-100 text-slate-500",
-                      )}
-                    >
-                      {tab.count}
-                    </span>
-                    {activeResultTab === tab.id ? (
-                      <span className="absolute inset-x-0 bottom-0 h-0.5 rounded-full bg-brand-500" />
-                    ) : null}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {visibleResults.length === 0 ? (
-              <div className="px-5 py-10">
-                <EmptyState
-                  description={
-                    assignedClients.length === 0 && user?.role === "accountant"
-                      ? "No records found in your assigned client portfolio."
-                      : "Try broadening the search terms or removing a few filters."
-                  }
-                  title="No results match this view"
-                />
-              </div>
-            ) : (
-              <>
-                <div className="hidden border-b border-slate-100 bg-slate-50/70 px-5 py-3 text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-slate-500 lg:grid lg:grid-cols-[minmax(220px,1.7fr)_minmax(120px,0.9fr)_0.7fr_0.45fr_0.75fr_0.85fr_3rem] lg:gap-4">
-                  <div>Document</div>
-                  <div>Client</div>
-                  <div>Period</div>
-                  <div>Ver.</div>
-                  <div>Status</div>
-                  <div>Updated</div>
-                  <div aria-hidden="true" />
-                </div>
-
-                <div className="divide-y divide-slate-100">
-                  {pagedResults.map((result) => {
-                    const rowDocument = resolveDocumentForResult(result);
-                    const fileLabel = inferFileLabel(result, rowDocument);
-                    const selected = viewerOpen && result.id === selectedResultId;
-
-                    return (
-                      <div
-                        className={cn(
-                          "cursor-pointer border-l-[3px] px-5 py-4 transition lg:grid lg:grid-cols-[minmax(220px,1.7fr)_minmax(120px,0.9fr)_0.7fr_0.45fr_0.75fr_0.85fr_3rem] lg:items-center lg:gap-4",
-                          selected
-                            ? "border-l-brand-500 bg-brand-50/35"
-                            : "border-l-transparent hover:bg-slate-50/80",
-                        )}
-                        key={result.id}
-                        onClick={() => handleOpenResult(result)}
-                      >
-                        <div className="flex items-start gap-4">
-                          <div
-                            className={cn(
-                              "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.9rem] border text-[0.72rem] font-medium",
-                              fileLabelClasses(fileLabel),
-                            )}
-                          >
-                            {fileLabel}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <p className="truncate text-[0.95rem] font-medium text-slate-950">
-                                {displayResultTitle(result)}
-                              </p>
-                              {isNewResult(result.date) ? (
-                                <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[0.68rem] font-medium text-brand-700">
-                                  New
-                                </span>
-                              ) : null}
-                            </div>
-                            <p className="mt-1 text-[0.84rem] text-slate-500">
-                              {resultFamilyLabel(result)} | {result.monthLabel}
-                            </p>
-                            {result.amountLabel ? (
-                              <p className="mt-1 text-[0.84rem] text-slate-400">
-                                {result.amountLabel}
-                              </p>
-                            ) : null}
-                          </div>
-                        </div>
-
-                        <div className="mt-3 min-w-0 lg:mt-0">
-                          <p className="truncate text-sm font-medium text-slate-800">{result.clientName}</p>
-                        </div>
-
-                        <div className="mt-3 text-sm text-slate-600 lg:mt-0">{result.monthLabel}</div>
-
-                        <div className="mt-3 text-sm font-medium text-slate-600 lg:mt-0">
-                          v{rowDocument?.versionNumber ?? 1}
-                        </div>
-
-                        <div className="mt-3 lg:mt-0">
-                          <span
-                            className={cn(
-                              "inline-flex rounded-full px-2.5 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.04em] ring-1 ring-inset",
-                              toneToAccentClass(statusToTone(result.status)),
-                            )}
-                          >
-                            {formatStatusLabel(result.status)}
-                          </span>
-                        </div>
-
-                        <div className="mt-3 lg:mt-0">
-                          <p className="text-[0.9rem] font-medium text-slate-950">
-                            {formatDateLabel(result.date)}
-                          </p>
-                          <p className="mt-1 text-[0.84rem] text-slate-500">
-                            {new Intl.DateTimeFormat("en-ZA", {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            }).format(new Date(result.date))}{" "}
-                            by {result.uploadedBy ?? "Client"}
-                          </p>
-                        </div>
-
-                        <div className="relative mt-3 flex items-center lg:mt-0 lg:justify-end">
-                          <button
-                            aria-label="Open result actions"
-                            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              setOpenMenuResultId((current) =>
-                                current === result.id ? "" : result.id,
-                              );
-                            }}
-                            type="button"
-                          >
-                            <MoreHorizontalIcon />
-                          </button>
-
-                          {openMenuResultId === result.id ? (
-                            <div
-                              className="absolute right-0 top-[calc(100%+0.45rem)] z-10 min-w-[220px] rounded-[1rem] border border-slate-200 bg-white p-2 shadow-[0_20px_42px_rgba(15,23,42,0.14)]"
-                              onClick={(event) => event.stopPropagation()}
-                            >
-                              <button
-                                className="block w-full rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
-                                onClick={() => handleOpenResult(result)}
-                                type="button"
-                              >
-                                Preview file
-                              </button>
-                              <button
-                                className="block w-full rounded-[0.8rem] px-3 py-2 text-left text-sm text-slate-600 transition hover:bg-slate-50 hover:text-slate-900"
-                                onClick={() => handleDownloadResult(result)}
-                                type="button"
-                              >
-                                Download
-                              </button>
-                            </div>
-                          ) : null}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="flex flex-col gap-4 border-t border-slate-100 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="text-sm text-slate-500">
-                    Showing {(currentPage - 1) * resultsPerPage + 1} to{" "}
-                    {Math.min(currentPage * resultsPerPage, visibleResults.length)} of{" "}
-                    {visibleResults.length} results
-                  </p>
-                  <Pagination
-                    currentPage={currentPage}
-                    onPageChange={setCurrentPage}
-                    totalPages={totalPages}
-                  />
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-
         {viewerOpen && selectedResult && selectedDocument ? (
           <div
             className="fixed inset-0 z-50 bg-slate-950/30"
             onClick={() => setViewerOpen(false)}
           >
             <SurfaceCard
-              className="ml-auto h-full w-full max-w-[680px] overflow-y-auto rounded-none border-0 border-l border-slate-200 bg-white p-6 shadow-[-18px_0_50px_rgba(15,23,42,0.16)] sm:p-8"
+              role="dialog" aria-modal="true" aria-label="Document details"
+              className="documents-viewer ml-auto h-full w-full max-w-[800px] overflow-y-auto rounded-none border-0 border-l border-slate-200 bg-white p-6 shadow-[-18px_0_50px_rgba(15,23,42,0.16)] sm:p-8"
               onClick={(event) => event.stopPropagation()}
             >
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <h2 className="truncate text-[1.7rem] font-medium text-slate-950">
+                <h2 className="truncate text-3xl font-medium text-slate-950">
                   {displayResultTitle(selectedResult)}
                 </h2>
                 <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-500">
                   <span
                     className={cn(
-                      "inline-flex rounded-lg border px-2 py-0.5 text-[0.72rem] font-medium",
+                      "inline-flex rounded-lg border px-2 py-0.5 text-sm font-medium",
                       fileLabelClasses(inferFileLabel(selectedResult, selectedDocument)),
                     )}
                   >
@@ -1679,21 +1158,10 @@ export function AccountantDocumentsPage() {
             </div>
 
             <div className="mt-5 flex flex-wrap gap-3">
-              <Button
-                className="h-10 flex-1 rounded-xl px-4 text-brand-700"
-                onClick={() => {
-                  if (!openPreviewInNewTab(selectedDocument)) {
-                    setFeedbackMessage("Pop-up blocked. Please allow pop-ups to open the preview.");
-                  }
-                }}
-                variant="secondary"
-              >
-                <OpenInNewIcon />
-                <span>Open in new tab</span>
-              </Button>
+
               <Button
                 className="h-10 flex-1 rounded-xl px-4"
-                onClick={() => downloadDocumentFile(selectedDocument)}
+                onClick={() => void handleDownloadResult(selectedResult)}
               >
                 <DownloadIcon />
                 <span>Download</span>
@@ -1702,51 +1170,8 @@ export function AccountantDocumentsPage() {
 
             {backendMode && selectedDocument.documentType.toLowerCase().includes("invoice") && (!selectedDocument.documentSlotId || selectedDocument.status === "under_review") && ["uploaded", "under_review"].includes(selectedDocument.status) ? <Button className="mt-3 w-full" disabled={reviewActionBusy} onClick={()=>void openInvoiceReview()}>{reviewActionBusy ? "Opening review…" : "Review invoice"}</Button> : null}
             {backendMode && selectedDocument.status === "accepted" ? <Button className="mt-3 w-full" disabled={reviewActionBusy} onClick={()=>void fileAcceptedDocument()}>{reviewActionBusy ? "Filing…" : "File document"}</Button> : null}
-            <div className="mt-5 rounded-[1.4rem] border border-slate-200 bg-slate-50 p-3">
-              <div className="flex items-center justify-between rounded-[1rem] border border-slate-200 bg-white px-3 py-2">
-                <div className="flex items-center gap-2">
-                  <button
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
-                    onClick={() => setPreviewZoom((current) => Math.max(80, current - 10))}
-                    type="button"
-                  >
-                    <ZoomOutIcon />
-                  </button>
-                  <span className="min-w-[52px] text-center text-sm font-medium text-slate-700">
-                    {previewZoom}%
-                  </span>
-                  <button
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
-                    onClick={() => setPreviewZoom((current) => Math.min(140, current + 10))}
-                    type="button"
-                  >
-                    <ZoomInIcon />
-                  </button>
-                </div>
-
-                <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto text-sm text-slate-500">
-                  <span className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">
-                    1 / 2
-                  </span>
-                  <button
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-50 hover:text-slate-700"
-                    onClick={() => openPreviewInNewTab(selectedDocument)}
-                    type="button"
-                  >
-                    <ExpandIcon />
-                  </button>
-                </div>
-              </div>
-
-              <div className="mt-3 overflow-hidden rounded-[1rem] border border-slate-200 bg-slate-100">
-                <div className="h-[24rem] overflow-y-auto px-4 py-5">
-                  <PreviewShell
-                    document={selectedDocument}
-                    result={selectedResult}
-                    zoomLevel={previewZoom}
-                  />
-                </div>
-              </div>
+            <div className="documents-preview-area">
+              {backendMode && /\.pdf$/i.test(selectedDocument.fileName) ? <DocumentPdfPreview documentId={selectedDocument.id} fileName={selectedDocument.fileName} onReady={() => {}} /> : <PreviewShell document={selectedDocument} result={selectedResult} zoomLevel={100} />}
             </div>
 
             <div className="mt-5 border-b border-slate-200">
@@ -1777,7 +1202,7 @@ export function AccountantDocumentsPage() {
                 <div className="space-y-5">
                   <div className="grid gap-x-8 gap-y-5 sm:grid-cols-2">
                     <div>
-                      <p className="text-[0.76rem] font-medium uppercase tracking-[0.14em] text-slate-400">
+                      <p className="text-sm font-medium uppercase tracking-[0.14em] text-slate-400">
                         Document type
                       </p>
                       <p className="mt-2 text-sm font-medium text-slate-950">
@@ -1785,13 +1210,13 @@ export function AccountantDocumentsPage() {
                       </p>
                     </div>
                     <div>
-                      <p className="text-[0.76rem] font-medium uppercase tracking-[0.14em] text-slate-400">
+                      <p className="text-sm font-medium uppercase tracking-[0.14em] text-slate-400">
                         Status
                       </p>
                       <div className="mt-2">
                         <span
                           className={cn(
-                            "inline-flex rounded-full px-2.5 py-1 text-[0.72rem] font-medium ring-1 ring-inset",
+                            "inline-flex rounded-full px-2.5 py-1 text-sm font-medium ring-1 ring-inset",
                             toneToAccentClass(statusToTone(selectedResult.status)),
                           )}
                         >
@@ -1800,7 +1225,7 @@ export function AccountantDocumentsPage() {
                       </div>
                     </div>
                     <div>
-                      <p className="text-[0.76rem] font-medium uppercase tracking-[0.14em] text-slate-400">
+                      <p className="text-sm font-medium uppercase tracking-[0.14em] text-slate-400">
                         Uploaded by
                       </p>
                       <p className="mt-2 text-sm font-medium text-slate-950">
@@ -1808,7 +1233,7 @@ export function AccountantDocumentsPage() {
                       </p>
                     </div>
                     <div>
-                      <p className="text-[0.76rem] font-medium uppercase tracking-[0.14em] text-slate-400">
+                      <p className="text-sm font-medium uppercase tracking-[0.14em] text-slate-400">
                         Uploaded on
                       </p>
                       <p className="mt-2 text-sm font-medium text-slate-950">
@@ -1816,7 +1241,7 @@ export function AccountantDocumentsPage() {
                       </p>
                     </div>
                     <div>
-                      <p className="text-[0.76rem] font-medium uppercase tracking-[0.14em] text-slate-400">
+                      <p className="text-sm font-medium uppercase tracking-[0.14em] text-slate-400">
                         Reviewed by
                       </p>
                       <p className="mt-2 text-sm font-medium text-slate-950">
@@ -1824,7 +1249,7 @@ export function AccountantDocumentsPage() {
                       </p>
                     </div>
                     <div>
-                      <p className="text-[0.76rem] font-medium uppercase tracking-[0.14em] text-slate-400">
+                      <p className="text-sm font-medium uppercase tracking-[0.14em] text-slate-400">
                         Period
                       </p>
                       <p className="mt-2 text-sm font-medium text-slate-950">
@@ -1832,7 +1257,7 @@ export function AccountantDocumentsPage() {
                       </p>
                     </div>
                     <div>
-                      <p className="text-[0.76rem] font-medium uppercase tracking-[0.14em] text-slate-400">
+                      <p className="text-sm font-medium uppercase tracking-[0.14em] text-slate-400">
                         Assigned to
                       </p>
                       <p className="mt-2 text-sm font-medium text-slate-950">
@@ -1856,7 +1281,7 @@ export function AccountantDocumentsPage() {
                         <article className="py-4" key={comment.id}>
                           <div className="flex items-center justify-between gap-3">
                             <div className="flex items-center gap-2">
-                              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-[0.68rem] font-semibold text-white">
+                              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-900 text-sm font-semibold text-white">
                                 {comment.author.split(" ").map((part) => part[0]).join("").slice(0, 2).toUpperCase()}
                               </span>
                               <div>
@@ -1911,7 +1336,7 @@ export function AccountantDocumentsPage() {
                               <div className="flex items-center gap-2">
                                 <p className="truncate text-sm font-medium text-slate-900">Version {version.versionNumber}</p>
                                 {version.isCurrent ? (
-                                  <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[0.66rem] font-semibold uppercase tracking-wide text-brand-700">Current</span>
+                                  <span className="rounded-full bg-brand-50 px-2 py-0.5 text-sm font-semibold uppercase tracking-wide text-brand-700">Current</span>
                                 ) : null}
                               </div>
                               <p className="mt-1 truncate text-xs text-slate-500">{version.originalFileName}</p>

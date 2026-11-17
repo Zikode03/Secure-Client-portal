@@ -1,3 +1,5 @@
+import { Button } from "../../components/ui/Button";
+import { Modal } from "../../components/ui/Modal";
 import { useEffect, useMemo, useState } from "react";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
 import { PageHeader } from "../../components/ui/PageHeader";
@@ -34,6 +36,7 @@ interface FeedbackNotice {
 
 export function AdminAuditPage() {
   const backendMode = hasApiBaseUrl();
+  const [selectedLog, setSelectedLog] = useState<AuditLogRecord | null>(null);
   const [logs, setLogs] = useState<AuditLogRecord[]>([]);
   const [users, setUsers] = useState<AdminUserRecord[]>([]);
   const [query, setQuery] = useState("");
@@ -51,8 +54,8 @@ export function AdminAuditPage() {
     async function load() {
       try {
         const [auditRows, userRows] = await Promise.all([
-          apiGetJson<AuditLogRecord[]>("/api/audit-logs?limit=300"),
-          apiGetJson<AdminUserRecord[]>("/api/admin/users"),
+          apiGetJson("/api/audit-logs?limit=300"),
+          apiGetJson("/api/admin/users"),
         ]);
         if (!mounted) return;
         setLogs(auditRows);
@@ -128,9 +131,9 @@ export function AdminAuditPage() {
               <tr>
                 <th className="px-4 py-3">Time</th>
                 <th className="px-4 py-3">Actor</th>
-                <th className="px-4 py-3">Action</th>
+                <th className="px-4 py-3">Event</th>
                 <th className="px-4 py-3">Entity</th>
-                <th className="px-4 py-3">Reference</th>
+                <th className="px-4 py-3">Reference</th><th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
@@ -146,16 +149,20 @@ export function AdminAuditPage() {
                     <td className="px-4 py-4 font-medium text-slate-800">{log.action}</td>
                     <td className="px-4 py-4 text-slate-600">{log.entityType}</td>
                     <td className="px-4 py-4 font-mono text-xs text-slate-500">{log.entityId}</td>
+                    <td className="px-4 py-4 text-right"><Button variant="ghost" size="sm" aria-label={`View audit event ${log.action}`} onClick={() => setSelectedLog(log)}>View details</Button></td>
                   </tr>
                 );
               })}
               {filteredLogs.length === 0 ? (
-                <tr><td className="px-4 py-8 text-center text-sm text-slate-500" colSpan={5}>No audit events match the current filters.</td></tr>
+                <tr><td className="px-4 py-8 text-center text-sm text-slate-500" colSpan={6}>No audit events match the current filters.</td></tr>
               ) : null}
             </tbody>
           </table>
         </div>
       </PageSection>
+      <Modal title="Audit event details" isOpen={Boolean(selectedLog)} onClose={() => setSelectedLog(null)} scrollBody>
+        {selectedLog ? <dl className="grid gap-4"><div><dt className="text-sm text-slate-500">Event</dt><dd>{selectedLog.action}</dd></div><div><dt className="text-sm text-slate-500">Recorded at</dt><dd>{new Date(selectedLog.createdAtUtc).toLocaleString()}</dd></div><div><dt className="text-sm text-slate-500">Actor</dt><dd>{selectedLog.actorUserId ? userMap.get(selectedLog.actorUserId)?.fullName ?? selectedLog.actorRole : "System"}</dd></div><div><dt className="text-sm text-slate-500">Entity reference</dt><dd className="break-all">{selectedLog.entityType} / {selectedLog.entityId}</dd></div>{selectedLog.metadataJson ? <div><dt className="text-sm text-slate-500">Recorded details</dt><dd className="whitespace-pre-wrap break-words">{selectedLog.metadataJson}</dd></div> : null}</dl> : null}
+      </Modal>
     </div>
   );
 }

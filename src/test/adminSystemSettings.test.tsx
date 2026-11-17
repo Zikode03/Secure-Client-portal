@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AdminSettingsPage } from "../pages/admin/AdminSettingsPage";
-import { apiGetJson, apiPutJson } from "../services/apiClient";
+import { apiGetJson, apiPutJson } from "./fixtures/apiTransportFixture";
 
 vi.mock("../services/apiClient", async importOriginal => ({ ...await importOriginal<typeof import("../services/apiClient")>(), hasApiBaseUrl: () => true, apiGetJson: vi.fn(), apiPutJson: vi.fn() }));
 const request = { id: "request-1", name: "Missing statement", requestType: "missing_document", titleTemplate: "Please upload {{documentName}}", descriptionTemplate: "Send all pages.", priority: "medium", defaultDueInDays: 3 };

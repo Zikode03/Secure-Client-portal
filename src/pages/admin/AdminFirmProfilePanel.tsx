@@ -8,11 +8,6 @@ import { TextField } from "../../components/ui/TextField";
 import { ApiError, apiGetJson, apiPutJson, hasApiBaseUrl } from "../../services/apiClient";
 import type { Tone } from "../../types/portal";
 
-interface SettingResponse {
-  key: string;
-  valueJson: string;
-}
-
 interface FirmProfile {
   firmName: string;
   logoDataUrl?: string | null;
@@ -62,7 +57,7 @@ export function AdminFirmProfilePanel({ onDirtyChange }: { onDirtyChange?: (dirt
     async function load() {
       setLoading(true);
       try {
-        const result = await apiGetJson<SettingResponse>("/api/admin/settings/firm.profile");
+        const result = await apiGetJson("/api/admin/settings/firm.profile");
         if (!mounted) return;
         const parsed = JSON.parse(result.valueJson || "{}") as Partial<FirmProfile>;
         setProfile({ ...defaultProfile, ...parsed });
@@ -108,7 +103,7 @@ export function AdminFirmProfilePanel({ onDirtyChange }: { onDirtyChange?: (dirt
     setSaving(true);
     setFeedback(null);
     try {
-      await apiPutJson<SettingResponse, { valueJson: string }>("/api/admin/settings/firm.profile", {
+      await apiPutJson("/api/admin/settings/firm.profile", {
         valueJson: JSON.stringify(profile),
       });
       setSaved(profile);

@@ -3,7 +3,7 @@ import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ClientOnboardingForm } from "../components/clients/ClientOnboardingForm";
 import { AdminClientsPage } from "../pages/admin/AdminClientsPage";
-import { apiGetJson, apiPostJson, hasApiBaseUrl } from "../services/apiClient";
+import { apiGetJson, apiPostJson, hasApiBaseUrl } from "./fixtures/apiTransportFixture";
 
 const { navigate } = vi.hoisted(() => ({ navigate: vi.fn() }));
 vi.mock("react-router-dom", async original => ({ ...await original<typeof import("react-router-dom")>(), useNavigate: () => navigate }));

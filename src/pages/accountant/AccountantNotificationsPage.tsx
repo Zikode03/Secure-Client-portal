@@ -393,7 +393,7 @@ export function AccountantNotificationsPage() {
 
     void (async () => {
       try {
-        const data = await apiGetJson<BackendNotificationRecord[]>("/api/notifications");
+        const data = await apiGetJson("/api/notifications");
         setLiveNotifications(data.map(mapBackendNotification));
       } catch (error) {
         setFeedback({
@@ -548,8 +548,8 @@ export function AccountantNotificationsPage() {
       <section className="portal-page-header space-y-2 border-b border-slate-200 pb-6">
         <Link to="/firm/notifications/preferences" className="inline-block text-sm font-medium text-brand-700 hover:underline">Notification preferences</Link>
         <div>
-          <p className="text-[0.82rem] font-semibold uppercase tracking-[0.18em] text-brand-600">Inbox</p>
-          <h1 className="mt-2 text-[2.2rem] font-semibold tracking-tight text-slate-950">
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-brand-600">Inbox</p>
+          <h1 className="workspace-duplicate-title mt-2 text-4xl font-semibold tracking-tight text-slate-950">
             {isAdmin ? "Firm alert inbox" : "My alert inbox"}
           </h1>
           <p className="mt-2 text-sm text-slate-500">
@@ -563,7 +563,7 @@ export function AccountantNotificationsPage() {
       <section className="rounded-[1.2rem] border border-slate-200 bg-white p-3 sm:p-4">
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           <label className="space-y-2">
-            <span className="text-[0.78rem] font-semibold uppercase tracking-[0.1em] text-slate-500">
+            <span className="text-sm font-semibold uppercase tracking-[0.1em] text-slate-500">
               Search inbox
             </span>
             <input
@@ -602,7 +602,7 @@ export function AccountantNotificationsPage() {
             <span>{option.label}</span>
             <span
               className={cn(
-                "rounded-full px-2 py-0.5 text-[0.72rem] font-semibold",
+                "rounded-full px-2 py-0.5 text-sm font-semibold",
                 filter === option.id ? "bg-white/12 text-white" : "bg-slate-100 text-slate-500",
               )}
             >
@@ -621,7 +621,7 @@ export function AccountantNotificationsPage() {
           ].map((group) => (
             group.items.length > 0 ? (
               <section className="space-y-3" key={group.key}>
-                <h2 className="text-[0.76rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-400">
                   {group.label}
                 </h2>
                 {group.items.map((notification) => {
@@ -661,11 +661,11 @@ export function AccountantNotificationsPage() {
                       <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
-                            <h2 className="text-[1.02rem] font-semibold text-slate-950">
+                            <h2 className="text-base font-semibold text-slate-950">
                               {notification.title}
                             </h2>
                             {focused ? (
-                              <span className="inline-flex rounded-full bg-brand-100 px-2.5 py-1 text-[0.68rem] font-semibold text-brand-700">
+                              <span className="inline-flex rounded-full bg-brand-100 px-2.5 py-1 text-sm font-semibold text-brand-700">
                                 Selected
                               </span>
                             ) : null}
@@ -674,7 +674,7 @@ export function AccountantNotificationsPage() {
                             {notification.message}
                           </p>
                         </div>
-                        <p className="shrink-0 text-[0.78rem] font-medium text-slate-400">
+                        <p className="shrink-0 text-sm font-medium text-slate-400">
                           {relativeLabel(notification.createdAt)}
                         </p>
                       </div>
@@ -684,7 +684,7 @@ export function AccountantNotificationsPage() {
                   <div className="flex flex-wrap gap-2">
                     <span
                       className={cn(
-                        "inline-flex rounded-full px-2.5 py-1 text-[0.72rem] font-semibold ring-1 ring-inset",
+                        "inline-flex rounded-full px-2.5 py-1 text-sm font-semibold ring-1 ring-inset",
                         priorityClasses(notification.tone),
                       )}
                     >
@@ -692,20 +692,20 @@ export function AccountantNotificationsPage() {
                     </span>
                     <span
                       className={cn(
-                        "inline-flex rounded-full px-2.5 py-1 text-[0.72rem] font-semibold ring-1 ring-inset",
+                        "inline-flex rounded-full px-2.5 py-1 text-sm font-semibold ring-1 ring-inset",
                         stateClasses(notification.state),
                       )}
                     >
                       {stateLabel(notification.state)}
                     </span>
-                    <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[0.72rem] font-medium text-slate-600">
+                    <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-sm font-medium text-slate-600">
                       {notificationKindLabel(notification)}
                     </span>
                   </div>
 
                   <div className="grid gap-3 md:grid-cols-3">
                     <div className={cn("rounded-[1rem] border px-4 py-3", tone.accent)}>
-                      <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                      <p className="text-sm font-semibold uppercase tracking-[0.12em] text-slate-400">
                         Related record
                       </p>
                       <p className="mt-2 text-sm font-semibold text-slate-950">
@@ -713,7 +713,7 @@ export function AccountantNotificationsPage() {
                       </p>
                     </div>
                     <div className="rounded-[1rem] border border-slate-200 bg-slate-50/70 px-4 py-3">
-                      <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                      <p className="text-sm font-semibold uppercase tracking-[0.12em] text-slate-400">
                         Due
                       </p>
                       <p className="mt-2 text-sm font-semibold text-slate-950">
@@ -723,7 +723,7 @@ export function AccountantNotificationsPage() {
                     <div className="rounded-[1rem] border border-slate-200 bg-slate-50/70 px-4 py-3">
                       <div className="flex items-center gap-2 text-slate-400">
                         <LayersIcon />
-                        <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em]">
+                        <p className="text-sm font-semibold uppercase tracking-[0.12em]">
                           Open in
                         </p>
                       </div>
@@ -734,7 +734,7 @@ export function AccountantNotificationsPage() {
                   </div>
 
                   {latestActivity ? (
-                    <p className="text-[0.8rem] text-slate-500">
+                    <p className="text-sm text-slate-500">
                       Latest update: {latestActivity.title} on {formatDateTimeLabel(latestActivity.timestamp)}
                     </p>
                   ) : null}

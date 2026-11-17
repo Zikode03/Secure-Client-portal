@@ -36,8 +36,8 @@ export function FirmWorkflowWorkspacePage({ defaultTab }: FirmWorkflowWorkspaceP
     void (async () => {
       try {
         const [reviewItems, requestItems] = await Promise.all([
-          apiGetJson<unknown[]>("/api/review-queue"),
-          apiGetJson<Array<{ status?: string }>>("/api/requests"),
+          apiGetJson("/api/review-queue"),
+          apiGetJson("/api/requests"),
         ]);
 
         setLiveReviewCount(reviewItems.length);
@@ -60,7 +60,7 @@ export function FirmWorkflowWorkspacePage({ defaultTab }: FirmWorkflowWorkspaceP
       <section className="portal-page-header border-b border-slate-200 pb-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-xl font-semibold text-slate-950">Workflow Workspace</h1>
+            <h1 className="workspace-duplicate-title text-xl font-semibold text-slate-950">Workflow Workspace</h1>
             <p className="mt-1 text-sm text-slate-500">
               Review documents and handle inbox items in one place without changing pages.
             </p>

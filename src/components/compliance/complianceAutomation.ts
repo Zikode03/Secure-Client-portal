@@ -112,35 +112,35 @@ export interface ComplianceHistoryEntry {
 }
 
 export const complianceAutomationApi = {
-  getRules: () => apiGetJson<ComplianceRuleSet>("/api/compliance/automation/rules"),
+  getRules: () => apiGetJson("/api/compliance/automation/rules"),
   updateRules: (value: { version: string; rules: ComplianceRuleDefinition[] }) =>
-    apiPutJson<ComplianceRuleSet, typeof value>("/api/compliance/automation/rules", value),
+    apiPutJson("/api/compliance/automation/rules", value),
   getProfile: (clientId: string) =>
-    apiGetJson<ClientComplianceProfile>(`/api/compliance/automation/profiles/${encodeURIComponent(clientId)}`),
+    apiGetJson(`/api/compliance/automation/profiles/${encodeURIComponent(clientId)}`),
   updateProfile: (clientId: string, value: Omit<ClientComplianceProfile, "clientId" | "updatedAtUtc">) =>
-    apiPutJson<ClientComplianceProfile, typeof value>(`/api/compliance/automation/profiles/${encodeURIComponent(clientId)}`, value),
+    apiPutJson<`/api/compliance/automation/profiles/${string}`>(`/api/compliance/automation/profiles/${encodeURIComponent(clientId)}`, value),
   getObligations: (clientId?: string) =>
-    apiGetJson<ComplianceObligation[]>(`/api/compliance/automation/obligations${clientId ? `?clientId=${encodeURIComponent(clientId)}` : ""}`),
-  getHistory: () => apiGetJson<ComplianceHistoryEntry[]>("/api/compliance/history"),
+    apiGetJson(`/api/compliance/automation/obligations${clientId ? `?clientId=${encodeURIComponent(clientId)}` as const : ""}`),
+  getHistory: () => apiGetJson("/api/compliance/history"),
   run: (clientId?: string) =>
-    apiPostJson<ComplianceAutomationRunResult, Record<string, never>>(`/api/compliance/automation/run${clientId ? `?clientId=${encodeURIComponent(clientId)}` : ""}`, {}),
+    apiPostJson(`/api/compliance/automation/run${clientId ? `?clientId=${encodeURIComponent(clientId)}` as const : ""}`, {}),
   preparation: (id: string, value: { complete: boolean; note?: string }) =>
-    apiPostJson<ComplianceObligation, typeof value>(`/api/compliance/automation/obligations/${encodeURIComponent(id)}/preparation`, value),
+    apiPostJson(`/api/compliance/automation/obligations/${encodeURIComponent(id)}/preparation`, value),
   review: (id: string, value: { approved: boolean; note?: string }) =>
-    apiPostJson<ComplianceObligation, typeof value>(`/api/compliance/automation/obligations/${encodeURIComponent(id)}/review`, value),
+    apiPostJson(`/api/compliance/automation/obligations/${encodeURIComponent(id)}/review`, value),
   submission: (id: string, value: { submittedAtUtc: string; submissionReference: string; amountPayable: number | null; amountRefundable: number | null; paymentRequired: boolean; note?: string }) =>
-    apiPostJson<ComplianceObligation, typeof value>(`/api/compliance/automation/obligations/${encodeURIComponent(id)}/submission`, value),
+    apiPostJson(`/api/compliance/automation/obligations/${encodeURIComponent(id)}/submission`, value),
   payment: (id: string, value: { paidAtUtc: string; paymentReference: string; amountPaid: number; note?: string }) =>
-    apiPostJson<ComplianceObligation, typeof value>(`/api/compliance/automation/obligations/${encodeURIComponent(id)}/payment`, value),
+    apiPostJson(`/api/compliance/automation/obligations/${encodeURIComponent(id)}/payment`, value),
   notApplicable: (id: string, reason: string) =>
-    apiPostJson<ComplianceObligation, { reason: string }>(`/api/compliance/automation/obligations/${encodeURIComponent(id)}/not-applicable`, { reason }),
+    apiPostJson(`/api/compliance/automation/obligations/${encodeURIComponent(id)}/not-applicable`, { reason }),
   getEvidence: (id: string) =>
-    apiGetJson<ObligationEvidence[]>(`/api/compliance/automation/obligations/${encodeURIComponent(id)}/evidence`),
+    apiGetJson(`/api/compliance/automation/obligations/${encodeURIComponent(id)}/evidence`),
   uploadEvidence: (id: string, file: File, note: string) => {
     const form = new FormData();
     form.append("File", file);
     if (note.trim()) form.append("Note", note.trim());
-    return apiPostForm<ObligationEvidenceUpload>(`/api/compliance/automation/obligations/${encodeURIComponent(id)}/evidence`, form);
+    return apiPostForm(`/api/compliance/automation/obligations/${encodeURIComponent(id)}/evidence`, form);
   },
 };
 

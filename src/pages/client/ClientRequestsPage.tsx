@@ -83,11 +83,6 @@ interface BackendRequestWorkspace {
   comments: BackendRequestComment[];
 }
 
-interface BackendRequestReadState {
-  requestId: string;
-  lastReadAtUtc: string;
-}
-
 interface BackendAssignmentRecord {
   clientId: string;
   accountantName?: string;
@@ -365,7 +360,7 @@ function ThreadListPane({
           return (
             <div key={request.id}>
               {showSection ? (
-                <div className="flex h-9 w-full items-center gap-2 border-b border-slate-100 bg-[#f7f9fc] px-4 text-left text-[0.82rem] font-medium text-[#091333] sm:px-4 lg:px-4">
+                <div className="flex h-9 w-full items-center gap-2 border-b border-slate-100 bg-[#f7f9fc] px-4 text-left text-sm font-medium text-[#091333] sm:px-4 lg:px-4">
                   {sectionLabel}
                 </div>
               ) : null}
@@ -378,21 +373,21 @@ function ThreadListPane({
                 type="button"
               >
                 {selected ? <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-[#7f9bcb]" /> : null}
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0b2451] text-[0.88rem] font-medium text-white shadow-[0_8px_18px_rgba(11,36,81,0.18)]">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0b2451] text-base font-medium text-white shadow-[0_8px_18px_rgba(11,36,81,0.18)]">
                   {initials(request.requestedBy)}
                 </span>
                 <div className="min-w-0 pt-0.5">
                   <div className="flex items-start justify-between gap-3">
-                    <p className="line-clamp-1 text-[0.92rem] font-medium leading-5 text-[#091333]">{request.requestedBy}</p>
-                    <p className="shrink-0 text-[0.78rem] font-medium text-[#091333]">{formatShortThreadTime(lastActivity(request))}</p>
+                    <p className="line-clamp-1 text-base font-medium leading-5 text-[#091333]">{request.requestedBy}</p>
+                    <p className="shrink-0 text-sm font-medium text-[#091333]">{formatShortThreadTime(lastActivity(request))}</p>
                   </div>
-                  <p className="mt-0.5 line-clamp-1 text-[0.8rem] font-medium leading-5 text-[#091333]">{request.title}</p>
-                  <p className="mt-1 line-clamp-1 text-[0.78rem] font-medium leading-5 text-[#5f7090]">{preview}</p>
+                  <p className="mt-0.5 line-clamp-1 text-sm font-medium leading-5 text-[#091333]">{request.title}</p>
+                  <p className="mt-1 line-clamp-1 text-sm font-medium leading-5 text-[#5f7090]">{preview}</p>
                 </div>
                 <div className="col-start-2 flex items-center justify-between gap-2 pb-1">
-                  <InboxStatusBadge audience="client" className="text-[0.65rem]" status={request.status} />
+                  <InboxStatusBadge audience="client" className="text-sm" status={request.status} />
                   {unread > 0 ? (
-                    <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-[#087d69] px-1.5 text-[0.58rem] font-semibold leading-none text-white">
+                    <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-[#087d69] px-1.5 text-sm font-semibold leading-none text-white">
                       {unread}
                     </span>
                   ) : null}
@@ -567,7 +562,7 @@ function ConversationPane({
             </p>
 
           </div>
-          <h2 className="mt-3 max-w-[760px] text-[1.12rem] font-medium leading-7 text-[#091333] sm:text-[1.2rem]">
+          <h2 className="mt-3 max-w-[760px] text-lg font-medium leading-7 text-[#091333] sm:text-xl">
             {request.title}
           </h2>
           <div className="inbox-conversation-assignee mt-2 space-y-1 text-sm text-[#6c7b94]">
@@ -623,11 +618,11 @@ function ConversationPane({
               const isClient = comment.role === "client";
               return (
                 <div className={`flex items-end gap-3 ${isClient ? "justify-end" : ""}`} key={comment.id}>
-                  <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[0.82rem] font-medium ${isClient ? "order-2 bg-[#d9efe6] text-[#047857]" : "bg-[#061b41] text-white"}`}>
+                  <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-medium ${isClient ? "order-2 bg-[#d9efe6] text-[#047857]" : "bg-[#061b41] text-white"}`}>
                     {initials(comment.author)}
                   </span>
                   <div className={`flex w-full max-w-[760px] flex-col ${isClient ? "items-end" : "items-start"}`}>
-                    <div className={`mb-1.5 flex w-full max-w-[760px] items-center gap-2 px-1 text-[0.72rem] font-medium ${isClient ? "justify-end text-[#5f7090]" : "justify-start text-[#6f7d96]"}`}>
+                    <div className={`mb-1.5 flex w-full max-w-[760px] items-center gap-2 px-1 text-sm font-medium ${isClient ? "justify-end text-[#5f7090]" : "justify-start text-[#6f7d96]"}`}>
                       <span>{isClient ? "You" : "Accountant"}</span>
                       <span className="text-[#b0b9cb]">•</span>
                       <span>{comment.author}</span>
@@ -640,7 +635,7 @@ function ConversationPane({
                       }`}
                       onContextMenu={(event) => handleMessageContextMenu(event, comment.id)}
                     >
-                    {text ? <p className="text-[0.9rem] leading-6 text-[#1e2f5b]">{text}</p> : null}
+                    {text ? <p className="text-base leading-6 text-[#1e2f5b]">{text}</p> : null}
                     {attachment ? (
                       <a
                         className="client-dashboard-link mt-3 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium"
@@ -679,8 +674,8 @@ function ConversationPane({
           <div className="inbox-composer shrink-0 space-y-3 bg-white px-4 py-4 sm:px-5 lg:px-6">
             <div className="inbox-composer-intro flex flex-wrap items-center gap-3">
               <div>
-                <p className="text-[0.88rem] font-medium text-[#091333]">Reply to this conversation</p>
-                <p className="text-[0.78rem] text-[#6f7d96]">Send a message or attach a file for your accountant.</p>
+                <p className="text-base font-medium text-[#091333]">Reply to this conversation</p>
+                <p className="text-sm text-[#6f7d96]">Send a message or attach a file for your accountant.</p>
               </div>
             </div>
             {attachedFile ? (
@@ -797,13 +792,13 @@ export function ClientRequestsPage() {
     try {
       const clientId = user.clientIds[0];
       const [items, assignments, readStates] = await Promise.all([
-        apiGetJson<BackendRequestRecord[]>("/api/requests"),
+        apiGetJson("/api/requests"),
         clientId
-          ? apiGetJson<BackendAssignmentRecord[]>(
+          ? apiGetJson(
               `/api/assignments?clientId=${encodeURIComponent(clientId)}`,
             ).catch(() => [])
           : Promise.resolve([] as BackendAssignmentRecord[]),
-        apiGetJson<BackendRequestReadState[]>("/api/requests/read-state").catch(() => []),
+        apiGetJson("/api/requests/read-state").catch(() => []),
       ]);
       hydrateRead(readStates.map((state) => state.requestId));
 
@@ -813,7 +808,7 @@ export function ClientRequestsPage() {
         "Assigned accountant";
       const workspaces = await Promise.all(
         items.map((item) =>
-          apiGetJson<BackendRequestWorkspace>(`/api/requests/${encodeURIComponent(item.id)}/workspace`),
+          apiGetJson(`/api/requests/${encodeURIComponent(item.id)}/workspace`),
         ),
       );
 
@@ -957,15 +952,7 @@ export function ClientRequestsPage() {
 
       void (async () => {
         try {
-          await apiPostJson<BackendRequestRecord, {
-            clientId: string;
-            requestType: string;
-            title: string;
-            description: string;
-            priority: string;
-            dueDateUtc: string;
-            relatedDocumentId: string | null;
-          }>("/api/requests", {
+          await apiPostJson("/api/requests", {
             clientId,
             requestType: toBackendRequestType(payload.requestType),
             title: payload.title,
@@ -1017,9 +1004,9 @@ export function ClientRequestsPage() {
       <header className="portal-page-header flex flex-wrap items-center justify-between gap-5 border-b border-slate-200 pb-6">
         <div className="space-y-1.5">
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">Client workspace</p>
-          <h1 className="portal-page-title text-[#091333]">Inbox</h1>
+          <h1 className="workspace-duplicate-title portal-page-title text-[#091333]">Inbox</h1>
           <span className="sr-only">Client communications</span>
-          <p className="max-w-2xl text-[0.95rem] leading-6 text-[#53617f]">
+          <p className="max-w-2xl text-base leading-6 text-[#53617f]">
             Messages, document requests and monthly pack follow-ups with your accountant.
           </p>
         </div>
@@ -1146,8 +1133,8 @@ export function ClientRequestsPage() {
             <div className="px-5 py-5">
               <div className="flex flex-wrap items-start justify-between gap-5">
                 <div className="min-w-0 flex-1">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#7b879e]">Client request</p>
-                  <p className="mt-2 text-[1.02rem] font-semibold text-[#091333]">Tell your accountant what you need.</p>
+                  <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#7b879e]">Client request</p>
+                  <p className="mt-2 text-base font-semibold text-[#091333]">Tell your accountant what you need.</p>
                   <p className="mt-2 max-w-2xl text-sm leading-6 text-[#53617f]">
                     Add the document name, a short explanation, and when you need it by.
                   </p>
@@ -1156,19 +1143,19 @@ export function ClientRequestsPage() {
                   <div className="space-y-3">
                     <div className="flex items-start justify-between gap-3 border-b border-slate-200/80 pb-3">
                       <div className="min-w-0">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#7b879e]">Sent to</p>
+                        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7b879e]">Sent to</p>
                         <p className="mt-1 truncate text-sm font-medium text-[#091333]">Your accountant</p>
                       </div>
-                      <div className="shrink-0 rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-[#2f7a57] shadow-[inset_0_0_0_1px_rgba(201,224,212,0.95)]">
+                      <div className="shrink-0 rounded-full bg-white px-2.5 py-1 text-sm font-semibold text-[#2f7a57] shadow-[inset_0_0_0_1px_rgba(201,224,212,0.95)]">
                         Live thread
                       </div>
                     </div>
                     <div className="flex items-center justify-between gap-3">
                       <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#7b879e]">Destination</p>
+                        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[#7b879e]">Destination</p>
                         <p className="mt-1 text-sm font-medium text-[#091333]">Inbox conversation</p>
                       </div>
-                      <div className="rounded-full bg-[#eef8f3] px-2.5 py-1 text-[11px] font-semibold text-[#2f7a57]">
+                      <div className="rounded-full bg-[#eef8f3] px-2.5 py-1 text-sm font-semibold text-[#2f7a57]">
                         Accountant visible
                       </div>
                     </div>

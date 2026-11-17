@@ -8,8 +8,7 @@ export interface PdfSourceLine {
 }
 export async function localPdfEngine() {
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-  const { default: workerUrl } = await import("pdfjs-dist/legacy/build/pdf.worker.min.mjs?url");
-  pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
+  pdfjs.GlobalWorkerOptions.workerSrc = `${import.meta.env.BASE_URL}pdf/pdf.worker.min.mjs`;
   return pdfjs;
 }
 /** Local PDF text extraction, with local OCR for pages containing no usable text. */

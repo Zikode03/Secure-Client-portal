@@ -74,25 +74,7 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-interface BackendLoginResponse extends Partial<MfaChallenge> {
-  expiresAtUtc?: string;
-  refreshExpiresAtUtc?: string;
-}
-
-interface BackendMeResponse {
-  user: {
-    title?: string;
-    phone?: string;
-    company?: string;
-    id: string;
-    fullName: string;
-    email: string;
-    role: Role;
-    permissions?: SessionUser["permissions"];
-    clientIds?: string[];
-  };
-}
-
+type BackendMeResponse = import("../services/apiContractTypes").ApiResponse<"/api/auth/me">;
 // Component flow: gather data first, then render a focused UI state.
 function createInitials(fullName: string) {
   const initials = fullName
@@ -113,13 +95,15 @@ function buildUserName(fullName: string) {
 
 function mapBackendUser(payload: BackendMeResponse["user"]): SessionUser {
   const clientIds = payload.clientIds ?? [];
+  if (!["admin", "accountant", "client"].includes(payload.role)) throw new Error("The server returned an unsupported workspace role.");
+  const role = payload.role as Role;
 
   return {
     id: payload.id,
     name: buildUserName(payload.fullName),
     fullName: payload.fullName,
     email: payload.email,
-    role: payload.role,
+    role,
     title: payload.title ?? "",
     phone: payload.phone ?? "",
     company: payload.company ?? "",
@@ -189,12 +173,12 @@ function persistSessionUser(nextUser: SessionUser, persistent: boolean) {
 }
 
 async function loadBackendSessionUser() {
-  const response = await apiGetJson<BackendMeResponse>("/api/auth/me");
+  const response = await apiGetJson("/api/auth/me");
   return mapBackendUser(response.user);
 }
 
 async function refreshBackendSession() {
-  return apiPostJson<BackendLoginResponse, Record<string, never>>(
+  return apiPostJson(
     "/api/auth/refresh",
     {},
   );
@@ -384,10 +368,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async verifyMfa(code, recovery) {
         if (!pendingMfa) return { ok: false, message: "Sign in again to start verification." };
         try {
-          const response = await apiPostJson<BackendLoginResponse & { recoveryCodes?: string[] }, object>(
+          const response = await apiPostJson(
             "/api/auth/mfa/verify", { challengeToken: pendingMfa.challengeToken, code, useRecoveryCode: recovery });
-          if (response.mfaRequired) { setPendingMfa(response as MfaChallenge); return { ok: true, mfaRequired: true }; }
-          return { ok: true, recoveryCodes: response.recoveryCodes };
+          if ("mfaRequired" in response && response.mfaRequired) { setPendingMfa({ ...response, expiresAtUtc: response.expiresAtUtc ?? undefined }); return { ok: true, mfaRequired: true }; }
+          return { ok: true, recoveryCodes: "recoveryCodes" in response ? response.recoveryCodes ?? undefined : undefined };
         } catch (error) { return { ok: false, message: getApiErrorMessage(error, "Verification failed. Try again.") }; }
       },
       async finishMfa() {
@@ -419,12 +403,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 
           try {
-            const loginResponse = await apiPostJson<BackendLoginResponse, LoginPayload>(
+            const loginResponse = await apiPostJson(
               "/api/auth/login",
               { email: trimmedEmail, password, rememberMe },
             );
             setPersistSession(rememberMe);
-            if (loginResponse.mfaRequired) { setPendingMfa(loginResponse as MfaChallenge); return { ok: true, mfaRequired: true }; }
+            if ("mfaRequired" in loginResponse && loginResponse.mfaRequired) { setPendingMfa({ ...loginResponse, expiresAtUtc: loginResponse.expiresAtUtc ?? undefined }); return { ok: true, mfaRequired: true }; }
 
             const nextUser = await loadBackendSessionUser();
             updateAuthNotice(null);
@@ -453,7 +437,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
 
           try {
-            const inviteResponse = await apiPostJson<BackendLoginResponse, InviteSetupPayload>(
+            const inviteResponse = await apiPostJson(
               "/api/auth/complete-invite",
               {
                 email: trimmedEmail,
@@ -463,7 +447,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               },
             );
             setPersistSession(true);
-            if (inviteResponse.mfaRequired) { setPendingMfa(inviteResponse as MfaChallenge); return { ok: true, mfaRequired: true }; }
+            if ("mfaRequired" in inviteResponse && inviteResponse.mfaRequired) { setPendingMfa({ ...inviteResponse, expiresAtUtc: inviteResponse.expiresAtUtc ?? undefined }); return { ok: true, mfaRequired: true }; }
 
             const nextUser = await loadBackendSessionUser();
             updateAuthNotice(null);
@@ -489,7 +473,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 
           try {
-            const response = await apiPostJson<{ message?: string }, { email: string }>(
+            const response = await apiPostJson(
               "/api/auth/forgot-password",
               { email: trimmedEmail },
             );
@@ -516,7 +500,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 
           try {
-            const response = await apiPostJson<BackendLoginResponse, { currentPassword: string; nextPassword: string }>(
+            const response = await apiPostJson(
               "/api/auth/change-password",
               { currentPassword, nextPassword },
             );
@@ -540,7 +524,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const details = { fullName, title: profile.title.trim(), phone: profile.phone.trim() };
 
           try {
-            const response = await apiPutJson<BackendMeResponse, ProfileUpdate>("/api/auth/profile", details);
+            const response = await apiPutJson("/api/auth/profile", details);
+            if (typeof response === "string") throw new Error("The profile response was invalid.");
             const nextUser = mapBackendUser(response.user);
             setUser(nextUser);
             return { ok: true, user: nextUser, message: "Your profile has been updated." };
@@ -558,7 +543,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
           try {
             try {
-              await apiPostJson<void, Record<string, never>>("/api/auth/logout", {});
+              await apiPostJson("/api/auth/logout", {});
             } catch (error) {
               if (!(error instanceof ApiError) || error.status !== 401) throw error;
               // An expired access cookie may still have a valid refresh session.
@@ -569,7 +554,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 setLogoutPending(false); updateAuthNotice(null);
                 return { ok: true };
               }
-              await apiPostJson<void, Record<string, never>>("/api/auth/logout", {});
+              await apiPostJson("/api/auth/logout", {});
             }
           } catch {
             const message = "Your local workspace is cleared, but server sign-out could not be confirmed. Retry sign out when the connection is available.";

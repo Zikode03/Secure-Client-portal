@@ -10,6 +10,7 @@ export type Permission =
   | "view:all_documents"
   | "view:assigned_review_queue"
   | "view:firm_review_queue"
+  | "view:team_progress"
   | "view:assigned_compliance"
   | "view:firm_compliance"
   | "manage:users"
@@ -92,7 +93,7 @@ export interface SessionUser {
   initials: string;
   clientIds: string[];
   assignedClientIds: string[];
-  permissions?: Permission[];
+  permissions?: string[];
 }
 
 export interface SummaryMetric {

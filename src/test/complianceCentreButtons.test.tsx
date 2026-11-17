@@ -4,7 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AccountantComplianceCentrePage } from "../pages/accountant/AccountantComplianceCentrePage";
 import { useAuth } from "../app/auth";
-import { apiGetJson, apiPostJson, apiPutJson } from "../services/apiClient";
+import { apiGetJson, apiPostJson, apiPutJson } from "./fixtures/apiTransportFixture";
 
 vi.mock("../app/auth", () => ({ useAuth: vi.fn() }));
 vi.mock("../services/apiClient", async original => ({

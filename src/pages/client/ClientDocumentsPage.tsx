@@ -1,12 +1,11 @@
+import { Link } from "react-router-dom";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
 import { DocumentRegister, type DocumentRegisterSortDirection } from "../../components/documents/DocumentRegister";
 import { DocumentRegisterToolbar } from "../../components/documents/DocumentRegisterToolbar";
-import { MonthlyPackAttentionLink } from "../../components/documents/MonthlyPackAttentionLink";
 import { DocumentUploadModal } from "../../components/workflow/DocumentUploadModal";
 import { Button } from "../../components/ui/Button";
-import { EmptyState } from "../../components/ui/EmptyState";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { SurfaceCard } from "../../components/ui/SurfaceCard";
@@ -34,50 +33,6 @@ import { formatDateLabel, formatStatusLabel, statusToTone, toneToAccentClass } f
 const pageSize = 8;
 
 type LoadState = "idle" | "loading" | "ready" | "error";
-
-interface BackendDocumentRecord {
-  id: string;
-  clientId: string;
-  monthlyPackId: string;
-  name: string;
-  category: string;
-  documentSlotId?: string | null;
-  status: string;
-  fileType: string;
-  sizeBytes: number;
-  uploadedByUserId: string;
-  currentVersionNumber: number;
-  uploadedAtUtc: string;
-  updatedAtUtc: string;
-}
-
-interface BackendMonthlyPackResponse {
-  id: string;
-  clientId: string;
-  year: number;
-  month: number;
-  status: string;
-}
-
-interface BackendDocumentSlotResponse {
-  id: string;
-  monthlyPackId: string;
-  clientId: string;
-  label: string;
-  category?: string;
-  isRequired: boolean;
-  status: string;
-  canCurrentlyBeSubmitted: boolean;
-  currentDocumentId?: string | null;
-  dueDateUtc?: string | null;
-  submittedAtUtc?: string | null;
-  rejectionReason?: string | null;
-}
-
-interface BackendRequestRecord {
-  id: string;
-  relatedDocumentId?: string | null;
-}
 
 function createDefaultFilters(): UnifiedSearchFilters {
   return {
@@ -142,14 +97,14 @@ export function ClientDocumentsPage() {
     async function load() {
       try {
         const [documents, packs, requests] = await Promise.all([
-          apiGetJson<BackendDocumentRecord[]>("/api/documents"),
-          apiGetJson<BackendMonthlyPackResponse[]>(`/api/monthly-packs?clientId=${encodeURIComponent(clientId)}`),
-          apiGetJson<BackendRequestRecord[]>("/api/requests").catch(() => []),
+          apiGetJson("/api/documents"),
+          apiGetJson(`/api/monthly-packs?clientId=${encodeURIComponent(clientId)}`),
+          apiGetJson("/api/requests").catch(() => []),
         ]);
         const currentPack = packs[0];
         const packById = new Map(packs.map((pack) => [pack.id, pack]));
         const slots = currentPack
-          ? await apiGetJson<BackendDocumentSlotResponse[]>(`/api/document-slots/${encodeURIComponent(currentPack.id)}`)
+          ? await apiGetJson(`/api/document-slots/${encodeURIComponent(currentPack.id)}`)
           : [];
 
         if (!active) return;
@@ -189,7 +144,7 @@ export function ClientDocumentsPage() {
             month: currentPack ? monthLabelFromParts(currentPack.year, currentPack.month).split(" ")[0] ?? "Month" : "Month",
             year: currentPack?.year ?? new Date().getUTCFullYear(),
             acceptedFiles: acceptedFilesForSlot(slot.category ?? slot.label, slot.label),
-            progress: slot.canCurrentlyBeSubmitted ? 70 : slot.status === "accepted" ? 100 : 0,
+            progress: slot.canSubmit ? 70 : slot.status === "accepted" ? 100 : 0,
             autoName: slot.label.replace(/\s+/g, "_"),
             isRequired: slot.isRequired,
             dueDate: slot.dueDateUtc ?? undefined,
@@ -268,7 +223,6 @@ export function ClientDocumentsPage() {
   const statusOptions = useMemo(() => [...new Set(searchableResults.map((result) => formatStatusLabel(result.status)))].sort(), [searchableResults]);
   const documentTypeOptions = useMemo(() => [...new Set(searchableResults.map((result) => result.typeLabel))].sort(), [searchableResults]);
   const activeAdvancedFilterCount = [filters.year, filters.uploadedBy, filters.reviewedBy, filters.expiryStatus, filters.requiredFlag !== "all" ? filters.requiredFlag : ""].filter(Boolean).length;
-  const outstandingCount = slots.filter(outstandingSlot).length;
   const preferredUploadSlot = slots.find(outstandingSlot) ?? slots[0] ?? null;
   const hasActiveFilters = Boolean(filters.query || filters.month || filters.status || filters.documentType || activeAdvancedFilterCount > 0);
 
@@ -277,7 +231,7 @@ export function ClientDocumentsPage() {
 
   useEffect(() => {
     if (!backendMode || !selectedDocument || versionsByDocumentId[selectedDocument.id]) return;
-    void apiGetJson<DocumentVersionRecord[]>(`/api/documents/${encodeURIComponent(selectedDocument.id)}/versions`)
+    void apiGetJson(`/api/documents/${encodeURIComponent(selectedDocument.id)}/versions`)
       .then((versions) => setVersionsByDocumentId((current) => ({ ...current, [selectedDocument.id]: versions })))
       .catch(() => setVersionsByDocumentId((current) => ({ ...current, [selectedDocument.id]: [] })));
   }, [backendMode, selectedDocument, versionsByDocumentId]);
@@ -312,18 +266,18 @@ export function ClientDocumentsPage() {
       .catch((error: unknown) => setFeedback({ tone: "danger", title: "Upload failed", message: error instanceof ApiError ? error.message : "The document could not be uploaded." }));
   }
 
-  async function downloadSelected() {
-    if (!selectedDocument) return;
-    if (!backendMode || selectedDocument.fileDataUrl) {
-      if (selectedDocument.fileDataUrl) window.open(selectedDocument.fileDataUrl, "_blank", "noopener,noreferrer");
-      return;
+  async function downloadSelected(targetDocument: DocumentRecord | null = selectedDocument) {
+    if (!targetDocument) return;
+    if (targetDocument.fileDataUrl) {
+      const anchor = document.createElement("a"); anchor.href = targetDocument.fileDataUrl; anchor.download = targetDocument.fileName; anchor.click(); return;
     }
+    if (!backendMode) return;
     try {
-      const { blob } = await apiGetBlob(`/api/documents/${encodeURIComponent(selectedDocument.id)}/download`);
+      const { blob } = await apiGetBlob(`/api/documents/${encodeURIComponent(targetDocument.id)}/download`);
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = selectedDocument.fileName;
+      anchor.download = targetDocument.fileName;
       anchor.click();
       URL.revokeObjectURL(url);
     } catch (error) {
@@ -362,12 +316,12 @@ export function ClientDocumentsPage() {
 
       <PageHeader
         title="Documents"
-        description="A permanent register of your business records. Monthly collection stays in Monthly Packs."
-        actions={<Button onClick={() => openUpload(preferredUploadSlot)}>Upload document</Button>}
+        description="Find, view and download your business records."
+        actions={<div className="flex flex-wrap items-center gap-3">{slots.some(outstandingSlot) ? <Link to="/client/packs" className="text-brand-700 font-medium">Open monthly pack</Link> : null}<Button onClick={() => openUpload(preferredUploadSlot)}>Upload document</Button></div>}
       />
 
-      <MonthlyPackAttentionLink outstandingCount={outstandingCount} />
 
+      <section className="client-document-library" aria-label="Document library">
       <DocumentRegisterToolbar
         activeAdvancedFilterCount={activeAdvancedFilterCount}
         documentTypeOptions={documentTypeOptions}
@@ -378,6 +332,11 @@ export function ClientDocumentsPage() {
       />
 
       <DocumentRegister
+        onDownload={result => {
+          const invoice = !backendMode ? portal.clientWorkflow.invoices.find(item => item.id === result.id) : undefined;
+          const document = documents.find(item => item.id === result.id) ?? (invoice ? buildReviewDocumentFromInvoice(invoice) : null);
+          void downloadSelected(document);
+        }}
         allResultsCount={sortedResults.length}
         currentPage={currentPage}
         documents={documents}
@@ -395,6 +354,7 @@ export function ClientDocumentsPage() {
         sortDirection={sortDirection}
         totalPages={totalPages}
       />
+      </section>
 
       {selectedDocument ? (
         <SurfaceCard className="p-5" aria-label="Document details drawer">
@@ -434,10 +394,6 @@ export function ClientDocumentsPage() {
             </div>
           </div>
         </SurfaceCard>
-      ) : null}
-
-      {sortedResults.length === 0 && !hasActiveFilters ? (
-        <EmptyState title="No documents yet" description="Upload your first document or complete an item in Monthly Packs." />
       ) : null}
 
       {viewerOpen && selectedDocument ? (

@@ -154,9 +154,9 @@ export const navigationByRole: Record<Role, NavigationItem[]> = {
       icon: "dashboard",
     },
     {
-      label: "Work Queue",
-      to: "/firm/review",
-      description: "Oversee the full firm review workload",
+      label: "Team Progress",
+      to: "/firm/admin/team-progress",
+      description: "See assigned clients, recorded work and completion progress",
       section: "Main",
       icon: "review",
     },

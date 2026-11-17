@@ -1,3 +1,4 @@
+import { useActionDialog } from "../../components/ui/useActionDialog";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, FileText, Layers, Save } from "lucide-react";
@@ -10,6 +11,7 @@ import type { Tone } from "../../types/portal";
 import "./requiredDocuments.css";
 
 export function AdminRequiredDocumentsPage() {
+  const actionDialog = useActionDialog();
   const [documents, setDocuments] = useState<RequiredDocumentTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [loaded, setLoaded] = useState(false);
@@ -24,7 +26,7 @@ export function AdminRequiredDocumentsPage() {
     setLoaded(false);
     try {
       if (!hasApiBaseUrl()) throw new Error("Connect the backend to manage required documents.");
-      setDocuments(await apiGetJson<RequiredDocumentTemplate[]>(requiredDocumentsEndpoint));
+      setDocuments(await apiGetJson(requiredDocumentsEndpoint));
       setLoaded(true);
       setDirty(false);
       setFeedback(null);
@@ -44,7 +46,7 @@ export function AdminRequiredDocumentsPage() {
 
   async function save() {
     if (!loaded || saving) return;
-    const invalid = documents.find(item => !item.name.trim() || !item.documentCategory.trim() || (item.defaultDueDayOfMonth !== null && (!Number.isInteger(item.defaultDueDayOfMonth) || item.defaultDueDayOfMonth < 1 || item.defaultDueDayOfMonth > 31)));
+    const invalid = documents.find(item => !item.name.trim() || !item.documentCategory.trim() || (item.defaultDueDayOfMonth != null && (!Number.isInteger(item.defaultDueDayOfMonth) || item.defaultDueDayOfMonth < 1 || item.defaultDueDayOfMonth > 31)));
     if (invalid) {
       setSelectedId(invalid.id);
       setFeedback({ tone: "warning", title: "Check this requirement", message: "Enter a document name and category. The due day must be blank or a whole number from 1 to 31." });
@@ -53,7 +55,7 @@ export function AdminRequiredDocumentsPage() {
     setSaving(true);
     setFeedback(null);
     try {
-      await apiPutJson<unknown, RequiredDocumentTemplate[]>(requiredDocumentsEndpoint, documents);
+      await apiPutJson(requiredDocumentsEndpoint, documents);
       setDirty(false);
       setFeedback({ tone: "success", title: "Required documents saved", message: "Monthly pack templates continue to use these same document requirements." });
     } catch (error) {
@@ -68,10 +70,11 @@ export function AdminRequiredDocumentsPage() {
 
   return (
     <form className="required-documents-page space-y-6" onSubmit={(event) => { event.preventDefault(); void save(); }}>
+      {actionDialog.dialog}
       <header className="portal-page-header flex flex-wrap items-end justify-between gap-5 border-b border-slate-200 pb-6">
         <div className="max-w-2xl space-y-2">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-700">Document setup</p>
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-950">Document types</h1>
+          <h1 className="workspace-duplicate-title text-3xl font-semibold tracking-tight text-slate-950">Document types</h1>
           <p className="text-sm leading-6 text-slate-500">Define what a client should upload and explain what the document must contain. Choose which documents apply in monthly pack templates.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -128,8 +131,8 @@ export function AdminRequiredDocumentsPage() {
               </div>
               <div className="portal-page-header flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-4">
                 <p className="text-xs text-slate-500">Edits take effect after you save changes.</p>
-                <Button type="button" variant="danger" aria-label={`Remove ${item.name || "new requirement"}`} onClick={() => {
-                  if (!window.confirm("Remove this requirement? Monthly pack templates may reference it. Changes take effect when you save.")) return;
+                <Button type="button" variant="danger" aria-label={`Remove ${item.name || "new requirement"}`} onClick={async () => {
+                  if (!await actionDialog.confirm("Remove this requirement? Monthly pack templates may reference it. Changes take effect when you save.")) return;
                   setDocuments((rows) => rows.filter((row) => row.id !== item.id));
                   setDirty(true);
                 }}>Remove</Button>

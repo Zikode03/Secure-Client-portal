@@ -2,7 +2,7 @@ import createClient from "openapi-fetch";
 import type { paths } from "./generated/portal-api";
 import { ApiError, apiContractFetch, getApiBaseUrl } from "./apiClient";
 
-/** All generated operations use the same origin, cookies, CSRF and errors as legacy requests. */
+/** All generated operations use the same origin, cookies, CSRF and errors as route-aware requests. */
 export const portalApiClient = createClient<paths>({
   baseUrl: getApiBaseUrl(),
   credentials: "include",

@@ -52,7 +52,7 @@ function PreferenceToggle({
   );
 }
 
-export function NotificationPreferencesPage() {
+export function NotificationPreferencesPage({ embedded = false }: { embedded?: boolean } = {}) {
   const { user } = useAuth();
   const portal = usePortal();
   const [feedbackNotice, setFeedbackNotice] = useState<FeedbackNotice | null>(null);
@@ -83,7 +83,7 @@ export function NotificationPreferencesPage() {
     if (hasApiBaseUrl()) {
       let active = true;
       setLoading(true); setServerPreferences(null);
-      apiGetJson<ServerPreferences>("/api/notifications/preferences").then((value) => {
+      apiGetJson("/api/notifications/preferences").then((value) => {
         if (!active) return;
         setServerPreferences(value); setEmailReminders(value.emailReminders); setEscalationAlerts(value.escalationAlerts);
         setDeadlineAlerts(value.deadlineAlerts); setQuietHours(value.quietHours); setRejectionAlerts(value.rejectionAlerts); setWeeklySummary(value.weeklySummary); setBrowserAlerts(value.browserAlerts);
@@ -136,7 +136,7 @@ export function NotificationPreferencesPage() {
       if (!serverPreferences) return;
       setSaving(true);
       try {
-        const saved = await apiPutJson<ServerPreferences, ServerPreferences>("/api/notifications/preferences", {
+        const saved = await apiPutJson("/api/notifications/preferences", {
           ...serverPreferences, deadlineAlerts, emailReminders, escalationAlerts, quietHours, rejectionAlerts, weeklySummary, browserAlerts,
         });
         setServerPreferences(saved);
@@ -202,7 +202,7 @@ export function NotificationPreferencesPage() {
       ) : null}
 
       <PageSection className="">
-        <PageHeader title="Notification Preferences" description="Configure reminders, escalation channels, and quiet hours per role." />
+        {!embedded ? <PageHeader title="Notification Preferences" description="Configure reminders, escalation channels, and quiet hours per role." /> : null}
 
         <p className="mt-3 text-sm text-slate-500">In-app alerts appear under the bell. Email updates also require your firm’s email delivery to be configured and enabled.</p>
         <div className="mt-4 space-y-3">

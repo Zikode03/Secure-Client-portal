@@ -38,7 +38,7 @@ export function DocumentPreviewPane({ document }: DocumentPreviewPaneProps) {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="text-sm text-slate-500">{document.documentType}</p>
-            <h3 className="mt-1 break-all text-[1.35rem] font-medium leading-8 text-slate-950">
+            <h3 className="mt-1 break-all text-2xl font-medium leading-8 text-slate-950">
               {document.fileName}
             </h3>
             <p className="mt-2 text-sm leading-6 text-slate-500">
@@ -78,7 +78,7 @@ export function DocumentPreviewPane({ document }: DocumentPreviewPaneProps) {
             const Icon = item.icon;
             return (
               <div className="rounded-[1.2rem] border border-slate-200 bg-white px-4 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.04)]" key={item.label}>
-                <div className="flex items-center gap-2 text-[0.72rem] font-medium uppercase tracking-[0.1em] text-slate-400">
+                <div className="flex items-center gap-2 text-sm font-medium uppercase tracking-[0.1em] text-slate-400">
                   <Icon className="h-3.5 w-3.5" />
                   {item.label}
                 </div>

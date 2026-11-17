@@ -56,7 +56,7 @@ export function ClientComplianceVerificationPanel() {
     setLoading(true);
     setError("");
     try {
-      const result = await apiGetJson<MonitoringProfile>(`/api/compliance/monitoring/${encodeURIComponent(clientId)}`);
+      const result = await apiGetJson(`/api/compliance/monitoring/${encodeURIComponent(clientId)}`);
       if (!Array.isArray(result.checks)) throw new Error("Business checks could not be read. Please try again.");
       if (current === generation.current) setProfile(result);
     } catch (caught) {

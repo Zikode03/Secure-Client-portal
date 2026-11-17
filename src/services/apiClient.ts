@@ -1,3 +1,4 @@
+import type { ApiBody, ApiDownloadRoute, ApiPath, ApiResponse, ApiRoute } from "./apiContractTypes";
 const RAW_API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim();
 interface ApiErrorBody {
   code?: string;
@@ -61,7 +62,7 @@ function getCsrfToken() {
         headers: { Accept: "application/json" },
       });
       if (!response.ok) await throwApiError(response, "/api/auth/csrf");
-      const body = await readJsonResponse<{ requestToken?: string }>(response);
+      const body = await readJsonResponse<ApiResponse<"/api/auth/csrf">>(response);
       if (!body?.requestToken) throw new ApiError(0, "Could not establish a secure session.", "CSRF_UNAVAILABLE");
       return body.requestToken;
     })();
@@ -155,6 +156,7 @@ async function throwApiError(response: Response, path: string): Promise<never> {
   throw new ApiError(response.status, message, code, payload);
 }
 
+export function apiGetJson<const P extends ApiRoute<"get">>(path: P & ApiPath<P, "get">, init?: RequestInit): Promise<ApiResponse<P>>;
 export async function apiGetJson<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(buildUrl(path), {
     ...init,
@@ -170,8 +172,8 @@ export async function apiGetJson<T>(path: string, init?: RequestInit): Promise<T
   return readJsonResponse<T>(response);
 }
 
-export async function apiGetBlob(
-  path: string,
+export async function apiGetBlob<const P extends ApiDownloadRoute>(
+  path: P,
   init?: RequestInit,
 ): Promise<{ blob: Blob; contentType: string }> {
   const response = await fetch(buildUrl(path), {
@@ -191,6 +193,7 @@ export async function apiGetBlob(
   };
 }
 
+export function apiPutJson<const P extends ApiRoute<"put">>(path: P & ApiPath<P, "put">, body: ApiBody<NoInfer<P>, "put">, init?: RequestInit): Promise<ApiResponse<P, "put">>;
 export async function apiPutJson<TResponse, TBody>(
   path: string,
   body: TBody,
@@ -216,6 +219,7 @@ export async function apiPutJson<TResponse, TBody>(
   return readJsonResponse<TResponse>(response);
 }
 
+export function apiPostJson<const P extends ApiRoute<"post">>(path: P & ApiPath<P, "post">, body: ApiBody<NoInfer<P>, "post">, init?: RequestInit): Promise<ApiResponse<P, "post">>;
 export async function apiPostJson<TResponse, TBody>(
   path: string,
   body: TBody,
@@ -241,6 +245,7 @@ export async function apiPostJson<TResponse, TBody>(
   return readJsonResponse<TResponse>(response);
 }
 
+export function apiPatchJson<const P extends ApiRoute<"patch">>(path: P & ApiPath<P, "patch">, body: ApiBody<NoInfer<P>, "patch">, init?: RequestInit): Promise<ApiResponse<P, "patch">>;
 export async function apiPatchJson<TResponse, TBody>(
   path: string,
   body: TBody,
@@ -266,6 +271,7 @@ export async function apiPatchJson<TResponse, TBody>(
   return readJsonResponse<TResponse>(response);
 }
 
+export function apiPostForm<const P extends ApiRoute<"post">>(path: P & ApiPath<P, "post">, body: FormData, init?: RequestInit): Promise<ApiResponse<P, "post">>;
 export async function apiPostForm<TResponse>(
   path: string,
   body: FormData,
@@ -289,6 +295,7 @@ export async function apiPostForm<TResponse>(
   return readJsonResponse<TResponse>(response);
 }
 
+export function apiDelete<const P extends ApiRoute<"delete">>(path: P & ApiPath<P, "delete">, init?: RequestInit): Promise<ApiResponse<P, "delete">>;
 export async function apiDelete<TResponse = void>(path: string, init?: RequestInit): Promise<TResponse> {
   const response = await apiMutation(path, {
     ...init,

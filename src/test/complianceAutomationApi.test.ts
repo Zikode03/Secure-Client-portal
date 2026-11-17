@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { complianceAutomationApi } from "../components/compliance/complianceAutomation";
-import { apiGetJson, apiPostForm, apiPostJson, apiPutJson } from "../services/apiClient";
+import { apiGetJson, apiPostForm, apiPostJson, apiPutJson } from "./fixtures/apiTransportFixture";
 
-vi.mock("../services/apiClient", () => ({
+vi.mock("../services/apiClient", async original => ({ ...await original<typeof import("../services/apiClient")>(),
   apiGetJson: vi.fn(), apiPostForm: vi.fn(), apiPostJson: vi.fn(), apiPutJson: vi.fn(),
 }));
 beforeEach(() => vi.clearAllMocks());

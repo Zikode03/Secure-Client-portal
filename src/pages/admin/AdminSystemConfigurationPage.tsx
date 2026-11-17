@@ -11,11 +11,12 @@ import { ApiError, apiGetJson, apiPutJson, hasApiBaseUrl } from "../../services/
 import type { Tone } from "../../types/portal";
 import { AdminFirmProfilePanel } from "./AdminFirmProfilePanel";
 import "./systemSettings.css";
+import "../../components/settings/settingsLayout.css";
 
 type RuleSection = "requests" | "reminders" | "deadlines" | "escalations";
 type Section = "profile" | RuleSection | "email";
 interface BaseRecord { id: string; name: string }
-interface RequestTemplate extends BaseRecord { requestType: string; titleTemplate: string; descriptionTemplate: string; priority: string; defaultDueInDays: number | null }
+interface RequestTemplate extends BaseRecord { requestType: string; titleTemplate: string; descriptionTemplate: string; priority: string; defaultDueInDays?: number | null }
 interface ReminderRule extends BaseRecord { triggerType: string; daysBeforeDue: number; audienceRole: string; messageTemplate: string; isEnabled: boolean }
 interface DeadlineRule extends BaseRecord { scope: string; dueDayOfMonth: number; graceDays: number; priority: string; isEnabled: boolean }
 interface EscalationRule extends BaseRecord { triggerType: string; daysAfterDue: number; escalateToRole: string; action: string; isEnabled: boolean }
@@ -36,10 +37,10 @@ const descriptions: Record<RuleSection, string> = {
   deadlines: "Set monthly due dates and record the grace period for each type of work.",
   escalations: "Route overdue client or accountant actions to the person who should follow up.",
 };
-const endpoints: Record<RuleSection, string> = {
+const endpoints = {
   requests: "/api/admin/firm-management/templates/requests", reminders: "/api/admin/firm-management/rules/reminders",
   deadlines: "/api/admin/firm-management/rules/deadlines", escalations: "/api/admin/firm-management/rules/escalations",
-};
+} as const;
 const priorityOptions = ["low", "medium", "high", "urgent", "critical"].map(value => ({ value, label: value[0].toUpperCase() + value.slice(1) }));
 const roleOptions = [{ value: "client", label: "Client" }, { value: "accountant", label: "Accountant" }, { value: "admin", label: "Administrator" }];
 const requestOptions = [{ value: "missing_document", label: "Missing document" }, { value: "reupload_required", label: "Document correction / re-upload" }, { value: "signature_required", label: "Signature required" }];
@@ -55,7 +56,7 @@ function NumberField({ label, value, onChange, min = 0, max, hint, nullable = fa
   return <TextField label={label} type="number" min={min} max={max} step={1} required={!nullable} value={value === null || Number.isNaN(value) ? "" : value} hint={hint} onChange={event => onChange(event.target.value === "" ? null : Number(event.target.value))} />;
 }
 function Toggle({ checked, onChange }: { checked: boolean; onChange: (checked: boolean) => void }) {
-  return <button type="button" className="settings-toggle" role="switch" aria-label="Rule enabled" aria-checked={checked} onClick={() => onChange(!checked)}><span className="settings-switch-track"><span /></span>{checked ? "Enabled" : "Paused"}</button>;
+  return <button type="button" className="admin-rule-switch" role="switch" aria-label="Rule enabled" aria-checked={checked} onClick={() => onChange(!checked)}><span className="admin-rule-switch-track"><span /></span>{checked ? "Enabled" : "Paused"}</button>;
 }
 function dayLabel(value: number) { return Number.isFinite(value) ? `${value} ${value === 1 ? "day" : "days"}` : "… days"; }
 function labelFor(options: { value: string; label: string }[], value: string) { return options.find(option => option.value === value)?.label ?? value.split("_").join(" "); }
@@ -78,7 +79,7 @@ export function AdminSystemConfigurationPage() {
     if (!backendMode) { setFeedback({ tone: "warning", title: "Settings unavailable", message: "Connect to the portal service to load and update firm settings." }); return; }
     let cancelled = false;
     setLoading(true);
-    void Promise.all([apiGetJson<RequestTemplate[]>(endpoints.requests), apiGetJson<ReminderRule[]>(endpoints.reminders), apiGetJson<DeadlineRule[]>(endpoints.deadlines), apiGetJson<EscalationRule[]>(endpoints.escalations)])
+    void Promise.all([apiGetJson(endpoints.requests), apiGetJson(endpoints.reminders), apiGetJson(endpoints.deadlines), apiGetJson(endpoints.escalations)])
       .then(([requests, reminders, deadlines, escalations]) => {
         if (cancelled) return;
         const result = { requests, reminders, deadlines, escalations };
@@ -114,7 +115,7 @@ export function AdminSystemConfigurationPage() {
     // All records in this section are saved, including records not currently selected.
     const payload = draft[section];
     const invalid = payload.find(row => !row.name.trim() ||
-      ("titleTemplate" in row && (!row.titleTemplate.trim() || !row.descriptionTemplate.trim() || (row.defaultDueInDays !== null && (!Number.isInteger(row.defaultDueInDays) || row.defaultDueInDays < 0)))) ||
+      ("titleTemplate" in row && (!row.titleTemplate.trim() || !row.descriptionTemplate.trim() || (row.defaultDueInDays != null && (!Number.isInteger(row.defaultDueInDays) || row.defaultDueInDays < 0)))) ||
       ("daysBeforeDue" in row && (!row.messageTemplate.trim() || !Number.isInteger(row.daysBeforeDue) || row.daysBeforeDue < 0)) ||
       ("dueDayOfMonth" in row && (!Number.isInteger(row.dueDayOfMonth) || row.dueDayOfMonth < 1 || row.dueDayOfMonth > 31 || !Number.isInteger(row.graceDays) || row.graceDays < 0)) ||
       ("daysAfterDue" in row && (!Number.isInteger(row.daysAfterDue) || row.daysAfterDue < 0)));
@@ -124,7 +125,7 @@ export function AdminSystemConfigurationPage() {
     }
     setSaving(true); setFeedback(null);
     try {
-      await apiPutJson<unknown, typeof payload>(endpoints[section], payload);
+      await apiPutJson(endpoints[section], payload);
       setSaved(current => ({ ...current, [section]: payload }));
       setFeedback({ tone: "success", title: "Changes saved", message: `${sections.find(item => item.key === section)?.label} have been saved. Drafts in other sections are kept.` });
     } catch (error) {
@@ -133,7 +134,7 @@ export function AdminSystemConfigurationPage() {
   }
   function remove(section: RuleSection, id: string) { setDraft(current => ({ ...current, [section]: current[section].filter(row => row.id !== id) })); }
   function summary(section: RuleSection, id: string) {
-    if (section === "requests") { const row = draft.requests.find(item => item.id === id)!; return `${labelFor(requestOptions, row.requestType)} · ${row.defaultDueInDays === null ? "No default due date" : `${dayLabel(row.defaultDueInDays)} to respond`}`; }
+    if (section === "requests") { const row = draft.requests.find(item => item.id === id)!; return `${labelFor(requestOptions, row.requestType)} · ${row.defaultDueInDays == null ? "No default due date" : `${dayLabel(row.defaultDueInDays)} to respond`}`; }
     if (section === "reminders") { const row = draft.reminders.find(item => item.id === id)!; return `${row.daysBeforeDue === 0 ? "On the due date" : `${dayLabel(row.daysBeforeDue)} before due`} · ${labelFor(roleOptions, row.audienceRole)}`; }
     if (section === "deadlines") { const row = draft.deadlines.find(item => item.id === id)!; return `${labelFor(scopeOptions, row.scope)} · Day ${Number.isFinite(row.dueDayOfMonth) ? row.dueDayOfMonth : "…"}`; }
     const row = draft.escalations.find(item => item.id === id)!; return `${dayLabel(row.daysAfterDue)} overdue · ${labelFor(roleOptions, row.escalateToRole)}`;
@@ -143,9 +144,9 @@ export function AdminSystemConfigurationPage() {
       const row = draft.requests.find(item => item.id === id)!;
       const change = (patch: Partial<RequestTemplate>) => update("requests", id, patch);
       return <>
-        <div className="settings-fields"><TextField required maxLength={160} label="Template name" hint="An internal name your team can recognise." value={row.name} onChange={event => change({ name: event.target.value })} /><Choice label="What do you need?" value={row.requestType} options={requestOptions} onChange={requestType => change({ requestType })} /></div>
+        <div className="settings-fields"><TextField required maxLength={160} label="Template name"  value={row.name} onChange={event => change({ name: event.target.value })} /><Choice label="What do you need?" value={row.requestType} options={requestOptions} onChange={requestType => change({ requestType })} /></div>
         <div className="settings-form-group"><h3>Client message</h3><TextField required maxLength={300} label="Request subject" value={row.titleTemplate} onChange={event => change({ titleTemplate: event.target.value })} /><TextAreaField required maxLength={2000} label="Instructions for the client" value={row.descriptionTemplate} onChange={event => change({ descriptionTemplate: event.target.value })} /><p className="settings-help">Use <code>{"{{documentName}}"}</code> for the document name and <code>{"{{reason}}"}</code> for the reason supplied with the request.</p></div>
-        <div className="settings-fields"><Choice label="Priority" value={row.priority} options={priorityOptions} onChange={priority => change({ priority })} /><NumberField label="Response due in days" nullable value={row.defaultDueInDays} hint="Calendar days from the request. Leave blank for no default." onChange={defaultDueInDays => change({ defaultDueInDays })} /></div>
+        <div className="settings-fields"><Choice label="Priority" value={row.priority} options={priorityOptions} onChange={priority => change({ priority })} /><NumberField label="Response due in days" nullable value={row.defaultDueInDays ?? null} hint="Calendar days from the request. Leave blank for no default." onChange={defaultDueInDays => change({ defaultDueInDays })} /></div>
         <aside className="settings-preview"><span className="settings-eyebrow">Example client message</span><h3>{exampleMessage(row.titleTemplate) || "Your request subject"}</h3><p className="settings-message">{exampleMessage(row.descriptionTemplate) || "Your instructions will appear here."}</p><small>Sample document: September bank statement. Nothing is sent from this editor.</small></aside>
       </>;
     }
@@ -181,22 +182,25 @@ export function AdminSystemConfigurationPage() {
   const selected = ruleSection ? rows.find(row => row.id === selectedIds[ruleSection]) ?? rows[0] : null;
   const filteredRows = ruleSection ? rows.filter(row => `${row.name} ${summary(ruleSection, row.id)}`.toLowerCase().includes(query.toLowerCase())) : [];
   const sectionLabel = sections.find(section => section.key === activeSection)!.label;
-  return <div className="system-settings">
-    <header className="settings-page-heading"><div><p className="settings-eyebrow">Administration</p><h1>System settings</h1><p>Set up your firm and the rules that keep client work moving.</p></div><span className="settings-access"><Building2 size={15} aria-hidden="true" />Firm-wide settings</span></header>
+  return <div className="system-settings clean-settings">
+    <header className="clean-settings-heading"><h1 className="workspace-duplicate-title ">System settings</h1><p>Manage your firm profile, client workflow rules and email delivery.</p></header>
+    <div className="clean-settings-layout">
     <nav aria-label="Settings sections" className="settings-sections">{sections.map(({ key, label, icon: Icon }) => <button key={key} type="button" aria-pressed={activeSection === key} aria-controls={`settings-panel-${key}`} onClick={() => { setActiveSection(key); setQuery(""); }}><Icon size={17} aria-hidden="true" /><span>{label}</span>{(key === "profile" ? profileDirty : key in endpoints && dirty(key as RuleSection)) ? <span className="settings-dirty-dot" aria-label="Unsaved changes" /> : null}</button>)}</nav>
+    <div className="clean-settings-content">
     <div hidden={activeSection !== "profile"} id="settings-panel-profile"><AdminFirmProfilePanel onDirtyChange={setProfileDirty} /></div>
     <div hidden={activeSection !== "email"} id="settings-panel-email" className="settings-surface settings-email"><SmtpVerificationPanel /></div>
-    {ruleSection && <section id={`settings-panel-${ruleSection}`} aria-label={sectionLabel}>
+    {ruleSection && <section className="admin-rule-page" id={`settings-panel-${ruleSection}`} aria-label={sectionLabel}>
       <div className="settings-section-heading"><div><h2>{sectionLabel}</h2><p>{descriptions[ruleSection]}</p></div><Button variant="secondary" disabled={!loaded || loading || saving} onClick={() => add(ruleSection)}><Plus size={16} aria-hidden="true" />Add {ruleSection === "requests" ? "template" : "rule"}</Button></div>
       {ruleSection === "requests" && <div className="settings-context"><FileText size={18} aria-hidden="true" /><p>Request templates define a reusable client message. To choose the documents collected each month, use <Link to="/firm/admin/monthly-packs">Pack templates</Link>.</p></div>}
       {feedback && <FeedbackBanner {...feedback} onDismiss={() => setFeedback(null)} />}
       {loading ? <div className="settings-empty" role="status">Loading firm settings…</div> : !loaded ? <div className="settings-empty"><h3>Settings are unavailable</h3><p>Your saved configuration must load before it can be edited.</p><Button variant="secondary" disabled={!backendMode} onClick={() => setLoadAttempt(value => value + 1)}>Try again</Button></div> : <form onSubmit={event => { event.preventDefault(); void saveSection(ruleSection); }}>
-        <fieldset disabled={saving} className="settings-workbench"><legend className="sr-only">{sectionLabel} editor</legend>
-          <aside className="settings-library"><div className="settings-library-heading"><h3>{ruleSection === "requests" ? "Template library" : "Your rules"}</h3><span>{rows.length}</span></div><TextField label={`Search ${ruleSection === "requests" ? "templates" : "rules"}`} placeholder="Search by name…" value={query} onChange={event => setQuery(event.target.value)} /><div className="settings-library-list">{filteredRows.map(row => <button key={row.id} type="button" aria-pressed={selected?.id === row.id} onClick={() => setSelectedIds(current => ({ ...current, [ruleSection]: row.id }))}><span><strong>{row.name || "Untitled"}</strong><small>{summary(ruleSection, row.id)}</small></span>{"isEnabled" in row && <i className={row.isEnabled ? "is-enabled" : "is-paused"} aria-label={row.isEnabled ? "Enabled" : "Paused"} />}</button>)}{!filteredRows.length && <p className="settings-help">{rows.length ? "No matches. Try a different name." : `No ${ruleSection === "requests" ? "templates" : "rules"} yet. Add your first one to get started.`}</p>}</div></aside>
-          <div className="settings-editor">{selected ? <><div className="settings-editor-heading"><div><p className="settings-eyebrow">{ruleSection === "requests" ? "Template details" : "Rule details"}</p><h3>{selected.name || "Untitled"}</h3></div>{"isEnabled" in selected && <Toggle checked={selected.isEnabled} onChange={isEnabled => update(ruleSection, selected.id, { isEnabled })} />}</div>{renderEditor(ruleSection, selected.id)}<div className="settings-remove"><Button type="button" variant="ghost" onClick={() => remove(ruleSection, selected.id)}><Trash2 size={15} aria-hidden="true" />Remove {ruleSection === "requests" ? "template" : "rule"}</Button><small>Removal takes effect when you save. Discard changes to undo.</small></div></> : <div className="settings-empty"><FileText size={30} aria-hidden="true" /><h3>Start with one clear {ruleSection === "requests" ? "request" : "rule"}</h3><p>{descriptions[ruleSection]}</p></div>}</div>
+        <fieldset disabled={saving} className="settings-workbench settings-rule-workbench"><legend className="sr-only">{sectionLabel} editor</legend>
+          <aside className="settings-library"><div className="settings-library-heading"><h3>{ruleSection === "requests" ? "Choose a template" : "Choose a rule"}</h3><span>{rows.length}</span></div><TextField label={`Search ${ruleSection === "requests" ? "templates" : "rules"}`} placeholder="Search by name…" value={query} onChange={event => setQuery(event.target.value)} /><div className="settings-library-list">{filteredRows.map(row => <button key={row.id} type="button" aria-pressed={selected?.id === row.id} onClick={() => setSelectedIds(current => ({ ...current, [ruleSection]: row.id }))}><span><strong>{row.name || "Untitled"}</strong><small>{summary(ruleSection, row.id)}</small></span>{"isEnabled" in row && <span className={`settings-rule-status ${row.isEnabled ? "is-enabled" : "is-paused"}`}>{row.isEnabled ? "Enabled" : "Paused"}</span>}</button>)}{!filteredRows.length && <p className="settings-help">{rows.length ? "No matches. Try a different name." : `No ${ruleSection === "requests" ? "templates" : "rules"} yet. Add your first one to get started.`}</p>}</div></aside>
+          <div className="settings-editor">{selected ? <><div className="settings-editor-heading"><div><p className="settings-editor-caption">{ruleSection === "requests" ? "Edit template" : "Edit rule"}</p><h3>{selected.name || "Untitled"}</h3></div>{"isEnabled" in selected && <Toggle checked={selected.isEnabled} onChange={isEnabled => update(ruleSection, selected.id, { isEnabled })} />}</div>{renderEditor(ruleSection, selected.id)}<div className="settings-remove"><Button type="button" variant="ghost" onClick={() => remove(ruleSection, selected.id)}><Trash2 size={15} aria-hidden="true" />Remove {ruleSection === "requests" ? "template" : "rule"}</Button><small>Removal takes effect when you save. Discard changes to undo.</small></div></> : <div className="settings-empty"><FileText size={30} aria-hidden="true" /><h3>Start with one clear {ruleSection === "requests" ? "request" : "rule"}</h3><p>{descriptions[ruleSection]}</p></div>}</div>
         </fieldset>
         <footer className="settings-save-bar"><p role="status">{dirty(ruleSection) ? <><span className="settings-dirty-dot" />Unsaved changes in {sectionLabel.toLowerCase()}</> : <><Check size={16} aria-hidden="true" />No unsaved changes</>}</p><div><Button type="button" variant="ghost" disabled={saving || !dirty(ruleSection)} onClick={() => { setDraft(current => ({ ...current, [ruleSection]: saved[ruleSection] })); setFeedback(null); }}>Discard changes</Button><Button type="submit" disabled={saving || !dirty(ruleSection)}><Save size={16} aria-hidden="true" />{saving ? "Saving…" : `Save ${ruleSection === "requests" ? "templates" : "rules"}`}</Button></div></footer>
       </form>}
     </section>}
+    </div></div>
   </div>;
 }

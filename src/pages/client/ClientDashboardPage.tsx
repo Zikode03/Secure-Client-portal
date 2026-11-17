@@ -93,105 +93,6 @@ interface BackendMonthlyPackRecord {
   updatedAtUtc: string;
 }
 
-interface BackendDocumentSlotRecord {
-  id: string;
-  monthlyPackId: string;
-  clientId: string;
-  category: string;
-  label: string;
-  isRequired: boolean;
-  status: string;
-  canCurrentlyBeSubmitted: boolean;
-  currentDocumentId?: string | null;
-  dueDateUtc?: string | null;
-  submittedAtUtc?: string | null;
-  rejectionReason?: string | null;
-}
-
-interface BackendDocumentRecord {
-  id: string;
-  clientId: string;
-  monthlyPackId: string;
-  name: string;
-  category: string;
-  documentSlotId?: string | null;
-  status: string;
-  fileType: string;
-  sizeBytes: number;
-  currentVersionNumber: number;
-  uploadedAtUtc: string;
-  updatedAtUtc: string;
-}
-
-interface BackendRequestRecord {
-  id: string;
-  clientId: string;
-  requestType: string;
-  relatedDocumentId?: string | null;
-  title: string;
-  description: string;
-  priority: string;
-  status: string;
-  dueDateUtc?: string | null;
-  requestedByUserId: string;
-  requestedAtUtc: string;
-  updatedAtUtc: string;
-}
-
-interface BackendNotificationRecord {
-  id: string;
-  userId: string;
-  clientId?: string | null;
-  type: string;
-  title: string;
-  message: string;
-  linkUrl?: string | null;
-  isRead: boolean;
-  createdAtUtc: string;
-}
-
-interface BackendComplianceAlertRecord {
-  complianceItemId: string;
-  clientId: string;
-  name: string;
-  categoryName?: string | null;
-  status: string;
-  riskLevel: string;
-  expiryDateUtc?: string | null;
-  dueDateUtc?: string | null;
-  ownerName?: string | null;
-  alertLevel?: string | null;
-  message: string;
-}
-
-interface BackendComplianceSummaryClientRecord {
-  clientId: string;
-  total: number;
-  valid: number;
-  expiringSoon: number;
-  expired: number;
-  missing: number;
-  pending: number;
-  rejected: number;
-  criticalRisk: number;
-  highRisk: number;
-  complianceScore: number;
-}
-
-interface BackendComplianceSummaryResponse {
-  generatedAtUtc: string;
-  clients: BackendComplianceSummaryClientRecord[];
-  totals: {
-    totalItems: number;
-    valid: number;
-    expiringSoon: number;
-    expired: number;
-    missing: number;
-    criticalRisk: number;
-    highRisk: number;
-  };
-}
-
 interface LiveClientDashboardData {
   monthPack: MonthlyPack;
   documents: DocumentRecord[];
@@ -333,10 +234,10 @@ function SectionHeader({
 }) {
   return (
     <div className="flex items-center justify-between gap-4">
-      <h2 className="text-[1rem] font-semibold text-[#091333]">{title}</h2>
+      <h2 className="text-base font-semibold text-[#091333]">{title}</h2>
       {actionLabel && onAction ? (
         <button
-          className={cn(dashboardActionButtonClass, "h-8 gap-1.5 px-3 text-[0.78rem]")}
+          className={cn(dashboardActionButtonClass, "h-8 gap-1.5 px-3 text-sm")}
           onClick={onAction}
           type="button"
         >
@@ -404,9 +305,9 @@ function CompactListCard({
       <div className="px-5 pb-4 pt-5">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <h2 className="text-[1rem] font-semibold text-slate-950">{title}</h2>
+            <h2 className="text-base font-semibold text-slate-950">{title}</h2>
             {headerBadge ? (
-              <span className="rounded-full bg-white/80 px-2.5 py-1 text-[0.68rem] font-semibold text-slate-600 ring-1 ring-slate-200/70 backdrop-blur">
+              <span className="rounded-full bg-white/80 px-2.5 py-1 text-sm font-semibold text-slate-600 ring-1 ring-slate-200/70 backdrop-blur">
                 {headerBadge}
               </span>
             ) : null}
@@ -464,12 +365,12 @@ function NextActionsCard({
               <div className="flex min-w-0 items-center gap-3">
                 <PriorityIcon tone={item.tone} />
                 <div className="min-w-0">
-                  <p className="truncate text-[0.9rem] font-semibold text-[#091333]">{item.title}</p>
-                  <p className="mt-0.5 line-clamp-2 text-[0.78rem] leading-5 text-[#53617f]">{item.detail}</p>
+                  <p className="truncate text-base font-semibold text-[#091333]">{item.title}</p>
+                  <p className="mt-0.5 line-clamp-2 text-sm leading-5 text-[#53617f]">{item.detail}</p>
                 </div>
               </div>
               <button
-                className={cn(dashboardActionButtonClass, "h-9 shrink-0 px-3 text-[0.8rem]")}
+                className={cn(dashboardActionButtonClass, "h-9 shrink-0 px-3 text-sm")}
                 onClick={item.onAction}
                 type="button"
               >
@@ -546,7 +447,7 @@ function MonthlyPackPreviewCard({
   return (
     <SurfaceCard className={cn(panelClass, "p-5")}>
       <div className="flex items-center justify-between gap-4">
-        <h2 className="text-[1rem] font-semibold text-[#091333]">Monthly Pack Status</h2>
+        <h2 className="text-base font-semibold text-[#091333]">Monthly Pack Status</h2>
         <button
           className={cn(dashboardLinkClass, "text-sm")}
           onClick={onOpenPack}
@@ -565,18 +466,18 @@ function MonthlyPackPreviewCard({
           }}
         >
           <div className="flex h-[152px] w-[152px] flex-col items-center justify-center rounded-full bg-white shadow-inner lg:h-[178px] lg:w-[178px]">
-            <span className="text-[2rem] font-medium tracking-tight text-[#091333]">{progress}%</span>
-            <span className="text-[0.78rem] font-semibold text-[#53617f]">Complete</span>
+            <span className="text-4xl font-medium tracking-tight text-[#091333]">{progress}%</span>
+            <span className="text-sm font-semibold text-[#53617f]">Complete</span>
           </div>
         </div>
 
         <div className="min-w-0 space-y-4">
           <div>
-            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.12em] text-[#53617f]">Current Month</p>
-            <p className="mt-1 text-[1.35rem] font-semibold text-brand-700">
+            <p className="text-sm font-semibold uppercase tracking-[0.12em] text-[#53617f]">Current Month</p>
+            <p className="mt-1 text-2xl font-semibold text-brand-700">
               {pack.monthLabel}
             </p>
-            <p className="mt-2 text-[0.86rem] font-semibold text-[#091333]">
+            <p className="mt-2 text-sm font-semibold text-[#091333]">
               {pack.completedCount} of {pack.totalCount} documents complete
             </p>
             <div className="client-dashboard-progress-track mt-3 h-2 rounded-full">
@@ -586,12 +487,12 @@ function MonthlyPackPreviewCard({
 
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             <div className="rounded-xl border border-[#e8ecf5] bg-[#fbfcff] px-4 py-3">
-              <p className="text-[0.72rem] font-semibold text-[#53617f]">Due Date</p>
-              <p className="mt-1 text-[0.88rem] font-semibold text-[#091333]">{formatDateLabel(pack.dueDate)}</p>
+              <p className="text-sm font-semibold text-[#53617f]">Due Date</p>
+              <p className="mt-1 text-base font-semibold text-[#091333]">{formatDateLabel(pack.dueDate)}</p>
             </div>
             <div className="rounded-xl border border-[#e8ecf5] bg-[#fbfcff] px-4 py-3">
-              <p className="text-[0.72rem] font-semibold text-[#53617f]">Status</p>
-              <p className="mt-1 text-[0.88rem] font-semibold text-brand-700">
+              <p className="text-sm font-semibold text-[#53617f]">Status</p>
+              <p className="mt-1 text-base font-semibold text-brand-700">
                 {rejectedCount > 0
                   ? "Needs attention"
                   : activeReviewCount > 0
@@ -602,8 +503,8 @@ function MonthlyPackPreviewCard({
               </p>
             </div>
             <div className="rounded-xl border border-[#e8ecf5] bg-[#fbfcff] px-4 py-3 sm:col-span-2 xl:col-span-1">
-              <p className="text-[0.72rem] font-semibold text-[#53617f]">Checklist</p>
-              <p className="mt-1 text-[0.88rem] font-semibold text-[#091333]">
+              <p className="text-sm font-semibold text-[#53617f]">Checklist</p>
+              <p className="mt-1 text-base font-semibold text-[#091333]">
                 {pack.totalCount - pack.completedCount} remaining
               </p>
             </div>
@@ -619,16 +520,16 @@ function MonthlyPackPreviewCard({
                   <span className={cn("absolute inset-y-3 left-0 w-1 rounded-r-full", slotAccent(slot.status))} />
                   <div className="flex h-full min-w-0 flex-col items-start justify-between gap-3 pl-1">
                     <div className="min-w-0">
-                      <p className="text-[0.84rem] font-semibold leading-5 text-[#091333]">{slot.documentType}</p>
+                      <p className="text-sm font-semibold leading-5 text-[#091333]">{slot.documentType}</p>
                       {slot.lastSubmission ? (
-                        <p className="mt-1 text-[0.74rem] text-[#53617f]">
+                        <p className="mt-1 text-sm text-[#53617f]">
                           Updated {formatDateLabel(slot.lastSubmission)}
                         </p>
                       ) : null}
                     </div>
                     <span
                       className={cn(
-                        "inline-flex shrink-0 rounded-full border px-2.5 py-1 text-[0.7rem] font-semibold",
+                        "inline-flex shrink-0 rounded-full border px-2.5 py-1 text-sm font-semibold",
                         slotTone(slot.status),
                       )}
                     >
@@ -702,16 +603,16 @@ export function ClientDashboardPage() {
 
     try {
       const [packs, allDocuments, requestsData, notifications, alerts, summary] = await Promise.all([
-        apiGetJson<BackendMonthlyPackRecord[]>(
+        apiGetJson(
           `/api/monthly-packs?clientId=${encodeURIComponent(backendClientId)}`,
         ),
-        apiGetJson<BackendDocumentRecord[]>("/api/documents"),
-        apiGetJson<BackendRequestRecord[]>("/api/requests"),
-        apiGetJson<BackendNotificationRecord[]>("/api/notifications"),
-        apiGetJson<BackendComplianceAlertRecord[]>(
+        apiGetJson("/api/documents"),
+        apiGetJson("/api/requests"),
+        apiGetJson("/api/notifications"),
+        apiGetJson(
           `/api/compliance/alerts?clientId=${encodeURIComponent(backendClientId)}`,
         ),
-        apiGetJson<BackendComplianceSummaryResponse>(
+        apiGetJson(
           `/api/compliance/reports/summary?clientId=${encodeURIComponent(backendClientId)}`,
         ),
       ]);
@@ -725,7 +626,7 @@ export function ClientDashboardPage() {
         return;
       }
 
-      const slots = await apiGetJson<BackendDocumentSlotRecord[]>(
+      const slots = await apiGetJson(
         `/api/document-slots/${encodeURIComponent(currentPack.id)}`,
       );
 
@@ -914,7 +815,7 @@ export function ClientDashboardPage() {
             slot.id,
             {
               currentDocumentId: slot.currentDocumentId ?? undefined,
-              canCurrentlyBeSubmitted: slot.canCurrentlyBeSubmitted,
+              canCurrentlyBeSubmitted: slot.canSubmit,
             },
           ]),
         ),
@@ -1410,8 +1311,8 @@ export function ClientDashboardPage() {
               >
                 <ExpiryIcon />
                 <div className="space-y-0.5">
-                  <p className="text-[0.95rem] font-medium text-slate-950">{typedItem.documentType}</p>
-                  <p className="text-[0.84rem] text-slate-500">
+                  <p className="text-base font-medium text-slate-950">{typedItem.documentType}</p>
+                  <p className="text-sm text-slate-500">
                     {typedItem.status === "expired"
                       ? `Expired ${formatDateLabel(typedItem.expiresOn)}`
                       : `Expires ${formatDateLabel(typedItem.expiresOn)}`}
@@ -1440,8 +1341,8 @@ export function ClientDashboardPage() {
               >
                 <AlertListIcon />
                 <div className="space-y-0.5">
-                  <p className="text-[0.95rem] font-medium leading-6 text-slate-950">{typedItem.title}</p>
-                  <p className="text-[0.84rem] text-slate-500">{typedItem.message}</p>
+                  <p className="text-base font-medium leading-6 text-slate-950">{typedItem.title}</p>
+                  <p className="text-sm text-slate-500">{typedItem.message}</p>
                 </div>
               </div>
             );
@@ -1463,7 +1364,7 @@ export function ClientDashboardPage() {
             <div className="overflow-x-auto px-5 pb-5">
               <table className="min-w-full border-separate border-spacing-0 text-left">
                 <thead>
-                  <tr className="text-[0.72rem] font-semibold text-[#53617f]">
+                  <tr className="text-sm font-semibold text-[#53617f]">
                     <th className="whitespace-nowrap border-b border-t border-[#edf0f6] bg-[#fbfcff] px-3 py-2 first:rounded-l-lg first:border-l">Document</th>
                     <th className="whitespace-nowrap border-b border-t border-[#edf0f6] bg-[#fbfcff] px-3 py-2">Type</th>
                     <th className="whitespace-nowrap border-b border-t border-[#edf0f6] bg-[#fbfcff] px-3 py-2">Updated</th>
@@ -1476,18 +1377,18 @@ export function ClientDashboardPage() {
                       <td className="border-b border-[#edf0f6] px-3 py-3">
                         <div className="flex min-w-[220px] items-center gap-2.5">
                           <FileText aria-hidden="true" className="h-4 w-4 text-brand-700" />
-                          <span className="truncate text-[0.84rem] font-medium text-[#2f3a5f]">{item.name}</span>
+                          <span className="truncate text-sm font-medium text-[#2f3a5f]">{item.name}</span>
                         </div>
                       </td>
-                      <td className="border-b border-[#edf0f6] px-3 py-3 text-[0.8rem] text-[#53617f]">{item.type}</td>
-                      <td className="border-b border-[#edf0f6] px-3 py-3 text-[0.8rem] text-[#53617f]">
+                      <td className="border-b border-[#edf0f6] px-3 py-3 text-sm text-[#53617f]">{item.type}</td>
+                      <td className="border-b border-[#edf0f6] px-3 py-3 text-sm text-[#53617f]">
                         {formatDateLabel(item.date)}
                       </td>
                       <td className="border-b border-[#edf0f6] px-3 py-3">
                         <div className="flex justify-end gap-2">
                           <button
                             aria-label={`${readyStatuses.has(item.status as MonthlyDocumentSlot["status"]) ? "Download" : "Open"} ${item.name}`}
-                            className={cn(dashboardActionButtonClass, "h-8 px-3 text-[0.78rem]")}
+                            className={cn(dashboardActionButtonClass, "h-8 px-3 text-sm")}
                             onClick={() => {
                               if (backendMode) {
                                 void triggerBackendDownload(item.id, item.name);

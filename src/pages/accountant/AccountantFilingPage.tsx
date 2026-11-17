@@ -659,7 +659,7 @@ function ResultFilterSelect({
 }) {
   return (
     <label className="space-y-2">
-      <span className="text-[0.78rem] font-medium text-slate-500">{label}</span>
+      <span className="text-sm font-medium text-slate-500">{label}</span>
       <div className="relative">
         <select
           className="h-10 w-full appearance-none rounded-xl border border-slate-200 bg-white px-3 pr-10 text-sm text-slate-700 outline-none transition focus:border-brand-300 focus:ring-4 focus:ring-brand-100"
@@ -742,10 +742,10 @@ function PreviewShell({
       >
         <div className="flex items-start justify-between gap-6">
           <div>
-            <p className="text-[1.95rem] font-medium uppercase tracking-tight text-brand-700">
+            <p className="text-4xl font-medium uppercase tracking-tight text-brand-700">
               Invoice
             </p>
-            <p className="mt-3 text-[1.05rem] font-medium text-slate-950">
+            <p className="mt-3 text-base font-medium text-slate-950">
               {document.clientName}
             </p>
             <p className="mt-1 text-sm leading-6 text-slate-500">
@@ -822,10 +822,10 @@ function PreviewShell({
     >
       <div className="flex items-start justify-between gap-4 border-b border-slate-200 pb-5">
         <div>
-          <p className="text-[0.75rem] font-medium uppercase tracking-[0.18em] text-brand-600">
+          <p className="text-sm font-medium uppercase tracking-[0.18em] text-brand-600">
             {document.documentType}
           </p>
-          <h3 className="mt-2 text-[1.35rem] font-medium text-slate-950">
+          <h3 className="mt-2 text-2xl font-medium text-slate-950">
             {displayResultTitle(result)}
           </h3>
           <p className="mt-2 text-sm text-slate-500">
@@ -839,7 +839,7 @@ function PreviewShell({
 
       <div className="mt-5 grid gap-3 sm:grid-cols-2">
         <div className="rounded-[0.95rem] border border-slate-200 bg-slate-50 px-4 py-3">
-          <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-slate-400">
+          <p className="text-sm font-medium uppercase tracking-[0.16em] text-slate-400">
             Uploaded
           </p>
           <p className="mt-2 text-sm font-medium text-slate-900">
@@ -847,7 +847,7 @@ function PreviewShell({
           </p>
         </div>
         <div className="rounded-[0.95rem] border border-slate-200 bg-slate-50 px-4 py-3">
-          <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-slate-400">
+          <p className="text-sm font-medium uppercase tracking-[0.16em] text-slate-400">
             Reviewed by
           </p>
           <p className="mt-2 text-sm font-medium text-slate-900">
@@ -857,10 +857,10 @@ function PreviewShell({
       </div>
 
       <div className="mt-5 rounded-[1rem] border border-slate-200 px-5 py-4">
-        <p className="text-[0.7rem] font-medium uppercase tracking-[0.16em] text-slate-400">
+        <p className="text-sm font-medium uppercase tracking-[0.16em] text-slate-400">
           Preview snapshot
         </p>
-        <div className="mt-4 space-y-3 font-mono text-[0.84rem] leading-7 text-slate-600">
+        <div className="mt-4 space-y-3 font-mono text-sm leading-7 text-slate-600">
           {previewLines.map((line, index) => (
             <p key={`${document.id}-preview-${index}`}>{line}</p>
           ))}
@@ -1291,7 +1291,7 @@ function DemoFilingRegister() {
       <section className="portal-page-header flex flex-col gap-5 border-b border-slate-200 pb-6 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">Accountant workspace</p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight text-slate-950">Filing Register</h1>
+          <h1 className="workspace-duplicate-title mt-1 text-3xl font-semibold tracking-tight text-slate-950">Filing Register</h1>
           <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-500">
             Track statutory submissions, references, proof and filing history across every client.
           </p>
@@ -1434,7 +1434,7 @@ function DemoFilingRegister() {
               </div>
             ) : (
               <>
-                <div className="hidden border-b border-slate-200 bg-slate-50/70 px-4 py-3 text-[0.66rem] font-semibold uppercase tracking-[0.1em] text-slate-500 lg:grid lg:grid-cols-[minmax(280px,1.9fr)_minmax(150px,1fr)_100px_120px_120px_36px] lg:gap-5">
+                <div className="hidden border-b border-slate-200 bg-slate-50/70 px-4 py-3 text-sm font-semibold uppercase tracking-[0.1em] text-slate-500 lg:grid lg:grid-cols-[minmax(280px,1.9fr)_minmax(150px,1fr)_100px_120px_120px_36px] lg:gap-5">
                   <div>Filing</div>
                   <div>Client</div>
                   <div>Authority</div>
@@ -1464,7 +1464,7 @@ function DemoFilingRegister() {
                         <div className="flex items-start gap-4">
                           <div
                             className={cn(
-                              "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.9rem] border text-[0.72rem] font-medium",
+                              "inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-[0.9rem] border text-sm font-medium",
                               fileLabelClasses(fileLabel),
                             )}
                           >
@@ -1472,16 +1472,16 @@ function DemoFilingRegister() {
                           </div>
                           <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
-                              <p className="truncate text-[0.95rem] font-medium text-slate-950">
+                              <p className="truncate text-base font-medium text-slate-950">
                                 {filing.filingType}
                               </p>
                               {isNewResult(result.date) ? (
-                                <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[0.68rem] font-medium text-brand-700">
+                                <span className="rounded-full bg-brand-50 px-2 py-0.5 text-sm font-medium text-brand-700">
                                   New
                                 </span>
                               ) : null}
                             </div>
-                            <p className="mt-1 truncate text-[0.78rem] text-slate-500">{displayResultTitle(result)}</p>
+                            <p className="mt-1 truncate text-sm text-slate-500">{displayResultTitle(result)}</p>
                           </div>
                         </div>
 
@@ -1491,7 +1491,7 @@ function DemoFilingRegister() {
                         <div className="mt-3 lg:mt-0">
                           <span
                             className={cn(
-                              "inline-flex rounded-full px-2 py-1 text-[0.64rem] font-semibold ring-1 ring-inset",
+                              "inline-flex rounded-full px-2 py-1 text-sm font-semibold ring-1 ring-inset",
                               toneToAccentClass(filingStatusTone(filing.status)),
                             )}
                           >
@@ -1582,13 +1582,13 @@ function DemoFilingRegister() {
             >
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
-                <h2 className="truncate text-[1.7rem] font-medium text-slate-950">
+                <h2 className="truncate text-3xl font-medium text-slate-950">
                   {selectedFiling.filingType}
                 </h2>
                 <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-500">
                   <span
                     className={cn(
-                      "inline-flex rounded-full px-2.5 py-1 text-[0.72rem] font-medium ring-1 ring-inset",
+                      "inline-flex rounded-full px-2.5 py-1 text-sm font-medium ring-1 ring-inset",
                       toneToAccentClass(filingStatusTone(selectedFiling.status)),
                     )}
                   >
@@ -1709,7 +1709,7 @@ function DemoFilingRegister() {
                 <div className="space-y-5">
                   <div className="grid gap-x-8 gap-y-5 sm:grid-cols-2">
                     <div>
-                      <p className="text-[0.76rem] font-medium uppercase tracking-[0.14em] text-slate-400">
+                      <p className="text-sm font-medium uppercase tracking-[0.14em] text-slate-400">
                         Filing type
                       </p>
                       <p className="mt-2 text-sm font-medium text-slate-950">
@@ -1717,25 +1717,25 @@ function DemoFilingRegister() {
                       </p>
                     </div>
                     <div>
-                      <p className="text-[0.76rem] font-medium uppercase tracking-[0.14em] text-slate-400">
+                      <p className="text-sm font-medium uppercase tracking-[0.14em] text-slate-400">
                         Authority
                       </p>
                       <p className="mt-2 text-sm font-medium text-slate-950">{selectedFiling.authority}</p>
                     </div>
                     <div>
-                      <p className="text-[0.76rem] font-medium uppercase tracking-[0.14em] text-slate-400">
+                      <p className="text-sm font-medium uppercase tracking-[0.14em] text-slate-400">
                         Client
                       </p>
                       <p className="mt-2 text-sm font-medium text-slate-950">{selectedResult.clientName}</p>
                     </div>
                     <div>
-                      <p className="text-[0.76rem] font-medium uppercase tracking-[0.14em] text-slate-400">
+                      <p className="text-sm font-medium uppercase tracking-[0.14em] text-slate-400">
                         Period
                       </p>
                       <p className="mt-2 text-sm font-medium text-slate-950">{selectedResult.monthLabel}</p>
                     </div>
                     <div>
-                      <p className="text-[0.76rem] font-medium uppercase tracking-[0.14em] text-slate-400">
+                      <p className="text-sm font-medium uppercase tracking-[0.14em] text-slate-400">
                         Due date
                       </p>
                       <p className="mt-2 text-sm font-medium text-slate-950">
@@ -1743,7 +1743,7 @@ function DemoFilingRegister() {
                       </p>
                     </div>
                     <div>
-                      <p className="text-[0.76rem] font-medium uppercase tracking-[0.14em] text-slate-400">
+                      <p className="text-sm font-medium uppercase tracking-[0.14em] text-slate-400">
                         Filed date
                       </p>
                       <p className="mt-2 text-sm font-medium text-slate-950">
@@ -1751,7 +1751,7 @@ function DemoFilingRegister() {
                       </p>
                     </div>
                     <div>
-                      <p className="text-[0.76rem] font-medium uppercase tracking-[0.14em] text-slate-400">
+                      <p className="text-sm font-medium uppercase tracking-[0.14em] text-slate-400">
                         Reference
                       </p>
                       <div className="mt-2 flex items-center gap-2">
@@ -1768,11 +1768,11 @@ function DemoFilingRegister() {
                       </div>
                     </div>
                     <div>
-                      <p className="text-[0.76rem] font-medium uppercase tracking-[0.14em] text-slate-400">Payment</p>
+                      <p className="text-sm font-medium uppercase tracking-[0.14em] text-slate-400">Payment</p>
                       <p className="mt-2 text-sm font-medium text-slate-950">{selectedFiling.paymentStatus}</p>
                     </div>
                     <div>
-                      <p className="text-[0.76rem] font-medium uppercase tracking-[0.14em] text-slate-400">Filed by</p>
+                      <p className="text-sm font-medium uppercase tracking-[0.14em] text-slate-400">Filed by</p>
                       <p className="mt-2 text-sm font-medium text-slate-950">
                         {detailValue(selectedDocument.reviewedBy, selectedAccountant)}
                       </p>
@@ -1802,12 +1802,12 @@ function DemoFilingRegister() {
                       >
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div className="flex items-center gap-2">
-                            <span className="rounded-full bg-white px-2 py-0.5 text-[0.7rem] font-medium text-slate-600 ring-1 ring-slate-200">
+                            <span className="rounded-full bg-white px-2 py-0.5 text-sm font-medium text-slate-600 ring-1 ring-slate-200">
                               {entry.versionLabel}
                             </span>
                             <p className="text-sm font-medium text-slate-950">{entry.actionLabel}</p>
                             {entry.isFinalFiledVersion ? (
-                              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[0.68rem] font-medium text-emerald-700">
+                              <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-sm font-medium text-emerald-700">
                                 Final filed version
                               </span>
                             ) : null}

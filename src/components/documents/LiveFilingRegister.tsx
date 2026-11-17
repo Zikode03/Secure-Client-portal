@@ -17,7 +17,7 @@ export function LiveFilingRegister() {
   useEffect(() => {
     let active = true;
     setLoading(true); setError(""); setRows([]);
-    void apiGetJson<FiledDocument[]>("/api/documents/filing-register")
+    void apiGetJson("/api/documents/filing-register")
       .then(value => { if (active) setRows(value.filter(document => document.isFiled)); })
       .catch(error => { if (active) setError(error instanceof Error ? error.message : "Filed documents could not be loaded."); })
       .finally(() => { if (active) setLoading(false); });
@@ -35,7 +35,7 @@ export function LiveFilingRegister() {
     finally { setDownloading(""); }
   }
   return <section className="portal-page space-y-5">
-    <header className="portal-page-header"><h1 className="text-2xl font-semibold text-slate-950">Filing Register</h1><p className="mt-2 text-sm text-slate-600">Accepted documents filed in the portal. Filing here does not confirm submission to a government authority.</p></header>
+    <header className="portal-page-header"><h1 className="workspace-duplicate-title text-2xl font-semibold text-slate-950">Filing Register</h1><p className="mt-2 text-sm text-slate-600">Accepted documents filed in the portal. Filing here does not confirm submission to a government authority.</p></header>
     <div className="flex flex-wrap items-end gap-3"><label className="flex-1 text-sm font-medium">Search filed documents<input className="mt-2 block w-full rounded-lg border border-slate-300 p-3" value={query} onChange={event => setQuery(event.target.value)} /></label><Button variant="secondary" disabled={loading} onClick={() => setRevision(value => value + 1)}>Refresh register</Button></div>
     {loading ? <p role="status">Loading filed documents...</p> : null}
     {error ? <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-4"><p>{error}</p><Button className="mt-3" variant="secondary" onClick={() => setRevision(value => value + 1)}>Retry register</Button></div> : null}

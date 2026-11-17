@@ -1,4 +1,4 @@
-import { apiGetJson } from "../services/apiClient";
+import { apiGetJson } from "./fixtures/apiTransportFixture";
 import { waitFor } from "@testing-library/react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
@@ -12,11 +12,14 @@ vi.mock("../services/apiClient", async original => ({ ...await original<typeof i
 beforeEach(() => { vi.spyOn(portalServiceApi, "getAdminClients").mockResolvedValue([{ id: "client-1", clientName: "Test business", industry: "Services", assignedAccountant: user.fullName, assignedAccountantUserId: user.id, requiredPack: "Monthly", completionRate: 0, deadlinePolicy: "Configured", status: "on_track" }]); });
 it("shows only document browsing actions for records returned by the backend", async () => {
   render(<MemoryRouter><PortalProvider><AccountantDocumentsPage /></PortalProvider></MemoryRouter>);
-  const actions = await screen.findAllByRole("button", { name: "Open result actions" });
-  expect(screen.getByRole("heading", { name: "Client documents" })).toBeInTheDocument();
+  const actions = await screen.findAllByRole("button", { name: /^Actions for / });
+  expect(screen.getByRole("heading", { name: "Documents" })).toBeInTheDocument();
+  expect(actions[0]).toBeInTheDocument();
   fireEvent.click(actions[0]);
-  expect(screen.getByRole("button", { name: "Preview file" })).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Download" })).toBeInTheDocument();
+  expect(screen.getByRole("menuitem", { name: "Open" })).toHaveFocus();
+  expect(screen.getByRole("menuitem", { name: "Download" })).toBeInTheDocument();
+  expect(screen.getByRole("columnheader", { name: "Actions" })).toBeInTheDocument();
+  expect(screen.queryByRole("heading", { name: "Document register" })).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Request re-upload" })).not.toBeInTheDocument();
   expect(screen.queryByRole("button", { name: "Mark under review" })).not.toBeInTheDocument();
 });
@@ -32,8 +35,8 @@ it("files an accepted document through the real protected API transport", async 
   vi.stubGlobal("fetch",fetchMock);
   try {
     render(<MemoryRouter><PortalProvider><AccountantDocumentsPage /></PortalProvider></MemoryRouter>);
-    fireEvent.click((await screen.findAllByRole("button",{name:"Open result actions"}))[0]);
-    fireEvent.click(screen.getByRole("button",{name:"Preview file"}));
+    fireEvent.click((await screen.findAllByRole("button",{name:/^Actions for /}))[0]);
+    fireEvent.click(screen.getByRole("menuitem", { name: "Open" }));
     fireEvent.click(await screen.findByRole("button",{name:"File document"}));
     await screen.findByText("Document filed. It is available in the Filing Register.");
     await waitFor(()=>expect(fetchMock.mock.calls.some(([input])=>input instanceof Request&&input.method==="PUT"&&input.url.endsWith("/api/documents/document-1/status"))).toBe(true));

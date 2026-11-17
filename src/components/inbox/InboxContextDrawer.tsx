@@ -12,7 +12,7 @@ function requestTypeLabel(type: WorkflowRequest["requestType"]) {
 function Detail({ label, value }: { label: string; value: string }) {
   return (
     <div className="border-b border-slate-100 py-3 last:border-0">
-      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-slate-400">{label}</p>
+      <p className="text-sm font-semibold uppercase tracking-[0.12em] text-slate-400">{label}</p>
       <p className="mt-1.5 break-words text-sm font-medium text-slate-800">{value}</p>
     </div>
   );

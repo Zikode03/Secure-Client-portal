@@ -43,7 +43,7 @@ export function MissingDocumentsPanel({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold text-slate-950">{title}</h2>
-          <p className="mt-1 text-[0.82rem] text-slate-500">{description}</p>
+          <p className="mt-1 text-sm text-slate-500">{description}</p>
         </div>
         {headerActionLabel && onHeaderAction ? (
           <Button onClick={onHeaderAction} size="sm" variant="ghost">
@@ -74,7 +74,7 @@ export function MissingDocumentsPanel({
                 </div>
               </div>
               <p className="mt-3 text-sm leading-6 text-slate-600">{item.description}</p>
-              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[0.8rem] text-slate-500">
+              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-500">
                 <span>
                   {item.dueDate
                     ? `Due ${formatDateLabel(item.dueDate)}`

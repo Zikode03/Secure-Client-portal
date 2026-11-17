@@ -140,7 +140,7 @@ export function ClientMonthlyPackWorkspacePage() {
         monthlyPacksApi.list(clientId),
         documentsApi.list(),
         monthlyPacksApi.profile(clientId),
-        apiGetJson<ClientRecord>(`/api/clients/${encodeURIComponent(clientId)}`),
+        apiGetJson(`/api/clients/${encodeURIComponent(clientId)}`),
       ]);
 
       const currentPack = packs[0] ?? null;

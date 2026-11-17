@@ -1,0 +1,65 @@
+/* Shared settings layout; role-specific forms retain their existing behavior. */
+.clean-settings.client-settings, .clean-settings.system-settings { max-width:none; margin:0; display:grid; gap:22px; }
+.clean-settings .clean-settings-heading h1 { margin:0; }
+.clean-settings .clean-settings-heading p { margin:6px 0 0; color:var(--settings-muted, #64748b); font-size:15px; }
+.clean-settings-layout { display:grid; grid-template-columns:210px minmax(0,1fr); gap:28px; align-items:start; }
+.clean-settings .settings-tabs, .clean-settings .settings-sections { display:flex; flex-direction:column; gap:4px; margin:0; padding:0; border:0; border-radius:0; background:transparent; overflow:visible; }
+.clean-settings .settings-tabs button, .clean-settings .settings-sections button { display:flex; justify-content:flex-start; align-items:center; gap:10px; flex:none; width:100%; min-height:44px; padding:12px 14px; border:0; border-radius:7px; background:transparent; box-shadow:none; color:#64748b; font-size:14px; font-weight:500; text-align:left; }
+.clean-settings .settings-tabs button.is-active, .clean-settings .settings-sections button[aria-pressed=true] { background:#eaf0f7; color:#172747; }
+.clean-settings .settings-tabs button:hover, .clean-settings .settings-sections button:hover { background:#f1f5f9; }
+.clean-settings-content { min-width:0; }
+.clean-settings.client-settings .settings-panel { margin:0; border-radius:10px; }
+.clean-settings .settings-panel-heading { padding:22px 24px; }
+.clean-settings .settings-group { display:grid; grid-template-columns:minmax(0,1fr); gap:18px; padding:24px; margin:0; }
+.clean-settings .settings-group-label h3 { margin:0 0 5px; }
+.clean-settings .settings-group-label p { margin:0; }
+.clean-settings .settings-group-label > span { display:none; }
+.clean-settings .settings-footer { margin:0; padding:18px 24px; }
+.clean-settings.system-settings .clean-settings-content > div:not([hidden]), .clean-settings.system-settings .clean-settings-content > section { border:1px solid var(--settings-border); border-radius:10px; background:var(--settings-surface); overflow:hidden; }
+.clean-settings.system-settings .settings-section-heading { padding:22px 24px; margin:0; }
+.clean-settings.system-settings .settings-profile-section { grid-template-columns:minmax(0,1fr); gap:18px; margin-inline:24px; padding-block:24px; }
+.clean-settings.system-settings .settings-firm-identity { display:none; }
+.clean-settings.system-settings .settings-workbench { grid-template-columns:210px minmax(0,1fr); border-radius:0; border-inline:0; }
+.clean-settings.system-settings .settings-context { margin:0 24px 20px; }
+.clean-settings.system-settings .settings-save-bar { padding:18px 24px; margin:0; }
+.clean-settings.system-settings .settings-email { padding:24px; }
+html.theme-dark .clean-settings .settings-tabs button, html.theme-dark .clean-settings .settings-sections button { color:#a2b4c2; }
+html.theme-dark .clean-settings .settings-tabs button.is-active, html.theme-dark .clean-settings .settings-sections button[aria-pressed=true] { background:#26384d; color:#e2e8f0; }
+html.theme-dark .clean-settings .settings-tabs button:hover, html.theme-dark .clean-settings .settings-sections button:hover { background:#26384d; }
+@media(max-width:1100px) { .clean-settings.system-settings .settings-workbench { grid-template-columns:minmax(0,1fr); } }
+@media(max-width:767px) {
+ .clean-settings-layout { grid-template-columns:minmax(0,1fr); gap:18px; }
+ .clean-settings .settings-tabs, .clean-settings .settings-sections { flex-direction:row; overflow-x:auto; }
+ .clean-settings .settings-tabs button, .clean-settings .settings-sections button { width:auto; white-space:nowrap; }
+ .clean-settings .settings-fields { grid-template-columns:minmax(0,1fr); }
+}
+
+/* Rule sections use the full panel width, avoiding three competing columns. */
+.clean-settings.system-settings .settings-rule-workbench { display:block; margin-top:0; border:0; }
+.clean-settings .admin-rule-page .settings-section-heading { border-bottom:1px solid var(--settings-border); }
+.clean-settings .admin-rule-page .settings-context { margin:0; padding:12px 24px; border:0; border-bottom:1px solid var(--settings-border); border-radius:0; background:var(--settings-soft); }
+.clean-settings .admin-rule-page .settings-library { display:grid; grid-template-columns:minmax(0,1fr) minmax(180px,260px); gap:14px 24px; padding:20px 24px; border:0; border-bottom:1px solid var(--settings-border); border-radius:0; background:var(--settings-surface); }
+.clean-settings .admin-rule-page .settings-library-heading { margin:0; justify-content:flex-start; gap:10px; align-self:center; }
+.clean-settings .admin-rule-page .settings-library-heading h3 { font-size:14px; font-weight:500; }
+.clean-settings .admin-rule-page .settings-library-list { grid-column:1/-1; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin:0; max-height:190px; }
+.clean-settings .admin-rule-page .settings-library-list button { padding:12px 14px; border:1px solid var(--settings-border); border-radius:7px; align-items:flex-start; box-shadow:none; }
+.clean-settings .admin-rule-page .settings-library-list button[aria-pressed=true] { background:var(--settings-soft); border-color:#869bb4; box-shadow:inset 3px 0 #233c65; }
+.clean-settings .admin-rule-page .settings-library-list strong { font-size:14px; font-weight:500; }
+.clean-settings .admin-rule-page .settings-library-list small { font-size:13px; margin-top:3px; }
+.clean-settings .settings-rule-status { flex-shrink:0; padding:2px 7px; border-radius:4px; font-size:12px; line-height:20px; color:var(--settings-muted); background:var(--settings-soft); }
+.clean-settings .settings-rule-status.is-enabled { color:var(--settings-accent); background:var(--settings-tint); }
+.clean-settings .admin-rule-page .settings-editor { padding:24px; gap:24px; }
+.clean-settings .settings-editor-caption { color:var(--settings-muted); font-size:13px; }
+.clean-settings .admin-rule-page .settings-editor-heading { padding-bottom:18px; }
+.clean-settings .admin-rule-page .settings-editor-heading h3 { margin-top:4px; font-size:18px; }
+.clean-settings .admin-rule-page .settings-fields { gap:18px 24px; grid-template-columns:repeat(2,minmax(0,1fr)); }
+.clean-settings .admin-rule-page .settings-preview { padding:16px 18px; border:1px solid var(--settings-border); border-radius:7px; background:var(--settings-soft); }
+.clean-settings .admin-rule-page .settings-preview .settings-eyebrow { font-size:13px; font-weight:500; letter-spacing:0; text-transform:none; }
+.clean-settings .admin-rule-page .settings-preview h3 { font-size:15px; font-weight:500; }
+.clean-settings .admin-rule-page .settings-remove { justify-content:space-between; gap:12px; padding-top:16px; }
+.clean-settings .admin-rule-page .settings-save-bar { border-inline:0; border-bottom:0; border-radius:0; box-shadow:none; }
+@media(max-width:767px) {
+ .clean-settings .admin-rule-page .settings-library { grid-template-columns:minmax(0,1fr); }
+ .clean-settings .admin-rule-page .settings-library-list, .clean-settings .admin-rule-page .settings-fields { grid-template-columns:minmax(0,1fr); }
+ .clean-settings .admin-rule-page .settings-editor-heading { flex-wrap:wrap; }
+}

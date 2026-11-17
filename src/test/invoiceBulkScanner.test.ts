@@ -1,10 +1,10 @@
 import { beforeEach, expect, it, vi } from "vitest";
 import { scanBulkInvoice } from "../services/invoiceBulkScanner";
 import { invoiceReviewApi, type SaveInvoiceReviewRequest } from "../services/invoiceReviewApi";
-import { apiGetBlob } from "../services/apiClient";
+import { apiGetBlob } from "./fixtures/apiTransportFixture";
 import { emptyReviewValues, scanReviewInvoiceDocument } from "../services/invoiceReviewScanner";
 vi.mock("../services/invoiceReviewApi", () => ({ invoiceReviewApi: { get: vi.fn(), save: vi.fn() } }));
-vi.mock("../services/apiClient", () => ({ apiGetBlob: vi.fn() }));
+vi.mock("../services/apiClient", async original => ({ ...await original<typeof import("../services/apiClient")>(), apiGetBlob: vi.fn() }));
 vi.mock("../services/invoiceReviewScanner", async original => ({ ...await original<typeof import("../services/invoiceReviewScanner")>(), scanReviewInvoiceDocument: vi.fn() }));
 const invoice = { id: "private-invoice", fileName: "invoice.png", versionNumber: 2 };
 beforeEach(() => {

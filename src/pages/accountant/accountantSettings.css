@@ -1,0 +1,39 @@
+.accountant-settings { display: grid; gap: 22px; color: #172747; }
+.accountant-settings-heading p { margin-top: 7px; color: #64748b; font-size: var(--ui-text-body); }
+.accountant-settings-layout { display: grid; grid-template-columns: 210px minmax(0,1fr); gap: 28px; align-items: start; }
+.accountant-settings-nav [role=tablist] { display: grid; gap: 4px; }
+.accountant-settings-nav button { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 7px; width: 100%; text-align: left; color: #64748b; }
+.accountant-settings-nav button[aria-selected=true] { background: #eaf0f7; color: #172747; }
+.accountant-settings-nav > p { border-top: 1px solid #e2e8f0; margin-top: 18px; padding: 14px; font-size: var(--ui-text-secondary); color: #64748b; line-height: 1.6; }
+.accountant-settings-panel { min-width: 0; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; overflow: hidden; }
+.accountant-settings-panel-heading { padding: 22px 24px; border-bottom: 1px solid #edf1f5; }
+.accountant-settings-panel-heading p { margin-top: 5px; color: #64748b; font-size: var(--ui-text-secondary); line-height: 1.6; }
+.accountant-settings-account { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; padding: 24px; }
+.accountant-settings-account dt { color: #64748b; font-size: var(--ui-text-label); }
+.accountant-settings-account dd { margin-top: 6px; overflow-wrap: anywhere; }
+.accountant-settings-footer { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 10px; padding: 18px 24px; border-top: 1px solid #edf1f5; }
+.accountant-settings-footer > span { margin-right: auto; font-size: var(--ui-text-secondary); color: #64748b; }
+.accountant-settings .ui-btn { box-shadow: none; border-radius: 7px; }
+.accountant-settings-password > fieldset { display: grid; gap: 20px; max-width: 560px; padding: 24px; }
+.accountant-settings input, .accountant-settings select { border-radius: 7px; }
+.accountant-settings-notice { margin: 16px 24px; padding: 12px 14px; border: 1px solid #dce3ed; border-radius: 7px; color: #475569; font-size: var(--ui-text-body); }
+.accountant-settings-notice.is-error { border-color: #efd3cd; background: #fff8f6; color: #a34f3f; }
+.accountant-settings-notice .ui-btn { margin-top: 10px; }
+.accountant-settings-context { padding: 18px 24px; font-size: var(--ui-text-secondary); color: #64748b; line-height: 1.6; }
+.accountant-settings-rule-list { padding-inline: 24px; }
+.accountant-settings-rule-list label { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 16px 0; }
+.accountant-settings-rule-list label + label { border-top: 1px solid #edf1f5; }
+.accountant-settings-rule-list strong { display: block; text-transform: capitalize; font-weight: 500; }
+.accountant-settings-rule-list small { display: block; margin-top: 4px; color: #64748b; line-height: 1.6; }
+.accountant-settings-rule-list input { width: 18px; height: 18px; flex-shrink: 0; accent-color: #172747; }
+.accountant-settings-filing > p[role=status] { margin: 18px 24px; }
+.accountant-settings-notifications { padding: 20px 24px; }
+.accountant-settings-notifications .portal-page-section { padding: 0; border: 0; }
+.accountant-settings-notifications label { border: 0; border-bottom: 1px solid #edf1f5; border-radius: 0; padding: 14px 0; background: #fff; }
+.accountant-settings-notifications input:not([type=checkbox]) { background: #fff; }
+@media (max-width: 767px) { .accountant-settings-layout { grid-template-columns: 1fr; gap: 16px; } .accountant-settings-nav [role=tablist] { display: flex; overflow-x: auto; } .accountant-settings-nav button { white-space: nowrap; width: auto; } .accountant-settings-nav > p { display: none; } }
+@media (max-width: 479px) { .accountant-settings-account { grid-template-columns: 1fr; } .accountant-settings-panel-heading, .accountant-settings-account, .accountant-settings-notifications { padding: 18px; } }
+html.theme-dark .accountant-settings { color: #e2e8f0; }
+html.theme-dark .accountant-settings-panel { background: #191f2b; border-color: #303949; }
+html.theme-dark .accountant-settings-nav button[aria-selected=true] { background: #242d3d; color: #e2e8f0; }
+html.theme-dark .accountant-settings-notifications label { background: transparent; }

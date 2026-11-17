@@ -30,11 +30,11 @@
 .import-option-card__content { display: grid; gap: .3rem; flex: 1; min-width: 0; }
 .import-option-card__title {
   color: #1e293b;
-  font-size: .875rem;
+  font-size: var(--ui-text-secondary);
   font-weight: 600;
   line-height: 1.5;
 }
-.import-option-card__description { color: #64748b; font-size: .8125rem; line-height: 1.5; }
+.import-option-card__description { color: #64748b; font-size: var(--ui-text-secondary); line-height: 1.5; }
 .import-option-card__arrow { flex-shrink: 0; color: #64748b; }
 .import-option-card:hover:not(:disabled) { border-color: #aebdcc; background: #fcfdfe; }
 .import-option-card:focus-visible { outline: 2px solid var(--color-brand-700); outline-offset: 3px; }

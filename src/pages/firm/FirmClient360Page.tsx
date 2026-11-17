@@ -28,7 +28,7 @@ interface BackendDocumentSlotRecord {
   label: string;
   isRequired: boolean;
   status: string;
-  canCurrentlyBeSubmitted: boolean;
+  canSubmit: boolean;
   currentDocumentId?: string | null;
   dueDateUtc?: string | null;
   submittedAtUtc?: string | null;
@@ -46,16 +46,8 @@ interface BackendRequestRecord {
   status: string;
   priority: string;
   dueDateUtc?: string | null;
-  createdAtUtc: string;
+  requestedAtUtc: string;
   updatedAtUtc: string;
-}
-
-interface BackendReviewQueueRecord {
-  id: string;
-  clientId: string;
-  status: string;
-  documentType?: string | null;
-  submittedAtUtc?: string | null;
 }
 
 interface LiveComplianceSummary {
@@ -233,9 +225,9 @@ export function FirmClient360Page() {
       try {
         const [clients, requests, packs, reviewQueue] = await Promise.all([
           portalServiceApi.getAdminClients(),
-          apiGetJson<BackendRequestRecord[]>("/api/requests"),
-          apiGetJson<BackendMonthlyPackRecord[]>("/api/monthly-packs"),
-          apiGetJson<BackendReviewQueueRecord[]>("/api/review-queue"),
+          apiGetJson("/api/requests"),
+          apiGetJson("/api/monthly-packs"),
+          apiGetJson("/api/review-queue"),
         ]);
 
         const client = clients.find((item) => item.id === clientId);
@@ -248,7 +240,7 @@ export function FirmClient360Page() {
           .sort((left, right) => right.year * 100 + right.month - (left.year * 100 + left.month))[0] ?? null;
 
         const slots = latestPack
-          ? await apiGetJson<BackendDocumentSlotRecord[]>(`/api/document-slots/${encodeURIComponent(latestPack.id)}`)
+          ? await apiGetJson(`/api/document-slots/${encodeURIComponent(latestPack.id)}`)
           : [];
 
         if (!isActive) {
@@ -262,8 +254,8 @@ export function FirmClient360Page() {
               !["resolved", "closed"].includes(request.status.trim().toLowerCase()),
           )
           .sort((left, right) => {
-            const leftDue = left.dueDateUtc ?? left.createdAtUtc;
-            const rightDue = right.dueDateUtc ?? right.createdAtUtc;
+            const leftDue = left.dueDateUtc ?? left.requestedAtUtc;
+            const rightDue = right.dueDateUtc ?? right.requestedAtUtc;
             return new Date(leftDue).getTime() - new Date(rightDue).getTime();
           });
 
@@ -457,7 +449,7 @@ export function FirmClient360Page() {
                       <p className="text-sm font-semibold text-slate-900">{slot.label}</p>
                       <p className="mt-1 text-xs text-slate-500">{slot.category}{slot.dueDateUtc ? ` | Due ${formatDateLabel(slot.dueDateUtc)}` : ""}</p>
                     </div>
-                    <span className={`inline-flex rounded-full px-2.5 py-1 text-[0.7rem] font-medium uppercase tracking-[0.04em] ring-1 ring-inset ${slotStatusBadge(mappedStatus)}`}>
+                    <span className={`inline-flex rounded-full px-2.5 py-1 text-sm font-medium uppercase tracking-[0.04em] ring-1 ring-inset ${slotStatusBadge(mappedStatus)}`}>
                       {mapRequestStatusLabel(mappedStatus)}
                     </span>
                   </div>

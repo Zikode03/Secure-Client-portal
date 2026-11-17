@@ -130,7 +130,7 @@ export function ClientComplianceCentreWorkspace() {
 
   return <div className="client-compliance">
     <header className="cc-heading">
-      <div><div className="cc-business"><Building2 size={14} aria-hidden="true" />{businessName}</div><h1>Compliance Centre</h1><p>See what you need to send and what your accountant is handling.</p></div>
+      <div><div className="cc-business"><Building2 size={14} aria-hidden="true" />{businessName}</div><h1 className="workspace-duplicate-title ">Compliance Centre</h1><p>See what you need to send and what your accountant is handling.</p></div>
       <div className="cc-header-actions">
         <span className="cc-updated">{lastUpdated && !error ? `Updated ${formatDateLabel(lastUpdated)}` : ""}</span>
         <button className="cc-icon-button" type="button" aria-label="Print summary" title="Print summary" onClick={() => window.print()}><Printer size={18} /></button>

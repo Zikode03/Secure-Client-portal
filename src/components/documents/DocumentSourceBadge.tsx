@@ -12,7 +12,7 @@ const sourceClass: Record<DocumentSource, string> = {
 
 export function DocumentSourceBadge({ source }: DocumentSourceBadgeProps) {
   return (
-    <span className={`inline-flex rounded-full px-2.5 py-1 text-[0.7rem] font-semibold ring-1 ring-inset ${sourceClass[source]}`}>
+    <span className={`inline-flex rounded-full px-2.5 py-1 text-sm font-semibold ring-1 ring-inset ${sourceClass[source]}`}>
       {formatDocumentSource(source)}
     </span>
   );

@@ -63,7 +63,7 @@ function MonitoringBusinesses() {
     (async () => {
       if (!hasApiBaseUrl()) throw new Error("Connect the backend to load authority monitoring.");
       if (!user) throw new Error("Sign in to view your businesses.");
-      const rows = await apiGetJson<{ id: string; name: string }[]>("/api/clients");
+      const rows = await apiGetJson("/api/clients");
       if (active) { setClients(rows); setClientId(rows[0]?.id ?? ""); }
     })().catch(error => { if (active) setError(errorMessage(error)); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
@@ -92,7 +92,7 @@ export function ComplianceMonitoringPanel({ clientId }: { clientId: string }) {
   const [historyCheck, setHistoryCheck] = useState<Check | null>(null);
   const [historyReload, setHistoryReload] = useState(0);
   const [manual, setManual] = useState({ outcome: "unknown", evidenceReference: "", checkedAt: "", reviewAfter: "" });
-  const path = `/api/compliance/monitoring/${encodeURIComponent(clientId)}`;
+  const path = `/api/compliance/monitoring/${encodeURIComponent(clientId)}` as const;
 
   useEffect(() => {
     if (selected) document.getElementById("manual-verification-form")?.focus();
@@ -101,7 +101,7 @@ export function ComplianceMonitoringPanel({ clientId }: { clientId: string }) {
   useEffect(() => {
     let active = true;
     setLoading(true); setError(""); setProfile(null); setDraft(null); setEditing(false); setSelected(null); setHistoryCheck(null);
-    apiGetJson<MonitoringProfile>(path).then(result => {
+    apiGetJson(path).then(result => {
       if (active) { setProfile(result); setDraft(result); }
     }).catch(error => { if (active) setError(errorMessage(error)); }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
@@ -112,7 +112,7 @@ export function ComplianceMonitoringPanel({ clientId }: { clientId: string }) {
     if (!draft || !profile?.canManage || busy) return;
     setBusy(true); setError(""); setNotice("");
     try {
-      const updated = await apiPutJson<MonitoringProfile, object>(path, {
+      const updated = await apiPutJson(path, {
         version: profile.version, registrationNumber: draft.registrationNumber, taxNumber: draft.taxNumber,
         csdSupplierNumber: draft.csdSupplierNumber, checks: draft.checks.map(check => ({ checkCode: check.code, applicability: check.applicability, reason: check.reason })),
       });
@@ -126,7 +126,7 @@ export function ComplianceMonitoringPanel({ clientId }: { clientId: string }) {
     if (!selected || !profile?.canManage || busy) return;
     setBusy(true); setError(""); setNotice("");
     try {
-      const updated = await apiPostJson<MonitoringProfile, object>(`${path}/manual-verifications`, {
+      const updated = await apiPostJson(`${path}/manual-verifications`, {
         version: profile.version, checkCode: selected.code, outcome: manual.outcome,
         evidenceReference: manual.evidenceReference, checkedAtUtc: new Date(manual.checkedAt).toISOString(),
         reviewAfterUtc: new Date(manual.reviewAfter).toISOString(),
@@ -141,7 +141,7 @@ export function ComplianceMonitoringPanel({ clientId }: { clientId: string }) {
     if (!profile?.canManage || busy || check.source !== "CIPC" || check.connectionStatus !== "connected") return;
     setBusy(true); setError(""); setNotice("");
     try {
-      const updated = await apiPostJson<MonitoringProfile, object>(`${path}/authority-verifications/cipc`, {
+      const updated = await apiPostJson(`${path}/authority-verifications/cipc`, {
         version: profile.version,
         checkCode: check.code,
       });
@@ -176,7 +176,7 @@ export function ComplianceMonitoringPanel({ clientId }: { clientId: string }) {
         </div>)}
       </fieldset><div className="monitoring-actions"><Button variant="secondary" type="button" disabled={busy} onClick={() => { setDraft(profile); setEditing(false); setError(""); }}>Cancel setup</Button><Button type="submit" disabled={busy}>{busy ? "Saving…" : "Save monitoring setup"}</Button></div>
     </form>}
-    <div className="monitoring-table-wrap"><table className="monitoring-table"><thead><tr><th scope="col">Check / scope</th><th scope="col">Applicability</th><th scope="col">Connection / verification</th><th scope="col">Last observation</th><th scope="col"><span className="sr-only">Actions</span></th></tr></thead><tbody>
+    <div className="monitoring-table-wrap"><table className="monitoring-table"><thead><tr><th scope="col">Check / scope</th><th scope="col">Applicability</th><th scope="col">Connection / verification</th><th scope="col">Last observation</th><th scope="col">Actions</th></tr></thead><tbody>
       {profile.checks.map(check => <tr key={check.code}>
         <th scope="row"><small className="monitoring-source">{check.source}</small><strong>{check.name}</strong><small>{check.description}</small></th>
         <td>{applicabilityLabels[check.applicability] ?? "Needs assessment"}{check.reason && <small>{check.reason}</small>}</td>
@@ -203,7 +203,7 @@ export function ComplianceMonitoringPanel({ clientId }: { clientId: string }) {
   </section>;
 }
 
-function VerificationHistory({ path, check, onClose }: { path: string; check: Check; onClose: () => void }) {
+function VerificationHistory({ path, check, onClose }: { path: `/api/compliance/monitoring/${string}`; check: Check; onClose: () => void }) {
   const [rows, setRows] = useState<Verification[]>([]);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -213,7 +213,7 @@ function VerificationHistory({ path, check, onClose }: { path: string; check: Ch
   useEffect(() => {
     let active = true;
     setLoading(true); setError(""); setRows([]);
-    apiGetJson<Verification[]>(`${path}/history?checkCode=${encodeURIComponent(check.code)}&page=${page}`)
+    apiGetJson(`${path}/history?checkCode=${encodeURIComponent(check.code)}&page=${page}`)
       .then(result => { if (active) setRows(result); }).catch(error => { if (active) setError(errorMessage(error)); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };

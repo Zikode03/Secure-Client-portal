@@ -1,3 +1,5 @@
+import { useActionDialog } from "../../components/ui/useActionDialog";
+import { RecordActions } from "../../components/ui/RecordActions";
 import { useEffect, useMemo, useState } from "react";
 import { UserPlus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -26,13 +28,6 @@ interface AdminUserRecord {
   securityStatus?: string | null;
 }
 
-interface ResetPasswordResponse {
-  id: string;
-  delivery: string;
-  deliveryError?: string;
-  reset: boolean;
-}
-
 interface FeedbackNotice {
   tone: Tone;
   title: string;
@@ -53,6 +48,7 @@ function normalizedStatus(user: AdminUserRecord) {
 }
 
 export function AdminUsersPage() {
+  const actionDialog = useActionDialog();
   const navigate = useNavigate();
   const backendMode = hasApiBaseUrl();
   const [users, setUsers] = useState<AdminUserRecord[]>([]);
@@ -79,7 +75,7 @@ export function AdminUsersPage() {
 
     setLoading(true);
     try {
-      setUsers(await apiGetJson<AdminUserRecord[]>("/api/admin/users"));
+      setUsers(await apiGetJson("/api/admin/users"));
       if (clearFeedback) setFeedback(null);
     } catch (error) {
       setFeedback({
@@ -124,7 +120,7 @@ export function AdminUsersPage() {
 
     setLoading(true);
     try {
-      const created = await apiPostJson<AdminUserRecord & { delivery?: string; deliveryError?: string }, { fullName: string; email: string; role: string; company: string | null }>(
+      const created = await apiPostJson(
         "/api/admin/users",
         {
           fullName: newUserName.trim(),
@@ -150,7 +146,7 @@ export function AdminUsersPage() {
     const nextRole = role.trim().toLowerCase();
     if (currentRole === nextRole) return;
 
-    const confirmed = window.confirm(
+    const confirmed = await actionDialog.confirm(
       `Change ${user.fullName}'s role from ${currentRole} to ${nextRole}? Their active sessions will be revoked and they will need to sign in again.`,
     );
     if (!confirmed) {
@@ -161,7 +157,7 @@ export function AdminUsersPage() {
 
     setBusyUserId(user.id);
     try {
-      await apiPutJson<AdminUserRecord, { role: string }>(`/api/admin/users/${user.id}/role`, { role: nextRole });
+      await apiPutJson(`/api/admin/users/${user.id}/role`, { role: nextRole });
       await loadUsers(false);
       setFeedback({
         tone: "success",
@@ -177,11 +173,11 @@ export function AdminUsersPage() {
 
   async function toggleStatus(user: AdminUserRecord) {
     const active = normalizedStatus(user) === "active";
-    if (active && !window.confirm(`Disable access for ${user.fullName}? Active sessions will be revoked.`)) return;
+    if (active && !await actionDialog.confirm(`Disable access for ${user.fullName}? Active sessions will be revoked.`)) return;
 
     setBusyUserId(user.id);
     try {
-      await apiPostJson<AdminUserRecord, Record<string, never>>(
+      await apiPostJson(
         `/api/admin/users/${user.id}/${active ? "disable" : "enable"}`,
         {},
       );
@@ -201,32 +197,32 @@ export function AdminUsersPage() {
   }
 
   async function accessAction(user: AdminUserRecord, action: "resend-invitation" | "revoke-sessions") {
-    if (action === "revoke-sessions" && !window.confirm(`Sign out all sessions for ${user.fullName}? Their password and account status will stay the same.`)) return;
+    if (action === "revoke-sessions" && !await actionDialog.confirm(`Sign out all sessions for ${user.fullName}? Their password and account status will stay the same.`)) return;
     setBusyUserId(user.id);
     try {
-      const result = await apiPostJson<{ delivery?: string; deliveryError?: string; revokedSessions?: number }, Record<string, never>>(`/api/admin/users/${user.id}/${action}`, {});
+      const result = action === "resend-invitation" ? await apiPostJson(`/api/admin/users/${user.id}/resend-invitation`, {}) : await apiPostJson(`/api/admin/users/${user.id}/revoke-sessions`, {});
       setFeedback(action === "resend-invitation"
-        ? { tone: result.delivery === "smtp" ? "success" : "warning", title: result.delivery === "smtp" ? "Invitation resent" : "Invitation not delivered", message: result.delivery === "smtp" ? `A new setup invitation was emailed to ${user.fullName}.` : result.deliveryError ?? "Email delivery is disabled. Check email configuration before retrying." }
-        : { tone: "success", title: "Sessions revoked", message: `${result.revokedSessions ?? 0} sessions signed out. The account remains enabled.` });
+        ? { tone: "delivery" in result && result.delivery === "smtp" ? "success" : "warning", title: "delivery" in result && result.delivery === "smtp" ? "Invitation resent" : "Invitation not delivered", message: "delivery" in result && result.delivery === "smtp" ? `A new setup invitation was emailed to ${user.fullName}.` : ("deliveryError" in result ? result.deliveryError : null) ?? "Email delivery is disabled. Check email configuration before retrying." }
+        : { tone: "success", title: "Sessions revoked", message: `${("revokedSessions" in result ? result.revokedSessions : 0) ?? 0} sessions signed out. The account remains enabled.` });
       await loadUsers(false);
     } catch (error) { setFeedback({ tone: "danger", title: "Access action failed", message: error instanceof ApiError ? error.message : "The operation could not be completed." }); }
     finally { setBusyUserId(null); }
   }
 
   async function resetPassword(user: AdminUserRecord) {
-    const reason = window.prompt("Reason for the password reset:", "Admin password reset");
+    const reason = await actionDialog.prompt("Reason for the password reset:", "Admin password reset");
     if (reason === null) return;
 
     setBusyUserId(user.id);
     try {
-      const result = await apiPostJson<ResetPasswordResponse, { newPassword: string | null; reason: string | null }>(
+      const result = await apiPostJson(
         `/api/admin/users/${user.id}/reset-password`,
         { newPassword: null, reason: reason.trim() || null },
       );
       setFeedback({
-        tone: result.delivery === "smtp" ? "success" : "warning",
-        title: result.delivery === "smtp" ? "Reset email sent" : "Email delivery requires attention",
-        message: result.delivery === "smtp" ? `A one-time reset link was emailed to ${user.fullName}. It expires in 30 minutes. MFA remains enabled.` : (result.deliveryError ?? "The reset email was not sent. Check SMTP configuration and retry."),
+        tone: "delivery" in result && result.delivery === "smtp" ? "success" : "warning",
+        title: "delivery" in result && result.delivery === "smtp" ? "Reset email sent" : "Email delivery requires attention",
+        message: "delivery" in result && result.delivery === "smtp" ? `A one-time reset link was emailed to ${user.fullName}. It expires in 30 minutes. MFA remains enabled.` : (("deliveryError" in result ? result.deliveryError : null) ?? "The reset email was not sent. Check SMTP configuration and retry."),
       });
       await loadUsers(false);
     } catch (error) {
@@ -238,6 +234,7 @@ export function AdminUsersPage() {
 
   return (
     <div className="space-y-6">
+      {actionDialog.dialog}
       <PageHeader
         description="Create users, control roles, manage account state, revoke access, and issue secure reset flows across the firm."
         eyebrow="Administration"
@@ -320,12 +317,14 @@ export function AdminUsersPage() {
                       </span>
                     </td>
                     <td className="px-4 py-4">
-                      <div className="flex flex-wrap justify-end gap-2">
-                        {status === "invited" ? <Button disabled={busy} onClick={() => void accessAction(user, "resend-invitation")} size="sm" variant="secondary">Resend invitation</Button> : <Button disabled={busy} onClick={() => void accessAction(user, "revoke-sessions")} size="sm" variant="secondary">Sign out sessions</Button>}
-                        <Button disabled={busy} onClick={() => void resetPassword(user)} size="sm" variant="secondary">Reset password</Button>
-                        <Button disabled={busy} onClick={() => void toggleStatus(user)} size="sm" variant={status === "active" ? "danger" : "secondary"}>
-                          {status === "active" ? "Disable" : "Enable"}
-                        </Button>
+                      <div className="flex justify-end">
+                        <RecordActions iconOnly label={`Security actions for ${user.fullName}`} disabled={busy} actions={[
+                          status === "invited"
+                            ? { label: "Resend invitation", onSelect: () => void accessAction(user, "resend-invitation") }
+                            : { label: "Sign out sessions", onSelect: () => void accessAction(user, "revoke-sessions") },
+                          { label: "Reset password", onSelect: () => void resetPassword(user) },
+                          { label: status === "active" ? "Disable" : "Enable", destructive: status === "active", onSelect: () => void toggleStatus(user) },
+                        ]} />
                       </div>
                     </td>
                   </tr>

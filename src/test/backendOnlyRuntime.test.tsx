@@ -5,7 +5,7 @@ vi.unmock("../services/apiClient");
 vi.unmock("../services/portalData");
 vi.unmock("../services/complianceData");
 vi.unmock("../app/auth");
-import { hasApiBaseUrl } from "../services/apiClient";
+import { hasApiBaseUrl } from "./fixtures/apiTransportFixture";
 import { portalService } from "../services/portalData";
 import { AuthProvider, useAuth } from "../app/auth";
 afterEach(() => vi.unstubAllGlobals());

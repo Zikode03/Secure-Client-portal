@@ -1,0 +1,59 @@
+.accountant-dashboard { display: grid; gap: 20px; color: #172747; }
+.accountant-dashboard-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px; padding-bottom: 18px; border-bottom: 1px solid #e2e8f0; }
+.accountant-dashboard-eyebrow { font-size: var(--ui-text-secondary); letter-spacing: .14em; text-transform: uppercase; color: #64748b; margin-bottom: 6px; }
+.accountant-dashboard h1 { font-size: var(--ui-text-metric); font-weight: 600; letter-spacing: -.025em; }
+.accountant-dashboard-header > div > p:last-child { margin-top: 7px; font-size: var(--ui-text-secondary); color: #64748b; line-height: 1.6; }
+.accountant-dashboard-actions { display: flex; gap: 8px; }
+.accountant-dashboard .ui-btn { box-shadow: none; font-size: var(--ui-text-secondary); border-radius: 7px; }
+.accountant-dashboard-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.accountant-dashboard-metrics > div { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 18px 16px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; }
+.accountant-metric-icon { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px; background: #f4f7fa; color: #60718a; }
+.accountant-dashboard-metrics dt { font-size: var(--ui-text-secondary); line-height: 1.5; color: #64748b; }
+.accountant-dashboard-metrics dd { font-size: var(--ui-text-metric); font-weight: 600; letter-spacing: -.03em; color: #172747; }
+.accountant-dashboard-focus { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 20px; }
+.accountant-dashboard-panel { min-width: 0; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; overflow: hidden; }
+.accountant-dashboard-section-heading { display: flex; justify-content: space-between; flex-wrap: wrap; align-items: center; gap: 12px; padding: 18px 20px; border-bottom: 1px solid #edf1f5; }
+.accountant-dashboard h2 { font-size: var(--ui-text-body); font-weight: 600; }
+.accountant-dashboard-section-heading p, .accountant-dashboard-panel > p { font-size: var(--ui-text-secondary); color: #64748b; line-height: 1.6; margin-top: 5px; }
+.accountant-dashboard-panel > h2 { padding: 20px 20px 0; }
+.accountant-dashboard-panel > p { padding: 0 20px 20px; }
+.accountant-dashboard-review-list li, .accountant-dashboard-deadlines li { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 14px 20px; }
+.accountant-dashboard-review-list li + li, .accountant-dashboard-deadlines li + li { border-top: 1px solid #edf1f5; }
+.accountant-dashboard-review-list li > div, .accountant-dashboard-deadlines li > div { min-width: 0; }
+.accountant-dashboard-review-list strong, .accountant-dashboard-deadlines strong { display: block; font-size: var(--ui-text-secondary); font-weight: 500; }
+.accountant-dashboard-review-list span, .accountant-dashboard-deadlines span { display: block; font-size: var(--ui-text-secondary); margin-top: 3px; overflow-wrap: anywhere; color: #64748b; }
+.accountant-dashboard-review-list small { display: block; margin-top: 4px; font-size: var(--ui-text-secondary); color: #64748b; }
+.accountant-dashboard-deadlines button { flex-shrink: 0; font-size: var(--ui-text-secondary); text-align: right; }
+.accountant-dashboard-deadlines small { display: block; color: #a34f3f; font-size: var(--ui-text-secondary); margin-top: 3px; }
+.accountant-dashboard-empty { padding: 24px 20px !important; }
+.accountant-dashboard-notice { border: 1px solid #ead7b8; background: #fcf8f0; padding: 12px 16px; border-radius: 8px; font-size: var(--ui-text-secondary); color: #875f26; }
+.accountant-dashboard-search { display: flex; align-items: center; gap: 8px; border: 1px solid #dce3ed; border-radius: 7px; padding: 8px 10px; color: #64748b; }
+.accountant-dashboard-search input { font-size: var(--ui-text-secondary); background: transparent; outline: none; min-width: 0; width: 160px; }
+.accountant-dashboard-table { overflow-x: auto; }
+.accountant-dashboard table { width: 100%; border-collapse: collapse; font-size: var(--ui-text-secondary); text-align: left; }
+.accountant-dashboard th, .accountant-dashboard td { padding: 14px 20px; border-bottom: 1px solid #edf1f5; vertical-align: middle; }
+.accountant-dashboard thead th { font-size: var(--ui-text-secondary); color: #64748b; font-weight: 500; white-space: nowrap; background: #fafbfd; }
+.accountant-dashboard tbody th { font-weight: 500; min-width: 170px; }
+.accountant-dashboard td > span { display: block; white-space: nowrap; }
+.accountant-dashboard progress { display: block; height: 4px; width: 100px; margin-top: 7px; accent-color: #557e68; }
+.accountant-dashboard-checked { font-size: var(--ui-text-secondary); color: #64748b; }
+@media (max-width: 1023px) { .accountant-dashboard-focus { grid-template-columns: 1fr; } .accountant-dashboard-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 639px) { .accountant-dashboard-metrics > div { padding: 14px; } .accountant-dashboard-metrics dd { font-size: var(--ui-text-metric); } .accountant-dashboard-section-heading { padding: 14px; } .accountant-dashboard-search { width: 100%; } .accountant-dashboard-search input { width: 100%; } }
+html.theme-dark .accountant-dashboard { color: #e2e8f0; }
+html.theme-dark .accountant-dashboard-panel, html.theme-dark .accountant-dashboard-metrics > div, html.theme-dark .accountant-dashboard thead th { background: #191f2b; border-color: #303949; }
+
+.accountant-client-panel .accountant-dashboard-section-heading { padding: 20px 24px; }
+.accountant-client-panel th, .accountant-client-panel td { padding: 20px 24px; }
+.accountant-client-panel thead th { padding-block: 12px; background: #fafbfd; }
+.accountant-client-panel tbody th { width: 38%; }
+.accountant-client-name { display: block; font-size: var(--ui-text-body); font-weight: 500; line-height: 1.5; }
+.accountant-client-progress { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.accountant-client-progress progress { width: 90px; margin: 0; height: 4px; }
+.accountant-client-outstanding { display: grid; gap: 5px; font-size: var(--ui-text-secondary); color: #64748b; white-space: nowrap; }
+.accountant-client-outstanding .has-reviews { color: #253e68; font-weight: 500; }
+.accountant-client-panel .accountant-client-open { width: 1%; white-space: nowrap; }
+.accountant-client-muted, .accountant-client-no-pack { color: #64748b; font-size: var(--ui-text-secondary); }
+.accountant-client-footnote { margin: 0 !important; padding: 12px 24px !important; background: #fafbfd; font-size: var(--ui-text-secondary) !important; }
+html.theme-dark .accountant-dashboard-metrics dd { color: #e2e8f0; }
+@media (max-width: 1279px) { .accountant-dashboard-metrics > div { grid-template-columns: 28px minmax(0, 1fr); padding: 14px; gap: 8px; } .accountant-dashboard-metrics dd { grid-column: 2; } .accountant-metric-icon { width: 28px; height: 28px; } }
+@media (max-width: 639px) { .accountant-dashboard-metrics { gap: 10px; } .accountant-client-panel th, .accountant-client-panel td { padding: 16px; } }

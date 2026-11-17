@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
 import { NotificationPreferencesPage } from "../pages/shared/NotificationPreferencesPage";
-import { apiGetJson, apiPutJson } from "../services/apiClient";
+import { apiGetJson, apiPutJson } from "./fixtures/apiTransportFixture";
 vi.mock("../app/auth", () => ({ useAuth: () => ({ user: { id: "staff", role: "accountant" } }) }));
 vi.mock("../app/portal", () => ({ usePortal: () => ({ clientSettings: { notificationPreferences: {} } }) }));
 vi.mock("../services/apiClient", async original => ({ ...await original<typeof import("../services/apiClient")>(), hasApiBaseUrl: () => true, apiGetJson: vi.fn(), apiPutJson: vi.fn() }));

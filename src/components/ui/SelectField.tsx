@@ -8,6 +8,7 @@ import { cn } from "../../utils/cn";
 interface SelectOption {
   label: string;
   value: string;
+  disabled?: boolean;
 }
 
 interface SelectFieldProps extends SelectHTMLAttributes<HTMLSelectElement> {
@@ -41,7 +42,7 @@ export function SelectField({
         {...props}
       >
         {options.map((option) => (
-          <option key={option.value} value={option.value}>
+          <option key={option.value} value={option.value} disabled={option.disabled}>
             {option.label}
           </option>
         ))}

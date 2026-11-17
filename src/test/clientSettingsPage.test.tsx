@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ClientSettingsPage } from "../pages/client/ClientSettingsPage";
 import { useAuth } from "../app/auth";
 import { usePortal } from "../app/portal";
-import { apiGetJson, hasApiBaseUrl } from "../services/apiClient";
+import { apiGetJson, hasApiBaseUrl } from "./fixtures/apiTransportFixture";
 
 vi.mock("../app/auth", () => ({ useAuth: vi.fn() }));
 vi.mock("../app/portal", () => ({ usePortal: vi.fn() }));

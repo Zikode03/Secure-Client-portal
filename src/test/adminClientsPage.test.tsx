@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AdminClientsPage } from "../pages/admin/AdminClientsPage";
-import { apiDelete, apiGetJson, apiPutJson, hasApiBaseUrl } from "../services/apiClient";
+import { apiDelete, apiGetJson, apiPutJson, hasApiBaseUrl } from "./fixtures/apiTransportFixture";
 
 const { navigate } = vi.hoisted(() => ({ navigate: vi.fn() }));
 vi.mock("react-router-dom", async (original) => ({ ...await original<typeof import("react-router-dom")>(), useNavigate: () => navigate }));
@@ -64,23 +64,26 @@ describe("admin client register", () => {
   });
 
   it("preserves confirmation before status updates and permanent deletion", async () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
-    const prompt = vi.spyOn(window, "prompt").mockReturnValue("not DELETE");
     renderPage();
     const trigger = await screen.findByRole("button", { name: "Actions for Acme Holdings" });
     fireEvent.click(trigger);
     fireEvent.click(screen.getByRole("menuitem", { name: "Deactivate client" }));
     expect(apiPutJson).not.toHaveBeenCalled();
-    confirm.mockReturnValue(true);
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(apiPutJson).not.toHaveBeenCalled();
     fireEvent.click(trigger);
     fireEvent.click(screen.getByRole("menuitem", { name: "Deactivate client" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     await waitFor(() => expect(apiPutJson).toHaveBeenCalledWith("/api/clients/acme/status", { status: "inactive" }));
     await waitFor(() => expect(screen.getByRole("button", { name: "Actions for Acme Holdings" })).toBeEnabled());
     fireEvent.click(screen.getByRole("button", { name: "Actions for Acme Holdings" }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Delete client" }));
-    expect(prompt).toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Delete client" })).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Type DELETE to confirm"), { target: { value: "not DELETE" } });
+    expect(screen.getByRole("button", { name: "Delete client" })).toBeDisabled();
     expect(apiDelete).not.toHaveBeenCalled();
-    confirm.mockRestore();
-    prompt.mockRestore();
+    fireEvent.change(screen.getByLabelText("Type DELETE to confirm"), { target: { value: "DELETE" } });
+    fireEvent.click(screen.getByRole("button", { name: "Delete client" }));
+    await waitFor(() => expect(apiDelete).toHaveBeenCalledWith("/api/clients/acme"));
   });
 });

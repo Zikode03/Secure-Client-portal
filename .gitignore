@@ -28,3 +28,6 @@ tools/verify-migration/obj/
 tools/**/bin/
 tools/**/obj/
 *.log
+
+# Local working scripts and validation artifacts
+.tmp/

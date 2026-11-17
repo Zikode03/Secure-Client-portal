@@ -1,0 +1,20 @@
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import { expect, it, vi } from "vitest";
+import { AdminAccountantsPage } from "../pages/admin/AdminAccountantsPage";
+import { apiGetJson } from "./fixtures/apiTransportFixture";
+vi.mock("../app/portal", () => ({ usePortal: () => ({ managedAccountants: [] }) }));
+vi.mock("../services/apiClient", async original => ({ ...await original<typeof import("../services/apiClient")>(), hasApiBaseUrl: () => true, apiGetJson: vi.fn() }));
+it("shows actual access status without inventing capacity for inactive accounts", async () => {
+  const users = ["active", "invited", "disabled", "locked"].map(state => ({ id: state, fullName: state + " accountant", email: state + "@firm.test", role: "accountant", securityStatus: state }));
+  vi.mocked(apiGetJson).mockImplementation(async path => path === "/api/admin/users" ? users : []);
+  render(<MemoryRouter><AdminAccountantsPage /></MemoryRouter>);
+  const disabled = await screen.findByRole("row", { name: /disabled accountant/ });
+  expect(within(disabled).getByText("disabled")).toBeInTheDocument();
+  const invited = screen.getByRole("row", { name: /invited accountant/ });
+  expect(within(invited).getByText("invited")).toBeInTheDocument();
+  expect(screen.queryByText("Capacity available")).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText("Filter accountant account status"), { target: { value: "disabled" } });
+  expect(screen.getByRole("row", { name: /disabled accountant/ })).toBeInTheDocument();
+  expect(screen.queryByRole("row", { name: /active accountant/ })).not.toBeInTheDocument();
+});

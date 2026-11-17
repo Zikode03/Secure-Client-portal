@@ -1,0 +1,62 @@
+/* Operational admin directories: shared density, surfaces and table hierarchy. */
+.admin-directory { --directory-surface:#fff; --directory-border:#e2e8f0; --directory-muted:#64748b; --directory-soft:#f8fafc; display:grid; gap:24px; min-width:0; }
+.admin-directory > .portal-page-header { padding-bottom:0; border-bottom:0; gap:18px; align-items:flex-start; }
+.admin-directory > .portal-page-header h1 { font-size:28px; }
+.admin-directory > .portal-page-header p { font-size:14px; }
+.admin-directory .admin-register { padding:0; overflow:hidden; border:1px solid var(--directory-border); border-radius:10px; background:var(--directory-surface); box-shadow:none; }
+.admin-clients .admin-register > div:first-child { padding:20px 24px 0; }
+.admin-directory .admin-directory-toolbar { padding:20px 24px; margin:0; background:var(--directory-surface); }
+.admin-clients .admin-register > .admin-directory-toolbar { padding:18px 24px 22px; }
+.admin-directory .admin-directory-table { margin-top:0; border-color:var(--directory-border); }
+.admin-directory table { width:100%; }
+.admin-directory thead, .admin-directory thead tr { background:var(--directory-soft); text-transform:none; letter-spacing:0; font-size:13px; }
+.admin-directory th { font-weight:500; white-space:nowrap; padding:13px 20px; }
+.admin-directory td { padding:18px 20px; vertical-align:middle; }
+.admin-directory input:not([type=checkbox]):not([type=file]), .admin-directory select, .admin-directory textarea { border-radius:6px; }
+.admin-directory .admin-register > footer { padding:16px 24px; margin:0; border-top:1px solid var(--directory-border); }
+.admin-directory-loading { padding:40px 24px; text-align:center; color:var(--directory-muted); }
+.admin-assignment-layout { display:grid; grid-template-columns:minmax(0,1fr); align-items:start; gap:24px; }
+.admin-assignment-layout.has-editor { grid-template-columns:minmax(0,1.5fr) minmax(320px,1fr); }
+.admin-coverage > div:first-child { padding:20px 24px 0; }
+.admin-coverage > [role=group] { padding:0 24px; }
+.admin-coverage > label { margin:0 24px 20px; }
+.admin-coverage > [role=group] button { border:0; border-radius:5px; background:var(--directory-soft); color:var(--directory-muted); font-size:14px; font-weight:500; }
+.admin-coverage > [role=group] button[aria-pressed=true] { background:#eaf0f7; color:#20345c; }
+.admin-assignment-editor { min-width:0; padding:24px; background:var(--directory-surface); border:1px solid var(--directory-border); border-radius:10px; }
+.admin-directory .admin-import-start { padding:24px; display:grid; gap:22px; border:1px solid var(--directory-border); border-radius:10px; background:var(--directory-surface); }
+.admin-imports .import-option-grid { grid-template-columns:minmax(0,1fr); gap:0; max-width:none; border-block:1px solid var(--directory-border); }
+.admin-imports .import-option-card { border:0; border-radius:0; padding:22px 4px; background:transparent; }
+.admin-imports .import-option-card + .import-option-card { border-top:1px solid var(--directory-border); }
+.admin-imports .import-option-card__icon { width:42px; height:42px; border:1px solid var(--directory-border); background:var(--directory-soft); border-radius:8px; }
+.admin-imports .import-option-card__title { font-size:16px; font-weight:600; }
+.admin-imports .import-option-card__description { font-size:14px; }
+.admin-imports .import-option-card:hover:not(:disabled) { background:var(--directory-soft); }
+.admin-imports .admin-import-history { padding:24px; }
+.admin-imports .admin-import-history > div:first-child { padding-bottom:16px; border-bottom:1px solid var(--directory-border); }
+html.theme-dark .admin-directory { --directory-surface:var(--dark-surface); --directory-border:var(--dark-border); --directory-soft:var(--dark-surface-raised); --directory-muted:var(--dark-text-muted); }
+html.theme-dark .admin-coverage > [role=group] button[aria-pressed=true] { background:#26384d; color:#e2e8f0; }
+@media(max-width:1100px) { .admin-assignment-layout.has-editor { grid-template-columns:minmax(0,1fr); } }
+@media(max-width:640px) { .admin-directory .admin-directory-toolbar, .admin-directory .admin-import-start, .admin-directory .admin-import-history, .admin-assignment-editor { padding:18px; } .admin-directory > .portal-page-header h1 { font-size:24px; } }
+
+/* Assignment workspace: one toolbar and distinct ownership columns. */
+.admin-assignments .assignment-intro { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.assignment-intro p { color:var(--directory-muted); font-size:14px; margin:0; }
+.assignment-intro button { display:inline-flex; align-items:center; gap:6px; color:#243b64; font-size:14px; font-weight:500; white-space:nowrap; }
+.admin-assignments .assignment-toolbar { display:flex; align-items:center; justify-content:space-between; gap:20px; padding:18px 20px; flex-wrap:wrap; }
+.assignment-toolbar > [role=group] { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.assignment-toolbar > [role=group] button { border:0; border-radius:5px; background:transparent; color:var(--directory-muted); padding:8px 12px; font-size:14px; font-weight:500; }
+.assignment-toolbar > [role=group] button[aria-pressed=true] { background:#edf1f7; color:#20345a; }
+.assignment-toolbar > [role=group] button:hover { background:var(--directory-soft); }
+.assignment-toolbar > label { flex:0 1 300px; min-width:200px; margin:0; }
+.assignment-toolbar input { height:38px; }
+.admin-assignments .assignment-register .admin-directory-table { border-bottom:0; }
+.admin-assignments .assignment-register table { min-width:660px; }
+.admin-assignments .assignment-register th:first-child { width:32%; }
+.admin-assignments .assignment-register td { padding-block:20px; }
+.assignment-client-name { font-size:15px; font-weight:500; text-align:left; color:inherit; }
+.assignment-client-name:hover { text-decoration:underline; text-underline-offset:3px; }
+.assignment-client-meta { margin-top:5px; font-size:13px; color:var(--directory-muted); }
+.admin-assignments .assignment-register-footer { font-size:13px; color:var(--directory-muted); padding:12px 20px; border-top:1px solid var(--directory-border); }
+html.theme-dark .assignment-intro button { color:var(--dark-text-secondary); }
+html.theme-dark .assignment-toolbar > [role=group] button[aria-pressed=true] { background:#26384d; color:#e2e8f0; }
+@media(max-width:640px) { .admin-assignments .assignment-intro { align-items:flex-start; flex-direction:column; gap:10px; } .assignment-toolbar > label { flex-basis:100%; } }

@@ -1,3 +1,5 @@
+import { useActionDialog } from "../../components/ui/useActionDialog";
+import "./adminDirectories.css";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ClientOnboardingForm, type ClientOnboardingResult } from "../../components/clients/ClientOnboardingForm";
@@ -56,6 +58,7 @@ function healthTone(value: number) {
 }
 
 export function AdminClientsPage() {
+  const actionDialog = useActionDialog();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showOnboarding, setShowOnboarding] = useState(searchParams.get("add") === "1");
@@ -85,8 +88,8 @@ export function AdminClientsPage() {
     setLoading(true);
     try {
       const [clientRows, assignmentRows] = await Promise.all([
-        apiGetJson<ClientRecord[]>("/api/clients"),
-        apiGetJson<AssignmentRecord[]>("/api/assignments"),
+        apiGetJson("/api/clients"),
+        apiGetJson("/api/assignments"),
       ]);
       setClients(clientRows);
       setAssignments(assignmentRows);
@@ -134,11 +137,11 @@ export function AdminClientsPage() {
   async function toggleStatus(client: ClientRecord) {
     const isActive = client.status.toLowerCase() === "active";
     const nextStatus = isActive ? "inactive" : "active";
-    if (!window.confirm(`${isActive ? "Deactivate" : "Activate"} ${client.name}?`)) return;
+    if (!await actionDialog.confirm(`${isActive ? "Deactivate" : "Activate"} ${client.name}?`)) return;
 
     setBusyClientId(client.id);
     try {
-      await apiPutJson<ClientRecord, { status: string }>(`/api/clients/${client.id}/status`, { status: nextStatus });
+      await apiPutJson(`/api/clients/${client.id}/status`, { status: nextStatus });
       setFeedback({ tone: "success", title: `Client ${nextStatus}`, message: `${client.name} is now ${nextStatus}.` });
       await load();
     } catch (error) {
@@ -149,9 +152,7 @@ export function AdminClientsPage() {
   }
 
   async function deleteClient(client: ClientRecord) {
-    const confirmed = window.confirm(`Permanently delete ${client.name}? This cannot be undone.`);
-    if (!confirmed) return;
-    const verification = window.prompt(`Type DELETE to confirm permanent deletion of ${client.name}.`);
+    const verification = await actionDialog.prompt(`Permanently delete ${client.name}? This cannot be undone.`, "", { expected: "DELETE", destructive: true, confirmLabel: "Delete client" });
     if (verification !== "DELETE") return;
 
     setBusyClientId(client.id);
@@ -167,10 +168,10 @@ export function AdminClientsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="admin-directory admin-clients">
+      {actionDialog.dialog}
       <PageHeader
         title="Client management"
-        eyebrow="Administration"
         description="Manage your clients, accountant ownership and compliance."
         actions={<><Button variant="secondary" onClick={() => navigate("/firm/admin/assignments")}><UsersRound aria-hidden="true" className="h-4 w-4" />Manage assignments</Button><Button disabled={!backendMode || showOnboarding} onClick={() => { setOnboarded(null); setShowOnboarding(true); }}>Add client</Button></>}
       />
@@ -182,7 +183,7 @@ export function AdminClientsPage() {
       }} />}
       {onboarded && <div className="flex flex-wrap items-center gap-3"><span className="text-sm text-slate-600">Next: confirm {onboarded.clientName}'s registrations.</span><Button onClick={() => navigate(`/firm/compliance?clientId=${encodeURIComponent(onboarded.clientId)}&setup=1`)}>Set up compliance profile</Button><Button variant="secondary" onClick={() => navigate(`/firm/clients/${onboarded.clientId}/profile`)}>Open business profile</Button></div>}
 
-      <section aria-label="Client register" className="space-y-5">
+      <section aria-label="Client register" className="admin-register space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <h2 className="text-lg font-semibold text-slate-950">All clients</h2>
@@ -194,7 +195,7 @@ export function AdminClientsPage() {
           </div> : null}
         </div>
 
-        <div className="grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
+        <div className="admin-directory-toolbar grid items-end gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
           <label className="block space-y-2 sm:col-span-2 lg:col-span-1">
             <span className="text-sm font-medium text-slate-700">Search clients</span>
             <span className="relative block">
@@ -207,11 +208,11 @@ export function AdminClientsPage() {
           <button type="button" disabled={!hasFilters} onClick={clearFilters} className="h-11 rounded-lg px-3 text-sm font-medium text-brand-700 transition hover:bg-brand-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500 disabled:text-slate-400 disabled:hover:bg-transparent">Reset filters</button>
         </div>
 
-        <div className="overflow-x-auto border-y border-slate-200">
+        <div className="admin-directory-table overflow-x-auto border-y border-slate-200">
           <table className="w-full min-w-[760px] text-left text-sm">
             <caption className="sr-only">Client directory with accountant ownership, compliance health and account actions</caption>
-            <thead className="border-b border-slate-200 bg-slate-50 text-[0.68rem] font-semibold uppercase tracking-wider text-slate-500">
-              <tr><th scope="col" className="w-[34%] px-4 py-3">Client</th><th scope="col" className="w-[25%] px-4 py-3">Accountant</th><th scope="col" className="px-4 py-3">Compliance</th><th scope="col" className="px-4 py-3">Status</th><th scope="col" className="px-4 py-3 text-right"><span className="sr-only">Actions</span></th></tr>
+            <thead className="border-b border-slate-200 bg-slate-50 text-sm font-semibold uppercase tracking-wider text-slate-500">
+              <tr><th scope="col" className="w-[34%] px-4 py-3">Client</th><th scope="col" className="w-[25%] px-4 py-3">Accountant</th><th scope="col" className="px-4 py-3">Compliance</th><th scope="col" className="px-4 py-3">Status</th><th scope="col" className="px-4 py-3 text-right">Actions</th></tr>
             </thead>
             <tbody className="divide-y divide-slate-200 bg-white">
               {!loading && pagedClients.map((client) => {

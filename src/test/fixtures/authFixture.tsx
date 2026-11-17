@@ -21,7 +21,7 @@ import {
   apiPostJson,
   apiPutJson,
   hasApiBaseUrl,
-} from "../../services/apiClient";
+} from "./apiTransportFixture";
 
 const STORAGE_KEY = "accounting-document-control-session";
 const AUTH_NOTICE_KEY = "accounting-document-control-auth-notice";

@@ -29,7 +29,7 @@ export function ClientOnboardingForm({ onCancel, onCreated }: {
   useEffect(() => {
     let active = true;
     setError("");
-    apiGetJson<Options>("/api/clients/onboarding/options")
+    apiGetJson("/api/clients/onboarding/options")
       .then(value => { if (active) setOptions(value); })
       .catch(reason => { if (active) setError(reason instanceof Error ? reason.message : "Could not load onboarding options."); });
     return () => { active = false; };
@@ -40,7 +40,7 @@ export function ClientOnboardingForm({ onCancel, onCreated }: {
     if (inFlight.current || !options) return;
     inFlight.current = true; setSaving(true); setError("");
     try {
-      const result = await apiPostJson<ClientOnboardingResult, object>("/api/clients/onboarding", {
+      const result = await apiPostJson("/api/clients/onboarding", {
         ...draft, requestId: requestId.current,
         existingClientUserId: access === "existing" ? draft.existingClientUserId : null,
         registrationNumber: draft.registrationNumber.trim() || null,

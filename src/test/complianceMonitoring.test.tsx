@@ -1,11 +1,11 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ComplianceMonitoringPanel, ComplianceMonitoringWorkspace, type MonitoringProfile } from "../components/compliance/ComplianceMonitoringWorkspace";
-import { apiGetJson, apiPutJson, apiPostJson, hasApiBaseUrl } from "../services/apiClient";
+import { apiGetJson, apiPutJson, apiPostJson, hasApiBaseUrl } from "./fixtures/apiTransportFixture";
 import { useAuth } from "../app/auth";
 
 vi.mock("../app/auth", () => ({ useAuth: vi.fn() }));
-vi.mock("../services/apiClient", () => ({ apiGetJson: vi.fn(), apiPutJson: vi.fn(), apiPostJson: vi.fn(), hasApiBaseUrl: vi.fn() }));
+vi.mock("../services/apiClient", async original => ({ ...await original<typeof import("../services/apiClient")>(), apiGetJson: vi.fn(), apiPutJson: vi.fn(), apiPostJson: vi.fn(), hasApiBaseUrl: vi.fn() }));
 const profile: MonitoringProfile = {
   clientId: "business-a", clientName: "Test Business", version: "version-1", canManage: true,
   registrationNumber: "REG-EXAMPLE", taxNumber: "", csdSupplierNumber: "",

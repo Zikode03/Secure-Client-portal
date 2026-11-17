@@ -715,13 +715,13 @@ export function ClientMonthlyPacksPage() {
     <div className="portal-page mx-auto max-w-[1280px] space-y-5 pb-8">
       <div className="portal-page-header grid gap-5 border-b border-slate-200 pb-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
         <div className="space-y-2 pt-1">
-          <p className="text-[0.78rem] font-semibold uppercase tracking-[0.14em] text-brand-700">
+          <p className="text-sm font-semibold uppercase tracking-[0.14em] text-brand-700">
             Monthly Packs
           </p>
           <h1 className="portal-page-title text-[#091333]">
             {effectiveMonthPack.monthLabel}
           </h1>
-          <p className="max-w-2xl text-[0.96rem] leading-7 text-[#53617f]">
+          <p className="max-w-2xl text-base leading-7 text-[#53617f]">
             Submit each draft when it is ready, or submit all remaining drafts together. Drafts left at month-end are submitted automatically.
           </p>
         </div>
@@ -770,15 +770,15 @@ export function ClientMonthlyPacksPage() {
             <div className="grid shrink-0 grid-cols-3 gap-2 text-center">
               <div className="rounded-xl bg-slate-50 px-4 py-3">
                 <p className="text-lg font-semibold text-[#091333]">{progressPercent}%</p>
-                <p className="text-[0.68rem] text-slate-500">Complete</p>
+                <p className="text-sm text-slate-500">Complete</p>
               </div>
               <div className="rounded-xl bg-slate-50 px-4 py-3">
                 <p className="text-lg font-semibold text-[#091333]">{readyRequiredCount}/{effectiveMonthPack.totalCount}</p>
-                <p className="text-[0.68rem] text-slate-500">Required ready</p>
+                <p className="text-sm text-slate-500">Required ready</p>
               </div>
               <div className="rounded-xl bg-slate-50 px-4 py-3">
                 <p className="text-sm font-semibold text-[#091333]">{formatDateLabel(effectiveMonthPack.dueDate)}</p>
-                <p className="text-[0.68rem] text-slate-500">{dueDaysRemaining} days left</p>
+                <p className="text-sm text-slate-500">{dueDaysRemaining} days left</p>
               </div>
             </div>
           </div>

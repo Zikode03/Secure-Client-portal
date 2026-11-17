@@ -1,9 +1,10 @@
+import type { ApiResponse } from "../../services/apiContractTypes";
+import "./adminRoles.css";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "../../components/ui/Button";
 import { FeedbackBanner } from "../../components/ui/FeedbackBanner";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { SelectField } from "../../components/ui/SelectField";
-import { PageSection } from "../../components/ui/PageSection";
 import { TextField } from "../../components/ui/TextField";
 import { ApiError, apiGetJson, apiPostJson, apiPutJson, hasApiBaseUrl } from "../../services/apiClient";
 import type { Tone } from "../../types/portal";
@@ -35,6 +36,17 @@ const permissionGroups: Array<{ label: string; permissions: string[] }> = [
   { label: "Settings and oversight", permissions: ["settings.read", "settings.update", "templates.update", "deadlines.update", "audit_logs.read", "compliance.read", "reports.export"] },
 ];
 
+const permissionLabels: Record<string, string> = {
+ "access.admin": "Open the admin workspace", "access.accountant": "Open the accountant workspace", "access.client": "Open the client workspace",
+ "clients.read": "View clients", "clients.create": "Add clients", "clients.update": "Edit clients", "clients.status.update": "Activate or deactivate clients", "clients.profile.update": "Edit business profiles", "clients.delete": "Delete clients",
+ "documents.read": "View documents", "documents.upload": "Upload documents", "documents.update": "Edit document details", "documents.review": "Approve documents and close months", "documents.delete": "Delete documents",
+ "requests.read": "View conversations", "requests.create": "Create requests", "requests.comment": "Reply to conversations", "requests.update": "Update requests", "requests.delete": "Delete requests",
+ "assignments.read": "View assignments", "assignments.create": "Assign accountants", "assignments.update": "Change assignments", "assignments.delete": "Remove assignments",
+ "users.read": "View users", "users.create": "Invite users", "users.update": "Edit user access", "users.activate": "Enable users", "users.deactivate": "Disable users",
+ "roles.read": "View roles", "roles.create": "Create roles", "roles.update": "Edit role permissions", "roles.activate": "Enable roles", "roles.deactivate": "Disable roles",
+ "settings.read": "View firm settings", "settings.update": "Edit firm settings", "templates.update": "Edit templates", "deadlines.update": "Edit deadlines", "audit_logs.read": "View audit history", "compliance.read": "View compliance records", "reports.export": "Export reports",
+};
+
 const scopeOptions = [
   { label: "Admin", value: "admin" },
   { label: "Firm / accountant", value: "accountant" },
@@ -53,6 +65,7 @@ function readPermissions(role: RoleRecord) {
 
 export function AdminRolesPage() {
   const backendMode = hasApiBaseUrl();
+  const [access, setAccess] = useState<ApiResponse<"/api/roles/access"> | null>(null);
   const [roles, setRoles] = useState<RoleRecord[]>([]);
   const [selectedRoleName, setSelectedRoleName] = useState("");
   const [displayName, setDisplayName] = useState("");
@@ -72,12 +85,14 @@ export function AdminRolesPage() {
     }
 
     try {
-      const rows = await apiGetJson<RoleRecord[]>("/api/roles");
+      const [rows, capabilities] = await Promise.all([apiGetJson("/api/roles"), apiGetJson("/api/roles/access").catch(() => null)]);
+      setAccess(capabilities);
       setRoles(rows);
       const current = rows.find((role) => role.name === selectedRoleName) ?? rows[0];
       if (current) setSelectedRoleName(current.name);
       setFeedback(null);
     } catch (error) {
+      setAccess(null);
       setFeedback({ tone: "danger", title: "Roles could not be loaded", message: error instanceof ApiError ? error.message : "The role directory could not be loaded." });
     }
   }
@@ -106,7 +121,7 @@ export function AdminRolesPage() {
     if (!selectedRole) return;
     setBusy(true);
     try {
-      await apiPutJson<RoleRecord, { displayName: string; scope: string; permissions: string[] }>(
+      await apiPutJson(
         `/api/roles/${selectedRole.name}`,
         { displayName: displayName.trim(), scope, permissions },
       );
@@ -123,7 +138,7 @@ export function AdminRolesPage() {
     if (!selectedRole) return;
     setBusy(true);
     try {
-      await apiPostJson<RoleRecord, Record<string, never>>(
+      await apiPostJson(
         `/api/roles/${selectedRole.name}/${selectedRole.isActive ? "deactivate" : "activate"}`,
         {},
       );
@@ -143,7 +158,7 @@ export function AdminRolesPage() {
 
     setBusy(true);
     try {
-      const created = await apiPostJson<RoleRecord, { name: string; displayName: string; scope: string; permissions: string[] }>(
+      const created = await apiPostJson(
         "/api/roles",
         { name: newRoleName.trim().toLowerCase().replace(/\s+/g, "_"), displayName: newDisplayName.trim(), scope: newScope, permissions: newPermissions },
       );
@@ -161,97 +176,54 @@ export function AdminRolesPage() {
   }
 
   const renderPermissions = (current: string[], setter: (next: string[]) => void) => (
-    <div className="grid gap-4 lg:grid-cols-2">
-      {permissionGroups.map((group) => (
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4" key={group.label}>
-          <p className="text-sm font-semibold text-slate-950">{group.label}</p>
-          <div className="mt-3 space-y-2">
-            {group.permissions.map((permission) => (
-              <label className="flex items-center gap-3 text-sm text-slate-700" key={permission}>
-                <input
-                  checked={current.includes(permission)}
-                  onChange={() => togglePermission(permission, setter, current)}
-                  type="checkbox"
-                />
-                <span>{permission}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-      ))}
+    <div className="role-permission-groups">
+      {permissionGroups.map(group => <fieldset className="role-permission-group" key={group.label} disabled={busy}>
+        <legend>{group.label}</legend>
+        {group.permissions.map(permission => <label key={permission}>
+          <input checked={current.includes(permission)} onChange={() => togglePermission(permission, setter, current)} type="checkbox" />
+          <span>{permissionLabels[permission] || permission}</span>
+        </label>)}
+      </fieldset>)}
     </div>
   );
+  const selectedPermissions = selectedRole ? readPermissions(selectedRole) : [];
+  const unlistedPermissions = selectedPermissions.filter(permission => !permissionGroups.some(group => group.permissions.includes(permission)));
 
-  return (
-    <div className="space-y-6">
-      <p className="text-sm text-slate-600">Administrators manage the firm. Grant documents.review separately when an administrator must also approve documents or close months.</p>
-      <PageHeader
-        description="Define what each role can see and do across the portal."
-        eyebrow="Administration"
-        title="Roles & permissions"
-      />
-
-      {feedback ? <FeedbackBanner message={feedback.message} onDismiss={() => setFeedback(null)} title={feedback.title} tone={feedback.tone} /> : null}
-
-      <div className="space-y-5">
-        <section className="space-y-3" aria-label="Role directory">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="portal-section-title text-slate-950">Role directory</h2>
-            <p className="mt-1 text-sm text-slate-500">{roles.length} roles configured</p>
+  return <div className="admin-role-settings">
+    <PageHeader title="Roles & permissions" description="Review what each role can do. For everyday access changes, assign a role to the user instead." actions={<a className="role-users-link" href="/firm/admin/users">Manage user access →</a>} />
+    {feedback && <FeedbackBanner {...feedback} onDismiss={() => setFeedback(null)} />}
+    {!access?.canUpdate && <p className="text-sm text-slate-500">Roles are read-only for your account. Use Manage user access to assign an existing role. Permission changes are reserved for the designated system owner.</p>}
+    <div className="role-workspace">
+      <section className="role-directory" aria-label="Role directory">
+        <h2>Roles</h2>
+        <div role="group" aria-label="Select a role">{roles.map(role => <button type="button" key={role.name} aria-label={role.displayName} aria-pressed={selectedRoleName === role.name} aria-controls="role-editor" disabled={busy} onClick={() => setSelectedRoleName(role.name)}>
+          <span>{role.displayName}</span><small>{role.isActive ? "Active" : "Inactive"} · {readPermissions(role).length} permissions</small>
+        </button>)}</div>
+      </section>
+      <section className="role-overview" id="role-editor" aria-label="Role access overview">
+        {selectedRole ? <>
+          <header><div><h2>{selectedRole.displayName}</h2><p>{selectedRole.isSystemRole ? "Standard role" : "Custom role"} · {selectedRole.isActive ? "Active" : "Inactive"}</p></div><span className="role-scope">{scopeOptions.find(option => option.value === selectedRole.scope)?.label || selectedRole.scope} workspace</span></header>
+          <div className="role-access-summary"><h3>What this role can do</h3><p>Based on the permissions currently saved for this role. Client access also depends on assignments and business membership.</p>
+            {permissionGroups.map(group => {
+              const granted = group.permissions.filter(permission => selectedPermissions.includes(permission));
+              return granted.length ? <div className="role-access-row" key={group.label}><h4>{group.label}</h4><p>{granted.map(permission => permissionLabels[permission]).join(" · ")}</p></div> : null;
+            })}
+            {!selectedPermissions.length && <p>No permissions have been configured for this role.</p>}
+            {!!unlistedPermissions.length && <p className="role-additional-access">{unlistedPermissions.length} additional service permission{unlistedPermissions.length === 1 ? " is" : "s are"} retained when you save.</p>}
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3" role="group" aria-label="Select a role">
-            {roles.map((role) => (
-              <button
-                aria-pressed={selectedRoleName === role.name}
-                aria-controls="role-editor"
-                disabled={busy}
-                className={`inline-flex min-h-11 w-full cursor-pointer items-center justify-center rounded-xl border px-4 py-3 text-sm font-semibold leading-5 shadow-sm transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 disabled:cursor-not-allowed disabled:opacity-50 ${selectedRoleName === role.name ? "border-brand-700 bg-brand-700 text-white hover:bg-brand-800" : "border-slate-300 bg-white text-slate-700 hover:border-brand-400 hover:bg-brand-50"}`}
-                key={role.name}
-                onClick={() => setSelectedRoleName(role.name)}
-                type="button"
-              >
-                {role.displayName}
-              </button>
-            ))}
-          </div>
-        </section>
-
-        <PageSection className="space-y-5" id="role-editor">
-          {selectedRole ? (
-            <>
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h2 className="portal-section-title text-slate-950">Edit {selectedRole.displayName}</h2>
-                  <p className="mt-1 text-sm text-slate-500">{selectedRole.isSystemRole ? "System role" : "Custom role"} · {selectedRole.isActive ? "Active" : "Inactive"} · {selectedRole.scope} · {permissions.length} permissions</p>
-                </div>
-                <Button disabled={busy} onClick={() => void toggleRoleActivation()} variant={selectedRole.isActive ? "danger" : "secondary"}>
-                  {selectedRole.isActive ? "Deactivate" : "Activate"}
-                </Button>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <TextField label="Display name" onChange={(event) => setDisplayName(event.target.value)} value={displayName} />
-                <SelectField label="Scope" onChange={(event) => setScope(event.target.value)} options={scopeOptions} value={scope} />
-              </div>
-              {renderPermissions(permissions, setPermissions)}
-              <div className="flex justify-end"><Button disabled={busy} onClick={() => void saveRole()}>Save role</Button></div>
-            </>
-          ) : <p className="text-sm text-slate-500">No roles are available.</p>}
-        </PageSection>
-      </div>
-
-      <PageSection className="space-y-5">
-        <div>
-          <h2 className="portal-section-title text-slate-950">Create custom role</h2>
-          <p className="mt-1 text-sm text-slate-500">Use custom roles only when the standard Admin, Accountant and Client roles do not fit.</p>
-        </div>
-        <div className="grid gap-4 md:grid-cols-3">
-          <TextField label="Role key" onChange={(event) => setNewRoleName(event.target.value)} value={newRoleName} />
-          <TextField label="Display name" onChange={(event) => setNewDisplayName(event.target.value)} value={newDisplayName} />
-          <SelectField label="Scope" onChange={(event) => setNewScope(event.target.value)} options={scopeOptions} value={newScope} />
-        </div>
-        {renderPermissions(newPermissions, setNewPermissions)}
-        <div className="flex justify-end"><Button disabled={busy || !backendMode} onClick={() => void createRole()}>Create role</Button></div>
-      </PageSection>
+          {access?.canUpdate && <details className="role-advanced" key={selectedRole.name}><summary>Advanced: edit role permissions</summary><div className="role-advanced-content">
+            <h3>Edit {selectedRole.displayName}</h3>
+            <p className="role-warning">Changes affect everyone assigned this role. Administrator access does not automatically include document approval or month closing.</p>
+            <fieldset disabled={busy} className="role-details-fields"><legend className="sr-only">Role details</legend><TextField label="Display name" value={displayName} onChange={event => setDisplayName(event.target.value)} /><SelectField label="Workspace" options={scopeOptions} value={scope} onChange={event => setScope(event.target.value)} /></fieldset>
+            {renderPermissions(permissions, setPermissions)}
+            <footer>{(selectedRole.isActive ? access.canDeactivate : access.canActivate) && <Button variant={selectedRole.isActive ? "danger" : "secondary"} disabled={busy} onClick={() => void toggleRoleActivation()}>{selectedRole.isActive ? "Deactivate" : "Activate"}</Button>}<Button disabled={busy || !displayName.trim()} onClick={() => void saveRole()}>{busy ? "Saving…" : "Save role"}</Button></footer>
+          </div></details>}
+        </> : <p className="role-empty">{feedback ? "Roles are unavailable. Check the connection and try again." : "Loading roles…"}</p>}
+      </section>
     </div>
-  );
+    {access?.canCreate && <details className="role-create"><summary>Create a custom role</summary><div className="role-advanced-content"><h2>Create custom role</h2><p>Use the standard roles unless your firm needs a different set of permissions.</p>
+      <fieldset disabled={busy} className="role-details-fields"><legend className="sr-only">New role details</legend><TextField label="Role key" hint="An internal identifier, such as senior_accountant." value={newRoleName} onChange={event => setNewRoleName(event.target.value)} /><TextField label="Display name" value={newDisplayName} onChange={event => setNewDisplayName(event.target.value)} /><SelectField label="Workspace" options={scopeOptions} value={newScope} onChange={event => setNewScope(event.target.value)} /></fieldset>
+      {renderPermissions(newPermissions, setNewPermissions)}<footer><Button disabled={busy || !backendMode} onClick={() => void createRole()}>Create role</Button></footer>
+    </div></details>}
+  </div>;
 }

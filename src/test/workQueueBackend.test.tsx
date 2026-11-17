@@ -1,3 +1,11 @@
+const pdfState = vi.hoisted(() => ({ ready: true }));
+vi.mock("../components/documents/DocumentPdfPreview", async () => {
+  const { useEffect } = await import("react");
+  return { DocumentPdfPreview: ({ documentId, onReady }: { documentId: string; onReady: (id: string, ready: boolean) => void }) => {
+    useEffect(() => onReady(documentId, pdfState.ready), [documentId, onReady]);
+    return <div>Rendered PDF preview</div>;
+  } };
+});
 import { invoiceReviewApi } from "../services/invoiceReviewApi";
 import { reviewQueueApi } from "../services/reviewQueueApi";
 import { emptyReviewValues } from "../services/invoiceReviewScanner";
@@ -17,12 +25,13 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, expect, it, vi } from "vitest";
 import { AccountantReviewPage } from "../pages/accountant/AccountantReviewPage";
 import { PortalProvider } from "../app/portal";
-import { apiGetBlob, apiGetJson } from "../services/apiClient";
+import { apiGetBlob, apiGetJson } from "./fixtures/apiTransportFixture";
 const user = vi.hoisted(() => ({
   id: "accountant-live",
   role: "accountant",
@@ -69,6 +78,7 @@ const item = {
   reviewPriority: "normal",
 };
 beforeEach(() => {
+  pdfState.ready = true;
   vi.clearAllMocks();
   vi.mocked(invoiceReviewApi.get).mockResolvedValue({
     documentId: "document-live",
@@ -109,15 +119,23 @@ it("loads a populated backend queue and opens its real workspace without render 
       </PortalProvider>
     </MemoryRouter>,
   );
-  fireEvent.click(
-    await screen.findByRole("button", { name: "Actions for Sales Invoices" }),
-  );
-  const open = await screen.findByRole("button", { name: "Open review" });
+  const open = await screen.findByRole("button", { name: "Review invoice.pdf for Test business" });
   fireEvent.click(open);
   await waitFor(() =>
     expect(apiGetJson).toHaveBeenCalledWith("/api/review-queue/document-live"),
   );
   expect(screen.getAllByText("invoice.pdf").length).toBeGreaterThan(0);
+  const dialog = screen.getByRole("dialog", { name: "Document review" });
+  expect(within(dialog).getAllByRole("button", { name: "Download" })).toHaveLength(1);
+  expect(within(dialog).queryByRole("button", { name: "Open in new tab" })).not.toBeInTheDocument();
+  expect(within(dialog).getByRole("heading", { name: "Review decision" })).toBeInTheDocument();
+  expect(within(dialog).queryByText("Key details")).not.toBeInTheDocument();
+  expect(within(dialog).getByRole("button", { name: "Client history" })).toBeInTheDocument();
+  expect(document.body.style.overflow).toBe("hidden");
+  fireEvent.keyDown(window, { key: "Escape" });
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(document.body.style.overflow).not.toBe("hidden");
+
 });
 
 it("reports an invalid queue response and retries the API rather than restoring local records", async () => {
@@ -145,7 +163,7 @@ it("reports an invalid queue response and retries the API rather than restoring 
   );
   fireEvent.click(screen.getByRole("button", { name: "Refresh queue" }));
   expect(
-    await screen.findByRole("button", { name: "Actions for Sales Invoices" }),
+    await screen.findByRole("button", { name: "Review invoice.pdf for Test business" }),
   ).toBeInTheDocument();
 });
 
@@ -166,10 +184,7 @@ it("keeps the file download active after metadata renders, even when the downloa
       </PortalProvider>
     </MemoryRouter>,
   );
-  fireEvent.click(
-    await screen.findByRole("button", { name: "Actions for Sales Invoices" }),
-  );
-  fireEvent.click(await screen.findByRole("button", { name: "Open review" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Review invoice.pdf for Test business" }));
   await waitFor(() =>
     expect(apiGetBlob).toHaveBeenCalledWith(
       "/api/documents/document-live/download",
@@ -299,15 +314,99 @@ it("uses the actual replacement version and invoice category for supporting impo
   );
 });
 
-it("filters saved findings using queue summaries without fetching every review", async () => {
+it("keeps scanning tools and saved findings inside review rather than the task list", async () => {
   vi.mocked(apiGetJson).mockImplementation(async path => path === "/api/review-queue" ? [
     {...item, assistantState: "needs_attention"},
     {...item, documentId: "another-invoice", documentName: "another.pdf", clientName: "Another business", assistantState: "not_started"},
   ] : []);
   render(<MemoryRouter><PortalProvider><AccountantReviewPage /></PortalProvider></MemoryRouter>);
-  await screen.findByText(/Another business \|/);
-  fireEvent.change(screen.getByLabelText("Saved invoice checks"), {target: {value: "needs_attention"}});
-  expect(screen.queryByText(/Another business \|/)).not.toBeInTheDocument();
-  expect(screen.getByText(/Saved checks: Needs attention/)).toBeInTheDocument();
+  await screen.findByRole("button", { name: "Review another.pdf for Another business" });
+  expect(screen.queryByRole("group", { name: "Queue status" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("region", { name: "Bulk invoice scanning" })).not.toBeInTheDocument();
+  expect(screen.queryByLabelText("Saved invoice checks")).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /More filters/ })).not.toBeInTheDocument();
   expect(invoiceReviewApi.get).not.toHaveBeenCalled();
+});
+
+it("shows only pending decisions and reviews urgent submissions first", async () => {
+  vi.mocked(apiGetJson).mockImplementation(async path => path === "/api/review-queue" ? [
+    {...item, documentId: "recent", documentName: "recent.pdf", reviewPriority: "normal", submittedAtUtc: "2026-11-15T08:00:00Z"},
+    {...item, documentId: "finished", documentName: "finished.pdf", documentStatus: "accepted", slotStatus: "accepted"},
+    {...item, reviewPriority: "high", reviewAgeDays: 8, submittedAtUtc: "2026-11-08T08:00:00Z"},
+  ] : path === "/api/review-queue/document-live" ? { item, downloadUrl: "/api/documents/document-live/download", versions: [], comments: [], reviewHistory: [] } : []);
+  render(<MemoryRouter><PortalProvider><AccountantReviewPage /></PortalProvider></MemoryRouter>);
+  await screen.findByText("Waiting 8 days");
+  expect(screen.queryByText("finished.pdf")).not.toBeInTheDocument();
+  expect(screen.getAllByRole("listitem")[0]).toHaveTextContent("invoice.pdf");
+  fireEvent.click(screen.getByRole("button", { name: "Review next" }));
+  await waitFor(() => expect(apiGetJson).toHaveBeenCalledWith("/api/review-queue/document-live"));
+});
+
+it("searches documents, clears the view and opens the next review directly", async () => {
+  render(<MemoryRouter><PortalProvider><AccountantReviewPage /></PortalProvider></MemoryRouter>);
+  await screen.findByRole("button", { name: "Review invoice.pdf for Test business" });
+  expect(screen.queryByLabelText("Saved invoice checks")).not.toBeInTheDocument();
+  fireEvent.change(screen.getByRole("searchbox", { name: "Search documents" }), { target: { value: "does-not-match" } });
+  expect(screen.queryByRole("button", { name: "Review invoice.pdf for Test business" })).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Review next" })).toBeDisabled();
+  fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+  expect(screen.getByRole("button", { name: "Review invoice.pdf for Test business" })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Review next" }));
+  await waitFor(() => expect(apiGetJson).toHaveBeenCalledWith("/api/review-queue/document-live"));
+});
+
+it("removes a decided document and returns to the queue without reopening the next submission", async () => {
+  let decided = false;
+  const support = { ...item, documentName: "support.pdf", documentCategory: "general", slotLabel: "Supporting document" };
+  vi.mocked(apiGetJson).mockImplementation(async path => path === "/api/review-queue" ? decided ? [] : [support] : path === "/api/review-queue/document-live" ? { item: support, downloadUrl: "/api/documents/document-live/download", versions: [], comments: [], reviewHistory: [] } : []);
+  vi.mocked(reviewQueueApi.review).mockImplementation(async () => { decided = true; return { id: "decision", decision: "accepted", documentId: item.documentId, documentStatus: "accepted", decidedAtUtc: "2026-11-16T10:00:00Z", reason: null, internalNote: null }; });
+  render(<MemoryRouter><PortalProvider><AccountantReviewPage /></PortalProvider></MemoryRouter>);
+  fireEvent.click(await screen.findByRole("button", { name: "Review support.pdf for Test business" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Approve" }));
+  await screen.findByRole("heading", { name: "No documents awaiting review" });
+  expect(screen.queryByRole("button", { name: "Approve" })).not.toBeInTheDocument();
+  decided = false;
+  fireEvent.click(screen.getByRole("button", { name: "Refresh queue" }));
+  await screen.findByRole("button", { name: "Review support.pdf for Test business" });
+  expect(screen.queryByRole("button", { name: "Approve" })).not.toBeInTheDocument();
+});
+
+it("keeps bank statement approval disabled until the PDF can be previewed", async () => {
+  pdfState.ready = false;
+  const bank = { ...item, documentName: "statement.pdf", documentCategory: "bank_statements", slotLabel: "Bank Statement" };
+  vi.mocked(apiGetJson).mockImplementation(async path => path === "/api/review-queue" ? [bank] : path === "/api/review-queue/document-live" ? { item: bank, downloadUrl: "/api/documents/document-live/download", versions: [], comments: [], reviewHistory: [] } : []);
+  render(<MemoryRouter><PortalProvider><AccountantReviewPage /></PortalProvider></MemoryRouter>);
+  fireEvent.click(await screen.findByRole("button", { name: "Review statement.pdf for Test business" }));
+  expect(await screen.findByRole("button", { name: "Approve" })).toBeDisabled();
+  expect(screen.getByText("Approval is available once the document preview loads.")).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Open in new tab" })).not.toBeInTheDocument();
+  expect(reviewQueueApi.review).not.toHaveBeenCalled();
+});
+
+it("collects rejection reasons inline, validates them and keeps text after a failed save", async () => {
+  vi.mocked(reviewQueueApi.review).mockRejectedValueOnce(new Error("Offline"));
+  render(<MemoryRouter><PortalProvider><AccountantReviewPage /></PortalProvider></MemoryRouter>);
+  fireEvent.click(await screen.findByRole("button", { name: "Review invoice.pdf for Test business" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Reject" }));
+  const reason = screen.getByLabelText("Reason for the client");
+  expect(reason).toHaveFocus();
+  fireEvent.click(screen.getByRole("button", { name: "Confirm rejection" }));
+  expect(screen.getByRole("alert")).toHaveTextContent("Enter a reason");
+  expect(reviewQueueApi.review).not.toHaveBeenCalled();
+  fireEvent.change(reason, { target: { value: "  Please provide a readable statement.  " } });
+  fireEvent.click(screen.getByRole("button", { name: "Confirm rejection" }));
+  await waitFor(() => expect(reviewQueueApi.review).toHaveBeenCalledWith("document-live", expect.objectContaining({ decision: "rejected", reason: "Please provide a readable statement." })));
+  expect(await screen.findByText(/Your reason has been kept/)).toBeInTheDocument();
+  expect(reason).toHaveValue("  Please provide a readable statement.  ");
+  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  expect(screen.queryByLabelText("Reason for the client")).not.toBeInTheDocument();
+});
+it("sends corrected-upload requests from the in-app form", async () => {
+  vi.mocked(reviewQueueApi.review).mockResolvedValue({ id: "decision", decision: "request_reupload", documentId: item.documentId, documentStatus: "reupload_required", decidedAtUtc: "2026-11-16T10:00:00Z", reason: "Include every page.", internalNote: null });
+  render(<MemoryRouter><PortalProvider><AccountantReviewPage /></PortalProvider></MemoryRouter>);
+  fireEvent.click(await screen.findByRole("button", { name: "Review invoice.pdf for Test business" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Request re-upload" }));
+  fireEvent.change(screen.getByLabelText("Reason for the client"), { target: { value: "Include every page." } });
+  fireEvent.click(screen.getByRole("button", { name: "Send request" }));
+  await waitFor(() => expect(reviewQueueApi.review).toHaveBeenCalledWith("document-live", expect.objectContaining({ decision: "request_reupload", reason: "Include every page." })));
 });

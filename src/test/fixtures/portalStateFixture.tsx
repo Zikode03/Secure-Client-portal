@@ -11,12 +11,12 @@ import {
   useMemo,
   useState,
 } from "react";
-import { hasApiBaseUrl } from "../../services/apiClient";
+import { hasApiBaseUrl } from "./apiTransportFixture";
 import { useOptionalAuth } from "../../app/auth";
 import { privateStateKey } from "../../utils/privateBrowserState";
 import { buildComplianceCentreDataFromStatuses } from "../../services/complianceData";
 import { portalService } from "../../services/portalData";
-import { portalServiceApi } from "../../services/portalApi";
+import { portalServiceApi } from "./portalApiFixture";
 import {
   buildExpiringDocuments,
   buildInvoiceReviewQueue,

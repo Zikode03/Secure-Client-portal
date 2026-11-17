@@ -21,7 +21,7 @@ export function AdminOperationsPanel() {
     let active = true;
     setLoading(true); setError(false);
     if (!hasApiBaseUrl()) { setLoading(false); setError(true); return; }
-    void apiGetJson<Operations>("/api/admin/operations").then(value => {
+    void apiGetJson("/api/admin/operations").then(value => {
       if (!value?.checkedAtUtc) throw new Error("No operations data");
       if (active) setData(value);
     }).catch(() => { if (active) { setError(true); setData(null); } }).finally(() => { if (active) setLoading(false); });

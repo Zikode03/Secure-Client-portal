@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AdminRequiredDocumentsPage } from "../pages/admin/AdminRequiredDocumentsPage";
-import { apiGetJson, apiPutJson, hasApiBaseUrl } from "../services/apiClient";
+import { apiGetJson, apiPutJson, hasApiBaseUrl } from "./fixtures/apiTransportFixture";
 import { requiredDocumentsEndpoint } from "../services/requiredDocuments";
 import { navigationByRole } from "../utils/navigation";
 

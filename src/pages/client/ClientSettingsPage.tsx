@@ -10,6 +10,7 @@ import { ApiError, apiGetJson, hasApiBaseUrl } from "../../services/apiClient";
 import type { BusinessProfile, Tone } from "../../types/portal";
 import { cn } from "../../utils/cn";
 import "./clientSettings.css";
+import "../../components/settings/settingsLayout.css";
 
 type SettingsSection = "business" | "security" | "notifications" | "documents";
 
@@ -17,24 +18,6 @@ interface FeedbackNotice {
   tone: Tone;
   title: string;
   message: string;
-}
-
-interface BackendClientProfile {
-  id: string;
-  name: string;
-  entityType: string;
-  primaryContact: string;
-  email: string;
-  industry?: string;
-  registrationNumber?: string;
-  taxNumber?: string;
-  vatNumber?: string;
-  phone?: string;
-  tradingName?: string;
-  addressLine?: string;
-  city?: string;
-  country?: string;
-  primaryContactJobTitle?: string;
 }
 
 function Toggle({ checked, label, description, onChange }: { checked: boolean; label: string; description: string; onChange: () => void }) {
@@ -106,7 +89,7 @@ export function ClientSettingsPage() {
 
     let active = true;
     setProfileLoading(true);
-    void apiGetJson<BackendClientProfile>(`/api/clients/${encodeURIComponent(clientId)}`)
+    void apiGetJson(`/api/clients/${encodeURIComponent(clientId)}`)
       .then((client) => {
         if (!active) return;
         setProfile((current) => ({
@@ -273,19 +256,15 @@ export function ClientSettingsPage() {
 
   const currentSection = sections.find(section => section.id === activeSection)!;
   const SectionIcon = sectionIcons[activeSection];
-  const initials = (user?.fullName || user?.name || "Client").split(" ").filter(Boolean).slice(0, 2).map(part => part[0]).join("");
   function field(label: string, key: keyof BusinessProfile, type = "text") {
     return <TextField label={label} type={type} placeholder={backendMode ? "Not provided" : ""}
       readOnly={backendMode} value={profile[key] ?? ""}
       onChange={event => setProfile(value => ({ ...value, [key]: event.target.value }))} />;
   }
 
-  return <div className="client-settings">
-    <header className="settings-heading">
-      <div><p className="settings-eyebrow">YOUR WORKSPACE</p><h1>Settings</h1><p>Business details, account access and the updates you receive.</p></div>
-      <div className="settings-identity"><span className="settings-avatar" aria-hidden="true">{initials}</span><div><strong>{user?.fullName || user?.name || "Client account"}</strong><span>{user?.email}</span></div></div>
-    </header>
-
+  return <div className="client-settings clean-settings">
+    <header className="clean-settings-heading"><h1 className="workspace-duplicate-title ">Settings</h1><p>Manage your business details, security and preferences.</p></header>
+    <div className="clean-settings-layout">
     <div className="settings-tabs" role="tablist" aria-label="Settings sections">
       {sections.map((section, index) => {
         const Icon = sectionIcons[section.id];
@@ -295,8 +274,8 @@ export function ClientSettingsPage() {
           onClick={() => { setActiveSection(section.id); setFeedbackNotice(null); }}
           onKeyDown={event => {
             let next = index;
-            if (event.key === "ArrowRight") next = (index + 1) % sections.length;
-            else if (event.key === "ArrowLeft") next = (index + sections.length - 1) % sections.length;
+            if (event.key === "ArrowRight" || event.key === "ArrowDown") next = (index + 1) % sections.length;
+            else if (event.key === "ArrowLeft" || event.key === "ArrowUp") next = (index + sections.length - 1) % sections.length;
             else if (event.key === "Home") next = 0;
             else if (event.key === "End") next = sections.length - 1;
             else return;
@@ -306,6 +285,7 @@ export function ClientSettingsPage() {
       })}
     </div>
 
+    <div className="clean-settings-content">
     {feedbackNotice && <FeedbackBanner {...feedbackNotice} onDismiss={() => setFeedbackNotice(null)} />}
     <section className="settings-panel" role="tabpanel" tabIndex={0} id={"settings-panel-" + activeSection} aria-labelledby={"settings-tab-" + activeSection}>
       <header className="settings-panel-heading"><div className="settings-section-title"><SectionIcon size={21} aria-hidden="true" /><div><h2>{currentSection.title}</h2><p>{currentSection.description}</p></div></div>
@@ -314,13 +294,13 @@ export function ClientSettingsPage() {
 
       {activeSection === "business" && <>
         {profileLoading && <p role="status" className="settings-note">Loading your business details…</p>}
-        <div className="settings-group"><div className="settings-group-label"><span>01 / BUSINESS</span><h3>Company details</h3><p>Your business identity as recorded by your firm.</p></div>
+        <div className="settings-group"><div className="settings-group-label"><h3>Company details</h3><p>Your business identity as recorded by your firm.</p></div>
           <div className="settings-fields" aria-busy={profileLoading}>
             {field("Company name", "legalName")}{field("Trading name", "tradingName")}{field("Registration number", "registrationNumber")}{field("VAT number", "vatNumber")}
             <TextField label="Industry" readOnly={backendMode} placeholder={backendMode ? "Not provided" : ""} value={industry} onChange={event => setIndustry(event.target.value)} />
           </div>
         </div>
-        <div className="settings-group"><div className="settings-group-label"><span>02 / CONTACT</span><h3>Primary contact</h3><p>The person your accountant contacts about documents and compliance.</p></div>
+        <div className="settings-group"><div className="settings-group-label"><h3>Primary contact</h3><p>The person your accountant contacts about documents and compliance.</p></div>
           <div className="settings-fields">{field("Full name", "primaryContact")}{field("Email address", "financeEmail", "email")}{field("Phone number", "phone", "tel")}
             <TextField label="Job title" readOnly={backendMode} placeholder={backendMode ? "Not provided" : ""} value={jobTitle} onChange={event => setJobTitle(event.target.value)} />
           </div>
@@ -331,7 +311,7 @@ export function ClientSettingsPage() {
       </>}
 
       {activeSection === "security" && <>
-        <div className="settings-group"><div className="settings-group-label"><span>01 / SIGN-IN</span><h3>Change password</h3><p>Choose a unique password with at least 15 characters.</p>
+        <div className="settings-group"><div className="settings-group-label"><h3>Change password</h3><p>Choose a unique password with at least 15 characters.</p>
           <small>Last changed: {formatDateValue(securitySettings.passwordLastChangedAt)}</small></div>
           <form className="settings-password-form" onSubmit={event => { event.preventDefault(); void handlePasswordChange(); }}>
             <TextField required autoComplete="current-password" label="Current password" type={showPasswords ? "text" : "password"} value={currentPassword} onChange={event => setCurrentPassword(event.target.value)} />
@@ -341,7 +321,7 @@ export function ClientSettingsPage() {
               <Button type="submit" disabled={isUpdatingPassword}>{isUpdatingPassword ? "Updating password…" : "Update password"}</Button></div>
           </form>
         </div>
-        <div className="settings-group"><div className="settings-group-label"><span>02 / ACCESS</span><h3>Session security</h3><p>Keep access to your account under your control.</p></div>
+        <div className="settings-group"><div className="settings-group-label"><h3>Session security</h3><p>Keep access to your account under your control.</p></div>
           <div className="settings-policy"><SessionIcon size={22} aria-hidden="true" /><div><strong>{backendMode ? "Protect your signed-in sessions" : "Active sessions"}</strong>
             <p>{backendMode ? "Changing your password signs out your other active sessions. A device-by-device list is not available here." : "Devices recorded in this workspace."}</p>
             {!backendMode && (securitySettings.activeSessions ?? []).map(session => <div className="settings-session" key={session.id}><strong>{session.label}{session.isCurrent ? " · Current session" : ""}</strong><p>{session.location} · {formatDateValue(session.lastActiveAt)}</p></div>)}
@@ -350,7 +330,7 @@ export function ClientSettingsPage() {
       </>}
 
       {activeSection === "notifications" && (backendMode
-        ? <div className="settings-group"><div className="settings-group-label"><span>WORKFLOW UPDATES</span><h3>Stay up to date</h3><p>Find requests, document updates and reminders in your inbox.</p></div>
+        ? <div className="settings-group"><div className="settings-group-label"><h3>Stay up to date</h3><p>Find requests, document updates and reminders in your inbox.</p></div>
           <div className="settings-notification-info"><Mail size={28} aria-hidden="true" /><h3>Your updates, in one place</h3><p>Manage reminder preferences saved to your account across devices.</p><Button variant="secondary" onClick={() => navigate("/client/notifications/preferences")}>Manage notification preferences <ArrowUpRight size={16} aria-hidden="true" /></Button></div>
         </div>
         : <><div className="settings-group"><div className="settings-group-label"><span>YOUR PREFERENCES</span><h3>Choose your updates</h3><p>Adjust reminders and summaries to suit your workflow.</p></div><div className="settings-toggles">
@@ -362,14 +342,15 @@ export function ClientSettingsPage() {
         </div></div><footer className="settings-footer"><p>Apply your changes when you are ready.</p><Button onClick={handleSaveNotifications}>Save preferences</Button></footer></>)}
 
       {activeSection === "documents" && <>
-        <div className="settings-group"><div className="settings-group-label"><span>01 / UPLOADS</span><h3>Keep documents organised</h3><p>Use the correct monthly-pack slot for documents requested by your accountant.</p></div>
+        <div className="settings-group"><div className="settings-group-label"><h3>Keep documents organised</h3><p>Use the correct monthly-pack slot for documents requested by your accountant.</p></div>
           <div className="settings-policy"><DocumentIcon size={23} aria-hidden="true" /><div><strong>Documents and monthly packs</strong><p>Your document register holds your records. Monthly packs group the documents needed for a particular period.</p>
             <div className="settings-links"><Button variant="secondary" onClick={() => navigate("/client/documents")}>Open documents <ArrowUpRight size={15} /></Button><Button variant="secondary" onClick={() => navigate("/client/packs")}>Open monthly packs <ArrowUpRight size={15} /></Button></div></div></div>
         </div>
-        <div className="settings-group"><div className="settings-group-label"><span>02 / RECORDS</span><h3>Retention &amp; compliance</h3><p>Record-handling rules are managed by your firm.</p></div>
+        <div className="settings-group"><div className="settings-group-label"><h3>Retention &amp; compliance</h3><p>Record-handling rules are managed by your firm.</p></div>
           <div className="settings-policy"><LockIcon size={23} aria-hidden="true" /><div><strong>Keeping your supporting records</strong><p>{portal.clientComplianceCentre.retentionNote || "Contact your accountant for your firm's document retention policy."}</p><Button variant="secondary" onClick={() => navigate("/client/compliance")}>Open compliance centre <ArrowUpRight size={15} /></Button></div></div>
         </div>
       </>}
     </section>
+    </div></div>
   </div>;
 }

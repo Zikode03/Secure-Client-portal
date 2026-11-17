@@ -1,3 +1,4 @@
+import "./adminDirectories.css";
 import { useEffect, useRef, useState } from "react";
 import "./importOptions.css";
 import { useAuth } from "../../app/auth";
@@ -346,7 +347,7 @@ export function AdminMigrationPage() {
     let active = true;
     Promise.all([
       migration.listMigrations(),
-      apiGetJson<ClientOption[]>("/api/clients"),
+      apiGetJson("/api/clients"),
     ])
       .then(([h, c]) => {
         if (active) {
@@ -396,7 +397,7 @@ export function AdminMigrationPage() {
       update(await migration.getMigration(batch.summary.id));
     else {
       setHistory(await migration.listMigrations());
-      setClients(await apiGetJson<ClientOption[]>("/api/clients"));
+      setClients(await apiGetJson("/api/clients"));
       setLoaded(true);
     }
   };
@@ -570,7 +571,7 @@ export function AdminMigrationPage() {
       "client-import-template.csv",
     );
   return (
-    <div className="w-full space-y-6">
+    <div className="admin-directory admin-imports">
       <PageHeader
         title="Import Clients & Documents"
         description="Add your existing client list and paperwork to Secure Client."
@@ -602,13 +603,13 @@ export function AdminMigrationPage() {
       ) : null}
       {!kind ? (
         <>
-          <section aria-label="Choose what to import" className="space-y-4">
+          <section aria-label="Choose what to import" className="admin-import-start">
             <div>
               <h2 className="text-lg font-semibold text-slate-950">
-                What would you like to import?
+                Start an import
               </h2>
               <p className="mt-1 text-sm text-slate-500">
-                Choose an option. You can review everything before saving.
+                Bring in existing records, then validate and approve them before they enter client files.
               </p>
             </div>
             <div className="import-option-grid">
@@ -616,7 +617,7 @@ export function AdminMigrationPage() {
                 <span className="import-option-card__icon"><FileSpreadsheet size={21} strokeWidth={1.7} aria-hidden="true" /></span>
                 <span className="import-option-card__content">
                   <span className="import-option-card__title">Import a client list</span>
-                  <span className="import-option-card__description">Add your clients from Excel or CSV.</span>
+                  <span className="import-option-card__description">Excel / CSV · Preview and validate client details before adding them.</span>
                 </span>
                 <ArrowRight size={17} className="import-option-card__arrow" aria-hidden="true" />
               </button>
@@ -624,7 +625,7 @@ export function AdminMigrationPage() {
                 <span className="import-option-card__icon"><Files size={21} strokeWidth={1.7} aria-hidden="true" /></span>
                 <span className="import-option-card__content">
                   <span className="import-option-card__title">Import client documents</span>
-                  <span className="import-option-card__description">Upload invoices, receipts and statements.</span>
+                  <span className="import-option-card__description">Document batches · Confirm each client and reporting period before approval.</span>
                 </span>
                 <ArrowRight size={17} className="import-option-card__arrow" aria-hidden="true" />
               </button>
@@ -1221,7 +1222,7 @@ export function AdminMigrationPage() {
                     void run(async () => {
                       update(await migration.approveMigration(id, version));
                       setClients(
-                        await apiGetJson<ClientOption[]>("/api/clients"),
+                        await apiGetJson("/api/clients"),
                       );
                       setNotice(
                         "Import complete. Your records have been added.",
@@ -1239,7 +1240,7 @@ export function AdminMigrationPage() {
       {!kind || completed ? (
         <section
           aria-label="Previous imports"
-          className="space-y-4 border-t border-slate-200 pt-6"
+          className="admin-register admin-import-history space-y-4"
         >
           <div className="flex items-center gap-2">
             <History size={18} className="text-slate-500" aria-hidden="true" />

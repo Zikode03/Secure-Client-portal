@@ -43,7 +43,7 @@ export function InvoicePhotoDetails(props: Props) {
     onConfirmed(false); onAllowDuplicate(false); setMatches([]); setChecking(false);
     if (!hasApiBaseUrl() || !clientId || !Object.values(details).some(Boolean)) return;
     let active = true; setChecking(true);
-    void apiGetJson<Array<{ clientId: string; name: string; invoiceDetailsJson?: string | null }>>("/api/documents")
+    void apiGetJson("/api/documents")
       .then(documents => {
         if (!active) return;
         const found = documents.filter(document => document.clientId === clientId && document.invoiceDetailsJson).flatMap(document => {

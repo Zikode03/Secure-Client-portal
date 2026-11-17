@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
 import { AdminMigrationPage } from "../pages/admin/AdminMigrationPage";
 import * as api from "../services/migrationApi";
-import { apiGetJson } from "../services/apiClient";
+import { apiGetJson } from "./fixtures/apiTransportFixture";
 import type { MigrationDetail } from "../services/migrationApi";
 const session = vi.hoisted(() => ({ role: "admin" }));
 vi.mock("../app/auth", () => ({

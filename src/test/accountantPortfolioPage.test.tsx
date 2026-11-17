@@ -1,0 +1,51 @@
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import { beforeEach, expect, it, vi } from "vitest";
+import { AccountantPortfolioPage } from "../pages/accountant/AccountantPortfolioPage";
+import { portalServiceApi } from "../services/portalApi";
+import { apiGetJson } from "./fixtures/apiTransportFixture";
+const user = vi.hoisted(() => ({ id: "accountant-1", role: "accountant", assignedClientIds: ["client-1"] }));
+vi.mock("../app/auth", () => ({ useAuth: () => ({ user }) }));
+vi.mock("../services/apiClient", async original => ({ ...await original<typeof import("../services/apiClient")>(), hasApiBaseUrl: () => true, apiGetJson: vi.fn() }));
+vi.mock("../services/portalApi", () => ({ portalServiceApi: { getAdminClients: vi.fn() } }));
+const client = { id: "client-1", clientName: "Registered business", industry: "Services", assignedAccountant: "Alex", assignedAccountantUserId: "accountant-1", requiredPack: "", completionRate: 99, deadlinePolicy: "", status: "overdue" as const };
+const pack = { id: "pack-1", clientId: client.id, year: 2026, month: 11, status: "in_progress" };
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.mocked(portalServiceApi.getAdminClients).mockResolvedValue([client]);
+  vi.mocked(apiGetJson).mockImplementation(async path => path === "/api/monthly-packs" ? [pack] : [{ id: "approved", isRequired: true, status: "accepted" }, { id: "review", isRequired: true, status: "under_review" }, { id: "missing", isRequired: true, status: "not_started" }, { id: "na", isRequired: true, status: "not_applicable" }]);
+});
+it("shows each client once with actual approvals and consistent checklist status", async () => {
+  render(<MemoryRouter><AccountantPortfolioPage /></MemoryRouter>);
+  expect(await screen.findByText("1 / 3")).toBeInTheDocument();
+  expect(within(screen.getByRole("row", { name: /Registered business/ })).getByText("Ready for review")).toBeInTheDocument();
+  expect(screen.getAllByRole("row")).toHaveLength(2);
+  expect(screen.queryByText("On schedule")).not.toBeInTheDocument();
+  expect(screen.queryByText(/May 2026/)).not.toBeInTheDocument();
+  expect(screen.getByText("No deadline set")).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Grid" })).not.toBeInTheDocument();
+  fireEvent.change(screen.getByRole("combobox", { name: "Status" }), { target: { value: "overdue" } });
+  expect(screen.getByRole("heading", { name: "No matching clients" })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
+  expect(screen.getByRole("row", { name: /Registered business/ })).toBeInTheDocument();
+});
+it("does not call an unreadable checklist complete or hide the client", async () => {
+  vi.mocked(apiGetJson).mockImplementation(async path => { if (path === "/api/monthly-packs") return [pack]; throw new Error("Checklist unavailable"); });
+  render(<MemoryRouter><AccountantPortfolioPage /></MemoryRouter>);
+  expect(await screen.findByText(/1 checklist\(s\) could not load/)).toBeInTheDocument();
+  const row = screen.getByRole("row", { name: /Registered business/ });
+  expect(within(row).getAllByText("Unavailable")).toHaveLength(3);
+  expect(screen.queryByRole("progressbar")).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Open Registered business" })).toBeEnabled();
+});
+it("uses recorded past deadlines and preserves earlier open months", async () => {
+  vi.mocked(apiGetJson).mockImplementation(async path => path === "/api/monthly-packs" ? [pack, { ...pack, id: "older", month: 10 }] : [{ id: String(path), isRequired: true, status: "not_started", dueDateUtc: "2000-01-01T00:00:00Z" }]);
+  render(<MemoryRouter><AccountantPortfolioPage /></MemoryRouter>);
+  await screen.findByText("0 / 2");
+  expect(apiGetJson).toHaveBeenCalledWith("/api/document-slots/older");
+  expect(screen.queryByText(/earlier months/)).not.toBeInTheDocument();
+  const row = screen.getByRole("row", { name: /Registered business/ });
+  expect(within(row).getByText("Overdue")).toBeInTheDocument();
+  fireEvent.change(screen.getByRole("searchbox", { name: "Search assigned clients" }), { target: { value: "no match" } });
+  expect(screen.getByRole("heading", { name: "No matching clients" })).toBeInTheDocument();
+});

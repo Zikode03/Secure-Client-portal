@@ -26,7 +26,7 @@
 
   html {
     scroll-behavior: smooth;
-    font-size: 16px;
+    font-size: 100%;
   }
 
   body {
@@ -34,7 +34,7 @@
     min-width: 320px;
     background: var(--color-canvas);
     color: #0f172a;
-    font-family: Inter, "Segoe UI", Arial, sans-serif;
+    font-family: var(--ui-font-family);
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -59,7 +59,7 @@
  * page-specific utility classes cannot quietly introduce a different scale.
  */
 h1[class] {
-  font-size: 1.75rem;
+  font-size: var(--ui-text-title);
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 2.125rem;
@@ -110,7 +110,7 @@ html.theme-dark .portal-page-header .ui-btn-secondary:hover {
 }
 
 h2[class] {
-  font-size: 1.125rem;
+  font-size: var(--ui-text-detail);
   font-weight: 600;
   letter-spacing: -0.01em;
   line-height: 1.625rem;
@@ -118,7 +118,7 @@ h2[class] {
 
 h3[class],
 h4[class] {
-  font-size: 1rem;
+  font-size: var(--ui-text-body);
   font-weight: 600;
   letter-spacing: -0.005em;
   line-height: 1.5rem;
@@ -127,7 +127,7 @@ h4[class] {
 @media (max-width: 768px) {
   @layer base {
     html {
-      font-size: 16px;
+      font-size: var(--ui-text-body);
     }
   }
 }
@@ -163,26 +163,26 @@ h4[class] {
 @layer utilities {
   .portal-page {
     font-family: inherit;
-    font-size: 1rem;
+    font-size: var(--ui-text-body);
     line-height: 1.5;
   }
 
   .portal-page-title {
-    font-size: 1.75rem;
+    font-size: var(--ui-text-title);
     font-weight: 600;
     letter-spacing: -0.02em;
     line-height: 2.125rem;
   }
 
   .portal-section-title {
-    font-size: 1.125rem;
+    font-size: var(--ui-text-detail);
     font-weight: 600;
     letter-spacing: -0.01em;
     line-height: 1.625rem;
   }
 
   .portal-detail-title {
-    font-size: 1.125rem;
+    font-size: var(--ui-text-detail);
     font-weight: 600;
     letter-spacing: -0.01em;
     line-height: 1.625rem;
@@ -1002,4 +1002,32 @@ h4[class] {
   html.theme-dark svg [fill]:not([fill="currentColor"]):not([fill="none"]) {
     fill: #a3a3a3 !important;
   }
+}
+
+/* The workspace bar supplies the visible page title. Retain a page-level h1
+   for assistive technology without repeating the heading in the content. */
+.workspace-shell .workspace-duplicate-title,
+.workspace-shell .workspace-context-header .workspace-page-eyebrow {
+ position:absolute !important; width:1px !important; height:1px !important;
+ padding:0 !important; margin:-1px !important; overflow:hidden !important;
+ clip:rect(0,0,0,0) !important; white-space:nowrap !important; border:0 !important;
+}
+.workspace-shell .workspace-context-header {
+ border-bottom:0; padding-bottom:0; gap:16px; margin-top:0;
+}
+.workspace-shell .workspace-context-header > div:first-child { gap:0; }
+.workspace-shell .workspace-context-header > div:first-child > div { margin-top:0; }
+.workspace-shell .clean-settings-heading p,
+.workspace-shell .accountant-settings-heading p,
+.workspace-shell .documents-header p,
+.workspace-shell .accountant-clients-header p { margin-top:0; }
+
+.workspace-shell .portal-page-header:has(.workspace-duplicate-title) {
+ border-bottom:0; padding-bottom:0;
+}
+.workspace-shell .portal-page-header:has(.workspace-duplicate-title) > div > p[class*="uppercase"] {
+ display:none;
+}
+.workspace-shell .portal-page-header:has(.workspace-duplicate-title) > div > p:not([class*="uppercase"]) {
+ margin-top:0;
 }

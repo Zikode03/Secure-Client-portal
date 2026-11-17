@@ -8,7 +8,7 @@ export function HelpSupportPage() {
   return <section className="workspace-support-page">
     <div>
       <p className="workspace-eyebrow">SUPPORT</p>
-      <h1>Help &amp; support</h1>
+      <h1 className="workspace-duplicate-title ">Help &amp; support</h1>
       <p>Find the right next step when you need help with your workspace.</p>
     </div>
     <div className="workspace-support-grid">

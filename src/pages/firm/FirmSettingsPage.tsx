@@ -1,3 +1,4 @@
+import { AccountantSettingsPage } from "../accountant/AccountantSettingsPage";
 // Friendly guide: this module (FirmSettingsPage) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
@@ -165,7 +166,7 @@ function Toggle({
     >
       <div>
         <p className="text-sm font-semibold text-slate-950">{label}</p>
-        <p className="mt-1 text-[0.84rem] leading-6 text-slate-500">{description}</p>
+        <p className="mt-1 text-sm leading-6 text-slate-500">{description}</p>
       </div>
       <span
         className={cn(
@@ -205,6 +206,11 @@ function sectionIcon(section: SettingsSection) {
 }
 
 export function FirmSettingsPage() {
+  const { user } = useAuth();
+  return user?.role === "accountant" ? <AccountantSettingsPage /> : <LegacyFirmSettingsPage />;
+}
+
+function LegacyFirmSettingsPage() {
   const navigate = useNavigate();
   const { changePassword, user } = useAuth();
   const portal = usePortal();
@@ -496,10 +502,10 @@ export function FirmSettingsPage() {
               <OperationsIcon />
             </div>
             <div className="space-y-1">
-              <h2 className="text-[1.45rem] font-semibold tracking-tight text-slate-950">
+              <h2 className="text-2xl font-semibold tracking-tight text-slate-950">
                 Firm operations
               </h2>
-              <p className="text-[0.92rem] leading-7 text-slate-500">
+              <p className="text-base leading-7 text-slate-500">
                 Keep internal routing, escalation timing, and security guardrails consistent across the shared firm portal.
               </p>
             </div>
@@ -560,28 +566,28 @@ export function FirmSettingsPage() {
           <div className="grid gap-4 lg:grid-cols-3">
             <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4">
               <p className="text-sm font-semibold text-slate-950">Firm clients</p>
-              <p className="mt-2 text-[1.8rem] font-semibold tracking-tight text-slate-950">
+              <p className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">
                 {portal.adminClients.length}
               </p>
-              <p className="mt-1 text-[0.84rem] text-slate-500">
+              <p className="mt-1 text-sm text-slate-500">
                 Total client accounts in the internal firm workspace.
               </p>
             </div>
             <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4">
               <p className="text-sm font-semibold text-slate-950">Managed users</p>
-              <p className="mt-2 text-[1.8rem] font-semibold tracking-tight text-brand-600">
+              <p className="mt-2 text-3xl font-semibold tracking-tight text-brand-600">
                 {portal.userAccounts.length}
               </p>
-              <p className="mt-1 text-[0.84rem] text-slate-500">
+              <p className="mt-1 text-sm text-slate-500">
                 User access remains controlled inside the same shared portal.
               </p>
             </div>
             <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4">
               <p className="text-sm font-semibold text-slate-950">Open inbox items</p>
-              <p className="mt-2 text-[1.8rem] font-semibold tracking-tight text-amber-600">
+              <p className="mt-2 text-3xl font-semibold tracking-tight text-amber-600">
                 {outstandingRequestCount}
               </p>
-              <p className="mt-1 text-[0.84rem] text-slate-500">
+              <p className="mt-1 text-sm text-slate-500">
                 Client and accountant follow-ups still in motion.
               </p>
             </div>
@@ -616,10 +622,10 @@ export function FirmSettingsPage() {
             <OperationsIcon />
           </div>
           <div className="space-y-1">
-            <h2 className="text-[1.45rem] font-semibold tracking-tight text-slate-950">
+            <h2 className="text-2xl font-semibold tracking-tight text-slate-950">
               Workflow defaults
             </h2>
-            <p className="text-[0.92rem] leading-7 text-slate-500">
+            <p className="text-base leading-7 text-slate-500">
               Keep your review behaviour, client follow-up timing, and escalation steps consistent across the shared firm portal.
             </p>
           </div>
@@ -679,28 +685,28 @@ export function FirmSettingsPage() {
         <div className="grid gap-4 lg:grid-cols-3">
           <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4">
             <p className="text-sm font-semibold text-slate-950">Review queue</p>
-            <p className="mt-2 text-[1.8rem] font-semibold tracking-tight text-slate-950">
+            <p className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">
               {reviewQueueCount}
             </p>
-            <p className="mt-1 text-[0.84rem] text-slate-500">
+            <p className="mt-1 text-sm text-slate-500">
               Active records currently waiting inside the review workspace.
             </p>
           </div>
           <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4">
             <p className="text-sm font-semibold text-slate-950">Open inbox items</p>
-            <p className="mt-2 text-[1.8rem] font-semibold tracking-tight text-rose-600">
+            <p className="mt-2 text-3xl font-semibold tracking-tight text-rose-600">
               {outstandingRequestCount}
             </p>
-            <p className="mt-1 text-[0.84rem] text-slate-500">
+            <p className="mt-1 text-sm text-slate-500">
               Client follow-ups and re-uploads still needing action.
             </p>
           </div>
           <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4">
             <p className="text-sm font-semibold text-slate-950">Open notifications</p>
-            <p className="mt-2 text-[1.8rem] font-semibold tracking-tight text-brand-600">
+            <p className="mt-2 text-3xl font-semibold tracking-tight text-brand-600">
               {notificationCount}
             </p>
-            <p className="mt-1 text-[0.84rem] text-slate-500">
+            <p className="mt-1 text-sm text-slate-500">
               Workflow alerts feeding your internal notification centre.
             </p>
           </div>
@@ -733,10 +739,10 @@ export function FirmSettingsPage() {
             <BellIcon />
           </div>
           <div className="space-y-1">
-            <h2 className="text-[1.45rem] font-semibold tracking-tight text-slate-950">
+            <h2 className="text-2xl font-semibold tracking-tight text-slate-950">
               Notification preferences
             </h2>
-            <p className="text-[0.92rem] leading-7 text-slate-500">
+            <p className="text-base leading-7 text-slate-500">
               Choose which operational updates should reach you immediately and which ones can wait for a summary.
             </p>
           </div>
@@ -787,7 +793,7 @@ export function FirmSettingsPage() {
 
         <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 px-4 py-4">
           <p className="text-sm font-semibold text-slate-950">Shared portal note</p>
-          <p className="mt-2 text-[0.86rem] leading-7 text-slate-600">
+          <p className="mt-2 text-sm leading-7 text-slate-600">
             Notifications live in the same internal portal for admins and accountants. Only the scope of the records and the actions behind them should change.
           </p>
         </div>
@@ -821,10 +827,10 @@ export function FirmSettingsPage() {
             <ShieldIcon />
           </div>
           <div className="space-y-1">
-            <h2 className="text-[1.45rem] font-semibold tracking-tight text-slate-950">
+            <h2 className="text-2xl font-semibold tracking-tight text-slate-950">
               Compliance controls
             </h2>
-            <p className="text-[0.92rem] leading-7 text-slate-500">
+            <p className="text-base leading-7 text-slate-500">
               {isAdmin
                 ? "Keep firm-wide renewal timing, risk thresholds, and compliance controls aligned with the rest of the portal."
                 : "Fine-tune how your workspace treats renewals, high-risk clients, and compliance reporting."}
@@ -883,18 +889,18 @@ export function FirmSettingsPage() {
           {complianceInsights.map((item) => (
             <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4" key={item.id}>
               <p className="text-sm font-semibold text-slate-950">{item.label}</p>
-              <p className={cn("mt-2 text-[1.8rem] font-semibold tracking-tight", item.tone)}>
+              <p className={cn("mt-2 text-3xl font-semibold tracking-tight", item.tone)}>
                 {item.value}
               </p>
-              <p className="mt-1 text-[0.84rem] text-slate-500">{item.helper}</p>
+              <p className="mt-1 text-sm text-slate-500">{item.helper}</p>
             </div>
           ))}
         </div>
 
         <div className="space-y-3 rounded-[1.2rem] border border-slate-200 bg-white p-4">
           <div className="space-y-1">
-            <h3 className="text-[1.08rem] font-semibold text-slate-950">Auto-filing rules</h3>
-            <p className="text-[0.88rem] leading-6 text-slate-500">
+            <h3 className="text-lg font-semibold text-slate-950">Auto-filing rules</h3>
+            <p className="text-base leading-6 text-slate-500">
               Only enabled categories are automatically moved into the filing register once accepted.
             </p>
           </div>
@@ -963,10 +969,10 @@ export function FirmSettingsPage() {
             <ProfileIcon />
           </div>
           <div className="space-y-1">
-            <h2 className="text-[1.45rem] font-semibold tracking-tight text-slate-950">
+            <h2 className="text-2xl font-semibold tracking-tight text-slate-950">
               Workspace profile
             </h2>
-            <p className="text-[0.92rem] leading-7 text-slate-500">
+            <p className="text-base leading-7 text-slate-500">
               {isAdmin
                 ? "Keep your admin workspace identity, internal notes, and control shortcuts in one place."
                 : "Control the details clients see and the internal notes you keep for your operating style."}
@@ -1007,7 +1013,7 @@ export function FirmSettingsPage() {
             <p className="text-sm font-semibold text-slate-950">
               {isAdmin ? "Admin scope" : "Portfolio scope"}
             </p>
-            <p className="mt-2 text-[0.84rem] leading-6 text-slate-500">
+            <p className="mt-2 text-sm leading-6 text-slate-500">
               {isAdmin
                 ? "You can open deeper admin controls from here, but they still live inside the same firm portal shell."
                 : "You are only changing your own workspace preferences for assigned clients, not firm-wide rules."}
@@ -1015,7 +1021,7 @@ export function FirmSettingsPage() {
           </div>
           <div className="rounded-[1.2rem] border border-slate-200 bg-slate-50 p-4">
             <p className="text-sm font-semibold text-slate-950">Security note</p>
-            <p className="mt-2 text-[0.84rem] leading-6 text-slate-500">
+            <p className="mt-2 text-sm leading-6 text-slate-500">
               Frontend visibility here improves UX only. Real authorization still has to be enforced by the backend and database once these settings are persisted.
             </p>
           </div>
@@ -1028,7 +1034,7 @@ export function FirmSettingsPage() {
             </div>
             <div>
               <p className="text-sm font-semibold text-slate-950">Account password</p>
-              <p className="text-[0.84rem] text-slate-500">
+              <p className="text-sm text-slate-500">
                 Change the password for your current {isAdmin ? "admin" : "firm"} workspace sign-in.
               </p>
             </div>
@@ -1139,7 +1145,7 @@ export function FirmSettingsPage() {
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1.55fr)]">
         <PageSection className="space-y-4">
           <div>
-            <h2 className="text-[1.25rem] font-semibold text-slate-950">User management</h2>
+            <h2 className="text-xl font-semibold text-slate-950">User management</h2>
             <p className="mt-1 text-sm text-slate-500">
               See all internal users and their assigned roles from inside settings.
             </p>
@@ -1162,7 +1168,7 @@ export function FirmSettingsPage() {
 
         <PageSection className="space-y-5">
           <div>
-            <h2 className="text-[1.25rem] font-semibold text-slate-950">Role permissions</h2>
+            <h2 className="text-xl font-semibold text-slate-950">Role permissions</h2>
             <p className="mt-1 text-sm text-slate-500">
               Tick permissions to control what each role can access.
             </p>
@@ -1230,7 +1236,7 @@ export function FirmSettingsPage() {
               variant="secondary"
             >
               <span>Notifications</span>
-              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[0.72rem] font-semibold text-slate-600">
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-sm font-semibold text-slate-600">
                 {notificationCount}
               </span>
             </Button>
@@ -1291,13 +1297,13 @@ export function FirmSettingsPage() {
                 <div className="space-y-1">
                   <p
                     className={cn(
-                      "text-[0.92rem] font-semibold",
+                      "text-base font-semibold",
                       active ? "text-brand-700" : "text-slate-950",
                     )}
                   >
                     {section.title}
                   </p>
-                  <p className="line-clamp-2 text-[0.76rem] leading-5 text-slate-500">
+                  <p className="line-clamp-2 text-sm leading-5 text-slate-500">
                     {section.description}
                   </p>
                 </div>

@@ -1,5 +1,5 @@
 // Isolated unit-test adapter; not part of application runtime.
-import { apiGetJson, apiPatchJson, apiPostJson, apiPutJson, hasApiBaseUrl } from "../../services/apiClient";
+import { apiGetJson, apiPatchJson, apiPostJson, apiPutJson, hasApiBaseUrl } from "./apiTransportFixture";
 import { portalService } from "../../services/portalData";
 import { normaliseBusinessClassification } from "../../services/businessClassification";
 import type {

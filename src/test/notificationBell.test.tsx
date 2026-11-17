@@ -2,11 +2,11 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, expect, it, vi } from "vitest";
 import { NotificationBell } from "../components/notifications/NotificationBell";
-import { apiGetJson, apiPostJson } from "../services/apiClient";
+import { apiGetJson, apiPostJson } from "./fixtures/apiTransportFixture";
 const navigate = vi.hoisted(() => vi.fn());
 vi.mock("react-router-dom", async original => ({...await original<typeof import("react-router-dom")>(), useNavigate: () => navigate}));
 vi.mock("../app/auth", () => ({useAuth: () => ({user: {id: "recipient-1", role: "client"}})}));
-vi.mock("../services/apiClient", () => ({hasApiBaseUrl: () => true, apiGetJson: vi.fn(), apiPostJson: vi.fn()}));
+vi.mock("../services/apiClient", async original => ({ ...await original<typeof import("../services/apiClient")>(),hasApiBaseUrl: () => true, apiGetJson: vi.fn(), apiPostJson: vi.fn()}));
 const alert = {id: "alert-1", title: "Document reviewed", message: "Your accountant has reviewed a document.", isRead: false, createdAtUtc: "2026-11-16T10:00:00Z", linkUrl: "/client/documents"};
 beforeEach(() => { vi.clearAllMocks(); vi.mocked(apiGetJson).mockResolvedValue([alert]); vi.mocked(apiPostJson).mockResolvedValue({}); });
 function show() { render(<MemoryRouter><NotificationBell /></MemoryRouter>); }

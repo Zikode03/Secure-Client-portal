@@ -3,7 +3,7 @@ import { MemoryRouter } from "react-router-dom";
 import { beforeEach, expect, it, vi } from "vitest";
 import { AuthProvider } from "../app/auth";
 import { ProfilePage } from "../pages/shared/ProfilePage";
-import { apiGetJson, apiPutJson } from "../services/apiClient";
+import { apiGetJson, apiPutJson } from "./fixtures/apiTransportFixture";
 vi.unmock("../app/auth");
 vi.mock("../services/apiClient", async original => ({ ...await original<typeof import("../services/apiClient")>(), hasApiBaseUrl: () => true, apiGetJson: vi.fn(), apiPutJson: vi.fn() }));
 const account = { id: "accountant-1", fullName: "Test Staff", email: "staff@test.invalid", role: "accountant", title: "Accountant", phone: "", clientIds: [] };

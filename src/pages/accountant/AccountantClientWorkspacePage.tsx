@@ -1,3 +1,4 @@
+import { getClientDeadlineLabel } from "../../services/clientDeadlines";
 // Friendly guide: this module (AccountantClientWorkspacePage) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
@@ -43,23 +44,6 @@ const navySecondaryButtonClass =
 type WorkspaceTab = (typeof workspaceTabs)[number]["id"];
 type WorkspaceDocumentDecision = "under_review" | "accepted" | "rejected" | "request_reupload";
 
-interface BackendDocumentRecord {
-  id: string;
-  clientId: string;
-  monthlyPackId: string;
-  name: string;
-  category: string;
-  documentSlotId?: string | null;
-  status: string;
-  fileType: string;
-  sizeBytes: number;
-  storageKey?: string | null;
-  uploadedByUserId: string;
-  currentVersionNumber: number;
-  uploadedAtUtc: string;
-  updatedAtUtc: string;
-}
-
 interface BackendRequestRecord {
   id: string;
   clientId: string;
@@ -89,15 +73,6 @@ interface BackendRequestComment {
 interface BackendRequestWorkspace {
   request: BackendRequestRecord;
   comments: BackendRequestComment[];
-}
-
-interface BackendDocumentComment {
-  id: string;
-  documentId: string;
-  authorUserId: string;
-  authorRole: string;
-  message: string;
-  createdAtUtc: string;
 }
 
 const complianceTabs = [
@@ -210,6 +185,15 @@ export function AccountantClientWorkspacePage() {
   const [liveDocuments, setLiveDocuments] = useState<DocumentRecord[]>([]);
   const [liveCommentsByDocumentId, setLiveCommentsByDocumentId] = useState<Record<string, DocumentComment[]>>({});
   const [liveRequests, setLiveRequests] = useState<WorkflowRequest[]>([]);
+  const [liveDeadline, setLiveDeadline] = useState("Loading monthly pack due dates…");
+  useEffect(() => {
+    if (!backendMode || !clientId) return;
+    let active = true;
+    setLiveDeadline("Loading monthly pack due dates…");
+    void getClientDeadlineLabel(clientId).then(label => { if (active) setLiveDeadline(label); })
+      .catch(() => { if (active) setLiveDeadline("Monthly pack due dates unavailable"); });
+    return () => { active = false; };
+  }, [backendMode, clientId]);
   const workspace = portal.getClientWorkspace(clientId);
   const workspaceDocumentsSource = backendMode && liveDocuments.length > 0
     ? liveDocuments
@@ -439,11 +423,11 @@ export function AccountantClientWorkspacePage() {
 
   async function loadLiveRequests() {
     try {
-      const requests = await apiGetJson<BackendRequestRecord[]>("/api/requests");
+      const requests = await apiGetJson("/api/requests");
       const clientRequests = requests.filter((request) => request.clientId === workspace.client.id);
       const workspaces = await Promise.all(
         clientRequests.map((request) =>
-          apiGetJson<BackendRequestWorkspace>(`/api/requests/${encodeURIComponent(request.id)}/workspace`),
+          apiGetJson(`/api/requests/${encodeURIComponent(request.id)}/workspace`),
         ),
       );
 
@@ -459,7 +443,7 @@ export function AccountantClientWorkspacePage() {
 
   async function loadLiveDocuments() {
     try {
-      const documents = await apiGetJson<BackendDocumentRecord[]>("/api/documents");
+      const documents = await apiGetJson("/api/documents");
       const mappedDocuments = documents
         .filter((document) => document.clientId === workspace.client.id)
         .map<DocumentRecord>((document) => ({
@@ -492,7 +476,7 @@ export function AccountantClientWorkspacePage() {
 
   async function loadLiveDocumentComments(documentId: string) {
     try {
-      const comments = await apiGetJson<BackendDocumentComment[]>(
+      const comments = await apiGetJson(
         `/api/documents/${encodeURIComponent(documentId)}/comments`,
       );
       const mappedComments = comments.map<DocumentComment>((comment) => ({
@@ -824,7 +808,7 @@ export function AccountantClientWorkspacePage() {
       <section className="portal-page-header relative border-b border-slate-200 pb-6">
         <div className="relative z-10 flex flex-wrap items-start justify-between gap-5">
           <div className="max-w-3xl">
-            <p className="text-[0.72rem] font-medium uppercase tracking-[0.16em] text-[#6f7d96]">
+            <p className="text-sm font-medium uppercase tracking-[0.16em] text-[#6f7d96]">
               Accountant Client Workspace
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -836,7 +820,7 @@ export function AccountantClientWorkspacePage() {
             <p className="mt-3 max-w-2xl text-sm leading-6 text-[#53617f]">
               Keep this client's month pack, document review, compliance, requests, messages, and audit trail in one accountable workspace.
             </p>
-            <div className="mt-5 flex flex-wrap gap-2 text-[0.78rem] font-medium text-[#41526f]">
+            <div className="mt-5 flex flex-wrap gap-2 text-sm font-medium text-[#41526f]">
               <span className="rounded-full border border-[#d8e2ef] bg-white px-3 py-1 shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
                 {workspace.client.industry}
               </span>
@@ -844,7 +828,7 @@ export function AccountantClientWorkspacePage() {
                 Assigned to {workspace.client.assignedAccountant}
               </span>
               <span className="rounded-full border border-[#d8e2ef] bg-white px-3 py-1 shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
-                {workspace.client.deadlinePolicy}
+                {backendMode ? liveDeadline : workspace.client.deadlinePolicy}
               </span>
             </div>
           </div>
@@ -881,7 +865,7 @@ export function AccountantClientWorkspacePage() {
               <StatusBadge status={workspace.client.status} />
             </div>
             <p className="text-sm text-[#53617f]">
-              {workspace.client.industry} / {workspace.client.assignedAccountant} / {workspace.client.deadlinePolicy}
+              {workspace.client.industry} / {workspace.client.assignedAccountant} / {backendMode ? liveDeadline : workspace.client.deadlinePolicy}
             </p>
           </div>
           <div className={cn(navySoftPanelClass, "space-y-2 p-4")}>
@@ -930,14 +914,14 @@ export function AccountantClientWorkspacePage() {
       {["packs", "bank_statement", "invoices", "signed_documents", "compliance_record"].includes(activeTab) ? (
         <SurfaceCard className={cn(navyPanelClass, "space-y-5 rounded-[1.45rem] border border-[#dce6ef] bg-white p-0 shadow-[0_12px_30px_rgba(15,23,42,0.05)]")}>
           <div className="px-6 pb-4 pt-6">
-            <h2 className="text-[1.28rem] font-medium text-[#091333]">Client monthly pack</h2>
+            <h2 className="text-xl font-medium text-[#091333]">Client monthly pack</h2>
             <p className="mt-2 text-sm leading-6 text-[#53617f]">
               Review the structured slots and focus on anything still missing, rejected, or pending.
             </p>
           </div>
           <div className="px-6 pb-1">
             <div className="overflow-hidden rounded-[1rem] border border-[#dce6ef] bg-white">
-            <div className="hidden border-b border-[#0a2f66] bg-[linear-gradient(180deg,#0b2f63_0%,#08264f_100%)] px-6 py-3 text-[0.72rem] font-medium uppercase tracking-[0.08em] text-white lg:grid lg:grid-cols-[minmax(0,1fr)_120px_160px_220px] lg:gap-4">
+            <div className="hidden border-b border-[#0a2f66] bg-[linear-gradient(180deg,#0b2f63_0%,#08264f_100%)] px-6 py-3 text-sm font-medium uppercase tracking-[0.08em] text-white lg:grid lg:grid-cols-[minmax(0,1fr)_120px_160px_220px] lg:gap-4">
               <div>Document slot</div>
               <div>Required</div>
               <div>Due date</div>
@@ -981,11 +965,11 @@ export function AccountantClientWorkspacePage() {
                     key={slot.id}
                   >
                     <div className="min-w-0">
-                      <p className="text-[0.98rem] font-medium text-[#091333]">{slot.documentType}</p>
+                      <p className="text-base font-medium text-[#091333]">{slot.documentType}</p>
                       <p className="mt-1 line-clamp-1 max-w-xl text-sm text-[#53617f]">{slot.description}</p>
                     </div>
                     <div>
-                      <p className="text-[0.7rem] font-medium uppercase tracking-[0.08em] text-[#73809a] lg:hidden">
+                      <p className="text-sm font-medium uppercase tracking-[0.08em] text-[#73809a] lg:hidden">
                         Required
                       </p>
                       <p className="mt-1 text-sm text-[#091333] lg:mt-0">
@@ -993,7 +977,7 @@ export function AccountantClientWorkspacePage() {
                       </p>
                     </div>
                     <div>
-                      <p className="text-[0.7rem] font-medium uppercase tracking-[0.08em] text-[#73809a] lg:hidden">
+                      <p className="text-sm font-medium uppercase tracking-[0.08em] text-[#73809a] lg:hidden">
                         Due date
                       </p>
                       <p className="mt-1 text-sm text-[#091333] lg:mt-0">
@@ -1035,7 +1019,7 @@ export function AccountantClientWorkspacePage() {
           {activePackDocumentType ? (
             <div className="space-y-4 px-6 pb-6">
               <div className="border-t border-[#edf2f7] pt-5">
-                <h3 className="text-[1.02rem] font-medium text-[#091333]">
+                <h3 className="text-base font-medium text-[#091333]">
                   Submitted {activePackDocumentType.toLowerCase()} files ({workspace.monthPack.monthLabel})
                 </h3>
                 <p className="mt-1 text-sm leading-6 text-[#53617f]">
@@ -1044,7 +1028,7 @@ export function AccountantClientWorkspacePage() {
               </div>
               {submittedPackDocuments.length > 0 ? (
                 <div className="overflow-hidden rounded-[1rem] border border-[#dce6ef] bg-white">
-                  <div className="hidden border-b border-[#e6edf4] bg-[#f8fafc] px-5 py-3 text-[0.72rem] font-medium uppercase tracking-[0.08em] text-[#73809a] md:grid md:grid-cols-[minmax(0,1.2fr)_180px_150px_auto] md:gap-4">
+                  <div className="hidden border-b border-[#e6edf4] bg-[#f8fafc] px-5 py-3 text-sm font-medium uppercase tracking-[0.08em] text-[#73809a] md:grid md:grid-cols-[minmax(0,1.2fr)_180px_150px_auto] md:gap-4">
                     <div>File</div>
                     <div>Type</div>
                     <div>Status</div>
@@ -1054,10 +1038,10 @@ export function AccountantClientWorkspacePage() {
                     {submittedPackDocuments.map((document) => (
                       <div className="grid gap-4 px-5 py-4 md:grid-cols-[minmax(0,1.2fr)_180px_150px_auto] md:items-center" key={document.id}>
                         <div className="min-w-0">
-                          <p className="truncate text-[0.95rem] font-medium text-[#091333]">{document.fileName}</p>
+                          <p className="truncate text-base font-medium text-[#091333]">{document.fileName}</p>
                         </div>
                         <div>
-                          <p className="text-[0.7rem] font-medium uppercase tracking-[0.08em] text-[#73809a] md:hidden">
+                          <p className="text-sm font-medium uppercase tracking-[0.08em] text-[#73809a] md:hidden">
                             Type
                           </p>
                           <p className="mt-1 text-sm text-[#53617f] md:mt-0">
@@ -1065,7 +1049,7 @@ export function AccountantClientWorkspacePage() {
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <p className="text-[0.7rem] font-medium uppercase tracking-[0.08em] text-[#73809a] md:hidden">
+                          <p className="text-sm font-medium uppercase tracking-[0.08em] text-[#73809a] md:hidden">
                             Status
                           </p>
                           <StatusBadge status={document.status} />
@@ -1116,7 +1100,7 @@ export function AccountantClientWorkspacePage() {
 
           {acceptedDocuments.length > 0 ? (
             <SurfaceCard className={cn(navyPanelClass, "overflow-hidden p-0")}>
-              <div className="grid grid-cols-[minmax(0,1.25fr)_180px_120px_auto] gap-4 border-b border-[#e6edf4] bg-[#f7faff] px-5 py-3 text-[0.7rem] font-medium uppercase tracking-[0.12em] text-[#73809a]">
+              <div className="grid grid-cols-[minmax(0,1.25fr)_180px_120px_auto] gap-4 border-b border-[#e6edf4] bg-[#f7faff] px-5 py-3 text-sm font-medium uppercase tracking-[0.12em] text-[#73809a]">
                 <div>File</div>
                 <div>Type/Month</div>
                 <div>Status</div>

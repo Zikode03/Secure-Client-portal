@@ -1,4 +1,4 @@
-﻿// Friendly guide: this module (portal) supports the Secure Client Portal workflow.
+// Friendly guide: this module (portal) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
 import {
@@ -1152,7 +1152,7 @@ function PortalStateProvider({ children, storageKey, role }: { children: ReactNo
             "Assigned accountant",
           requiredPack: "Trading monthly pack",
           completionRate: monthPack.progressPercent,
-          deadlinePolicy: "6th working day",
+          deadlinePolicy: "See monthly pack due dates",
           status: monthPack.canComplete ? "on_track" : "attention",
         },
       monthPack,

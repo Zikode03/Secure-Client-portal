@@ -15,33 +15,6 @@ interface FeedItem {
   source: "request" | "review" | "compliance";
 }
 
-interface BackendRequestRecord {
-  id: string;
-  clientId: string;
-  title: string;
-  status: string;
-  updatedAtUtc: string;
-}
-
-interface BackendReviewQueueRecord {
-  id: string;
-  clientName?: string | null;
-  status?: string | null;
-  documentType?: string | null;
-  documentCategory?: string | null;
-  submittedAtUtc?: string | null;
-  uploadedAtUtc?: string;
-}
-
-interface BackendNotificationRecord {
-  id: string;
-  clientId?: string | null;
-  type: string;
-  title: string;
-  message: string;
-  createdAtUtc: string;
-}
-
 export function FirmActivityFeedPage() {
   const portal = usePortal();
   const backendMode = hasApiBaseUrl();
@@ -60,9 +33,9 @@ export function FirmActivityFeedPage() {
     async function loadLiveFeed() {
       try {
         const [requests, reviewQueue, notifications] = await Promise.all([
-          apiGetJson<BackendRequestRecord[]>("/api/requests"),
-          apiGetJson<BackendReviewQueueRecord[]>("/api/review-queue"),
-          apiGetJson<BackendNotificationRecord[]>("/api/notifications"),
+          apiGetJson("/api/requests"),
+          apiGetJson("/api/review-queue"),
+          apiGetJson("/api/notifications"),
         ]);
 
         if (!isActive) {
@@ -81,9 +54,9 @@ export function FirmActivityFeedPage() {
         }));
 
         const reviewItems: FeedItem[] = reviewQueue.map((item) => ({
-          id: `review-${item.id}`,
-          title: `${item.clientName ?? "Client"} - ${item.documentType ?? item.documentCategory ?? "Document"}`,
-          detail: (item.status ?? "uploaded").replace(/_/g, " "),
+          id: `review-${item.documentId}`,
+          title: `${item.clientName ?? "Client"} - ${item.documentCategory ?? "Document"}`,
+          detail: (item.documentStatus ?? "uploaded").replace(/_/g, " "),
           actor:
             portal.adminClients.find((client) => client.clientName === item.clientName)?.assignedAccountant ??
             "Assigned accountant",

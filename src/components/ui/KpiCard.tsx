@@ -17,8 +17,8 @@ export function KpiCard({ accent = false, icon, label, onClick, progress, value 
       <div className="absolute left-3.5 top-3 flex h-9 w-9 items-center justify-center rounded-lg bg-[#eef4fa] text-brand-700 ring-1 ring-[#d7e3ee] [&>svg]:h-[1.1rem] [&>svg]:w-[1.1rem]">
           {icon}
       </div>
-      <p className="absolute left-[62px] right-3.5 top-3 h-[18px] whitespace-nowrap text-[0.69rem] font-semibold uppercase leading-[18px] tracking-[0.045em] text-[#53617f]">{label}</p>
-      <p className={cn("absolute left-[62px] right-3.5 top-[39px] h-6 tabular-nums text-[1.3rem] font-semibold leading-6 tracking-[-0.03em]", accent ? "text-brand-700" : "text-[#091333]")}>
+      <p className="absolute left-[62px] right-3.5 top-3 h-[18px] whitespace-nowrap text-sm font-semibold uppercase leading-[18px] tracking-[0.045em] text-[#53617f]">{label}</p>
+      <p className={cn("ui-kpi-value absolute left-[62px] right-3.5 top-[39px] h-6 tabular-nums text-xl font-semibold leading-6 tracking-[-0.03em]", accent ? "text-brand-700" : "text-[#091333]")}>
         {value}
       </p>
       {typeof progress === "number" ? (

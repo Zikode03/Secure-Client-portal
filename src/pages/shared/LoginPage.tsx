@@ -43,10 +43,10 @@ function PortalMark({ inverse = false }: { inverse?: boolean }) {
         <span className="absolute -right-1 -top-1 h-3.5 w-3.5 rounded-full border-[3px] border-white bg-brand-500" />
       </span>
       <span>
-        <span className={`block text-[1.05rem] font-semibold tracking-[-0.02em] ${inverse ? "text-white" : "text-slate-950"}`}>
+        <span className={`block text-base font-semibold tracking-[-0.02em] ${inverse ? "text-white" : "text-slate-950"}`}>
           Secure Accounting
         </span>
-        <span className={`mt-0.5 block text-[0.65rem] font-semibold uppercase tracking-[0.2em] ${inverse ? "text-white/55" : "text-slate-400"}`}>
+        <span className={`mt-0.5 block text-sm font-semibold uppercase tracking-[0.2em] ${inverse ? "text-white/55" : "text-slate-400"}`}>
           Client portal
         </span>
       </span>
@@ -75,7 +75,7 @@ function InputField({
         </span>
         <input
           autoComplete={autoComplete}
-          className="h-13 w-full rounded-[14px] border border-slate-200 bg-slate-50/80 pl-11 pr-12 text-[0.94rem] text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-brand-500 focus:bg-white focus:ring-4 focus:ring-brand-100/80"
+          className="h-13 w-full rounded-[14px] border border-slate-200 bg-slate-50/80 pl-11 pr-12 text-base text-slate-950 outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-brand-500 focus:bg-white focus:ring-4 focus:ring-brand-100/80"
           id={id}
           name={name}
           onChange={(event) => onChange(event.target.value)}
@@ -110,17 +110,17 @@ function PopiaNotice({ accepted, onChange }: { accepted: boolean; onChange: (acc
             </span>
           ) : null}
         </span>
-        <span className="text-[0.78rem] leading-5 text-slate-700">
+        <span className="text-sm leading-5 text-slate-700">
           I have read and understand the <strong className="font-semibold text-slate-900">POPIA privacy notice</strong> for this portal.
         </span>
       </label>
 
       <details className="group mt-2.5 border-t border-emerald-200/70 pt-2.5">
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[0.72rem] font-semibold text-brand-700 marker:content-none">
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-brand-700 marker:content-none">
           <span>How we handle your information</span>
           <ChevronDown aria-hidden="true" className="h-4 w-4 transition-transform group-open:rotate-180" />
         </summary>
-        <div id="popia-summary" className="mt-3 space-y-2 text-[0.72rem] leading-5 text-slate-600">
+        <div id="popia-summary" className="mt-3 space-y-2 text-sm leading-5 text-slate-600">
           <p>
             Your account, authentication and activity information is processed to provide, secure and audit access to this client portal in accordance with the Protection of Personal Information Act 4 of 2013 (POPIA).
           </p>
@@ -200,24 +200,24 @@ export function LoginPage() {
 
             <div className="relative z-10 flex items-center justify-between px-9 py-8 xl:px-12">
               <PortalMark inverse />
-              <span className="rounded-full border border-white/15 bg-slate-950/25 px-3.5 py-2 text-[0.64rem] font-semibold uppercase tracking-[0.16em] text-white/70 backdrop-blur-md">
+              <span className="rounded-full border border-white/15 bg-slate-950/25 px-3.5 py-2 text-sm font-semibold uppercase tracking-[0.16em] text-white/70 backdrop-blur-md">
                 Protected workspace
               </span>
             </div>
 
             <div className="relative z-10 max-w-[690px] px-9 pb-10 xl:px-12 xl:pb-12">
-              <div className="mb-5 flex items-center gap-2 text-[0.7rem] font-semibold uppercase tracking-[0.2em] text-emerald-300">
+              <div className="mb-5 flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.2em] text-emerald-300">
                 <span className="h-px w-9 bg-emerald-300/70" />
                 One secure place to work
               </div>
               <div
                 aria-level={1}
-                className="max-w-[600px] text-[2.55rem] font-semibold leading-[1.08] tracking-[-0.045em] text-white xl:text-[3rem]"
+                className="max-w-[600px] text-4xl font-semibold leading-[1.08] tracking-[-0.045em] text-white xl:text-4xl"
                 role="heading"
               >
                 Your financial work,<br />protected and in motion.
               </div>
-              <p className="mt-5 max-w-[560px] text-[0.95rem] leading-7 text-slate-200/80">
+              <p className="mt-5 max-w-[560px] text-base leading-7 text-slate-200/80">
                 Share records, follow review progress and keep every monthly accounting task moving—with a complete, accountable trail.
               </p>
 
@@ -229,7 +229,7 @@ export function LoginPage() {
                 ].map(({ icon: Icon, label }) => (
                   <div className="rounded-[16px] border border-white/12 bg-white/[0.07] px-4 py-4 backdrop-blur-md" key={label}>
                     <Icon aria-hidden="true" className="h-5 w-5 text-emerald-300" strokeWidth={1.8} />
-                    <p className="mt-3 text-[0.72rem] font-medium leading-5 text-white/82">{label}</p>
+                    <p className="mt-3 text-sm font-medium leading-5 text-white/82">{label}</p>
                   </div>
                 ))}
               </div>
@@ -246,7 +246,7 @@ export function LoginPage() {
 
             <div className="mx-auto flex min-h-0 w-full max-w-[470px] flex-1 flex-col justify-center py-4 lg:py-3">
               <div className="mb-4 hidden lg:block">
-                <div className="flex items-center gap-2 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-brand-600">
+                <div className="flex items-center gap-2 text-sm font-bold uppercase tracking-[0.18em] text-brand-600">
                   <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50">
                     <LockKeyhole aria-hidden="true" className="h-3.5 w-3.5" strokeWidth={2.2} />
                   </span>
@@ -289,7 +289,7 @@ export function LoginPage() {
                   value={password}
                 />
 
-                <div className="flex flex-wrap items-center justify-between gap-3 text-[0.76rem]">
+                <div className="flex flex-wrap items-center justify-between gap-3 text-sm">
                   <label className="flex cursor-pointer items-center gap-2.5 text-slate-600">
                     <span className="relative flex h-[18px] w-[18px] items-center justify-center rounded-[5px] border border-slate-300 bg-white text-white">
                       <input
@@ -314,13 +314,13 @@ export function LoginPage() {
                 <PopiaNotice accepted={popiaAccepted} onChange={setPopiaAccepted} />
 
                 {error ? (
-                  <div aria-live="polite" className="rounded-[14px] border border-rose-200 bg-rose-50 px-4 py-3 text-[0.78rem] leading-5 text-rose-700" role="alert">
+                  <div aria-live="polite" className="rounded-[14px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm leading-5 text-rose-700" role="alert">
                     <strong className="font-semibold">Sign-in unsuccessful.</strong> {error}
                   </div>
                 ) : null}
 
                 <button
-                  className="group flex h-13 w-full items-center justify-center gap-2.5 rounded-[14px] bg-brand-800 px-5 text-[0.92rem] font-semibold text-white shadow-[0_14px_28px_rgba(7,36,79,0.2)] transition hover:-translate-y-0.5 hover:bg-brand-700 hover:shadow-[0_18px_34px_rgba(7,36,79,0.24)] focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-200 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
+                  className="group flex h-13 w-full items-center justify-center gap-2.5 rounded-[14px] bg-brand-800 px-5 text-base font-semibold text-white shadow-[0_14px_28px_rgba(7,36,79,0.2)] transition hover:-translate-y-0.5 hover:bg-brand-700 hover:shadow-[0_18px_34px_rgba(7,36,79,0.24)] focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-200 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
                   disabled={isSubmitting}
                   type="submit"
                 >
@@ -329,13 +329,13 @@ export function LoginPage() {
                 </button>
               </form>
 
-              <div className="mt-4 flex items-center justify-center gap-2 text-[0.7rem] text-slate-400">
+              <div className="mt-4 flex items-center justify-center gap-2 text-sm text-slate-400">
                 <ShieldCheck aria-hidden="true" className="h-3.5 w-3.5 text-brand-500" />
                 <span>Encrypted access · Activity monitored for your protection</span>
               </div>
             </div>
 
-            <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-4 text-[0.68rem] text-slate-400">
+            <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-4 text-sm text-slate-400">
               <span>© 2026 Secure Accounting</span>
               <span>Authorised users only</span>
             </footer>

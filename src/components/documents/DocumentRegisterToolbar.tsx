@@ -1,5 +1,7 @@
-import { useState, type Dispatch, type SetStateAction } from "react";
+import { useId, useState, type Dispatch, type SetStateAction } from "react";
 import type { UnifiedSearchFilters } from "../../types/portal";
+
+import { formatDocumentType } from "./documentTypeLabel";
 
 interface DocumentRegisterToolbarProps {
   filters: UnifiedSearchFilters;
@@ -49,22 +51,23 @@ export function DocumentRegisterToolbar({
   activeAdvancedFilterCount,
 }: DocumentRegisterToolbarProps) {
   const [showMoreFilters, setShowMoreFilters] = useState(false);
+  const advancedId = useId();
 
   return (
-    <section aria-label="Document register filters" className="space-y-3">
-      <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
+    <section aria-label="Document register filters" className="doc-library-toolbar space-y-3">
+      <div className="doc-library-filter-row">
         <label className="relative min-w-0 flex-1">
           <span className="sr-only">Search documents</span>
           <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"><SearchIcon /></span>
           <input
             className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-11 pr-4 text-sm text-slate-900 outline-none transition focus:border-brand-400 focus:ring-4 focus:ring-brand-100"
             onChange={(event) => setFilters((current) => ({ ...current, query: event.target.value }))}
-            placeholder="Search documents, suppliers, references or amounts"
+            placeholder="Search documents"
             value={filters.query}
           />
         </label>
 
-        <div className="grid gap-2 sm:grid-cols-3 lg:flex lg:shrink-0">
+        <div className="doc-library-selects">
           <label className="min-w-[150px]">
             <span className="sr-only">Period</span>
             <div className="flex h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3">
@@ -104,7 +107,7 @@ export function DocumentRegisterToolbar({
                 value={filters.documentType}
               >
                 <option value="">All types</option>
-                {documentTypeOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+                {documentTypeOptions.map((option) => <option key={option} value={option}>{formatDocumentType(option)}</option>)}
               </select>
               <ChevronDownIcon />
             </div>
@@ -113,10 +116,12 @@ export function DocumentRegisterToolbar({
 
         <button
           className="flex h-11 items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+          aria-expanded={showMoreFilters}
+          aria-controls={advancedId}
           onClick={() => setShowMoreFilters((current) => !current)}
           type="button"
         >
-          More filters
+          Filters
           {activeAdvancedFilterCount > 0 ? (
             <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">{activeAdvancedFilterCount}</span>
           ) : null}
@@ -125,10 +130,10 @@ export function DocumentRegisterToolbar({
       </div>
 
       {showMoreFilters ? (
-        <div className="grid gap-3 border-t border-slate-100 pt-3 sm:grid-cols-2 xl:grid-cols-5">
+        <div id={advancedId} className="grid gap-3 border-t border-slate-100 pt-3 sm:grid-cols-2 xl:grid-cols-5">
           <label className="space-y-1.5">
             <span className="text-xs font-medium text-slate-500">Year</span>
-            <input className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-brand-400 focus:ring-4 focus:ring-brand-100" onChange={(event) => setFilters((current) => ({ ...current, year: event.target.value }))} placeholder="2026" value={filters.year} />
+            <input className="h-10 w-full rounded-lg border border-slate-200 px-3 text-sm outline-none focus:border-brand-400 focus:ring-4 focus:ring-brand-100" onChange={(event) => setFilters((current) => ({ ...current, year: event.target.value }))} placeholder="YYYY" value={filters.year} />
           </label>
           <label className="space-y-1.5">
             <span className="text-xs font-medium text-slate-500">Uploaded by</span>

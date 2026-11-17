@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AdminMonthlyPacksPage } from "../pages/admin/AdminMonthlyPacksPage";
-import { apiGetJson, apiPutJson, hasApiBaseUrl } from "../services/apiClient";
+import { apiGetJson, apiPutJson, hasApiBaseUrl } from "./fixtures/apiTransportFixture";
 import { navigationByRole } from "../utils/navigation";
 
 vi.mock("../services/apiClient", async (importOriginal) => ({

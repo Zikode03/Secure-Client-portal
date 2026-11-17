@@ -30,7 +30,7 @@ function RequirementBadge({ isRequired }: { isRequired: boolean }) {
 // Render output: this is the visual state users interact with.
   return (
     <span
-      className={`inline-flex rounded-full px-2.5 py-1 text-[0.68rem] font-semibold ring-1 ring-inset ${
+      className={`inline-flex rounded-full px-2.5 py-1 text-sm font-semibold ring-1 ring-inset ${
         isRequired
           ? "bg-[#eef4fa] text-brand-700 ring-[#d7e3ee]"
           : "bg-slate-50 text-slate-500 ring-slate-200"
@@ -327,7 +327,7 @@ function LegendItem({
   dotClass: string;
 }) {
   return (
-    <div className="flex items-center gap-2 text-[0.9rem] text-slate-500">
+    <div className="flex items-center gap-2 text-base text-slate-500">
       <span className={`h-2.5 w-2.5 rounded-full ${dotClass}`} />
       <span>{label}</span>
     </div>
@@ -501,7 +501,7 @@ export function MonthlyPackChecklist({
         <div className="flex flex-wrap items-center gap-3">
           <h2 className="text-base font-semibold text-[#091333]">Monthly Pack Checklist</h2>
           {showSlotCount ? (
-            <span className="rounded-full bg-[#eef4fa] px-2.5 py-1 text-[0.68rem] font-semibold text-brand-700 ring-1 ring-[#d7e3ee]">
+            <span className="rounded-full bg-[#eef4fa] px-2.5 py-1 text-sm font-semibold text-brand-700 ring-1 ring-[#d7e3ee]">
               {pack.slots.filter((slot) => slot.isRequired).length} required · {pack.slots.filter((slot) => !slot.isRequired).length} optional
             </span>
           ) : null}
@@ -580,7 +580,7 @@ export function MonthlyPackChecklist({
               <div className="flex items-start gap-3">
                 <SlotIcon documentType={slot.documentType} />
                 <div className="min-w-0 flex-1">
-                  <h3 className="text-[0.98rem] font-semibold leading-6 text-[#091333]">
+                  <h3 className="text-base font-semibold leading-6 text-[#091333]">
                     {slot.documentType}
                   </h3>
                   {slot.description ? <p className="mt-0.5 line-clamp-1 text-xs text-[#53617f]">{slot.description}</p> : null}
@@ -594,27 +594,27 @@ export function MonthlyPackChecklist({
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="space-y-1">
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                  <p className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-400">
                     Requirement
                   </p>
                   <RequirementBadge isRequired={slot.isRequired} />
                 </div>
 
                 <div className="space-y-1">
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                  <p className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-400">
                     Status
                   </p>
-                  <div className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-[0.82rem] font-semibold ring-1 ring-inset ${status.classes}`}>
+                  <div className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-sm font-semibold ring-1 ring-inset ${status.classes}`}>
                     <span className={`h-2.5 w-2.5 rounded-full ${status.dot}`} />
                     <span>{status.label}</span>
                   </div>
                 </div>
 
                 <div className="space-y-1">
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                  <p className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-400">
                     Updated
                   </p>
-                  <div className="text-[0.9rem] text-slate-500">
+                  <div className="text-base text-slate-500">
                     {slot.lastSubmission ? (
                       <>
                         <p>{formatDateLabel(slot.lastSubmission)}</p>
@@ -627,7 +627,7 @@ export function MonthlyPackChecklist({
                 </div>
 
                 <div className="space-y-1">
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                  <p className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-400">
                     Action
                   </p>
                   {renderActionMenu(slot)}
@@ -635,7 +635,7 @@ export function MonthlyPackChecklist({
               </div>
 
               {slot.rejectionReason && expandedReasonId === slot.id ? (
-                <div className="rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-[0.88rem] leading-6 text-slate-700">
+                <div className="rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-base leading-6 text-slate-700">
                   <p className="font-semibold text-amber-700">Accountant note</p>
                   <p className="mt-1">{slot.rejectionReason}</p>
                 </div>
@@ -655,7 +655,7 @@ export function MonthlyPackChecklist({
             <col className="w-[16%]" />
           </colgroup>
           <thead>
-            <tr className="text-left text-[0.72rem] font-semibold text-[#53617f]">
+            <tr className="text-left text-sm font-semibold text-[#53617f]">
               <th className="border-b border-t border-[#edf0f6] bg-[#fbfcff] px-3 py-2 first:rounded-l-lg first:border-l">Document</th>
               <th className="border-b border-t border-[#edf0f6] bg-[#fbfcff] px-2 py-2">Requirement</th>
               <th className="border-b border-t border-[#edf0f6] bg-[#fbfcff] px-2 py-2">Status</th>
@@ -680,10 +680,10 @@ export function MonthlyPackChecklist({
                       <div className="flex items-start gap-3">
                         <SlotIcon documentType={slot.documentType} />
                         <div className="min-w-0">
-                          <h3 className="text-[0.92rem] font-semibold leading-6 text-[#091333]">
+                          <h3 className="text-base font-semibold leading-6 text-[#091333]">
                             {slot.documentType}
                           </h3>
-                          {slot.description ? <p className="mt-0.5 truncate text-[0.76rem] text-[#53617f]">{slot.description}</p> : null}
+                          {slot.description ? <p className="mt-0.5 truncate text-sm text-[#53617f]">{slot.description}</p> : null}
                         </div>
                       </div>
                     </td>
@@ -691,12 +691,12 @@ export function MonthlyPackChecklist({
                       <RequirementBadge isRequired={slot.isRequired} />
                     </td>
                     <td className="border-b border-[#edf0f6] px-2 py-3">
-                      <div className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-[0.82rem] font-semibold ring-1 ring-inset ${status.classes}`}>
+                      <div className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-sm font-semibold ring-1 ring-inset ${status.classes}`}>
                         <span className={`h-2.5 w-2.5 rounded-full ${status.dot}`} />
                         <span>{status.label}</span>
                       </div>
                     </td>
-                    <td className="border-b border-[#edf0f6] px-2 py-3 text-[0.86rem] text-[#53617f]">
+                    <td className="border-b border-[#edf0f6] px-2 py-3 text-sm text-[#53617f]">
                       {slot.lastSubmission ? (
                         <>
                           <p>{formatDateLabel(slot.lastSubmission)}</p>
@@ -720,7 +720,7 @@ export function MonthlyPackChecklist({
                   {slot.rejectionReason && expandedReasonId === slot.id ? (
                     <tr className="border-b border-slate-100">
                       <td className="px-5 pb-4" colSpan={5}>
-                        <div className="rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-[0.88rem] leading-6 text-slate-700">
+                        <div className="rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-base leading-6 text-slate-700">
                           <p className="font-semibold text-amber-700">Accountant note</p>
                           <p className="mt-1">{slot.rejectionReason}</p>
                         </div>

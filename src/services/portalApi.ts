@@ -1,38 +1,8 @@
+import { workspaceRole } from "../utils/workspaceRole";
 import { apiGetJson, apiPatchJson, apiPostJson, apiPutJson, hasApiBaseUrl } from "./apiClient";
 import { portalService } from "./portalData";
 import { normaliseBusinessClassification } from "./businessClassification";
-import type {
-  DocumentComment,
-  FirmClientAccount,
-  Role,
-  UserAccountRecord,
-  WorkflowRequest,
-} from "../types/portal";
-
-interface RequestWithComments extends WorkflowRequest {
-  comments: DocumentComment[];
-}
-
-interface BackendAdminUserRecord {
-  id: string;
-  fullName: string;
-  email: string;
-  role: Role;
-  securityStatus?: string;
-}
-
-interface BackendCreateUserResponse {
-  id: string;
-  fullName: string;
-  email: string;
-  role: Role;
-  invite?: {
-    expiresAtUtc?: string;
-    setupUrl?: string;
-  };
-  delivery?: string;
-  deliveryError?: string | null;
-}
+import type { FirmClientAccount, Role, UserAccountRecord } from "../types/portal";
 
 interface BackendClientRecord {
   id: string;
@@ -51,9 +21,9 @@ interface BackendClientRecord {
 interface BackendAssignmentRecord {
   id: string;
   clientId: string;
-  clientName?: string;
+  clientName?: string | null;
   accountantUserId: string;
-  accountantName?: string;
+  accountantName?: string | null;
   isPrimary: boolean;
   createdAtUtc: string;
 }
@@ -112,7 +82,7 @@ function mapBackendClientRecord(
     backupAccountantUserId: backupAssignment?.accountantUserId,
     requiredPack: "Standard monthly pack",
     completionRate: client.complianceHealth,
-    deadlinePolicy: "6th working day",
+    deadlinePolicy: "See monthly pack due dates",
     status: toPortfolioStatus(normalizedStatus, client.complianceHealth),
     isActive: normalizedStatus !== "archived" && normalizedStatus !== "inactive",
   };
@@ -135,10 +105,10 @@ export const portalServiceApi = {
       return [];
     }
 
-    const suffix = clientId ? `?clientId=${encodeURIComponent(clientId)}` : "";
+    const suffix = clientId ? `?clientId=${encodeURIComponent(clientId)}` as const : "";
 
     try {
-      return await apiGetJson<BackendAssignmentRecord[]>(`/api/assignments${suffix}`);
+      return await apiGetJson(`/api/assignments${suffix}`);
     } catch {
       return [];
     }
@@ -150,8 +120,8 @@ export const portalServiceApi = {
 
     try {
       const [clients, assignments] = await Promise.all([
-        apiGetJson<BackendClientRecord[]>("/api/clients"),
-        apiGetJson<BackendAssignmentRecord[]>("/api/assignments"),
+        apiGetJson("/api/clients"),
+        apiGetJson("/api/assignments"),
       ]);
 
       const assignmentsByClientId = new Map<string, BackendAssignmentRecord[]>();
@@ -190,7 +160,7 @@ export const portalServiceApi = {
         };
       }
 
-      const assignments = await apiGetJson<BackendAssignmentRecord[]>(
+      const assignments = await apiGetJson(
         `/api/assignments?clientId=${encodeURIComponent(clientId)}`,
       );
       const currentPrimary = assignments.find((assignment) => assignment.isPrimary);
@@ -203,25 +173,14 @@ export const portalServiceApi = {
       }
 
       if (currentPrimary) {
-        await apiPostJson<
-          { clientId: string; accountantUserId: string; isPrimary: boolean },
-          {
-            clientId: string;
-            fromAccountantUserId: string;
-            toAccountantUserId: string;
-            makePrimary: boolean;
-          }
-        >("/api/assignments/reassign", {
+        await apiPostJson("/api/assignments/reassign", {
           clientId,
           fromAccountantUserId: currentPrimary.accountantUserId,
           toAccountantUserId: assignedAccountantUserId,
           makePrimary: true,
         });
       } else {
-        await apiPostJson<
-          { id: string; clientId: string; accountantUserId: string; isPrimary: boolean },
-          { accountantUserId: string; clientId: string; isPrimary: boolean }
-        >("/api/assignments", {
+        await apiPostJson("/api/assignments", {
           accountantUserId: assignedAccountantUserId,
           clientId,
           isPrimary: true,
@@ -229,10 +188,7 @@ export const portalServiceApi = {
       }
 
       if (existingTarget && !existingTarget.isPrimary) {
-        await apiPostJson<
-          { id: string; clientId: string; accountantUserId: string; isPrimary: boolean },
-          Record<string, never>
-        >(`/api/assignments/${encodeURIComponent(existingTarget.id)}/make-primary`, {});
+        await apiPostJson(`/api/assignments/${encodeURIComponent(existingTarget.id)}/make-primary`, {});
       }
 
       return { ok: true, message: "Accountant assignment updated." };
@@ -249,12 +205,12 @@ export const portalServiceApi = {
     }
 
     try {
-      const users = await apiGetJson<BackendAdminUserRecord[]>("/api/admin/users");
+      const users = await apiGetJson("/api/admin/users");
       return users.map((user) => ({
         id: user.id,
         name: user.fullName,
         email: user.email,
-        role: user.role,
+        role: workspaceRole(user.role),
         status: toUserAccountStatus(user.securityStatus),
       }));
     } catch {
@@ -264,14 +220,14 @@ export const portalServiceApi = {
   async createUserAccount(payload: { fullName: string; email: string; role: Role; company?: string }) {
     if (!hasApiBaseUrl()) throw new Error("The portal requires a backend connection.");
     try {
-      const response = await apiPostJson<BackendCreateUserResponse, typeof payload>("/api/admin/users", payload);
+      const response = await apiPostJson("/api/admin/users", payload);
       return {
         ok: true,
         user: {
           id: response.id,
           name: response.fullName,
           email: response.email,
-          role: response.role,
+          role: workspaceRole(response.role),
           status: "invited",
           company: payload.company?.trim() || undefined,
         } satisfies UserAccountRecord,
@@ -305,14 +261,7 @@ export const portalServiceApi = {
   async resetUserAccess(userId: string, reason = "admin_reset") {
     if (!hasApiBaseUrl()) throw new Error("The portal requires a backend connection.");
     try {
-      const response = await apiPostJson<{
-        delivery?: string;
-        deliveryError?: string | null;
-        invite?: {
-          setupUrl?: string;
-          expiresAtUtc?: string;
-        };
-      }, { reason: string }>(`/api/admin/users/${encodeURIComponent(userId)}/reset-access`, { reason });
+      const response = await apiPostJson(`/api/admin/users/${encodeURIComponent(userId)}/reset-access`, { reason });
       return {
         ok: true,
         delivery: response.delivery,
@@ -338,39 +287,9 @@ export const portalServiceApi = {
       return { ok: false };
     }
   },
-  async createClientBusiness(payload: {
-    id?: string;
-    name: string;
-    entityType: string;
-    industry?: string;
-    status: "active" | "pending" | "at_risk" | "archived";
-    complianceHealth: number;
-    assignedAccountantId: string;
-    primaryContact: string;
-    email: string;
-  }) {
-    if (!hasApiBaseUrl()) throw new Error("The portal requires a backend connection.");
-    try {
-      await apiPostJson("/api/clients", payload);
-      return { ok: true };
-    } catch {
-      return { ok: false };
-    }
-  },
-  async updateClientBusiness(clientId: string, payload: Record<string, unknown>) {
-    if (!hasApiBaseUrl()) throw new Error("The portal requires a backend connection.");
-    try {
-      await apiPutJson(`/api/clients/${encodeURIComponent(clientId)}`, payload);
-      return { ok: true };
-    } catch {
-      return { ok: false };
-    }
-  },
-
-
   // Filing register is read-only and only contains auto-filed documents.
   getFilingRegister(clientId?: string) {
-    const suffix = clientId ? `?clientId=${encodeURIComponent(clientId)}` : "";
+    const suffix = clientId ? `?clientId=${encodeURIComponent(clientId)}` as const : "";
     return apiGetJson(`/api/documents/filing-register${suffix}`);
   },
   getFilingRules() {
@@ -397,7 +316,7 @@ export const portalServiceApi = {
   async addRequestComment(requestId: string, message: string, isInternal = false) {
     if (!hasApiBaseUrl()) throw new Error("The portal requires a backend connection.");
     try {
-      const comment = await apiPostJson<DocumentComment, { message: string; isInternal: boolean }>(
+      const comment = await apiPostJson(
         `/api/requests/${encodeURIComponent(requestId)}/comments`,
         { message, isInternal },
       );
@@ -415,14 +334,5 @@ export const portalServiceApi = {
       return { ok: false };
     }
   },
-  async getRequestWithComments(requestId: string): Promise<RequestWithComments | null> {
-    if (!hasApiBaseUrl()) return null;
-    try {
-      return await apiGetJson<RequestWithComments>(
-        `/api/requests/${encodeURIComponent(requestId)}`,
-      );
-    } catch {
-      return null;
-    }
-  },
+
 };

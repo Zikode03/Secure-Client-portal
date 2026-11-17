@@ -1,3 +1,5 @@
+import { useActionDialog } from "../../components/ui/useActionDialog";
+import { Modal } from "../../components/ui/Modal";
 import { monthlyPacksApi } from "../../services/monthlyPacksApi";
 import { useEffect, useMemo, useState } from "react";
 import { Building2, Check, ClipboardPlus, Pencil, Plus, Repeat2, Trash2, X } from "lucide-react";
@@ -194,12 +196,14 @@ function decisionClasses(decision: string) {
 }
 
 export function AccountantClientPackWorkspacePage() {
+  const actionDialog = useActionDialog();
   const { clientId = "" } = useParams();
   const backendMode = hasApiBaseUrl() && Boolean(clientId);
   const [pack, setPack] = useState<MonthlyPackRecord | null>(null);
   const [client, setClient] = useState<ClientRecord | null>(null);
   const [profile, setProfile] = useState<ClientPackProfile | null>(null);
   const [selectedTemplateId, setSelectedTemplateId] = useState("");
+  const [viewSlotId, setViewSlotId] = useState("");
   const [operatingDraft, setOperatingDraft] = useState<OperatingProfile>(emptyOperatingProfile);
 
   // Requirement editor state. Accountant/Admin can choose one month or future recurring behavior.
@@ -217,8 +221,8 @@ export function AccountantClientPackWorkspacePage() {
     try {
       const [packs, packProfile, clientRecord] = await Promise.all([
         monthlyPacksApi.list(clientId),
-        apiGetJson<ClientPackProfile>(`/api/monthly-pack-profiles/${encodeURIComponent(clientId)}`),
-        apiGetJson<ClientRecord>(`/api/clients/${encodeURIComponent(clientId)}`),
+        apiGetJson(`/api/monthly-pack-profiles/${encodeURIComponent(clientId)}`),
+        apiGetJson(`/api/clients/${encodeURIComponent(clientId)}`),
       ]);
       setPack(packs[0] ?? null);
       setProfile(packProfile);
@@ -264,20 +268,7 @@ export function AccountantClientPackWorkspacePage() {
   ) {
     setBusy(true);
     try {
-      await apiPutJson<ClientPackProfile, {
-        templateId: string | null;
-        recurringItems: Array<{
-          category: string;
-          label: string;
-          isRequired: boolean;
-          cadence?: string;
-          effectiveFromUtc?: string | null;
-          effectiveToUtc?: string | null;
-        }>;
-        operatingProfile?: OperatingProfile;
-        effectiveFromUtc?: string;
-        reconcileCurrentPack?: boolean;
-      }>(`/api/monthly-pack-profiles/${encodeURIComponent(clientId)}`, {
+      await apiPutJson<`/api/monthly-pack-profiles/${string}`>(`/api/monthly-pack-profiles/${encodeURIComponent(clientId)}`, {
         templateId,
         recurringItems,
         ...(options?.includeOperatingProfile ? {
@@ -320,7 +311,7 @@ export function AccountantClientPackWorkspacePage() {
   }
 
   async function saveOperatingProfile(reconcileCurrentPack: boolean) {
-    if (reconcileCurrentPack && !window.confirm(
+    if (reconcileCurrentPack && !await actionDialog.confirm(
       "Update the current open monthly pack using these business facts?\n\nEmpty items that no longer apply will be removed. Items with existing uploads or drafts will be preserved as optional.",
     )) return;
 
@@ -338,9 +329,10 @@ export function AccountantClientPackWorkspacePage() {
   async function editRecurring(itemId: string) {
     const item = clientSpecificRecurringItems.find((candidate) => candidate.id === itemId);
     if (!item) return;
-    const nextLabel = window.prompt("Recurring requirement name", item.label)?.trim();
-    if (!nextLabel) return;
-    const nextRequired = window.confirm("Should this recurring requirement be REQUIRED in future monthly packs?\n\nOK = Required\nCancel = Optional");
+    const edited = await actionDialog.edit("Update this requirement for future monthly packs.", item.label, "Required in future monthly packs", item.isRequired);
+    if (!edited) return;
+    const nextLabel = edited.value.trim();
+    const nextRequired = edited.checked;
     const nextItems = clientSpecificRecurringItems.map((candidate) => ({
       category: candidate.category,
       label: candidate.id === itemId ? nextLabel : candidate.label,
@@ -354,7 +346,7 @@ export function AccountantClientPackWorkspacePage() {
 
   async function removeRecurring(itemId: string) {
     const item = clientSpecificRecurringItems.find((candidate) => candidate.id === itemId);
-    if (!item || !window.confirm(`Remove '${item.label}' from future monthly packs? Existing monthly packs will stay unchanged.`)) return;
+    if (!item || !await actionDialog.confirm(`Remove '${item.label}' from future monthly packs? Existing monthly packs will stay unchanged.`)) return;
     const nextItems = clientSpecificRecurringItems
       .filter((candidate) => candidate.id !== itemId)
       .map((candidate) => ({
@@ -378,7 +370,7 @@ export function AccountantClientPackWorkspacePage() {
     const duplicate = [...(profile?.currentPackItems ?? []), ...(profile?.recurringItems ?? [])].some(
       (item) => item.label.trim().toLowerCase() === label.trim().toLowerCase() || item.category.trim().toLowerCase() === resolvedCategory.toLowerCase(),
     );
-    if (duplicate && !window.confirm("A similar monthly-pack requirement already exists. Add another separate requirement anyway?")) return;
+    if (duplicate && !await actionDialog.confirm("A similar monthly-pack requirement already exists. Add another separate requirement anyway?")) return;
 
     const packLocked = !pack || ["under_review", "complete", "closed"].includes(pack.status.toLowerCase());
 
@@ -477,6 +469,7 @@ export function AccountantClientPackWorkspacePage() {
 
   return (
     <div className="space-y-5">
+      {actionDialog.dialog}
       <AccountantClientWorkspacePage />
 
       {backendMode && pack && clientId ? (
@@ -598,7 +591,7 @@ export function AccountantClientPackWorkspacePage() {
                   <div className="mt-3 grid gap-2 lg:grid-cols-2">
                     {profile.recommendations.map((item) => (
                       <div className="rounded-xl border border-slate-200 bg-white p-3" key={item.category}>
-                        <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm font-semibold text-slate-900">{item.label}</p><span className={`rounded-full px-2 py-0.5 text-[0.68rem] font-semibold ${decisionClasses(item.decision)}`}>{decisionLabel(item.decision)}</span></div>
+                        <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm font-semibold text-slate-900">{item.label}</p><span className={`rounded-full px-2 py-0.5 text-sm font-semibold ${decisionClasses(item.decision)}`}>{decisionLabel(item.decision)}</span></div>
                         <p className="mt-1 text-xs leading-5 text-slate-500">{item.reason}</p>
                       </div>
                     ))}
@@ -629,9 +622,9 @@ export function AccountantClientPackWorkspacePage() {
                         <div className="min-w-0">
                           <p className="text-sm font-semibold text-slate-900">{item.label}</p>
                           <div className="mt-1 flex flex-wrap gap-1.5">
-                            <span className={`rounded-full px-2 py-0.5 text-[0.68rem] font-semibold ${sourceClasses(item.source)}`}>{sourceLabel(item.source)}</span>
-                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[0.68rem] font-semibold text-slate-600">{item.isRequired ? "Required" : "Optional"}</span>
-                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[0.68rem] font-semibold capitalize text-slate-600">{(item.cadence ?? "monthly").replace(/_/g, " ")}</span>
+                            <span className={`rounded-full px-2 py-0.5 text-sm font-semibold ${sourceClasses(item.source)}`}>{sourceLabel(item.source)}</span>
+                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-sm font-semibold text-slate-600">{item.isRequired ? "Required" : "Optional"}</span>
+                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-sm font-semibold capitalize text-slate-600">{(item.cadence ?? "monthly").replace(/_/g, " ")}</span>
                           </div>
                         </div>
                         {item.source === "client_specific" ? (
@@ -690,7 +683,7 @@ export function AccountantClientPackWorkspacePage() {
                   {profile?.currentPackItems.length ? (
                     <div className="mt-4 overflow-x-auto rounded-2xl border border-slate-200">
                       <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
-                        <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-3">Requirement</th><th className="px-4 py-3">Source</th><th className="px-4 py-3">Type</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Due</th></tr></thead>
+                        <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500"><tr><th className="px-4 py-3">Requirement</th><th className="px-4 py-3">Source</th><th className="px-4 py-3">Type</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Due</th><th className="px-4 py-3 text-right">Actions</th></tr></thead>
                         <tbody className="divide-y divide-slate-100 bg-white">
                           {profile.currentPackItems.map((item) => (
                             <tr key={item.slotId}>
@@ -699,6 +692,7 @@ export function AccountantClientPackWorkspacePage() {
                               <td className="px-4 py-4"><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${item.isRequired ? "bg-brand-50 text-brand-700" : "bg-slate-100 text-slate-600"}`}>{item.isRequired ? "Required" : "Optional"}</span></td>
                               <td className="px-4 py-4 text-slate-600">{formatStatusLabel(item.status)}</td>
                               <td className="px-4 py-4 text-slate-500">{item.dueDateUtc ? formatDateLabel(item.dueDateUtc) : "—"}</td>
+                              <td className="px-4 py-4 text-right"><Button variant="ghost" size="sm" aria-label={`View requirement ${item.label}`} onClick={() => setViewSlotId(item.slotId)}>View details</Button></td>
                             </tr>
                           ))}
                         </tbody>
@@ -711,6 +705,9 @@ export function AccountantClientPackWorkspacePage() {
           </SurfaceCard>
         </section>
       ) : null}
+      <Modal title="Requirement details" isOpen={Boolean(viewSlotId)} onClose={() => setViewSlotId("")} scrollBody>
+        {profile?.currentPackItems.filter(item => item.slotId === viewSlotId).map(item => <dl className="grid gap-4" key={item.slotId}><div><dt className="text-sm text-slate-500">Requirement</dt><dd>{item.label}</dd></div><div><dt className="text-sm text-slate-500">Category</dt><dd>{item.category.replace(/_/g, " ")}</dd></div><div><dt className="text-sm text-slate-500">Status</dt><dd>{formatStatusLabel(item.status)}</dd></div><div><dt className="text-sm text-slate-500">Due date</dt><dd>{item.dueDateUtc ? formatDateLabel(item.dueDateUtc) : "Not specified"}</dd></div><div><dt className="text-sm text-slate-500">Source</dt><dd>{sourceLabel(item.source)}</dd></div>{item.reason ? <div><dt className="text-sm text-slate-500">Reason</dt><dd>{item.reason}</dd></div> : null}</dl>)}
+      </Modal>
     </div>
   );
 }

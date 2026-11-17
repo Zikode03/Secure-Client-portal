@@ -141,6 +141,14 @@ describe("role-based route access", () => {
     expect(await screen.findByRole("heading", { name: "Request SLA rules" })).toBeInTheDocument();
   });
 
+  it("routes default administrators to team oversight rather than accounting review", async () => {
+    renderAppAt("/firm/review", createUser("admin"));
+    expect(await screen.findByRole("heading", { name: "Team progress" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Work Queue" })).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Team Progress" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Work Queue" })).not.toBeInTheDocument();
+  });
+
   it("shows admin-only header badge only for admin role", async () => {
     const adminView = renderAppAt("/firm/dashboard", createUser("admin"));
     expect(await screen.findByText("Admin only")).toBeInTheDocument();
@@ -221,7 +229,8 @@ describe("role-based route access", () => {
   it("legacy firm requests list route redirects to inbox list view", async () => {
     renderAppAt("/firm/requests", createUser("accountant"));
 
-    expect(await screen.findByText("Request documents from Apex Trading Ltd")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Inbox", level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Request document" })).toBeInTheDocument();
   });
 
   it("admin can open request SLA state machine page", async () => {

@@ -20,6 +20,7 @@ const allPermissions: Permission[] = [
   "view:all_documents",
   "view:assigned_review_queue",
   "view:firm_review_queue",
+  "view:team_progress",
   "view:assigned_compliance",
   "view:firm_compliance",
   "manage:users",
@@ -88,12 +89,13 @@ export function getUserPermissions(user: SessionUser | null | undefined) {
   if (user.permissions === undefined) return getPermissionsForRole(user.role);
   const mapped = new Set<Permission>();
   const server = new Set<string>(user.permissions);
-  for (const permission of user.permissions) if (allPermissions.includes(permission)) mapped.add(permission);
+  for (const permission of allPermissions) if (user.permissions.includes(permission)) mapped.add(permission);
   const add = (key: string, ...permissions: Permission[]) => { if (server.has(key)) permissions.forEach(value => mapped.add(value)); };
   add("clients.read", user.role === "admin" ? "view:all_clients" : "view:assigned_clients");
   add("documents.read", ...(user.role === "admin"
     ? ["view:all_documents", "view:firm_review_queue"] as Permission[]
     : ["view:assigned_documents", "view:assigned_review_queue"] as Permission[]));
+  if (user.role === "admin" && ["users.read", "assignments.read", "documents.read", "audit_logs.read"].every(key => server.has(key))) mapped.add("view:team_progress");
   add("documents.review", "review:documents");
   add("documents.upload", "comment:documents");
   add("compliance.read", user.role === "admin" ? "view:firm_compliance" : "view:assigned_compliance");
@@ -336,6 +338,8 @@ export function canAccessRoute(
   if (route.startsWith("/admin/accountants")) {
     return hasPermission(user, "manage:users");
   }
+
+  if (route.startsWith("/firm/admin/team-progress")) return user.role === "admin" && hasPermission(user, "view:team_progress");
 
   if (route.startsWith("/firm")) {
     return user.role === "accountant" || user.role === "admin";

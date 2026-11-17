@@ -47,7 +47,8 @@ describe("client page smoke coverage", () => {
   it("renders the document register with search and upload", () => {
     renderClientPage(<ClientDocumentsPage />);
     expect(screen.getByRole("heading", { name: "Documents" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Document register" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Document register" })).not.toBeInTheDocument();
+    expect(screen.getByText("Actions")).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Search documents" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Upload document" })).toBeInTheDocument();
   });
@@ -58,7 +59,8 @@ describe("client page smoke coverage", () => {
   ])("opens and closes details for a local %s row", async (_kind, title, fileName) => {
     renderClientPage(<ClientDocumentsPage />);
     fireEvent.change(screen.getByRole("textbox", { name: "Search documents" }), { target: { value: title } });
-    fireEvent.click(await screen.findByRole("button", { name: new RegExp(title.replace(/\./g, "\\.")) }));
+    fireEvent.click(await screen.findByRole("button", { name: new RegExp(`^Actions for ${title.replace(/\./g, "\\.")}$`) }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Open" }));
     expect(screen.getByRole("button", { name: "Close document workspace" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: fileName })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Versions" })).toBeInTheDocument();

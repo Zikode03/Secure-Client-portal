@@ -35,7 +35,7 @@ export function ProfilePage() {
   }
 
   return <section className="workspace-profile-page">
-    <div className="workspace-profile-page-heading"><div><p className="workspace-eyebrow">YOUR ACCOUNT</p><h1>My profile</h1><p>View and manage your personal information.</p></div>
+    <div className="workspace-profile-page-heading"><div><p className="workspace-eyebrow">YOUR ACCOUNT</p><h1 className="workspace-duplicate-title ">My profile</h1><p>View and manage your personal information.</p></div>
       {!editing && <Button variant="secondary" onClick={() => { setNotice(null); setParams({ edit: "true" }); }}><Pencil size={16} aria-hidden="true" />Edit profile</Button>}
     </div>
     {notice && <div role={notice.error ? "alert" : "status"} className={`workspace-profile-notice ${notice.error ? "is-error" : ""}`}>{notice.text}</div>}

@@ -13,6 +13,7 @@ const HelpSupportPage = lazy(() => import("../pages/shared/HelpSupportPage").the
 const WorkspaceLayout = lazy(() =>
   import("../layouts/WorkspaceLayout").then((module) => ({ default: module.WorkspaceLayout })),
 );
+const AdminTeamProgressPage = lazy(() => import("../pages/admin/AdminTeamProgressPage").then(module => ({ default: module.AdminTeamProgressPage })));
 const AdminDashboardPage = lazy(() =>
   import("../pages/admin/AdminDashboardPage").then((module) => ({ default: module.AdminDashboardPage })),
 );
@@ -183,6 +184,14 @@ function FirmDashboardRoute() {
   return user.role === "admin" ? <AdminDashboardPage /> : <AccountantDashboardPage />;
 }
 
+function FirmReviewRoute() {
+  const { ready, user } = useAuth();
+  if (!ready) return <LoadingShell />;
+  if (!user) return <Navigate replace to="/login" />;
+  if (user.role === "admin" && !hasPermission(user, "review:documents")) return <Navigate replace to="/firm/admin/team-progress" />;
+  return <FirmReviewQueuePage />;
+}
+
 function FirmClientsRoute() {
   const { ready, user } = useAuth();
   if (!ready) return <LoadingShell />;
@@ -264,7 +273,8 @@ export default function App() {
           <Route element={<AccountantClientPackWorkspacePage />} path="clients/:clientId/packs" />
           <Route element={<AccountantDocumentsPage />} path="documents" />
           <Route element={<AccountantFilingPage />} path="filing" />
-          <Route element={<FirmReviewQueuePage />} path="review" />
+          <Route element={<FirmReviewRoute />} path="review" />
+          <Route element={<RequirePermission permission="view:team_progress"><AdminTeamProgressPage /></RequirePermission>} path="admin/team-progress" />
           <Route element={<Navigate replace to="/firm/inbox" />} path="requests" />
           <Route element={<FirmRequestsPage />} path="inbox" />
           <Route element={<FirmRequestDetailPage />} path="inbox/:requestId" />

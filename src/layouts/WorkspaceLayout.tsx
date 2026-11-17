@@ -228,6 +228,7 @@ const routePrefetchers: Array<{ match: (path: string) => boolean; load: () => Pr
   { match: (path) => path.startsWith("/firm/clients"), load: () => import("../pages/accountant/AccountantPortfolioPage") },
   { match: (path) => path.startsWith("/firm/documents"), load: () => import("../pages/accountant/AccountantDocumentsPage") },
   { match: (path) => path.startsWith("/firm/filing"), load: () => import("../pages/accountant/AccountantFilingPage") },
+  { match: (path) => path.startsWith("/firm/admin/team-progress"), load: () => import("../pages/admin/AdminTeamProgressPage") },
   { match: (path) => path.startsWith("/firm/review"), load: () => import("../pages/firm/FirmReviewQueuePage") },
   { match: (path) => path.startsWith("/firm/inbox"), load: () => import("../pages/firm/FirmRequestsPage") },
   { match: (path) => path.startsWith("/firm/inbox/"), load: () => import("../pages/firm/FirmRequestDetailPage") },
@@ -268,7 +269,7 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
   const [branding, setBranding] = useState<{ firmName: string; logoDataUrl?: string | null }>({ firmName: "" });
   useEffect(() => {
     let active = true;
-    if (hasApiBaseUrl()) void apiGetJson<{ firmName: string; logoDataUrl?: string | null }>("/api/firm-branding").then(value => { if (active && typeof value?.firmName === "string") setBranding(value); }).catch(() => { /* Keep the product identity when branding cannot load. */ });
+    if (hasApiBaseUrl()) void apiGetJson("/api/firm-branding").then(value => { if (active && typeof value?.firmName === "string") setBranding(value); }).catch(() => { /* Keep the product identity when branding cannot load. */ });
     const updated = (event: Event) => setBranding((event as CustomEvent<{ firmName: string; logoDataUrl?: string | null }>).detail);
     window.addEventListener("firm-branding-updated", updated);
     return () => { active = false; window.removeEventListener("firm-branding-updated", updated); };
@@ -368,10 +369,10 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
                 </div>
                 {!effectiveCollapsed ? (
                   <div className="min-w-0">
-                    <p className={cn("truncate font-semibold leading-5", denseSidebar ? "text-[0.88rem]" : "text-[0.92rem]", isDark ? "text-white" : "text-slate-950")}>
+                    <p className={cn("truncate font-semibold leading-5", denseSidebar ? "text-base" : "text-base", isDark ? "text-white" : "text-slate-950")}>
                       {branding.firmName || "Secure Client"}
                     </p>
-                    <p className={cn("truncate font-semibold uppercase tracking-[0.14em]", denseSidebar ? "text-[0.58rem]" : "text-[0.62rem]", navMutedClass)}>
+                    <p className={cn("truncate font-semibold uppercase tracking-[0.14em]", denseSidebar ? "text-sm" : "text-sm", navMutedClass)}>
                       {role === "client" ? "Client Workspace" : role === "admin" ? "Admin Workspace" : "Firm Workspace"}
                     </p>
                   </div>
@@ -410,8 +411,8 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
                   <SearchIcon />
                   {!effectiveCollapsed ? (
                     <>
-                      <span className="min-w-0 flex-1 truncate text-[0.75rem]">Quick Search</span>
-                      <span className={cn("text-[0.65rem]", navMutedClass)}>⌘K</span>
+                      <span className="min-w-0 flex-1 truncate text-sm">Quick Search</span>
+                      <span className={cn("text-sm", navMutedClass)}>⌘K</span>
                     </>
                   ) : null}
                 </button>
@@ -444,7 +445,7 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
                     <p
                       className={cn(
                         "px-1.5 font-semibold uppercase mb-1",
-                        "text-[0.56rem] leading-[0.875rem] tracking-[0.08em]",
+                        "text-sm leading-[0.875rem] tracking-[0.08em]",
                         navMutedClass,
                       )}
                     >
@@ -467,7 +468,7 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
                         className={({ isActive }) =>
                           cn(
                             "group relative flex items-center overflow-hidden rounded-md font-medium transition-all duration-150",
-                            "text-[0.79rem]",
+                            "text-sm",
                             effectiveCollapsed
                               ? "h-9 w-9 justify-center"
                               : "h-9 gap-2.5 px-1.5",
@@ -505,7 +506,7 @@ export function WorkspaceLayout({ role }: WorkspaceLayoutProps) {
                               </span>
                             ) : null}
                             {!effectiveCollapsed && item.badge ? (
-                              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-500 px-1.5 text-[0.64rem] font-semibold text-white">
+                              <span className="workspace-nav-count inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-500 px-1.5 text-sm font-semibold text-white">
                                 {item.badge}
                               </span>
                             ) : null}

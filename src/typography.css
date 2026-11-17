@@ -1,0 +1,74 @@
+/* Shared Geist typography. Rem sizes preserve browser zoom and user settings. */
+:root {
+  --ui-font-family: "Geist", "Segoe UI", Arial, sans-serif;
+  --ui-text-secondary: .8125rem;
+  --ui-text-body: .9375rem;
+  --ui-text-detail: 1rem;
+  --ui-text-section: 1.125rem;
+  --ui-text-metric: 1.875rem;
+  --ui-text-title: 1.75rem;
+  --ui-text-display: 1.875rem;
+  --ui-text-label: .875rem;
+  --ui-text-button: .875rem;
+  --ui-text-nav: .875rem;
+  --ui-text-nav-nested: .8125rem;
+  --ui-text-count: .6875rem;
+  --font-sans: "Geist", "Segoe UI", Arial, sans-serif;
+  --text-xs: .75rem;
+  --text-xs--line-height: 1.5;
+  --text-sm: .875rem;
+  --text-sm--line-height: 1.5;
+  --text-base: .9375rem;
+  --text-base--line-height: 1.5;
+  --text-lg: 1rem;
+  --text-lg--line-height: 1.5;
+  --text-xl: 1.125rem;
+  --text-xl--line-height: 1.4;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 1.35;
+  --text-3xl: 1.75rem;
+  --text-3xl--line-height: 1.3;
+  --text-4xl: 1.875rem;
+  --text-4xl--line-height: 1.3;
+}
+html { font-size: 100%; }
+body { font-family: var(--ui-font-family); font-size: var(--ui-text-body); font-weight: 400; line-height: 1.5; }
+/* Embedded documents/images retain their original content and typography. */
+#root, #root * { font-family: var(--ui-font-family) !important; }
+#root :is(h1, .portal-page-title) { font-size: var(--ui-text-title) !important; line-height: 1.3 !important; font-weight: 600; }
+#root :is(h2, .portal-section-title) { font-size: var(--ui-text-section) !important; line-height: 1.4 !important; font-weight: 600; }
+#root :is(h3, h4, .portal-detail-title) { font-size: var(--ui-text-detail) !important; line-height: 1.5 !important; font-weight: 600; }
+#root :is(input, select, textarea) { font-size: var(--ui-text-body) !important; font-weight: 400; line-height: 1.5; }
+#root label { font-size: var(--ui-text-label); font-weight: 500; line-height: 1.5; }
+#root label > span { font-size: inherit; font-weight: inherit; }
+#root label :is(p, small) { font-size: var(--ui-text-secondary); font-weight: 400; }
+#root button { font-size: var(--ui-text-button) !important; font-weight: 500 !important; line-height: 1.5; }
+#root button :is(span, p) { font-size: inherit !important; font-weight: inherit; }
+#root :is(input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]), select) { min-height: 2.5rem; }
+#root :is(td, tbody th) { font-size: var(--ui-text-body); line-height: 1.5; }
+#root :is(small, time, caption) { font-size: var(--ui-text-secondary); font-weight: 400; line-height: 1.5; }
+#root :is(.workspace-eyebrow, .workspace-admin-badge) { font-size: var(--ui-text-secondary); line-height: 1.5; }
+#root .workspace-eyebrow { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#root .workspace-sidebar nav a,
+#root .workspace-sidebar nav a * {
+  font-size: var(--ui-text-nav) !important;
+  font-weight: 500 !important;
+  line-height: 1.5;
+}
+#root .workspace-sidebar nav :is(nav, .workspace-nav-nested) a,
+#root .workspace-sidebar nav :is(nav, .workspace-nav-nested) a * {
+  font-size: var(--ui-text-nav-nested) !important;
+}
+#root .workspace-sidebar nav a .workspace-nav-count,
+#root .notification-bell-count {
+  font-size: var(--ui-text-count) !important;
+  font-weight: 600 !important;
+  line-height: 1.5;
+}
+#root :is(.ui-kpi-value, .admin-overview-metric-value, .accountant-dashboard-metrics dd, .team-progress-totals dd) {
+  font-size: var(--ui-text-metric) !important;
+  font-weight: 600 !important;
+  line-height: 1.2 !important;
+  font-variant-numeric: tabular-nums;
+}
+#root .ui-kpi-value { height: auto; }

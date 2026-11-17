@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AdminAssignmentsPage } from "../pages/admin/AdminAssignmentsPage";
-import { apiGetJson, apiPostJson, hasApiBaseUrl } from "../services/apiClient";
+import { apiGetJson, apiPostJson, apiDelete, hasApiBaseUrl } from "./fixtures/apiTransportFixture";
 
 vi.mock("../app/portal", () => ({ usePortal: () => ({ adminClients: [], managedAccountants: [] }) }));
 vi.mock("../services/apiClient", async (original) => ({
@@ -16,8 +16,8 @@ const clientRows = [
 ];
 const assignmentRows = [{ id: "assignment-1", clientId: "acme", accountantUserId: "alex", accountantName: "Alex Smith", isPrimary: true }];
 const userRows = [
-  { id: "alex", fullName: "Alex Smith", email: "alex@firm.test", role: "accountant" },
-  { id: "sam", fullName: "Sam Jones", email: "sam@firm.test", role: "accountant" },
+  { id: "alex", fullName: "Alex Smith", email: "alex@firm.test", role: "accountant", securityStatus: "active" },
+  { id: "sam", fullName: "Sam Jones", email: "sam@firm.test", role: "accountant", securityStatus: "active" },
 ];
 
 beforeEach(() => {
@@ -54,6 +54,7 @@ describe("assignment workspace", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save assignment" }));
     await waitFor(() => expect(apiPostJson).toHaveBeenCalledWith("/api/assignments/reassign", {
       clientId: "acme", fromAccountantUserId: "alex", toAccountantUserId: "sam", makePrimary: true,
+      handover: { reason: "Rebalance workload", message: "Please review the current monthly pack." },
     }));
   });
 
@@ -74,7 +75,44 @@ describe("assignment workspace", () => {
     await openEditor();
     fireEvent.change(screen.getByLabelText("Primary accountant"), { target: { value: "sam" } });
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    expect(screen.getByRole("heading", { name: "Select a client" })).toBeInTheDocument();
+    expect(screen.queryByRole("complementary", { name: "Assignment editor" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Edit assignment for Acme Holdings" })).toBeInTheDocument();
     expect(apiPostJson).not.toHaveBeenCalled();
   });
+  it("replaces backup coverage in one request and preserves the draft when it fails", async () => {
+    const backup = { id: "backup-1", clientId: "acme", accountantUserId: "old", accountantName: "Old backup", isPrimary: false };
+    vi.mocked(apiGetJson).mockImplementation(async path => path === "/api/clients" ? clientRows : path === "/api/assignments" ? [...assignmentRows, backup] : userRows);
+    vi.mocked(apiDelete).mockClear();
+    vi.mocked(apiPostJson).mockRejectedValueOnce(new Error("Service unavailable"));
+    await openEditor();
+    fireEvent.click(screen.getByRole("button", { name: "Backup support" }));
+    fireEvent.change(screen.getByLabelText("Backup accountant"), { target: { value: "sam" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save assignment" }));
+    await waitFor(() => expect(apiPostJson).toHaveBeenCalledWith("/api/assignments/reassign", {
+      clientId: "acme", fromAccountantUserId: "old", toAccountantUserId: "sam", makePrimary: false,
+    }));
+    expect(apiDelete).not.toHaveBeenCalled();
+    expect(await screen.findByText("Could not update the backup accountant.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Backup accountant")).toHaveValue("sam");
+    expect(screen.getByText("Old backup")).toBeInTheDocument();
+  });
+  it("does not offer invited, disabled or locked accountants for assignment", async () => {
+    vi.mocked(apiGetJson).mockImplementation(async path => path === "/api/clients" ? clientRows : path === "/api/assignments" ? assignmentRows : [...userRows,
+      ...["invited", "disabled", "locked"].map(state => ({ id: state, fullName: state + " staff", email: state + "@firm.test", role: "accountant", securityStatus: state })),
+    ]);
+    await openEditor();
+    const options = within(screen.getByLabelText("Primary accountant"));
+    for (const state of ["invited", "disabled", "locked"]) expect(options.queryByRole("option", { name: state + " staff" })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Effective date")).not.toBeInTheDocument();
+  });
+
+  it("shows an inactive current owner honestly while allowing an active replacement", async () => {
+    vi.mocked(apiGetJson).mockImplementation(async path => path === "/api/clients" ? clientRows : path === "/api/assignments" ? assignmentRows : userRows.map(user => user.id === "alex" ? { ...user, securityStatus: "disabled" } : user));
+    await openEditor();
+    const select=screen.getByLabelText("Primary accountant");
+    expect(select).toHaveValue("alex");
+    expect(within(select).getByRole("option",{ name:"Alex Smith (unavailable for new assignments)" })).toBeDisabled();
+    expect(within(select).getByRole("option",{ name:"Sam Jones" })).toBeEnabled();
+  });
+
 });

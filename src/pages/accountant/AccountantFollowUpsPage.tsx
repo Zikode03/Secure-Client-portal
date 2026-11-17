@@ -1,18 +1,15 @@
+import "./accountantInbox.css";
 import { InboxListControls } from "../../components/inbox/InboxListControls";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CalendarDays,
   CheckCircle2,
   ChevronDown,
-  ChevronUp,
   Flag,
-  Forward,
+  Plus,
+  MoreHorizontal,
   Paperclip,
-  RefreshCw,
-  Reply,
   Send,
-  ShieldAlert,
-  Star,
   UserRound,
 } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
@@ -87,11 +84,6 @@ interface BackendRequestComment {
 interface BackendRequestWorkspace {
   request: BackendRequestRecord;
   comments: BackendRequestComment[];
-}
-
-interface BackendRequestReadState {
-  requestId: string;
-  lastReadAtUtc: string;
 }
 
 function defaultFollowUpDueDate() {
@@ -309,7 +301,9 @@ function ThreadListPane({
   readThreadIds,
   searchValue,
   onChangeSearch,
+  onRequestDocuments,
 }: {
+  onRequestDocuments: () => void;
   requests: WorkflowRequest[];
   selectedRequestId: string;
   onSelectRequest: (requestId: string) => void;
@@ -326,8 +320,8 @@ function ThreadListPane({
   onChangeSearch: (value: string) => void;
 }) {
   return (
-    <section className="flex h-full min-h-0 max-h-[420px] flex-col min-[1080px]:max-h-none overflow-hidden bg-white min-[1080px]:min-h-0 min-[1080px]:border-r min-[1080px]:border-slate-200">
-      <InboxListControls filter={filter} onChangeFilter={onChangeFilter} searchValue={searchValue} onChangeSearch={onChangeSearch} actions={<label className="flex items-center gap-2">Sort by
+    <section aria-label="Conversations" className="flex h-full min-h-0 max-h-[420px] flex-col min-[1080px]:max-h-none overflow-hidden bg-white min-[1080px]:min-h-0 min-[1080px]:border-r min-[1080px]:border-slate-200">
+      <InboxListControls headingActions={<button className="inbox-new-request" type="button" aria-label="Request document" onClick={onRequestDocuments}><Plus size={16} aria-hidden="true" />Request</button>} filter={filter} onChangeFilter={onChangeFilter} searchValue={searchValue} onChangeSearch={onChangeSearch} actions={<label className="flex items-center gap-2">Sort by
           <select aria-label="Sort conversations" value={sortMode} onChange={event => onChangeSort(event.target.value as ThreadSort)} className="rounded border border-slate-200 bg-white px-2 py-1.5">
             <option value="activity">Latest activity</option><option value="priority">Priority</option><option value="due">Due date</option>
           </select>
@@ -346,7 +340,7 @@ function ThreadListPane({
           return (
             <div key={request.id}>
               {showSection ? (
-                <div className="flex h-9 w-full items-center gap-2 border-b border-slate-100 bg-[#f7f9fc] px-4 text-left text-[0.82rem] font-medium text-[#091333] sm:px-4 lg:px-4">
+                <div className="flex h-9 w-full items-center gap-2 border-b border-slate-100 bg-[#f7f9fc] px-4 text-left text-sm font-medium text-[#091333] sm:px-4 lg:px-4">
                   {sectionLabel}
                 </div>
               ) : null}
@@ -359,23 +353,23 @@ function ThreadListPane({
                 type="button"
               >
                 {selected ? <span className="absolute inset-y-3 left-0 w-1 rounded-r-full bg-[#7f9bcb]" /> : null}
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0b2451] text-[0.88rem] font-medium text-white shadow-[0_8px_18px_rgba(11,36,81,0.18)]">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0b2451] text-base font-medium text-white shadow-[0_8px_18px_rgba(11,36,81,0.18)]">
                   {initials(request.clientName)}
                 </span>
                 <div className="min-w-0 pt-0.5">
                   <div className="flex items-start justify-between gap-3">
-                    <p className="line-clamp-1 text-[0.92rem] font-medium leading-5 text-[#091333]">{request.clientName}</p>
-                    <p className="shrink-0 text-[0.78rem] font-medium text-[#091333]">{formatShortThreadTime(lastActivity(request))}</p>
+                    <p className="line-clamp-1 text-base font-medium leading-5 text-[#091333]">{request.clientName}</p>
+                    <p className="shrink-0 text-sm font-medium text-[#091333]">{formatShortThreadTime(lastActivity(request))}</p>
                   </div>
-                  <p className="mt-0.5 line-clamp-1 text-[0.8rem] font-medium leading-5 text-[#091333]">{request.title}</p>
-                  <p className="mt-1 line-clamp-1 text-[0.78rem] font-medium leading-5 text-[#5f7090]">
+                  <p className="mt-0.5 line-clamp-1 text-sm font-medium leading-5 text-[#091333]">{request.title}</p>
+                  <p className="mt-1 line-clamp-1 text-sm font-medium leading-5 text-[#5f7090]">
                     {lastComment?.message ?? request.description}
                   </p>
                 </div>
                 <div className="col-start-2 flex items-center justify-between gap-2 pb-1">
-                  <InboxStatusBadge audience="firm" className="text-[0.65rem]" status={request.status} />
+                  <InboxStatusBadge audience="firm" className="text-sm" status={request.status} />
                   {unread > 0 ? (
-                    <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-[#087d69] px-1.5 text-[0.58rem] font-semibold leading-none text-white">
+                    <span className="flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-[#087d69] px-1.5 text-sm font-semibold leading-none text-white">
                       {unread}
                     </span>
                   ) : null}
@@ -436,7 +430,6 @@ function ConversationPane({
   const [dueDateDraft, setDueDateDraft] = useState(request.dueDate.slice(0, 10));
   const [priorityDraft, setPriorityDraft] = useState<WorkflowRequest["priority"]>(request.priority);
   const [addAuditNote, setAddAuditNote] = useState(false);
-  const [isStarred, setIsStarred] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
   const [attachedFile, setAttachedFile] = useState<ParsedAttachment | null>(null);
@@ -500,7 +493,7 @@ function ConversationPane({
   }
 
   return (
-    <section className="flex h-full min-h-[520px] flex-col overflow-y-auto bg-white min-[1080px]:min-h-0">
+    <section className="accountant-inbox-conversation flex h-full min-h-[520px] flex-col overflow-y-auto bg-white min-[1080px]:min-h-0">
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-white">
         <div className="inbox-conversation-header shrink-0 flex flex-wrap items-start justify-between gap-4 border-b border-slate-200 px-4 py-4 sm:px-5 lg:px-6">
           <div className="min-w-0">
@@ -511,52 +504,34 @@ function ConversationPane({
               </p>
 
             </div>
-            <h2 className="mt-3 max-w-[760px] text-[1.12rem] font-medium leading-7 text-[#091333] sm:text-[1.2rem]">
+            <h2 className="mt-3 max-w-[760px] text-lg font-medium leading-7 text-[#091333] sm:text-xl">
               {request.title}
             </h2>
             <div className="inbox-conversation-assignee mt-2 space-y-1 text-sm text-[#6c7b94]">
               <p>Client: <span className="font-medium text-[#4b5f7c]">{request.clientName}</span></p>
-              <p>Assigned to: <span className="text-[#4b5f7c]">{request.assignedTo}</span></p>
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-1 py-1">
-            <button
-              aria-label="Open conversation details"
-              className="h-9 rounded-full px-3 text-xs font-semibold text-[#315b9c] transition hover:bg-slate-50"
-              onClick={() => setDetailsOpen(true)}
-              type="button"
-            >
-              Details
-            </button>
-            <button
-              aria-label={isStarred ? "Unstar thread" : "Star thread"}
-              aria-pressed={isStarred}
-              className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition ${isStarred ? "bg-amber-50 text-amber-500" : "text-[#061b41] hover:bg-slate-50"}`}
-              onClick={() => setIsStarred((current) => !current)}
-              type="button"
-            >
-              <Star aria-hidden="true" className={`h-4 w-4 ${isStarred ? "fill-current" : ""}`} />
-            </button>
-            <button
-              aria-label="Reply to thread"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[#061b41] transition hover:bg-slate-50"
-              onClick={() => replyInputRef.current?.focus()}
-              type="button"
-            >
-              <Reply aria-hidden="true" className="h-4 w-4" />
-            </button>
-            <button
-              aria-label="Forward thread"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full text-[#061b41] transition hover:bg-slate-50"
-              onClick={onForward}
-              type="button"
-            >
-              <Forward aria-hidden="true" className="h-4 w-4" />
-            </button>
+          <div className="inbox-conversation-actions" role="group" aria-label="Conversation controls">
+            <Button variant="secondary" size="sm" onClick={onResolve} aria-label="Resolve" disabled={request.status === "resolved" || request.status === "closed"}><CheckCircle2 size={16} aria-hidden="true" />Resolve</Button>
+            <div className="inbox-conversation-more">
+              <button type="button" className="inbox-more-trigger" aria-label="Conversation actions" aria-haspopup="menu" aria-expanded={isMoreMenuOpen} onClick={() => setIsMoreMenuOpen(value => !value)}><MoreHorizontal size={20} aria-hidden="true" /></button>
+              {isMoreMenuOpen ? <div role="menu" className="inbox-actions-menu">{[
+                { label: "Conversation details", onClick: () => setDetailsOpen(true) },
+                { label: "Edit request details", onClick: () => setIsSummaryExpanded(true) },
+                { label: "Forward thread", onClick: onForward },
+                { label: "Add internal note", onClick: handleAddInternalNote },
+                { label: "Set open", onClick: onSetOpen },
+                { label: "Set awaiting client", onClick: onSetAwaitingClient },
+                { label: "Close", onClick: onSetClosed },
+                { label: "Escalate", onClick: onEscalate },
+                { label: "Reassign note", onClick: onReassign },
+              ].map(item => <button type="button" role="menuitem" key={item.label} onClick={() => { item.onClick(); setIsMoreMenuOpen(false); }}>{item.label}</button>)}</div> : null}
+            </div>
           </div>
         </div>
 
         <div className="inbox-scroll-region min-h-[360px] min-[1080px]:min-h-0 flex-1 space-y-3 bg-[#fbfcfe] px-4 py-5 pb-6 pr-1 sm:px-5 lg:px-6">
+          {request.description.trim() ? <article className="inbox-original-request"><p className="inbox-original-request-label">Original request</p><p>{request.description}</p></article> : null}
           {request.comments.map((comment) => {
             const internal = isInternalNote(comment.message);
             const strippedMessage = stripInternalPrefix(comment.message);
@@ -566,7 +541,7 @@ function ConversationPane({
             return (
               <div className={`flex items-end gap-3 ${isAccountant ? "justify-end" : ""}`} key={comment.id}>
                 <span
-                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[0.82rem] font-medium ${
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-medium ${
                     isAccountant ? "order-2 bg-[#d9efe6] text-[#047857]" : "bg-[#061b41] text-white"
                   }`}
                 >
@@ -574,7 +549,7 @@ function ConversationPane({
                 </span>
                 <div className={`w-full max-w-[760px] ${isAccountant ? "items-end" : "items-start"} flex flex-col`}>
                   <div
-                    className={`mb-1.5 flex w-full max-w-[760px] items-center gap-2 px-1 text-[0.72rem] font-medium ${
+                    className={`mb-1.5 flex w-full max-w-[760px] items-center gap-2 px-1 text-sm font-medium ${
                       isAccountant ? "justify-end text-[#5f7090]" : "justify-start text-[#6f7d96]"
                     }`}
                   >
@@ -595,12 +570,12 @@ function ConversationPane({
                   >
                     <div className="mb-2 flex flex-wrap items-center gap-2">
                       {internal ? (
-                        <span className="rounded-full bg-amber-200 px-2 py-0.5 text-[0.64rem] font-medium uppercase tracking-[0.06em] text-amber-800">
+                        <span className="rounded-full bg-amber-200 px-2 py-0.5 text-sm font-medium uppercase tracking-[0.06em] text-amber-800">
                           Internal note
                         </span>
                       ) : null}
                     </div>
-                    {cleaned ? <p className="text-[0.9rem] leading-6 text-[#1e2f5b]">{cleaned}</p> : null}
+                    {cleaned ? <p className="text-base leading-6 text-[#1e2f5b]">{cleaned}</p> : null}
                     {attachment ? (
                       <a
                         className="client-dashboard-link mt-3 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium"
@@ -618,11 +593,11 @@ function ConversationPane({
           })}
         </div>
 
-        <div className="inbox-composer shrink-0 space-y-3 bg-white px-4 py-4 sm:px-5 lg:px-6">
+        <div role="group" aria-label="Reply composer" className="inbox-composer shrink-0 space-y-3 bg-white px-4 py-4 sm:px-5 lg:px-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="inbox-composer-intro">
-              <p className="text-[0.88rem] font-medium text-[#091333]">Reply to this conversation</p>
-              <p className="text-[0.78rem] text-[#6f7d96]">Send a client reply, attach a file, or switch to an internal note.</p>
+              <p className="text-base font-medium text-[#091333]">Reply to this conversation</p>
+              <p className="text-sm text-[#6f7d96]">Send a client reply, attach a file, or switch to an internal note.</p>
             </div>
             <label className="inline-flex items-center gap-2 text-sm text-[#53617f]">
             <input checked={isInternal} onChange={(event) => onChangeInternal(event.target.checked)} type="checkbox" />
@@ -671,86 +646,12 @@ function ConversationPane({
                 Send
               </span>
             </Button>
-            <Button
-              aria-label="Resolve"
-              className="client-inbox-secondary-button h-[52px] min-w-[128px] shrink-0 rounded-xl px-5"
-              onClick={onResolve}
-              title="Resolve"
-              variant="secondary"
-            >
-              <span className="inline-flex items-center gap-2">
-                <CheckCircle2 aria-hidden="true" className="h-4 w-4" />
-                Resolve
-              </span>
-            </Button>
+
           </div>
         </div>
       </div>
 
-      <div className="relative mt-4">
-        <button
-          aria-expanded={isMoreMenuOpen}
-          aria-haspopup="menu"
-          className="inline-flex h-10 items-center gap-3 rounded-xl bg-[#0b2451] px-5 text-sm font-medium text-white shadow-[0_10px_22px_rgba(6,27,65,0.18)] transition hover:bg-[#123063]"
-          onClick={() => setIsMoreMenuOpen((current) => !current)}
-          type="button"
-        >
-          Thread actions
-          <ChevronDown aria-hidden="true" className={`h-4 w-4 transition ${isMoreMenuOpen ? "rotate-180" : ""}`} />
-        </button>
-        {isMoreMenuOpen ? (
-          <div className="absolute left-0 top-12 z-20 w-56 rounded-lg border border-slate-200 bg-white py-2 shadow-[0_18px_36px_rgba(4,24,52,0.14)]" role="menu">
-            {[
-              { icon: CheckCircle2, label: "Set open", onClick: onSetOpen },
-              { icon: RefreshCw, label: "Set awaiting client", onClick: onSetAwaitingClient },
-              { icon: CheckCircle2, label: "Close", onClick: onSetClosed },
-              { icon: ShieldAlert, label: "Escalate", onClick: onEscalate },
-              { icon: UserRound, label: "Reassign note", onClick: onReassign },
-              { icon: Reply, label: "Add internal note", onClick: handleAddInternalNote },
-            ].map((item) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-xs font-medium text-[#091333] transition hover:bg-slate-50"
-                  key={item.label}
-                  onClick={() => {
-                    item.onClick();
-                    setIsMoreMenuOpen(false);
-                  }}
-                  role="menuitem"
-                  type="button"
-                >
-                  <Icon aria-hidden="true" className="h-4 w-4 text-[#315b9c]" />
-                  {item.label}
-                </button>
-              );
-            })}
-          </div>
-        ) : null}
-      </div>
-
-      <section className="mt-4 overflow-hidden rounded-2xl border border-slate-200/80 bg-white/88 shadow-[0_10px_24px_rgba(15,23,42,0.04)]">
-        <button
-          aria-expanded={isSummaryExpanded}
-          className="flex w-full items-center justify-between gap-3 border-b border-slate-200/80 px-5 py-3.5 text-left"
-          onClick={() => setIsSummaryExpanded((current) => !current)}
-          type="button"
-        >
-          <div className="flex items-center gap-3">
-            <UserRound aria-hidden="true" className="h-4 w-4 text-[#315b9c]" />
-            <div>
-              <p className="text-[0.88rem] font-medium text-[#091333]">Assignment &amp; SLA</p>
-              <p className="text-[0.76rem] text-[#6f7d96]">Operational details for this thread</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="rounded-full bg-emerald-50 px-3 py-1 text-[0.68rem] font-medium text-emerald-700">
-              {isSummaryExpanded ? "Expanded" : "Collapsed"}
-            </span>
-            {isSummaryExpanded ? <ChevronUp aria-hidden="true" className="h-4 w-4 text-[#567194]" /> : <ChevronDown aria-hidden="true" className="h-4 w-4 text-[#567194]" />}
-          </div>
-        </button>
-        {isSummaryExpanded ? (
+      <Modal title="Edit request details" isOpen={isSummaryExpanded} onClose={() => setIsSummaryExpanded(false)} scrollBody panelClassName="accountant-request-dialog">
           <>
             <div className="grid divide-y divide-slate-200/80 lg:grid-cols-3 lg:divide-x lg:divide-y-0">
               <div className="space-y-3.5 p-4">
@@ -760,7 +661,7 @@ function ConversationPane({
                   <label className="min-w-0 flex-1">
                     <span className="sr-only">Client contact</span>
                     <input
-                      className="w-full border-0 bg-transparent p-0 text-[0.98rem] font-normal text-[#091333] outline-none"
+                      className="w-full border-0 bg-transparent p-0 text-base font-normal text-[#091333] outline-none"
                       onChange={(event) => setAssignedToDraft(event.target.value)}
                       value={assignedToDraft}
                     />
@@ -776,7 +677,7 @@ function ConversationPane({
                 <label className="block">
                   <span className="sr-only">Due date</span>
                   <input
-                    className="w-full border-0 bg-transparent p-0 text-[0.98rem] font-normal text-[#091333] outline-none"
+                    className="w-full border-0 bg-transparent p-0 text-base font-normal text-[#091333] outline-none"
                     onChange={(event) => setDueDateDraft(event.target.value)}
                     type="date"
                     value={dueDateDraft}
@@ -810,7 +711,7 @@ function ConversationPane({
                 Internal audit note
               </label>
               <div className="flex flex-wrap gap-2">
-                <span className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[0.88rem] text-[#53617f]">
+                <span className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-base text-[#53617f]">
                   Due: <span className="text-[#091333]">{formatChipDate(request.dueDate)}</span>
                 </span>
                 <Button
@@ -829,8 +730,8 @@ function ConversationPane({
               </div>
             </div>
           </>
-        ) : null}
-      </section>
+      </Modal>
+
       <InboxContextDrawer audience="firm" isOpen={detailsOpen} onClose={() => setDetailsOpen(false)} request={request} />
     </section>
   );
@@ -872,6 +773,8 @@ export function AccountantFollowUpsPage() {
   const [requestDueDate, setRequestDueDate] = useState(defaultFollowUpDueDate());
   const [requestPriority, setRequestPriority] = useState<WorkflowRequest["priority"]>("high");
   const [requestFormError, setRequestFormError] = useState("");
+  const [requestSending, setRequestSending] = useState(false);
+  const requestSendingRef = useRef(false);
 
   const selectedClient = useMemo(
     () => scopedClients.find((client) => client.id === selectedClientId) ?? scopedClients[0] ?? null,
@@ -910,8 +813,8 @@ export function AccountantFollowUpsPage() {
     try {
       const [clients, requests, readStates] = await Promise.all([
         portalServiceApi.getAdminClients(),
-        apiGetJson<BackendRequestRecord[]>("/api/requests"),
-        apiGetJson<BackendRequestReadState[]>("/api/requests/read-state").catch(() => []),
+        apiGetJson("/api/requests"),
+        apiGetJson("/api/requests/read-state").catch(() => []),
       ]);
       hydrateRead(readStates.map((state) => state.requestId));
 
@@ -1053,13 +956,23 @@ export function AccountantFollowUpsPage() {
   const activeRequestId = activeRequest?.id;
   const activeRequestVersion = activeRequestId ? requestVersions[activeRequestId] : undefined;
   useEffect(() => {
+    if (!backendMode || !activeRequestId || threadLoading) return;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "hidden") return;
+      threadCache.current.delete(activeRequestId);
+      setThreadRevision(value => value + 1);
+    }, 30_000);
+    return () => window.clearInterval(timer);
+  }, [backendMode, activeRequestId, threadLoading]);
+
+  useEffect(() => {
     setThreadLoading(false);
     if (!backendMode || !user || !activeRequestId) return;
     const cached = threadCache.current.get(activeRequestId);
     if (cached?.request.updatedAtUtc === activeRequestVersion) return;
     let active = true;
     setThreadLoading(true);
-    void apiGetJson<BackendRequestWorkspace>(`/api/requests/${encodeURIComponent(activeRequestId)}/workspace`)
+    void apiGetJson(`/api/requests/${encodeURIComponent(activeRequestId)}/workspace`)
       .then(workspace => {
         if (!active) return;
         threadCache.current.set(activeRequestId, workspace);
@@ -1246,7 +1159,7 @@ export function AccountantFollowUpsPage() {
   }
 
   function handleCreateRequest() {
-    if (!user || !selectedClient) return;
+    if (!user || !selectedClient || requestSendingRef.current) return;
 
     const title = requestTitle.trim();
     const description = requestDetails.trim();
@@ -1257,17 +1170,10 @@ export function AccountantFollowUpsPage() {
     }
 
     if (backendMode) {
+      requestSendingRef.current = true; setRequestSending(true);
       void (async () => {
         try {
-          const created = await apiPostJson<BackendRequestRecord, {
-            clientId: string;
-            requestType: string;
-            title: string;
-            description: string;
-            priority: string;
-            dueDateUtc: string;
-            relatedDocumentId: string | null;
-          }>("/api/requests", {
+          const created = await apiPostJson("/api/requests", {
             clientId: selectedClient.id,
             requestType: toBackendRequestType(requestTypeForKind(requestKind)),
             title: requestTitleForKind(requestKind, title),
@@ -1277,6 +1183,7 @@ export function AccountantFollowUpsPage() {
             relatedDocumentId: activeRequest?.relatedDocumentId ?? null,
           });
 
+          if (Array.isArray(created)) throw new Error("The server returned validation errors instead of a request.");
           setInboxNotice("Client request created.");
           setRequestFormError("");
           setIsRequestModalOpen(false);
@@ -1288,8 +1195,8 @@ export function AccountantFollowUpsPage() {
           await loadLiveInbox();
           setSelectedRequestId(created.id);
         } catch (error) {
-          setRequestFormError(error instanceof ApiError ? error.message : "The request could not be created.");
-        }
+          setRequestFormError(error instanceof ApiError ? error.message : "The request could not be created. Your message has been kept; try again.");
+        } finally { requestSendingRef.current = false; setRequestSending(false); }
       })();
 
       return;
@@ -1354,31 +1261,10 @@ export function AccountantFollowUpsPage() {
 
   return (
     <div className="accountant-inbox-page mx-auto flex w-full max-w-none flex-col gap-5 pb-8 min-[1080px]:h-full min-[1080px]:min-h-0 min-[1080px]:overflow-hidden min-[1080px]:pb-0">
-      <header className="portal-page-header flex flex-wrap items-center justify-between gap-5 border-b border-slate-200 pb-6">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-brand-700">Firm workspace</p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight text-[#091333]">Inbox</h1>
-          <p className="mt-1 max-w-2xl text-[0.95rem] leading-6 text-[#53617f]">
-            Requests and conversations across all clients assigned to you.
-          </p>
-          <span className="sr-only">Request documents from {selectedClient.clientName}</span>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <Button
-            aria-label="Request document"
-            className="client-inbox-primary-button h-11 rounded-xl border-0 px-4 text-sm font-medium ring-0"
-            onClick={() => {
-              setRequestFormError("");
-              setIsRequestModalOpen(true);
-            }}
-          >
-            Request documents
-          </Button>
-        </div>
-      </header>
+      <h1 className="sr-only">Inbox</h1>
+      {backendMode && activeRequestId ? <span className="sr-only" role={threadLoading ? "status" : undefined}>{threadLoading ? "Loading selected conversation..." : "Updates automatically"}</span> : null}
 
-      {backendMode && activeRequestId ? <Button variant="secondary" disabled={threadLoading} onClick={() => { threadCache.current.delete(activeRequestId); setThreadRevision(value => value + 1); }}>Refresh conversation</Button> : null}
-      {threadLoading ? <p role="status" className="text-sm text-slate-600">Loading selected conversation...</p> : null}
+
       {inboxNotice ? (
         <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-[#53617f] shadow-[0_8px_18px_rgba(4,24,52,0.05)]">
           {inboxNotice}
@@ -1386,8 +1272,9 @@ export function AccountantFollowUpsPage() {
       ) : null}
 
       {scopedRequests.length > 0 ? (
-        <div className="grid grid-cols-1 items-start overflow-hidden rounded-2xl border border-slate-200 bg-white min-[1080px]:min-h-0 min-[1080px]:flex-1 min-[1080px]:items-stretch min-[1080px]:grid-cols-[minmax(320px,380px)_minmax(0,1fr)]">
+        <div className="accountant-inbox-workspace grid grid-cols-1 items-start overflow-hidden rounded-2xl border border-slate-200 bg-white min-[1080px]:min-h-0 min-[1080px]:flex-1 min-[1080px]:items-stretch min-[1080px]:grid-cols-[minmax(280px,320px)_minmax(0,1fr)]">
           <ThreadListPane
+            onRequestDocuments={() => { setRequestFormError(""); setIsRequestModalOpen(true); }}
             filter={threadFilter}
             onChangeFilter={setThreadFilter}
             sortMode={threadSort}
@@ -1506,6 +1393,7 @@ export function AccountantFollowUpsPage() {
               ? "Try clearing search."
               : "Start a thread by creating a new request for this client."}
           </p>
+          {scopedRequests.length === 0 ? <Button className="mt-4" aria-label="Request document" onClick={() => { setRequestFormError(""); setIsRequestModalOpen(true); }}><Plus size={16} aria-hidden="true" />Request documents</Button> : null}
           {scopedRequests.length > 0 ? (
             <div className="mt-4">
               <Button
@@ -1524,153 +1412,29 @@ export function AccountantFollowUpsPage() {
       )}
 
       <Modal
-        description="Create a new document request and send it into the client conversation inbox."
+        description="Tell the client what you need and when it is due."
         isOpen={isRequestModalOpen}
-        onClose={() => setIsRequestModalOpen(false)}
+        onClose={() => { if (!requestSendingRef.current) setIsRequestModalOpen(false); }}
         title="Request document"
+        scrollBody
+        panelClassName="accountant-request-dialog"
+        footer={<div className="accountant-request-footer"><span>Sent to the client's inbox.</span><div><Button variant="secondary" disabled={requestSending} onClick={() => setIsRequestModalOpen(false)}>Cancel</Button><Button type="submit" form="accountant-document-request" disabled={requestSending || !requestTitle.trim() || !requestDetails.trim() || !requestDueDate}>{requestSending ? "Sending..." : "Send request"}</Button></div></div>}
       >
-        <div className="space-y-5">
-          <div className="overflow-hidden rounded-[26px] border border-slate-200 bg-white shadow-[0_16px_34px_rgba(4,24,52,0.05)]">
-            <div className="h-1.5 w-full bg-[linear-gradient(90deg,#22356f_0%,#5e7ed6_45%,#d8e4ff_100%)]" />
-            <div className="px-5 py-5">
-              <div className="flex flex-wrap items-start justify-between gap-5">
-                <div className="min-w-0 flex-1">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#7b879e]">Document request</p>
-                  <p className="mt-2 text-[1.02rem] font-semibold text-[#091333]">Ask the client for a specific document.</p>
-                  <p className="mt-2 max-w-2xl text-sm leading-6 text-[#53617f]">
-                  This creates a new inbox thread for {selectedClient.clientName} and keeps the follow-up conversation in one place.
-                  </p>
-                </div>
-                <div className="min-w-[260px] rounded-2xl border border-slate-200/90 bg-[#f8fafc] px-4 py-4">
-                  <div className="space-y-3">
-                    <div className="flex items-start justify-between gap-3 border-b border-slate-200/80 pb-3">
-                      <div className="min-w-0">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#7b879e]">Client</p>
-                        <p className="mt-1 truncate text-sm font-medium text-[#091333]">{selectedClient.clientName}</p>
-                      </div>
-                      <div className="shrink-0 rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-[#415ea8] shadow-[inset_0_0_0_1px_rgba(198,210,232,0.9)]">
-                        Live thread
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#7b879e]">Destination</p>
-                        <p className="mt-1 text-sm font-medium text-[#091333]">Inbox conversation</p>
-                      </div>
-                      <div className="rounded-full bg-[#eef8f3] px-2.5 py-1 text-[11px] font-semibold text-[#2f7a57]">
-                        Client visible
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+        <form id="accountant-document-request" className="accountant-request-form" onSubmit={event => { event.preventDefault(); handleCreateRequest(); }}>
+          <fieldset disabled={requestSending}>
+            <div className="accountant-request-row">
+              {scopedClients.length === 1 ? <TextField id="accountant-request-client" label="Client" value={selectedClient.clientName} readOnly /> : <SelectField id="accountant-request-client" label="Client" onChange={event => setSelectedClientId(event.target.value)} options={scopedClients.map(client => ({ label: client.clientName, value: client.id }))} value={selectedClient.id} />}
+              <SelectField id="accountant-request-kind" label="Message type" onChange={event => setRequestKind(event.target.value as InboxRequestKind)} options={inboxRequestKindOptions} value={requestKind} />
             </div>
-          </div>
-
-          <section className="rounded-[26px] border border-slate-200/90 bg-white px-5 py-5 shadow-[0_16px_36px_rgba(4,24,52,0.06)]">
-            <div className="mb-5 flex items-start gap-3">
-              <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#f3f7ff] text-[#415ea8]">
-                <ShieldAlert className="h-4.5 w-4.5" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-[#091333]">Request details</p>
-                <p className="mt-1 text-xs leading-5 text-[#7b879e]">
-                  Be specific so the client knows exactly what to upload and how to send it back.
-                </p>
-              </div>
+            <TextField id="accountant-request-title" label="Subject" required maxLength={200} onChange={event => setRequestTitle(event.target.value)} placeholder="e.g. November bank statement" value={requestTitle} />
+            <TextAreaField id="accountant-request-details" label="Message to client" required rows={4} onChange={event => setRequestDetails(event.target.value)} placeholder="Describe the document you need and what the client should include." value={requestDetails} />
+            <div className="accountant-request-row">
+              <TextField id="accountant-request-due-date" label="Due date" required onChange={event => setRequestDueDate(event.target.value)} type="date" value={requestDueDate} />
+              <SelectField id="accountant-request-priority" label="Priority" onChange={event => setRequestPriority(event.target.value as WorkflowRequest["priority"])} options={[{ label: "Low", value: "low" }, { label: "Medium", value: "medium" }, { label: "High", value: "high" }]} value={requestPriority} />
             </div>
-            <div className="space-y-4">
-              <SelectField
-                id="accountant-request-client"
-                label="Client"
-                onChange={(event) => setSelectedClientId(event.target.value)}
-                options={scopedClients.map((client) => ({ label: client.clientName, value: client.id }))}
-                value={selectedClient.id}
-              />
-              <SelectField
-                id="accountant-request-kind"
-                label="Message type"
-                onChange={(event) => setRequestKind(event.target.value as InboxRequestKind)}
-                options={inboxRequestKindOptions}
-                value={requestKind}
-              />
-              <TextField
-                id="accountant-request-title"
-                label="Subject"
-                onChange={(event) => setRequestTitle(event.target.value)}
-                placeholder="e.g. Signed annual financial statements"
-                value={requestTitle}
-              />
-              <TextAreaField
-                id="accountant-request-details"
-                label="Message to client"
-                onChange={(event) => setRequestDetails(event.target.value)}
-                placeholder="Explain what is missing, where the client should upload it, and any format requirements."
-                value={requestDetails}
-              />
-            </div>
-          </section>
-
-          <section className="rounded-[26px] border border-slate-200/90 bg-white px-5 py-5 shadow-[0_16px_36px_rgba(4,24,52,0.06)]">
-            <div className="mb-5 flex items-start gap-3">
-              <div className="mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#fff5df] text-[#a76b00]">
-                <CalendarDays className="h-4.5 w-4.5" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-[#091333]">Timing and priority</p>
-                <p className="mt-1 text-xs leading-5 text-[#7b879e]">
-                  Set when the client should respond and how urgent the request is.
-                </p>
-              </div>
-            </div>
-            <div className="grid gap-4 md:grid-cols-2">
-              <TextField
-                id="accountant-request-due-date"
-                label="Due date"
-                onChange={(event) => setRequestDueDate(event.target.value)}
-                type="date"
-                value={requestDueDate}
-              />
-              <SelectField
-                id="accountant-request-priority"
-                label="Priority"
-                onChange={(event) => setRequestPriority(event.target.value as WorkflowRequest["priority"])}
-                options={[
-                  { label: "Low", value: "low" },
-                  { label: "Medium", value: "medium" },
-                  { label: "High", value: "high" },
-                ]}
-                value={requestPriority}
-              />
-            </div>
-          </section>
-
-          {requestFormError ? (
-            <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
-              {requestFormError}
-            </div>
-          ) : null}
-
-          <div className="border-t border-slate-100 pt-3">
-            <p className="text-xs text-[#7b879e]">The client will receive this as a new conversation thread in their inbox.</p>
-            <div className="mt-3 flex flex-wrap justify-end gap-3">
-              <Button
-                className="client-inbox-secondary-button h-11 rounded-xl px-4 text-sm font-medium"
-                onClick={() => setIsRequestModalOpen(false)}
-                variant="secondary"
-              >
-                Cancel
-              </Button>
-              <Button
-                className="client-inbox-primary-button h-11 rounded-xl border-0 px-5 text-sm font-medium ring-0 disabled:opacity-100"
-                disabled={!requestTitle.trim() || !requestDetails.trim() || !requestDueDate}
-                onClick={handleCreateRequest}
-              >
-                Send request
-              </Button>
-            </div>
-          </div>
-        </div>
+          </fieldset>
+          {requestFormError ? <p role="alert" className="accountant-request-error">{requestFormError}</p> : null}
+        </form>
       </Modal>
     </div>
   );

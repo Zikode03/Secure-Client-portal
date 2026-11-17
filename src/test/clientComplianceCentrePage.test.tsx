@@ -6,7 +6,7 @@ import { AuthProvider } from "../app/auth";
 import { PortalProvider } from "../app/portal";
 import { ClientComplianceCentrePage } from "../pages/client/ClientComplianceCentrePage";
 import type { SessionUser } from "../types/portal";
-import { apiGetJson, apiPostForm } from "../services/apiClient";
+import { apiGetJson, apiPostForm } from "./fixtures/apiTransportFixture";
 
 vi.mock("../services/apiClient", async original => ({
   ...await original<typeof import("../services/apiClient")>(),

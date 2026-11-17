@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, MoreVertical } from "lucide-react";
 
 interface RecordAction {
   label: string;
@@ -9,7 +9,7 @@ interface RecordAction {
 }
 
 /** A table-safe action menu: rendered outside scrolling register containers. */
-export function RecordActions({ label, actions, disabled = false }: { label: string; actions: RecordAction[]; disabled?: boolean }) {
+export function RecordActions({ label, actions, disabled = false, iconOnly = false }: { label: string; actions: RecordAction[]; disabled?: boolean; iconOnly?: boolean }) {
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState({ top: 0, left: 0 });
   const trigger = useRef<HTMLButtonElement>(null);
@@ -49,7 +49,7 @@ export function RecordActions({ label, actions, disabled = false }: { label: str
 
   return <>
     <button ref={trigger} type="button" aria-label={label} aria-haspopup="menu" aria-expanded={open} disabled={disabled} onClick={() => setOpen((value) => !value)} className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:border-brand-400 hover:text-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 disabled:opacity-50">
-      Actions <ChevronDown aria-hidden="true" className="h-3.5 w-3.5" />
+      {iconOnly ? <MoreVertical aria-hidden="true" className="h-4 w-4" /> : <>Actions <ChevronDown aria-hidden="true" className="h-3.5 w-3.5" /></>}
     </button>
     {open && createPortal(
       <div ref={menu} role="menu" aria-label={label} className="fixed z-[100] w-52 overflow-y-auto rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg" style={{ ...position, maxHeight: "calc(100vh - 16px)" }} onBlur={(event) => {

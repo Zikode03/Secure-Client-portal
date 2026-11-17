@@ -3,13 +3,13 @@ realTransportVi.unmock("../services/apiClient");
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
-let client: typeof import('../services/apiClient');
+let client: typeof import('./fixtures/apiTransportFixture');
 let fetchMock: ReturnType<typeof vi.fn>;
 beforeEach(async () => {
   vi.resetModules();
   fetchMock = vi.fn();
   vi.stubGlobal('fetch', fetchMock);
-  client = await import('../services/apiClient');
+  client = await import('./fixtures/apiTransportFixture');
 });
 afterEach(() => vi.unstubAllGlobals());
 

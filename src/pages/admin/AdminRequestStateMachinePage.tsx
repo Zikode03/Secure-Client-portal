@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { Modal } from "../../components/ui/Modal";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../../components/ui/Button";
 import { PageHeader } from "../../components/ui/PageHeader";
@@ -91,6 +92,7 @@ function statePill(state: RequestState) {
 
 export function AdminRequestStateMachinePage() {
   const navigate = useNavigate();
+  const [selectedRule, setSelectedRule] = useState<TransitionRule | null>(null);
   const states = useMemo<RequestState[]>(
     () => ["awaiting_client", "client_replied", "awaiting_accountant", "open", "resolved", "closed"],
     [],
@@ -142,7 +144,7 @@ export function AdminRequestStateMachinePage() {
                 <th className="px-5 py-3">Actor</th>
                 <th className="px-5 py-3">SLA</th>
                 <th className="px-5 py-3">Escalate</th>
-                <th className="px-5 py-3">Reminder</th>
+                <th className="px-5 py-3">Reminder</th><th className="px-5 py-3">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
@@ -155,12 +157,16 @@ export function AdminRequestStateMachinePage() {
                   <td className="px-5 py-4 text-slate-600">{rule.slaHours ? `${rule.slaHours}h` : "N/A"}</td>
                   <td className="px-5 py-4 text-slate-600">{rule.escalationAfterHours ? `${rule.escalationAfterHours}h` : "N/A"}</td>
                   <td className="px-5 py-4 text-slate-600">{rule.reminderCadenceHours ? `Every ${rule.reminderCadenceHours}h` : "N/A"}</td>
+                  <td className="px-5 py-4"><Button variant="ghost" size="sm" aria-label={`View ${formatRequestStatus(rule.from)} to ${formatRequestStatus(rule.to)} rule`} onClick={() => setSelectedRule(rule)}>View rule</Button></td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </PageSection>
+      <Modal title="Transition details" isOpen={Boolean(selectedRule)} onClose={() => setSelectedRule(null)} scrollBody>
+        {selectedRule ? <dl className="grid gap-4"><div><dt className="text-sm text-slate-500">Transition</dt><dd>{formatRequestStatus(selectedRule.from)} to {formatRequestStatus(selectedRule.to)}</dd></div><div><dt className="text-sm text-slate-500">Trigger</dt><dd>{selectedRule.trigger}</dd></div><div><dt className="text-sm text-slate-500">Responsible actor</dt><dd>{selectedRule.actor}</dd></div><div><dt className="text-sm text-slate-500">Response window</dt><dd>{selectedRule.slaHours ? `${selectedRule.slaHours} hours` : "Not applicable"}</dd></div><div><dt className="text-sm text-slate-500">Escalation</dt><dd>{selectedRule.escalationAfterHours ? `${selectedRule.escalationAfterHours} hours` : "Not applicable"}</dd></div><div><dt className="text-sm text-slate-500">Reminder cadence</dt><dd>{selectedRule.reminderCadenceHours ? `${selectedRule.reminderCadenceHours} hours` : "Not applicable"}</dd></div></dl> : null}
+      </Modal>
     </div>
   );
 }

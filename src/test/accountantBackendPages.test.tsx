@@ -2,7 +2,7 @@ import { act, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, afterEach, expect, it, vi } from "vitest";
 import { PortalProvider } from "../app/portal";
-import { apiGetJson } from "../services/apiClient";
+import { apiGetJson } from "./fixtures/apiTransportFixture";
 import type { SessionUser } from "../types/portal";
 const user = vi.hoisted(() => ({ id: "accountant-live", role: "accountant", name: "Test", fullName: "Test Accountant", email: "accountant@test.local", title: "Accountant", company: "Test Firm", initials: "TA", clientIds: [], assignedClientIds: ["live-client"] }));
 vi.mock("../app/auth", async original => ({ ...await original<typeof import("../app/auth")>(), useAuth: () => ({ user: user as SessionUser, ready: true, authNotice: null, logoutPending: false }), useOptionalAuth: () => ({ user: user as SessionUser, ready: true }) }));

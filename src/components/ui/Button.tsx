@@ -23,9 +23,9 @@ const variantClasses: Record<ButtonVariant, string> = {
 };
 
 const sizeClasses: Record<ButtonSize, string> = {
-  sm: "h-9 px-3 text-[0.84rem]",
-  md: "h-10 px-4 text-[0.9rem]",
-  lg: "h-12 px-5 text-[0.95rem]",
+  sm: "h-9 px-3 text-sm",
+  md: "h-10 px-4 text-base",
+  lg: "h-12 px-5 text-base",
 };
 
 // Component flow: gather data first, then render a focused UI state.

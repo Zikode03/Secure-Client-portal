@@ -97,7 +97,7 @@ export function FirmRequestDetailPage() {
 
     try {
       setLiveWorkspace(
-        await apiGetJson<BackendRequestWorkspace>(
+        await apiGetJson(
           `/api/requests/${encodeURIComponent(targetRequestId)}/workspace`,
         ),
       );
@@ -321,7 +321,7 @@ export function FirmRequestDetailPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title={request.title} eyebrow="Inbox item detail" description={`${request.clientName} · ${request.monthLabel} · ${request.id}`} actions={<Link className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700" to="/firm/inbox">Back to inbox</Link>} />
+      <PageHeader preserveTitle title={request.title} eyebrow="Inbox item detail" description={`${request.clientName} · ${request.monthLabel} · ${request.id}`} actions={<Link className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700" to="/firm/inbox">Back to inbox</Link>} />
 
       <SurfaceCard className="rounded-2xl border border-slate-200 bg-white p-5 shadow-none">
         <h2 className="text-sm font-semibold text-slate-900">Summary</h2>
@@ -368,7 +368,7 @@ export function FirmRequestDetailPage() {
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-medium text-slate-900">{entry.author}</p>
                     {entry.message.startsWith("[INTERNAL]") ? (
-                      <span className="rounded-full bg-amber-100 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-amber-800">
+                      <span className="rounded-full bg-amber-100 px-2 py-1 text-sm font-semibold uppercase tracking-wide text-amber-800">
                         Internal
                       </span>
                     ) : null}

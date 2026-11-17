@@ -15,34 +15,6 @@ interface ExceptionItem {
   dueDate?: string;
 }
 
-interface BackendRequestRecord {
-  id: string;
-  clientId: string;
-  title: string;
-  priority: string;
-  status: string;
-  dueDateUtc?: string | null;
-  updatedAtUtc: string;
-}
-
-interface BackendReviewQueueRecord {
-  id: string;
-  clientName?: string | null;
-  status?: string | null;
-  documentType?: string | null;
-  documentCategory?: string | null;
-  submittedAtUtc?: string | null;
-  uploadedAtUtc?: string;
-}
-
-interface BackendNotificationRecord {
-  id: string;
-  clientId?: string | null;
-  type: string;
-  title: string;
-  createdAtUtc: string;
-}
-
 export function FirmExceptionsQueuePage() {
   const portal = usePortal();
   const backendMode = hasApiBaseUrl();
@@ -61,9 +33,9 @@ export function FirmExceptionsQueuePage() {
     async function loadLiveQueue() {
       try {
         const [requests, reviewQueue, notifications] = await Promise.all([
-          apiGetJson<BackendRequestRecord[]>("/api/requests"),
-          apiGetJson<BackendReviewQueueRecord[]>("/api/review-queue"),
-          apiGetJson<BackendNotificationRecord[]>("/api/notifications"),
+          apiGetJson("/api/requests"),
+          apiGetJson("/api/review-queue"),
+          apiGetJson("/api/notifications"),
         ]);
 
         if (!isActive) {
@@ -84,13 +56,13 @@ export function FirmExceptionsQueuePage() {
 
         const reviewExceptions: ExceptionItem[] = reviewQueue
           .filter((item) => {
-            const status = (item.status ?? "").trim().toLowerCase();
+            const status = (item.documentStatus ?? "").trim().toLowerCase();
             return status === "under_review" || status === "uploaded";
           })
           .map((item) => ({
-            id: `review-${item.id}`,
+            id: `review-${item.documentId}`,
             clientName: item.clientName ?? "Client",
-            label: `${item.documentType ?? item.documentCategory ?? "Document"} review pending`,
+            label: `${item.documentCategory ?? "Document"} review pending`,
             severity: "medium",
             source: "review",
             dueDate: item.submittedAtUtc ?? item.uploadedAtUtc,

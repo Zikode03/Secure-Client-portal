@@ -5,14 +5,13 @@ export function SmtpVerificationPanel() {
   const [message, setMessage] = useState("");
   const [verified, setVerified] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  useEffect(() => { apiGetJson<{verifiedAtUtc: string | null}>("/api/admin/smtp-verification").then(r => setVerified(r.verifiedAtUtc)).catch(() => {}); }, []);
+  useEffect(() => { apiGetJson("/api/admin/smtp-verification").then(r => setVerified(r.verifiedAtUtc)).catch(() => {}); }, []);
   async function request(confirm: boolean) {
     setBusy(true); setMessage("");
     try {
-      const response = await apiPostJson<{message?: string; verifiedAtUtc?: string}, object>(
-        "/api/admin/smtp-verification" + (confirm ? "/confirm" : ""), confirm ? {code: code.trim()} : {});
-      setVerified(response.verifiedAtUtc ?? null);
-      setMessage(response.message ?? "Email receipt verified successfully.");
+      const response = confirm ? await apiPostJson("/api/admin/smtp-verification/confirm", {code: code.trim()}) : await apiPostJson("/api/admin/smtp-verification", {});
+      if ("verifiedAtUtc" in response) setVerified(response.verifiedAtUtc ?? null);
+      setMessage("message" in response ? response.message : "Email receipt verified successfully.");
       if (confirm) setCode("");
     } catch (error) { setMessage(error instanceof Error ? error.message : "Email verification failed."); }
     finally { setBusy(false); }

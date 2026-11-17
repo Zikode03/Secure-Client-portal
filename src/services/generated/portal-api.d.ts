@@ -288,6 +288,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/team-progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["TeamProgress_Get_GET_api_admin_team_progress"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/users": {
         parameters: {
             query?: never;
@@ -2424,6 +2440,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/roles/access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["Roles_Access_GET_api_roles_access"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/tasks": {
         parameters: {
             query?: never;
@@ -2575,11 +2607,29 @@ export interface components {
             firmName: string;
             logoDataUrl?: string | null;
         };
+        "SecureClientPortal.Backend.Application.Contracts.Modules.Assignments.AssignmentHandoverRequest": {
+            message: string;
+            reason: string;
+        };
+        "SecureClientPortal.Backend.Application.Contracts.Modules.Assignments.AssignmentResponse": {
+            accountantName?: string | null;
+            /** Format: uuid */
+            accountantUserId: string;
+            /** Format: uuid */
+            clientId: string;
+            clientName?: string | null;
+            /** Format: date-time */
+            createdAtUtc: string;
+            /** Format: uuid */
+            id: string;
+            isPrimary: boolean;
+        };
         "SecureClientPortal.Backend.Application.Contracts.Modules.Assignments.CreateAssignmentRequest": {
             /** Format: uuid */
             accountantUserId: string;
             /** Format: uuid */
             clientId: string;
+            handover?: components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.Assignments.AssignmentHandoverRequest"];
             isPrimary: boolean;
         };
         "SecureClientPortal.Backend.Application.Contracts.Modules.Assignments.ReassignAccountantRequest": {
@@ -2587,6 +2637,7 @@ export interface components {
             clientId: string;
             /** Format: uuid */
             fromAccountantUserId: string;
+            handover?: components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.Assignments.AssignmentHandoverRequest"];
             makePrimary: boolean;
             /** Format: uuid */
             toAccountantUserId: string;
@@ -3366,6 +3417,30 @@ export interface components {
             /** Format: int32 */
             year: number;
         };
+        "SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.AccountantProgress": {
+            /** Format: uuid */
+            accountantId: string;
+            accountStatus: string;
+            /** Format: int32 */
+            approvedItems: number;
+            /** Format: int32 */
+            awaitingReview: number;
+            /** Format: int32 */
+            backupClients: number;
+            clients: components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.ClientWorkProgress"][];
+            /** Format: int32 */
+            decisionsToday: number;
+            /** Format: int32 */
+            inReview: number;
+            latestActivity?: components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.TeamActivity"];
+            name: string;
+            /** Format: int32 */
+            primaryClients: number;
+            /** Format: int32 */
+            requiredItems: number;
+            /** Format: int32 */
+            waitingOnClient: number;
+        };
         "SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.AdminCreateUserRequest": {
             company?: string | null;
             email: string;
@@ -3418,6 +3493,13 @@ export interface components {
         "SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.AdminUpdateStatusRequest": {
             status: string;
         };
+        "SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.ClientWorkProgress": {
+            assignment: string;
+            /** Format: uuid */
+            clientId: string;
+            clientName: string;
+            packs: components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.PackProgress"][];
+        };
         "SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.CreateRoleRequest": {
             displayName: string;
             name: string;
@@ -3437,6 +3519,58 @@ export interface components {
             atUtc: string;
             status: string;
             verified?: boolean;
+        };
+        "SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.PackProgress": {
+            /** Format: int32 */
+            approvedItems: number;
+            /** Format: int32 */
+            awaitingReview: number;
+            /** Format: int32 */
+            inReview: number;
+            /** Format: int32 */
+            month: number;
+            /** Format: uuid */
+            packId: string;
+            /** Format: int32 */
+            requiredItems: number;
+            status: string;
+            /** Format: int32 */
+            waitingOnClient: number;
+            /** Format: int32 */
+            year: number;
+        };
+        "SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.RoleManagementAccess": {
+            canActivate: boolean;
+            canCreate: boolean;
+            canDeactivate: boolean;
+            canUpdate: boolean;
+        };
+        "SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.RoleResponse": {
+            configuredPermissions: string[];
+            /** Format: date-time */
+            createdAtUtc: string;
+            displayName: string;
+            isActive: boolean;
+            isSystemRole: boolean;
+            name: string;
+            permissions: string[];
+            scope: string;
+            /** Format: date-time */
+            updatedAtUtc: string;
+        };
+        "SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.TeamActivity": {
+            action: string;
+            /** Format: date-time */
+            atUtc: string;
+            clientName?: string | null;
+            documentName?: string | null;
+        };
+        "SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.TeamProgressResponse": {
+            accountants: components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.AccountantProgress"][];
+            /** Format: date-time */
+            checkedAtUtc: string;
+            /** Format: int32 */
+            unassignedClients: number;
         };
         "SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.UpdateRoleRequest": {
             displayName?: string | null;
@@ -3803,19 +3937,6 @@ export interface components {
         };
         "Source.Anonymous_6F4CA6E344941AF7": {
             message: string;
-        };
-        "Source.Anonymous_6F0564D7759F2524": {
-            configuredPermissions: string[];
-            /** Format: date-time */
-            createdAtUtc: string;
-            displayName: string;
-            isActive: boolean;
-            isSystemRole: boolean;
-            name: string;
-            permissions: string[];
-            scope: string;
-            /** Format: date-time */
-            updatedAtUtc: string;
         };
         "Source.Anonymous_7BB8020ADF3635C7": {
             key: string;
@@ -4268,6 +4389,19 @@ export interface components {
         "Source.SecureClientPortal.Backend.Api.Modules.FirmManagement.FirmBrandingResponse": {
             firmName: string;
             logoDataUrl: string | null;
+        };
+        "Source.SecureClientPortal.Backend.Application.Contracts.Modules.Assignments.AssignmentResponse": {
+            accountantName: string | null;
+            /** Format: uuid */
+            accountantUserId: string;
+            /** Format: uuid */
+            clientId: string;
+            clientName: string | null;
+            /** Format: date-time */
+            createdAtUtc: string;
+            /** Format: uuid */
+            id: string;
+            isPrimary: boolean;
         };
         "Source.SecureClientPortal.Backend.Application.Contracts.Modules.Auth.SecuritySessionResponse": {
             clientIp: string | null;
@@ -5060,6 +5194,22 @@ export interface components {
             reviewHistory: components["schemas"]["Source.SecureClientPortal.Backend.Application.Contracts.Modules.ReviewQueue.ReviewQueueDecisionResponse"][];
             versions: components["schemas"]["Source.SecureClientPortal.Backend.Application.Contracts.Modules.ReviewQueue.ReviewQueueVersionResponse"][];
         };
+        "Source.SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.AccountantProgress": {
+            /** Format: uuid */
+            accountantId: string;
+            accountStatus: string;
+            approvedItems: number;
+            awaitingReview: number;
+            backupClients: number;
+            clients: components["schemas"]["Source.SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.ClientWorkProgress"][];
+            decisionsToday: number;
+            inReview: number;
+            latestActivity: components["schemas"]["Source.SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.TeamActivity"] | null;
+            name: string;
+            primaryClients: number;
+            requiredItems: number;
+            waitingOnClient: number;
+        };
         "Source.SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.AdminOperationsResponse": {
             accessEmailEnabled: boolean;
             automationEnabled: boolean;
@@ -5081,11 +5231,62 @@ export interface components {
             storageBytes: number | null;
             storageQuotaBytes: number;
         };
+        "Source.SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.ClientWorkProgress": {
+            assignment: string;
+            /** Format: uuid */
+            clientId: string;
+            clientName: string;
+            packs: components["schemas"]["Source.SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.PackProgress"][];
+        };
         "Source.SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.OperationResult": {
             /** Format: date-time */
             atUtc: string;
             status: string;
             verified: boolean;
+        };
+        "Source.SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.PackProgress": {
+            approvedItems: number;
+            awaitingReview: number;
+            inReview: number;
+            month: number;
+            /** Format: uuid */
+            packId: string;
+            requiredItems: number;
+            status: string;
+            waitingOnClient: number;
+            year: number;
+        };
+        "Source.SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.RoleManagementAccess": {
+            canActivate: boolean;
+            canCreate: boolean;
+            canDeactivate: boolean;
+            canUpdate: boolean;
+        };
+        "Source.SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.RoleResponse": {
+            configuredPermissions: string[];
+            /** Format: date-time */
+            createdAtUtc: string;
+            displayName: string;
+            isActive: boolean;
+            isSystemRole: boolean;
+            name: string;
+            permissions: string[];
+            scope: string;
+            /** Format: date-time */
+            updatedAtUtc: string;
+        };
+        "Source.SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.TeamActivity": {
+            action: string;
+            /** Format: date-time */
+            atUtc: string;
+            clientName: string | null;
+            documentName: string | null;
+        };
+        "Source.SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.TeamProgressResponse": {
+            accountants: components["schemas"]["Source.SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.AccountantProgress"][];
+            /** Format: date-time */
+            checkedAtUtc: string;
+            unassignedClients: number;
         };
         "Source.SecureClientPortal.Backend.Application.Modules.Banking.BankAccountDto": {
             accountName: string;
@@ -6514,6 +6715,42 @@ export interface operations {
             };
         };
     };
+    TeamProgress_Get_GET_api_admin_team_progress: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.TeamProgressResponse"];
+                    "text/json": components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.TeamProgressResponse"];
+                    "text/plain": components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.TeamProgressResponse"];
+                };
+            };
+            /** @description Sign-in required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Client access denied, role denied, or CSRF validation failed. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     Admin_GetUsers_GET_api_admin_users: {
         parameters: {
             query?: never;
@@ -6917,9 +7154,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown[];
-                    "text/json": unknown[];
-                    "text/plain": unknown[];
+                    "application/json": components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.Assignments.AssignmentResponse"][];
+                    "text/json": components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.Assignments.AssignmentResponse"][];
+                    "text/plain": components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.Assignments.AssignmentResponse"][];
                 };
             };
             /** @description Sign-in required. */
@@ -12609,9 +12846,9 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": unknown[];
-                    "text/json": unknown[];
-                    "text/plain": unknown[];
+                    "application/json": components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.RoleResponse"][];
+                    "text/json": components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.RoleResponse"][];
+                    "text/plain": components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.RoleResponse"][];
                 };
             };
             /** @description Sign-in required. */
@@ -12766,6 +13003,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Source.Anonymous_9A98D21AEB5A3D41"];
+                };
+            };
+            /** @description Sign-in required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Client access denied, role denied, or CSRF validation failed. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    Roles_Access_GET_api_roles_access: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.RoleManagementAccess"];
+                    "text/json": components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.RoleManagementAccess"];
+                    "text/plain": components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.RoleManagementAccess"];
                 };
             };
             /** @description Sign-in required. */

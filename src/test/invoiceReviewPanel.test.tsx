@@ -215,3 +215,16 @@ it("saves line corrections and clears both confirmations when a row changes", as
   await waitFor(() => expect(invoiceReviewApi.save).toHaveBeenCalledWith("invoice-1", expect.objectContaining({ originalConfirmed: false, lineItemsConfirmed: false,
     lineItems: [expect.objectContaining({quantity: "3"})] })));
 });
+
+it("keeps unsaved invoice details when the app confirmation is cancelled", async () => {
+  open();
+  const supplier=await screen.findByLabelText("Supplier");
+  fireEvent.change(supplier,{target:{value:"Unsaved supplier"}});
+  fireEvent.click(screen.getByRole("button",{name:"Refresh checks"}));
+  expect(screen.getByRole("dialog")).toBeInTheDocument();
+  expect(invoiceReviewApi.get).toHaveBeenCalledTimes(1);
+  fireEvent.click(screen.getByRole("button",{name:"Cancel"}));
+  await waitFor(()=>expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+  expect(supplier).toHaveValue("Unsaved supplier");
+  expect(invoiceReviewApi.get).toHaveBeenCalledTimes(1);
+});

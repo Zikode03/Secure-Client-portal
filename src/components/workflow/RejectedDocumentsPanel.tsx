@@ -30,7 +30,7 @@ export function RejectedDocumentsPanel({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold text-slate-950">Rejected Documents</h2>
-          <p className="mt-1 text-[0.82rem] text-slate-500">
+          <p className="mt-1 text-sm text-slate-500">
             Anything rejected stays in view until the corrected upload is back in the workflow.
           </p>
         </div>

@@ -491,7 +491,7 @@ export function ClientNotificationsPage() {
 
     setLiveLoadStatus("loading");
     try {
-      const data = await apiGetJson<BackendNotificationRecord[]>("/api/notifications");
+      const data = await apiGetJson("/api/notifications");
       setLiveNotifications(data.map(mapBackendNotification));
       setLiveLoadStatus("ready");
       setFeedbackMessage("");
@@ -636,9 +636,9 @@ export function ClientNotificationsPage() {
   return (
     <div className="portal-page mx-auto max-w-[1280px] space-y-4">
       <div className="portal-page-header space-y-2 border-b border-slate-200 pb-6">
-        <h1 className="portal-page-title text-slate-950">Notifications</h1>
+        <h1 className="workspace-duplicate-title portal-page-title text-slate-950">Notifications</h1>
         <Link to="/client/notifications/preferences" className="inline-block text-sm font-medium text-brand-700 hover:underline">Notification preferences</Link>
-        <p className="max-w-2xl text-[0.94rem] leading-6 text-slate-500">
+        <p className="max-w-2xl text-base leading-6 text-slate-500">
           Review updates, required actions, and linked client records.
         </p>
       </div>
@@ -664,7 +664,7 @@ export function ClientNotificationsPage() {
                   <button
                     aria-pressed={filter === option.id}
                     className={cn(
-                      "relative inline-flex items-center gap-2 px-1 py-1.5 text-[0.86rem] font-medium transition",
+                      "relative inline-flex items-center gap-2 px-1 py-1.5 text-sm font-medium transition",
                       filter === option.id ? "text-brand-600" : "text-slate-500 hover:text-slate-700",
                     )}
                     key={option.id}
@@ -674,7 +674,7 @@ export function ClientNotificationsPage() {
                     <span>{option.label}</span>
                     <span
                       className={cn(
-                        "rounded-full px-2 py-0.5 text-[0.72rem] font-semibold",
+                        "rounded-full px-2 py-0.5 text-sm font-semibold",
                         filter === option.id ? "bg-brand-50 text-brand-600" : "bg-slate-100 text-slate-500",
                       )}
                     >
@@ -710,10 +710,10 @@ export function ClientNotificationsPage() {
               section.items.length > 0 ? (
                 <div className="space-y-3" key={section.id}>
                   <div className="flex items-center gap-2 px-2">
-                    <h2 className="text-[0.72rem] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                    <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-400">
                       {section.label}
                     </h2>
-                    <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[0.7rem] font-semibold text-rose-500">
+                    <span className="rounded-full bg-rose-50 px-2 py-0.5 text-sm font-semibold text-rose-500">
                       {section.items.length}
                     </span>
                   </div>
@@ -751,20 +751,20 @@ export function ClientNotificationsPage() {
                             <div className="min-w-0 flex-1">
                               <div className="flex items-start justify-between gap-3">
                                 <div className="min-w-0">
-                                  <p className="text-[0.98rem] font-semibold text-slate-950">
+                                  <p className="text-base font-semibold text-slate-950">
                                     {item.title}
                                   </p>
-                                  <p className="mt-1 text-[0.84rem] text-slate-500">
+                                  <p className="mt-1 text-sm text-slate-500">
                                     {linkedItemLabel(item)}
                                   </p>
                                 </div>
                                 <div className="space-y-1 text-right">
-                                  <p className="text-[0.76rem] font-medium text-slate-400">
+                                  <p className="text-sm font-medium text-slate-400">
                                     {relativeLabel(item.createdAt)}
                                   </p>
                                   <span
                                     className={cn(
-                                      "inline-flex rounded-full px-2.5 py-1 text-[0.7rem] font-semibold ring-1",
+                                      "inline-flex rounded-full px-2.5 py-1 text-sm font-semibold ring-1",
                                       priorityClasses(item.tone),
                                     )}
                                   >
@@ -808,7 +808,7 @@ export function ClientNotificationsPage() {
                   <div className="space-y-4">
                     <span
                       className={cn(
-                        "inline-flex rounded-full px-3 py-1 text-[0.72rem] font-semibold uppercase tracking-[0.12em] ring-1",
+                        "inline-flex rounded-full px-3 py-1 text-sm font-semibold uppercase tracking-[0.12em] ring-1",
                         priorityClasses(selectedNotification.tone),
                       )}
                     >
@@ -818,11 +818,11 @@ export function ClientNotificationsPage() {
                       <h2 className="portal-detail-title text-slate-950">
                         {selectedNotification.title}
                       </h2>
-                      <p className="mt-2 text-[1rem] text-slate-600">
+                      <p className="mt-2 text-base text-slate-600">
                         {linkedItemLabel(selectedNotification)}
                       </p>
                     </div>
-                    <p className="max-w-2xl text-[0.95rem] leading-7 text-slate-600">
+                    <p className="max-w-2xl text-base leading-7 text-slate-600">
                       {selectedNotification.message}
                     </p>
                   </div>
@@ -833,43 +833,43 @@ export function ClientNotificationsPage() {
 
               <div className="grid gap-0 border-b border-slate-100 md:grid-cols-2 xl:grid-cols-4">
                 <div className="space-y-2 px-5 py-4 xl:border-r xl:border-slate-100">
-                  <div className="flex items-center gap-2 text-[0.78rem] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                  <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.12em] text-slate-400">
                     <CalendarIcon />
                     <span>Deadline</span>
                   </div>
-                  <p className="text-[1.02rem] font-semibold text-slate-950">
+                  <p className="text-base font-semibold text-slate-950">
                     {formatDateLabel(selectedNotification.createdAt)}
                   </p>
-                  <p className="text-[0.84rem] text-rose-500">
+                  <p className="text-sm text-rose-500">
                     {selectedNotification.kind === "deadline_reminder" ? "Approaching close" : "Action window open"}
                   </p>
                 </div>
 
                 <div className="space-y-2 px-5 py-4 xl:border-r xl:border-slate-100">
-                  <div className="flex items-center gap-2 text-[0.78rem] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                  <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.12em] text-slate-400">
                     <DocumentIcon />
                     <span>Impact</span>
                   </div>
-                  <p className="text-[1.02rem] font-semibold text-slate-950">{impactLabel(selectedNotification)}</p>
+                  <p className="text-base font-semibold text-slate-950">{impactLabel(selectedNotification)}</p>
                 </div>
 
                 <div className="space-y-2 px-5 py-4 xl:border-r xl:border-slate-100">
-                  <div className="flex items-center gap-2 text-[0.78rem] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                  <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.12em] text-slate-400">
                     <LayersIcon />
                     <span>Blocking</span>
                   </div>
-                  <p className="text-[1.02rem] font-semibold text-slate-950">{blockingLabel(selectedNotification)}</p>
+                  <p className="text-base font-semibold text-slate-950">{blockingLabel(selectedNotification)}</p>
                 </div>
 
                 <div className="space-y-2 px-5 py-4">
-                  <div className="flex items-center gap-2 text-[0.78rem] font-semibold uppercase tracking-[0.12em] text-slate-400">
+                  <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.12em] text-slate-400">
                     <AlertIcon />
                     <span>Risk Level</span>
                   </div>
-                  <p className={cn("text-[1.02rem] font-semibold", toneClasses(selectedNotification.tone).stat)}>
+                  <p className={cn("text-base font-semibold", toneClasses(selectedNotification.tone).stat)}>
                     {priorityLabel(selectedNotification.tone)}
                   </p>
-                  <p className="text-[0.84rem] text-rose-500">Requires action</p>
+                  <p className="text-sm text-rose-500">Requires action</p>
                 </div>
               </div>
 
@@ -883,7 +883,7 @@ export function ClientNotificationsPage() {
                   ].map((tab, index) => (
                     <button
                       className={cn(
-                        "border-b-2 px-1 py-4 text-[0.92rem] font-medium transition",
+                        "border-b-2 px-1 py-4 text-base font-medium transition",
                         index === 0
                           ? "border-brand-500 text-brand-600"
                           : "border-transparent text-slate-500 hover:text-slate-700",
@@ -900,7 +900,7 @@ export function ClientNotificationsPage() {
               <div className="grid gap-5 px-6 py-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(300px,0.92fr)]">
                 <div className="rounded-[1.35rem] border border-slate-200 bg-white p-5">
                   <h2 className="text-sm font-semibold text-slate-950">Why you are seeing this</h2>
-                  <p className="mt-3 text-[0.9rem] leading-7 text-slate-600">
+                  <p className="mt-3 text-base leading-7 text-slate-600">
                     {kindDescription(selectedNotification.kind)}
                   </p>
                 </div>
@@ -910,7 +910,7 @@ export function ClientNotificationsPage() {
                     <CheckIcon />
                     <h2 className="text-sm font-semibold">Recommended next step</h2>
                   </div>
-                  <p className="mt-3 text-[0.9rem] leading-7 text-slate-600">
+                  <p className="mt-3 text-base leading-7 text-slate-600">
                     {needLabel(selectedNotification)}
                   </p>
                 </div>

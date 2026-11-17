@@ -1,3 +1,4 @@
+import { useActionDialog } from "../../components/ui/useActionDialog";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Layers } from "lucide-react";
@@ -18,9 +19,10 @@ interface MonthlyPackTemplate {
   autoCreateDayOfMonth: number;
 }
 
-const endpoint = "/api/admin/firm-management/templates/monthly-pack";
+const endpoint = "/api/admin/firm-management/templates/monthly-pack" as const;
 
 export function AdminMonthlyPacksPage() {
+  const actionDialog = useActionDialog();
   const [packs, setPacks] = useState<MonthlyPackTemplate[]>([]);
   const [documents, setDocuments] = useState<RequiredDocumentTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,8 +40,8 @@ export function AdminMonthlyPacksPage() {
     try {
       if (!hasApiBaseUrl()) throw new Error("Connect the backend to manage monthly packs.");
       const [packRows, documentRows] = await Promise.all([
-        apiGetJson<MonthlyPackTemplate[]>(endpoint),
-        apiGetJson<RequiredDocumentTemplate[]>(requiredDocumentsEndpoint),
+        apiGetJson(endpoint),
+        apiGetJson(requiredDocumentsEndpoint),
       ]);
       setPacks(packRows);
       setDocuments(documentRows);
@@ -71,7 +73,7 @@ export function AdminMonthlyPacksPage() {
     setSaving(true);
     setFeedback(null);
     try {
-      await apiPutJson<unknown, MonthlyPackTemplate[]>(endpoint, packs);
+      await apiPutJson(endpoint, packs);
       setDirty(false);
       setFeedback({ tone: "success", title: "Pack templates saved", message: "Your reusable templates and document selections have been saved. No client files were uploaded or submitted." });
     } catch (error) {
@@ -87,10 +89,11 @@ export function AdminMonthlyPacksPage() {
 
   return (
     <form className="required-documents-page pack-builder space-y-6" onSubmit={(event) => { event.preventDefault(); void save(); }}>
+      {actionDialog.dialog}
       <header className="portal-page-header flex flex-wrap items-end justify-between gap-5 border-b border-slate-200 pb-6">
         <div className="max-w-2xl space-y-2">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand-700">Document setup</p>
-          <h1 className="text-3xl font-semibold tracking-tight text-slate-950">Pack templates</h1>
+          <h1 className="workspace-duplicate-title text-3xl font-semibold tracking-tight text-slate-950">Pack templates</h1>
           <p className="text-sm leading-6 text-slate-500">Choose the documents a business needs each month. Client uploads are managed separately.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
@@ -153,8 +156,8 @@ export function AdminMonthlyPacksPage() {
                   return <li key={id}>{document ? <><span>{document.name}</span><span>{document.isRequired ? "Required" : "Optional"}</span></> : <><span>Unavailable document type. Remove it or restore it in Document Types.</span><button className="underline" type="button" aria-label={`Remove unavailable document ${id}`} onClick={() => update(pack.id, { requiredDocumentTemplateIds: pack.requiredDocumentTemplateIds.filter(item => item !== id) })}>Remove reference</button></>}</li>;
                 })}</ul>}
               </details>
-              <div className="pack-builder-footer portal-page-header flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-4"><p className="text-xs text-slate-500">Changes to all templates are saved together.</p><Button type="button" variant="danger" aria-label={`Remove ${pack.name || "new pack template"}`} onClick={() => {
-                if (!window.confirm("Remove this monthly pack template? Changes take effect when you save.")) return;
+              <div className="pack-builder-footer portal-page-header flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-4"><p className="text-xs text-slate-500">Changes to all templates are saved together.</p><Button type="button" variant="danger" aria-label={`Remove ${pack.name || "new pack template"}`} onClick={async () => {
+                if (!await actionDialog.confirm("Remove this monthly pack template? Changes take effect when you save.")) return;
                 setPacks((rows) => rows.filter((row) => row.id !== pack.id));
                 setDirty(true);
               }}>Remove</Button></div>

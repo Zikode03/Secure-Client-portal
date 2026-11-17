@@ -7,12 +7,12 @@ const filters: {value: Filter; label: string}[] = [
   {value: "unresolved", label: "Open"}, {value: "resolved", label: "Resolved"},
 ];
 
-export function InboxListControls({filter, onChangeFilter, searchValue, onChangeSearch, actions}: {
+export function InboxListControls({filter, onChangeFilter, searchValue, onChangeSearch, actions, headingActions}: {
   filter: Filter; onChangeFilter: (value: Filter) => void;
-  searchValue: string; onChangeSearch: (value: string) => void; actions: ReactNode;
+  searchValue: string; onChangeSearch: (value: string) => void; actions: ReactNode; headingActions?: ReactNode;
 }) {
   return <div className="inbox-thread-controls shrink-0 border-b border-slate-200 bg-white p-4">
-    <h2 className="text-sm font-semibold text-slate-900">Conversations</h2>
+    <div className="inbox-list-heading"><h2 className="text-sm font-semibold text-slate-900">Conversations</h2>{headingActions}</div>
     <label className="mt-3 flex h-10 items-center gap-2 rounded-lg border border-slate-200 px-3 focus-within:ring-2 focus-within:ring-brand-500">
       <Search aria-hidden="true" className="h-4 w-4 shrink-0 text-slate-400" />
       <input aria-label="Search conversations" placeholder="Search conversations" value={searchValue}

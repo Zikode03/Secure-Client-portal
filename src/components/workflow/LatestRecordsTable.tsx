@@ -42,7 +42,7 @@ export function LatestRecordsTable({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold text-slate-950">{title}</h2>
-          <p className="mt-1 text-[0.82rem] text-slate-500">{description}</p>
+          <p className="mt-1 text-sm text-slate-500">{description}</p>
         </div>
         <div className="flex items-center gap-2">
           {headerActionLabel && onHeaderAction ? (

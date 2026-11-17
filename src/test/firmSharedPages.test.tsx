@@ -2,7 +2,7 @@ import { act, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, expect, it, vi } from "vitest";
 import { PortalProvider } from "../app/portal";
-import { apiGetJson } from "../services/apiClient";
+import { apiGetJson } from "./fixtures/apiTransportFixture";
 import { AccountantDashboardPage } from "../pages/accountant/AccountantDashboardPage";
 import { AccountantPortfolioPage } from "../pages/accountant/AccountantPortfolioPage";
 import { AccountantDocumentsPage } from "../pages/accountant/AccountantDocumentsPage";

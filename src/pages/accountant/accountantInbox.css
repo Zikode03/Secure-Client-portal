@@ -1,0 +1,64 @@
+.accountant-inbox-page { gap: 16px; }
+.accountant-inbox-page > .portal-page-header { padding-bottom: 16px; gap: 14px; }
+.accountant-inbox-page > .portal-page-header h1 { margin-top: 0; font-size: var(--ui-text-metric); font-weight: 600; }
+.accountant-inbox-page > .portal-page-header p { font-size: var(--ui-text-secondary); line-height: 1.6; }
+.accountant-inbox-header-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; }
+.accountant-inbox-sync { font-size: var(--ui-text-secondary); color: #64748b; }
+.accountant-inbox-page .ui-btn { box-shadow: none; border-radius: 7px; font-size: var(--ui-text-secondary); }
+.accountant-inbox-workspace { border-radius: 10px; box-shadow: none; }
+.accountant-inbox-page .inbox-conversation-header { padding: 16px 20px; gap: 12px; }
+.accountant-inbox-page .inbox-conversation-header h2 { margin-top: 8px; font-size: var(--ui-text-body); line-height: 1.5; }
+.accountant-inbox-page .inbox-conversation-header > div:first-child > div:first-child > p { font-size: var(--ui-text-secondary); }
+.accountant-inbox-page .inbox-conversation-assignee { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 6px; font-size: var(--ui-text-secondary); }
+.accountant-inbox-page .inbox-conversation-assignee p { margin-top: 0; }
+.accountant-inbox-conversation .inbox-scroll-region { padding: 20px; background: #f8fafc; }
+.accountant-inbox-conversation .inbox-scroll-region > div > span { width: 30px; height: 30px; font-size: var(--ui-text-secondary); box-shadow: none; }
+.accountant-inbox-conversation .inbox-scroll-region > div > div { max-width: 560px; }
+.accountant-inbox-page .inbox-composer { padding: 14px 20px; border-top: 1px solid #e2e8f0; }
+.accountant-inbox-page .inbox-composer-intro p:first-child { font-size: var(--ui-text-secondary); }
+.accountant-inbox-page .inbox-composer-intro p:last-child { display: none; }
+.accountant-inbox-page .inbox-composer label { font-size: var(--ui-text-secondary); }
+.accountant-inbox-page .accountant-inbox-thread-actions { margin-top: 0; padding: 10px 20px; border-top: 1px solid #e2e8f0; }
+.accountant-inbox-thread-actions > button { height: 30px; background: transparent; color: #475569; padding: 0; box-shadow: none; font-size: var(--ui-text-secondary); border-radius: 5px; }
+.accountant-inbox-thread-actions > button:hover { background: #f1f5f9; }
+@media (max-width: 639px) { .accountant-inbox-header-actions { width: 100%; justify-content: space-between; } .accountant-inbox-page .inbox-conversation-header, .accountant-inbox-conversation .inbox-scroll-region, .accountant-inbox-page .inbox-composer { padding: 14px; } }
+.accountant-request-dialog { max-width: 620px; border-radius: 12px; }
+.accountant-request-dialog > div:first-child { padding: 18px 22px; }
+.accountant-request-dialog > div:nth-child(2) { padding: 20px 22px; }
+.accountant-request-dialog h2 { font-size: var(--ui-text-section); }
+.accountant-request-dialog p { font-size: var(--ui-text-secondary); }
+.accountant-request-form fieldset { display: grid; gap: 18px; min-width: 0; }
+.accountant-request-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.accountant-request-dialog label > span { font-size: var(--ui-text-secondary); font-weight: 500; }
+.accountant-request-dialog input, .accountant-request-dialog select, .accountant-request-dialog textarea { border-radius: 7px; font-size: var(--ui-text-body); }
+.accountant-request-dialog input, .accountant-request-dialog select { height: 42px; padding-inline: 12px; }
+.accountant-request-dialog input[readonly] { background: #f8fafc; color: #475569; }
+.accountant-request-dialog textarea { min-height: 112px; padding: 10px 12px; resize: vertical; }
+.accountant-request-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+.accountant-request-footer > span { font-size: var(--ui-text-secondary); color: #64748b; }
+.accountant-request-footer > div { display: flex; gap: 8px; margin-left: auto; }
+.accountant-request-footer .ui-btn { height: 38px; font-size: var(--ui-text-secondary); border-radius: 7px; box-shadow: none; }
+.accountant-request-error { margin-top: 14px; border: 1px solid #f0d5d0; background: #fff8f6; padding: 10px 12px; color: #a34f3f; border-radius: 7px; }
+@media (max-width: 479px) { .accountant-request-row { grid-template-columns: 1fr; } .accountant-request-footer > span { display: none; } }
+/* The application header already names the inbox. Keep the workspace at the top. */
+.accountant-inbox-page > h1.sr-only, .accountant-inbox-page > span.sr-only { position: absolute; }
+.accountant-inbox-page .inbox-list-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.accountant-inbox-page .inbox-list-heading h2 { font-size: var(--ui-text-body); }
+.inbox-new-request { display: inline-flex; align-items: center; gap: 5px; padding: 7px 10px; border: 1px solid #dce3ed; border-radius: 7px; font-size: var(--ui-text-secondary); color: #172747; background: #fff; }
+.inbox-new-request:hover { background: #f5f7fa; }
+.inbox-conversation-actions { display: flex; align-items: center; gap: 8px; }
+.inbox-conversation-actions .ui-btn { min-height: 34px; padding: 6px 10px; font-size: var(--ui-text-secondary); }
+.inbox-conversation-more { position: relative; }
+.inbox-more-trigger { display: flex; align-items: center; justify-content: center; height: 34px; width: 34px; border: 1px solid #dce3ed; border-radius: 7px; color: #475569; }
+.inbox-actions-menu { position: absolute; right: 0; top: 40px; z-index: 30; width: 210px; padding: 5px; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 10px 25px rgb(15 23 42 / .1); }
+.inbox-actions-menu button { display: block; width: 100%; padding: 9px 10px; border-radius: 5px; text-align: left; font-size: var(--ui-text-secondary); color: #334155; }
+.inbox-actions-menu button:hover, .inbox-actions-menu button:focus-visible { background: #f1f5f9; }
+.accountant-inbox-page .inbox-composer-intro { display: none; }
+.accountant-inbox-page .inbox-composer { padding-block: 12px; }
+.accountant-inbox-page .inbox-composer .client-inbox-primary-button { min-width: 90px; height: 44px; padding-inline: 14px; }
+.accountant-inbox-page .inbox-composer > div:last-child > div:first-child { height: 44px; border-radius: 8px; }
+.accountant-inbox-page .inbox-conversation-assignee { font-size: var(--ui-text-secondary); }
+.accountant-inbox-page .inbox-thread-controls input, .accountant-inbox-page .inbox-thread-controls button, .accountant-inbox-page .inbox-thread-controls label { font-size: var(--ui-text-secondary); }
+.inbox-original-request { max-width: 560px; padding: 14px 16px; border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; }
+.inbox-original-request p { white-space: pre-wrap; font-size: var(--ui-text-body); line-height: 1.6; color: #334155; }
+.inbox-original-request .inbox-original-request-label { margin-bottom: 6px; font-size: var(--ui-text-secondary); font-weight: 500; color: #64748b; }

@@ -72,7 +72,7 @@ export function ComplianceObligationsWorkspace({ mode }: { mode: WorkspaceMode }
       const [rows, ruleSet, clientRows] = await Promise.all([
         complianceAutomationApi.getObligations(),
         complianceAutomationApi.getRules(),
-        accountant ? apiGetJson<ClientOption[]>("/api/clients") : Promise.resolve([]),
+        accountant ? apiGetJson("/api/clients") : Promise.resolve([]),
       ]);
       setObligations(rows);
       setRules(ruleSet);
@@ -175,7 +175,7 @@ export function ComplianceObligationsWorkspace({ mode }: { mode: WorkspaceMode }
         <SelectField label="Status" value={statusFilter} options={[{ value: "all", label: "All statuses" }, ...workflowOptions.map(value => ({ value, label: complianceStatusLabel(value) }))]} onChange={event => setStatusFilter(event.target.value)} />
       </div>
       <div className="compliance-table-wrap"><table className="compliance-obligation-table">
-        <thead><tr><th>Obligation</th>{accountant && <th>Client</th>}<th>Period</th><th>Due</th><th>Readiness</th><th>Evidence</th><th>Filing</th><th>Payment</th><th></th></tr></thead>
+        <thead><tr><th>Obligation</th>{accountant && <th>Client</th>}<th>Period</th><th>Due</th><th>Readiness</th><th>Evidence</th><th>Filing</th><th>Payment</th><th>Actions</th></tr></thead>
         <tbody>{visible.map(item => <tr key={item.id} className={item.workflowStatus === "overdue" ? "is-overdue" : ""}>
           <td><strong>{item.code}</strong><span>{item.authority}</span></td>{accountant && <td>{item.clientName}</td>}
           <td>{item.code === "CSD" ? "Standing registration" : formatCompliancePeriod(item.periodStartUtc, item.periodEndUtc)}</td><td>{item.dueDateUtc ? formatDateLabel(item.dueDateUtc) : <span className="muted">{item.code === "CSD" ? "Standing registration" : "Not configured"}</span>}</td>

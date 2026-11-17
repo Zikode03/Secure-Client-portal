@@ -1,3 +1,5 @@
+import { accountAccessStatus } from "../../services/accountAccess";
+import "./adminDirectories.css";
 // Friendly guide: this module (AdminAssignmentsPage) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
@@ -5,10 +7,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { usePortal } from "../../app/portal";
 import { Button } from "../../components/ui/Button";
-import { PageHeader } from "../../components/ui/PageHeader";
 import { SelectField } from "../../components/ui/SelectField";
 import { TextField } from "../../components/ui/TextField";
-import { ArrowUpRight, Building2, Search, UserRound } from "lucide-react";
+import { ArrowUpRight, Search, UserRound } from "lucide-react";
 import { ApiError, apiDelete, apiGetJson, apiPostJson, hasApiBaseUrl } from "../../services/apiClient";
 import type { FirmClientAccount, ManagedAccountant } from "../../types/portal";
 
@@ -45,24 +46,12 @@ interface BackendAdminUserRecord {
   securityStatus?: string | null;
 }
 
-function normalizeAccountantStatus(status?: string | null): ManagedAccountant["status"] {
-  switch ((status ?? "").trim().toLowerCase()) {
-    case "invited":
-      return "capacity_available";
-    case "disabled":
-    case "locked":
-      return "busy";
-    default:
-      return "active";
-  }
-}
-
 function mapLiveAccountants(
   users: BackendAdminUserRecord[],
   assignments: BackendAssignmentRecord[],
 ): ManagedAccountant[] {
   return users
-    .filter((user) => user.role.trim().toLowerCase() === "accountant")
+    .filter((user) => user.role.trim().toLowerCase() === "accountant" && accountAccessStatus(user) === "active")
     .map((user) => {
       const assignedClientCount = assignments.filter(
         (assignment) => assignment.accountantUserId === user.id,
@@ -75,7 +64,7 @@ function mapLiveAccountants(
         title: "Accountant",
         assignedClientCount,
         openReviews: 0,
-        status: normalizeAccountantStatus(user.securityStatus),
+        status: "active" as const,
       };
     })
     .sort((left, right) => left.name.localeCompare(right.name));
@@ -129,7 +118,7 @@ export function AdminAssignmentsPage() {
   const [liveAccountants, setLiveAccountants] = useState<ManagedAccountant[] | null>(null);
   const [liveAssignments, setLiveAssignments] = useState<BackendAssignmentRecord[] | null>(null);
   const [handoverByClientId, setHandoverByClientId] = useState<
-    Record<string, { reason: string; message: string; effectiveDate: string }>
+    Record<string, { reason: string; message: string }>
   >({});
 
   useEffect(() => {
@@ -142,9 +131,9 @@ export function AdminAssignmentsPage() {
     async function loadLiveAssignments() {
       try {
         const [clients, assignments, users] = await Promise.all([
-          apiGetJson<BackendClientRecord[]>("/api/clients"),
-          apiGetJson<BackendAssignmentRecord[]>("/api/assignments"),
-          apiGetJson<BackendAdminUserRecord[]>("/api/admin/users"),
+          apiGetJson("/api/clients"),
+          apiGetJson("/api/assignments"),
+          apiGetJson("/api/admin/users"),
         ]);
 
         if (!isMounted) {
@@ -198,6 +187,14 @@ export function AdminAssignmentsPage() {
   const currentAccountantId = selectedClient ? (assignmentType === "primary" ? selectedClient.assignedAccountantUserId : selectedClient.backupAccountantUserId) ?? "" : "";
   const selectedAccountantId = draftAccountantId ?? currentAccountantId;
   const selectedAccountant = accountants.find((accountant) => accountant.id === selectedAccountantId);
+  const assignmentOptions: Array<{ label: string; value: string; disabled?: boolean }> = assignmentType === "primary"
+    ? accountantOptions.map(option => option.value ? option : { label: "Select an accountant", value: "" })
+    : [{ label: "No backup", value: "" }, ...accountants.filter(accountant => accountant.id !== selectedClient?.assignedAccountantUserId).map(accountant => ({ label: accountant.name, value: accountant.id }))];
+  if (currentAccountantId && !accountants.some(accountant => accountant.id === currentAccountantId)) {
+    const name = assignmentType === "primary" ? selectedClient?.assignedAccountant : selectedClient?.backupAccountant;
+    assignmentOptions.unshift({ label: `${name || "Current accountant"} (unavailable for new assignments)`, value: currentAccountantId, disabled: true });
+  }
+
   const isLoading = backendMode && liveClients === null && !feedbackMessage;
 
   function openEditor(client: FirmClientAccount, type: "primary" | "backup" = "primary") {
@@ -216,8 +213,8 @@ export function AdminAssignmentsPage() {
     }
     if (assignmentType === "primary") {
       const handover = getHandover(selectedClient.id);
-      if (!handover.reason.trim() || !handover.message.trim() || !handover.effectiveDate) {
-        setFeedbackMessage("Provide assignment reason, handover message, and effective date before assigning.");
+      if (!handover.reason.trim() || !handover.message.trim()) {
+        setFeedbackMessage("Provide assignment reason and handover message before assigning.");
         return;
       }
     }
@@ -235,7 +232,7 @@ export function AdminAssignmentsPage() {
         const handover = getHandover(selectedClient.id);
         const result = assignmentType === "primary"
           ? portal.assignClientAccountant(selectedClient.id, selectedAccountant?.name ?? selectedAccountantId, selectedAccountantId, {
-            reason: handover.reason.trim(), message: handover.message.trim(), effectiveDate: new Date(handover.effectiveDate).toISOString(), assignedBy: "Admin",
+            reason: handover.reason.trim(), message: handover.message.trim(), effectiveDate: new Date().toISOString(), assignedBy: "Admin",
           })
           : portal.assignClientAccountantBackup(selectedClient.id, selectedAccountant?.name ?? selectedAccountantId, selectedAccountantId);
         setFeedbackMessage(result.message);
@@ -250,14 +247,13 @@ export function AdminAssignmentsPage() {
       handoverByClientId[clientId] ?? {
         reason: "",
         message: "",
-        effectiveDate: new Date().toISOString().slice(0, 10),
       }
     );
   }
 
   function updateHandover(
     clientId: string,
-    key: "reason" | "message" | "effectiveDate",
+    key: "reason" | "message",
     value: string,
   ) {
     const current = getHandover(clientId);
@@ -272,9 +268,9 @@ export function AdminAssignmentsPage() {
 
   async function reloadLiveAssignments() {
     const [clientsData, assignmentsData, users] = await Promise.all([
-      apiGetJson<BackendClientRecord[]>("/api/clients"),
-      apiGetJson<BackendAssignmentRecord[]>("/api/assignments"),
-      apiGetJson<BackendAdminUserRecord[]>("/api/admin/users"),
+      apiGetJson("/api/clients"),
+      apiGetJson("/api/assignments"),
+      apiGetJson("/api/admin/users"),
     ]);
 
     const mappedAccountants = mapLiveAccountants(users, assignmentsData);
@@ -285,8 +281,8 @@ export function AdminAssignmentsPage() {
 
   async function handlePrimaryAssignmentChange(client: FirmClientAccount, accountantUserId: string) {
     const handover = getHandover(client.id);
-    if (!handover.reason.trim() || !handover.message.trim() || !handover.effectiveDate) {
-      setFeedbackMessage("Provide assignment reason, handover message, and effective date before assigning.");
+    if (!handover.reason.trim() || !handover.message.trim()) {
+      setFeedbackMessage("Provide assignment reason and handover message before assigning.");
       return;
     }
 
@@ -297,11 +293,7 @@ export function AdminAssignmentsPage() {
 
     const currentPrimary =
       assignments.find((assignment) => assignment.clientId === client.id && assignment.isPrimary) ?? null;
-    const existingTarget =
-      assignments.find(
-        (assignment) =>
-          assignment.clientId === client.id && assignment.accountantUserId === accountantUserId,
-      ) ?? null;
+
 
     try {
       if (currentPrimary && currentPrimary.accountantUserId !== accountantUserId) {
@@ -310,20 +302,18 @@ export function AdminAssignmentsPage() {
           fromAccountantUserId: currentPrimary.accountantUserId,
           toAccountantUserId: accountantUserId,
           makePrimary: true,
+          handover: { reason: handover.reason.trim(), message: handover.message.trim() },
         });
-      } else if (existingTarget && !existingTarget.isPrimary) {
-        await apiPostJson(`/api/assignments/${encodeURIComponent(existingTarget.id)}/make-primary`, {});
-      } else if (!currentPrimary) {
+      } else {
         await apiPostJson("/api/assignments", {
-          accountantUserId,
-          clientId: client.id,
-          isPrimary: true,
+          accountantUserId, clientId: client.id, isPrimary: true,
+          handover: { reason: handover.reason.trim(), message: handover.message.trim() },
         });
       }
 
-      await reloadLiveAssignments();
+      try { await reloadLiveAssignments(); } catch { setFeedbackMessage("The assignment and handover were saved, but coverage could not be reloaded. Refresh this page to see the saved assignment."); return; }
       setFeedbackMessage(
-        `Primary accountant updated for ${client.clientName}. Handover effective ${handover.effectiveDate}.`,
+        `Primary accountant updated for ${client.clientName}. The handover was saved and sent to the accountant. Changes took effect now.`,
       );
     } catch (error) {
       setFeedbackMessage(
@@ -347,19 +337,18 @@ export function AdminAssignmentsPage() {
     }
 
     try {
-      if (currentBackup && currentBackup.accountantUserId !== accountantUserId) {
-        await apiDelete(`/api/assignments/${encodeURIComponent(currentBackup.id)}`);
-      }
-
-      if (accountantUserId && !selectedAssignment) {
-        await apiPostJson("/api/assignments", {
-          accountantUserId,
-          clientId: client.id,
-          isPrimary: false,
+      if (currentBackup && accountantUserId && currentBackup.accountantUserId !== accountantUserId) {
+        await apiPostJson("/api/assignments/reassign", {
+          clientId: client.id, fromAccountantUserId: currentBackup.accountantUserId,
+          toAccountantUserId: accountantUserId, makePrimary: false,
         });
+      } else if (currentBackup && !accountantUserId) {
+        await apiDelete(`/api/assignments/${encodeURIComponent(currentBackup.id)}`);
+      } else if (accountantUserId && !selectedAssignment) {
+        await apiPostJson("/api/assignments", { accountantUserId, clientId: client.id, isPrimary: false });
       }
 
-      await reloadLiveAssignments();
+      try { await reloadLiveAssignments(); } catch { setFeedbackMessage("Backup coverage was saved, but the updated list could not be reloaded. Refresh this page to see the saved assignment."); return; }
       setFeedbackMessage(
         accountantUserId
           ? `Backup accountant updated for ${client.clientName}.`
@@ -373,23 +362,14 @@ export function AdminAssignmentsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        description="Give every client a clear owner and the right backup support."
-        eyebrow="Administration"
-        title="Accountant assignments"
-        actions={<Button variant="secondary" onClick={() => navigate("/firm/admin/accountants")}><UserRound aria-hidden="true" className="h-4 w-4" />View accountants</Button>}
-      />
+    <div className="admin-directory admin-assignments">
+      <div className="assignment-intro"><p>Manage primary ownership and backup support for each client.</p><button type="button" onClick={() => navigate("/firm/admin/accountants")}>View accountants <ArrowUpRight size={16} aria-hidden="true" /></button></div>
 
       {feedbackMessage ? <div role="status" className="border-l-2 border-brand-500 bg-brand-50 px-4 py-3 text-sm text-brand-700">{feedbackMessage}</div> : null}
 
-      <div className="grid items-start gap-8 xl:grid-cols-[minmax(0,1.6fr)_minmax(300px,1fr)]">
-        <section aria-label="Client coverage" className="min-w-0 space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="font-semibold text-slate-950">Client coverage</h2>
-            <span className="text-xs text-slate-500">{clients.length} client{clients.length === 1 ? "" : "s"} · {accountants.length} accountant{accountants.length === 1 ? "" : "s"}</span>
-          </div>
-
+      <div className={`admin-assignment-layout ${selectedClient ? "has-editor" : ""}`}>
+        <section aria-label="Client coverage" className="admin-register admin-coverage assignment-register min-w-0">
+          <div className="assignment-toolbar">
           <div role="group" aria-label="Coverage filters" className="flex flex-wrap gap-2">
             {([
               { value: "all", label: "All clients", count: clients.length },
@@ -406,39 +386,37 @@ export function AdminAssignmentsPage() {
             <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search clients or accountants" className="h-11 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-4 text-sm text-slate-900 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100" />
           </label>
 
-          <div className="overflow-x-auto border-y border-slate-200">
+          </div>
+
+          <div className="admin-directory-table overflow-x-auto border-y border-slate-200">
             <table className="w-full min-w-[480px] text-left text-sm">
               <caption className="sr-only">Client primary and backup accountant assignments</caption>
-              <thead className="border-b border-slate-200 bg-slate-50 text-[0.68rem] uppercase tracking-wider text-slate-500">
-                <tr><th scope="col" className="px-3 py-3">Client</th><th scope="col" className="px-3 py-3">Primary / backup</th><th scope="col" className="px-3 py-3"><span className="sr-only">Assignment actions</span></th></tr>
+              <thead className="border-b border-slate-200 bg-slate-50 text-sm uppercase tracking-wider text-slate-500">
+                <tr><th scope="col" className="px-3 py-3">Client</th><th scope="col" className="px-3 py-3">Primary accountant</th><th scope="col" className="px-3 py-3">Backup accountant</th><th scope="col" className="px-3 py-3 text-right">Actions</th></tr>
               </thead>
               <tbody className="divide-y divide-slate-200 bg-white">
                 {!isLoading && visibleClients.map((client) => <tr key={client.id} className={selectedClientId === client.id ? "bg-brand-50/60" : "transition hover:bg-slate-50"}>
                   <td className="px-3 py-4 align-top">
-                    <div className="flex items-start gap-2.5">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-brand-700"><Building2 aria-hidden="true" className="h-4 w-4" /></span>
-                      <div className="min-w-0">
-                        <button type="button" disabled={saving} onClick={() => openEditor(client)} className="text-left font-semibold text-slate-950 hover:text-brand-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500">{client.clientName}</button>
-                        <p className="mt-1 text-xs text-slate-500">{client.industry}</p>
-                        <p className="mt-1 text-xs text-slate-400">{(client.isActive ?? true) ? "Active" : "Inactive"}</p>
-                      </div>
-                    </div>
+                    <button type="button" disabled={saving} onClick={() => openEditor(client)} className="assignment-client-name">{client.clientName}</button>
+                    <p className="assignment-client-meta">{[client.industry, (client.isActive ?? true) ? "Active" : "Inactive"].filter(Boolean).join(" · ")}</p>
                   </td>
                   <td className="px-3 py-4 align-top">
                     <p className={client.assignedAccountantUserId ? "font-medium text-slate-700" : "font-medium text-amber-700"}>{client.assignedAccountant}</p>
-                    <p className="mt-1 text-xs text-slate-500">{client.backupAccountant ? `Backup: ${client.backupAccountant}` : "No backup assigned"}</p>
+                  </td>
+                  <td className="px-3 py-4"><span className={client.backupAccountant ? "text-slate-700" : "text-slate-500"}>{client.backupAccountant || "Not assigned"}</span>
                   </td>
                   <td className="px-3 py-4 text-right align-top"><button type="button" aria-label={`Edit assignment for ${client.clientName}`} aria-expanded={selectedClientId === client.id} aria-controls="assignment-editor" disabled={saving} onClick={() => openEditor(client)} className="inline-flex h-8 items-center rounded-lg border border-slate-300 px-3 text-xs font-semibold text-brand-700 hover:bg-brand-50 disabled:opacity-50">Edit</button></td>
                 </tr>)}
-                {isLoading ? <tr><td colSpan={3} className="px-3 py-12 text-center text-slate-500"><span role="status">Loading assignments…</span></td></tr> : null}
-                {!isLoading && !visibleClients.length ? <tr><td colSpan={3} className="px-3 py-12 text-center text-slate-500">No clients match this view.</td></tr> : null}
+                {isLoading ? <tr><td colSpan={4} className="px-3 py-12 text-center text-slate-500"><span role="status">Loading assignments…</span></td></tr> : null}
+                {!isLoading && !visibleClients.length ? <tr><td colSpan={4} className="px-3 py-12 text-center text-slate-500">No clients match this view.</td></tr> : null}
               </tbody>
             </table>
           </div>
+          <footer className="assignment-register-footer">{isLoading ? "Loading coverage" : `${visibleClients.length} of ${clients.length} clients`}</footer>
         </section>
 
-        <aside id="assignment-editor" aria-label="Assignment editor" className="min-w-0 border-t border-slate-200 pt-6 xl:border-l xl:border-t-0 xl:pl-7 xl:pt-0">
-          {selectedClient ? <form className="space-y-5" onSubmit={(event) => { event.preventDefault(); void saveAssignment(); }}>
+        {selectedClient && <aside id="assignment-editor" aria-label="Assignment editor" className="admin-assignment-editor">
+          <form className="space-y-5" onSubmit={(event) => { event.preventDefault(); void saveAssignment(); }}>
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Assignment details</p>
@@ -457,18 +435,18 @@ export function AdminAssignmentsPage() {
                 value={selectedAccountantId}
                 required={assignmentType === "primary"}
                 onChange={(event) => setDraftAccountantId(event.target.value)}
-                options={assignmentType === "primary" ? accountantOptions.map((option) => option.value ? option : { label: "Select an accountant", value: "" }) : [{ label: "No backup", value: "" }, ...accountants.filter((accountant) => accountant.id !== selectedClient.assignedAccountantUserId).map((accountant) => ({ label: accountant.name, value: accountant.id }))]}
+                options={assignmentOptions}
               />
               {selectedAccountant ? <div className="flex items-start gap-2 text-xs text-slate-500"><UserRound aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" /><div><p className="break-all">{selectedAccountant.email}</p><p className="mt-1">{selectedAccountant.assignedClientCount} current assignment{selectedAccountant.assignedClientCount === 1 ? "" : "s"}</p></div></div> : null}
 
               {assignmentType === "primary" ? <div className="space-y-4 border-t border-slate-200 pt-4">
                 <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Handover details</p>
-                <TextField label="Assignment reason" required placeholder="Why is ownership changing?" value={getHandover(selectedClient.id).reason} onChange={(event) => updateHandover(selectedClient.id, "reason", event.target.value)} />
+                <TextField label="Assignment reason" maxLength={1000} required placeholder="Why is ownership changing?" value={getHandover(selectedClient.id).reason} onChange={(event) => updateHandover(selectedClient.id, "reason", event.target.value)} />
                 <label className="block space-y-2">
                   <span className="text-sm font-medium text-slate-700">Message to accountant</span>
-                  <textarea required rows={3} placeholder="Include context for the handover" value={getHandover(selectedClient.id).message} onChange={(event) => updateHandover(selectedClient.id, "message", event.target.value)} className="block w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100" />
+                  <textarea required maxLength={1000} rows={3} placeholder="Include context for the handover" value={getHandover(selectedClient.id).message} onChange={(event) => updateHandover(selectedClient.id, "message", event.target.value)} className="block w-full resize-y rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100" />
                 </label>
-                <TextField label="Effective date" required type="date" value={getHandover(selectedClient.id).effectiveDate} onChange={(event) => updateHandover(selectedClient.id, "effectiveDate", event.target.value)} />
+                <p className="text-sm text-slate-500">Changes take effect when saved. The handover message is delivered privately to the new accountant.</p>
               </div> : <p className="text-sm leading-6 text-slate-500">Choose a second accountant for backup coverage. The primary owner stays unchanged.</p>}
 
               <div className="flex flex-wrap items-center gap-3 border-t border-slate-200 pt-4">
@@ -476,12 +454,8 @@ export function AdminAssignmentsPage() {
                 <Button type="button" variant="ghost" onClick={() => { setSelectedClientId(""); setDraftAccountantId(null); }}>Cancel</Button>
               </div>
             </fieldset>
-          </form> : <div className="py-10">
-            <UserRound aria-hidden="true" className="h-7 w-7 text-slate-400" />
-            <h2 className="mt-4 font-semibold text-slate-950">Select a client</h2>
-            <p className="mt-2 max-w-xs text-sm leading-6 text-slate-500">Choose Edit to manage a client's primary owner or backup support. You'll review the change here before saving.</p>
-          </div>}
-        </aside>
+          </form>
+        </aside>}
       </div>
     </div>
   );

@@ -4,7 +4,7 @@ export interface RequiredDocumentTemplate {
   description: string;
   documentCategory: string;
   isRequired: boolean;
-  defaultDueDayOfMonth: number | null;
+  defaultDueDayOfMonth?: number | null;
 }
 
 export const requiredDocumentsEndpoint = "/api/admin/firm-management/templates/required-documents";
