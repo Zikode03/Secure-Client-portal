@@ -1061,6 +1061,55 @@
         ],
         "type": "object"
       },
+      "SecureClientPortal.Backend.Application.Contracts.Modules.Documents.ArchivePlacementRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "expectedDocumentVersion": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "month": {
+            "format": "int32",
+            "nullable": true,
+            "type": "integer"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "year": {
+            "format": "int32",
+            "nullable": true,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expectedDocumentVersion",
+          "scope"
+        ],
+        "type": "object"
+      },
+      "SecureClientPortal.Backend.Application.Contracts.Modules.Documents.ArchivePlacementResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "month": {
+            "format": "int32",
+            "nullable": true,
+            "type": "integer"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "year": {
+            "format": "int32",
+            "nullable": true,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "scope"
+        ],
+        "type": "object"
+      },
       "SecureClientPortal.Backend.Application.Contracts.Modules.Documents.CreateDocumentRequest": {
         "additionalProperties": false,
         "properties": {
@@ -1456,6 +1505,19 @@
           "subtotal",
           "supplierName",
           "vatAmount"
+        ],
+        "type": "object"
+      },
+      "SecureClientPortal.Backend.Application.Contracts.Modules.Documents.LinkDocumentChecklistRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "documentSlotId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "documentSlotId"
         ],
         "type": "object"
       },
@@ -1867,6 +1929,66 @@
         ],
         "type": "object"
       },
+      "SecureClientPortal.Backend.Application.Contracts.Modules.Migration.BulkMigrationDocumentRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "category": {
+            "nullable": true,
+            "type": "string"
+          },
+          "clientId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "confirmOwnershipAndPeriods": {
+            "type": "boolean"
+          },
+          "historicalNotes": {
+            "nullable": true,
+            "type": "string"
+          },
+          "historicalStatusConfirmed": {
+            "type": "boolean"
+          },
+          "month": {
+            "format": "int32",
+            "nullable": true,
+            "type": "integer"
+          },
+          "previousReviewDateUtc": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "previousReviewer": {
+            "nullable": true,
+            "type": "string"
+          },
+          "previouslyFiled": {
+            "type": "boolean"
+          },
+          "recordScope": {
+            "type": "string"
+          },
+          "version": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "year": {
+            "format": "int32",
+            "nullable": true,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "clientId",
+          "confirmOwnershipAndPeriods",
+          "historicalStatusConfirmed",
+          "previouslyFiled",
+          "version"
+        ],
+        "type": "object"
+      },
       "SecureClientPortal.Backend.Application.Contracts.Modules.Migration.CreateMigrationRequest": {
         "additionalProperties": false,
         "properties": {
@@ -1888,6 +2010,9 @@
         "additionalProperties": false,
         "properties": {
           "skip": {
+            "type": "boolean"
+          },
+          "useExistingClient": {
             "type": "boolean"
           },
           "values": {
@@ -1925,6 +2050,13 @@
       "SecureClientPortal.Backend.Application.Contracts.Modules.Migration.MigrationBatchDetail": {
         "additionalProperties": false,
         "properties": {
+          "archiveWarnings": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
           "clients": {
             "items": {
               "$ref": "#/components/schemas/SecureClientPortal.Backend.Application.Contracts.Modules.Migration.MigrationClientRow"
@@ -1993,6 +2125,11 @@
             },
             "type": "array"
           },
+          "existingClientId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
           "id": {
             "format": "uuid",
             "type": "string"
@@ -2008,6 +2145,9 @@
           "sourceRow": {
             "format": "int32",
             "type": "integer"
+          },
+          "useExistingClient": {
+            "type": "boolean"
           },
           "values": {
             "$ref": "#/components/schemas/SecureClientPortal.Backend.Application.Contracts.Modules.Migration.MigrationClientInput"
@@ -2039,6 +2179,13 @@
           "duplicateAcknowledged": {
             "type": "boolean"
           },
+          "historicalNotes": {
+            "nullable": true,
+            "type": "string"
+          },
+          "historicalStatusConfirmed": {
+            "type": "boolean"
+          },
           "month": {
             "format": "int32",
             "nullable": true,
@@ -2047,8 +2194,27 @@
           "ownershipConfirmed": {
             "type": "boolean"
           },
+          "previousReviewDateUtc": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "previousReviewer": {
+            "nullable": true,
+            "type": "string"
+          },
+          "previouslyFiled": {
+            "type": "boolean"
+          },
+          "recordScope": {
+            "type": "string"
+          },
           "skip": {
             "type": "boolean"
+          },
+          "sourcePath": {
+            "nullable": true,
+            "type": "string"
           },
           "year": {
             "format": "int32",
@@ -2134,6 +2300,10 @@
             "type": "integer"
           },
           "importedDocuments": {
+            "format": "int32",
+            "type": "integer"
+          },
+          "linkedClients": {
             "format": "int32",
             "type": "integer"
           },
@@ -2844,10 +3014,12 @@
           },
           "month": {
             "format": "int32",
+            "nullable": true,
             "type": "integer"
           },
           "monthlyPackId": {
             "format": "uuid",
+            "nullable": true,
             "type": "string"
           },
           "rejectionReason": {
@@ -2880,6 +3052,7 @@
           },
           "year": {
             "format": "int32",
+            "nullable": true,
             "type": "integer"
           }
         },
@@ -2891,12 +3064,9 @@
           "documentId",
           "documentName",
           "documentStatus",
-          "month",
-          "monthlyPackId",
           "reviewAgeDays",
           "reviewPriority",
-          "uploadedAtUtc",
-          "year"
+          "uploadedAtUtc"
         ],
         "type": "object"
       },
@@ -3949,6 +4119,108 @@
           "requiredThroughUtc",
           "status",
           "year"
+        ],
+        "type": "object"
+      },
+      "SecureClientPortal.Backend.Domain.Modules.MonthlyPacks.DocumentSlot": {
+        "additionalProperties": false,
+        "properties": {
+          "canCurrentlyBeSubmitted": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "category": {
+            "readOnly": true,
+            "type": "string"
+          },
+          "clientId": {
+            "format": "uuid",
+            "readOnly": true,
+            "type": "string"
+          },
+          "createdAtUtc": {
+            "format": "date-time",
+            "readOnly": true,
+            "type": "string"
+          },
+          "currentDocumentId": {
+            "format": "uuid",
+            "nullable": true,
+            "readOnly": true,
+            "type": "string"
+          },
+          "dueDateUtc": {
+            "format": "date-time",
+            "nullable": true,
+            "readOnly": true,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "readOnly": true,
+            "type": "string"
+          },
+          "isRequired": {
+            "readOnly": true,
+            "type": "boolean"
+          },
+          "label": {
+            "readOnly": true,
+            "type": "string"
+          },
+          "monthlyPackId": {
+            "format": "uuid",
+            "readOnly": true,
+            "type": "string"
+          },
+          "rejectionReason": {
+            "nullable": true,
+            "readOnly": true,
+            "type": "string"
+          },
+          "reviewStatus": {
+            "readOnly": true,
+            "type": "string"
+          },
+          "status": {
+            "readOnly": true,
+            "type": "string"
+          },
+          "submittedAtUtc": {
+            "format": "date-time",
+            "nullable": true,
+            "readOnly": true,
+            "type": "string"
+          },
+          "submittedByUserId": {
+            "format": "uuid",
+            "nullable": true,
+            "readOnly": true,
+            "type": "string"
+          },
+          "updatedAtUtc": {
+            "format": "date-time",
+            "readOnly": true,
+            "type": "string"
+          }
+        },
+        "required": [
+          "canCurrentlyBeSubmitted",
+          "category",
+          "clientId",
+          "createdAtUtc",
+          "currentDocumentId",
+          "dueDateUtc",
+          "id",
+          "isRequired",
+          "label",
+          "monthlyPackId",
+          "rejectionReason",
+          "reviewStatus",
+          "status",
+          "submittedAtUtc",
+          "submittedByUserId",
+          "updatedAtUtc"
         ],
         "type": "object"
       },
@@ -5991,79 +6263,6 @@
         ],
         "type": "object"
       },
-      "Source.Anonymous_D6A6023B8A596E99": {
-        "properties": {
-          "clientId": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "currentVersionNumber": {
-            "type": "integer"
-          },
-          "documentSlotId": {
-            "format": "uuid",
-            "nullable": true,
-            "type": "string"
-          },
-          "documentType": {
-            "type": "string"
-          },
-          "fileType": {
-            "type": "string"
-          },
-          "id": {
-            "format": "uuid",
-            "type": "string"
-          },
-          "monthlyPackId": {
-            "format": "uuid",
-            "nullable": true,
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "sizeBytes": {
-            "type": "integer"
-          },
-          "status": {
-            "type": "string"
-          },
-          "storageKey": {
-            "nullable": true,
-            "type": "string"
-          },
-          "updatedAtUtc": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "uploadedAtUtc": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "uploadedByUserId": {
-            "format": "uuid",
-            "type": "string"
-          }
-        },
-        "required": [
-          "clientId",
-          "currentVersionNumber",
-          "documentSlotId",
-          "documentType",
-          "fileType",
-          "id",
-          "monthlyPackId",
-          "name",
-          "sizeBytes",
-          "status",
-          "storageKey",
-          "updatedAtUtc",
-          "uploadedAtUtc",
-          "uploadedByUserId"
-        ],
-        "type": "object"
-      },
       "Source.Anonymous_D999510D6F7DF38D": {
         "properties": {
           "createdAtUtc": {
@@ -6148,6 +6347,97 @@
         },
         "required": [
           "seeded"
+        ],
+        "type": "object"
+      },
+      "Source.Anonymous_EE85ECF79EC892D7": {
+        "properties": {
+          "archiveMonth": {
+            "nullable": true,
+            "type": "integer"
+          },
+          "archiveScope": {
+            "type": "string"
+          },
+          "archiveYear": {
+            "nullable": true,
+            "type": "integer"
+          },
+          "clientId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "currentVersionNumber": {
+            "type": "integer"
+          },
+          "documentSlotId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "documentType": {
+            "type": "string"
+          },
+          "fileType": {
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "isHistoricallyFiled": {
+            "type": "boolean"
+          },
+          "monthlyPackId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "sizeBytes": {
+            "type": "integer"
+          },
+          "status": {
+            "type": "string"
+          },
+          "storageKey": {
+            "nullable": true,
+            "type": "string"
+          },
+          "updatedAtUtc": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "uploadedAtUtc": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "uploadedByUserId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "archiveMonth",
+          "archiveScope",
+          "archiveYear",
+          "clientId",
+          "currentVersionNumber",
+          "documentSlotId",
+          "documentType",
+          "fileType",
+          "id",
+          "isHistoricallyFiled",
+          "monthlyPackId",
+          "name",
+          "sizeBytes",
+          "status",
+          "storageKey",
+          "updatedAtUtc",
+          "uploadedAtUtc",
+          "uploadedByUserId"
         ],
         "type": "object"
       },
@@ -7285,6 +7575,27 @@
         ],
         "type": "object"
       },
+      "Source.SecureClientPortal.Backend.Application.Contracts.Modules.Documents.ArchivePlacementResponse": {
+        "properties": {
+          "month": {
+            "nullable": true,
+            "type": "integer"
+          },
+          "scope": {
+            "type": "string"
+          },
+          "year": {
+            "nullable": true,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "month",
+          "scope",
+          "year"
+        ],
+        "type": "object"
+      },
       "Source.SecureClientPortal.Backend.Application.Contracts.Modules.Documents.InvoiceReviewEvidence": {
         "properties": {
           "confidence": {
@@ -7811,6 +8122,13 @@
       },
       "Source.SecureClientPortal.Backend.Application.Contracts.Modules.Migration.MigrationBatchDetail": {
         "properties": {
+          "archiveWarnings": {
+            "items": {
+              "type": "string"
+            },
+            "nullable": true,
+            "type": "array"
+          },
           "clients": {
             "items": {
               "$ref": "#/components/schemas/Source.SecureClientPortal.Backend.Application.Contracts.Modules.Migration.MigrationClientRow"
@@ -7828,6 +8146,7 @@
           }
         },
         "required": [
+          "archiveWarnings",
           "clients",
           "documents",
           "summary"
@@ -7877,6 +8196,11 @@
             },
             "type": "array"
           },
+          "existingClientId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
           "id": {
             "format": "uuid",
             "type": "string"
@@ -7892,16 +8216,21 @@
           "sourceRow": {
             "type": "integer"
           },
+          "useExistingClient": {
+            "type": "boolean"
+          },
           "values": {
             "$ref": "#/components/schemas/Source.SecureClientPortal.Backend.Application.Contracts.Modules.Migration.MigrationClientInput"
           }
         },
         "required": [
           "errors",
+          "existingClientId",
           "id",
           "importedId",
           "skip",
           "sourceRow",
+          "useExistingClient",
           "values"
         ],
         "type": "object"
@@ -7922,6 +8251,13 @@
           "duplicateAcknowledged": {
             "type": "boolean"
           },
+          "historicalNotes": {
+            "nullable": true,
+            "type": "string"
+          },
+          "historicalStatusConfirmed": {
+            "type": "boolean"
+          },
           "month": {
             "nullable": true,
             "type": "integer"
@@ -7929,8 +8265,27 @@
           "ownershipConfirmed": {
             "type": "boolean"
           },
+          "previousReviewDateUtc": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "previousReviewer": {
+            "nullable": true,
+            "type": "string"
+          },
+          "previouslyFiled": {
+            "type": "boolean"
+          },
+          "recordScope": {
+            "type": "string"
+          },
           "skip": {
             "type": "boolean"
+          },
+          "sourcePath": {
+            "nullable": true,
+            "type": "string"
           },
           "year": {
             "nullable": true,
@@ -7942,9 +8297,16 @@
           "clientId",
           "displayName",
           "duplicateAcknowledged",
+          "historicalNotes",
+          "historicalStatusConfirmed",
           "month",
           "ownershipConfirmed",
+          "previousReviewDateUtc",
+          "previousReviewer",
+          "previouslyFiled",
+          "recordScope",
           "skip",
+          "sourcePath",
           "year"
         ],
         "type": "object"
@@ -8015,6 +8377,9 @@
           "importedDocuments": {
             "type": "integer"
           },
+          "linkedClients": {
+            "type": "integer"
+          },
           "name": {
             "type": "string"
           },
@@ -8036,6 +8401,7 @@
           "id",
           "importedClients",
           "importedDocuments",
+          "linkedClients",
           "name",
           "status",
           "updatedAtUtc",
@@ -8942,6 +9308,7 @@
           },
           "monthlyPackId": {
             "format": "uuid",
+            "nullable": true,
             "type": "string"
           },
           "name": {
@@ -9139,10 +9506,12 @@
             "type": "string"
           },
           "month": {
+            "nullable": true,
             "type": "integer"
           },
           "monthlyPackId": {
             "format": "uuid",
+            "nullable": true,
             "type": "string"
           },
           "rejectionReason": {
@@ -9173,6 +9542,7 @@
             "type": "string"
           },
           "year": {
+            "nullable": true,
             "type": "integer"
           }
         },
@@ -10097,6 +10467,17 @@
       },
       "Source.SecureClientPortal.Backend.Domain.Modules.Documents.Document": {
         "properties": {
+          "archiveMonth": {
+            "nullable": true,
+            "type": "integer"
+          },
+          "archiveScope": {
+            "type": "string"
+          },
+          "archiveYear": {
+            "nullable": true,
+            "type": "integer"
+          },
           "category": {
             "type": "string"
           },
@@ -10146,8 +10527,12 @@
           "isFiled": {
             "type": "boolean"
           },
+          "isHistoricallyFiled": {
+            "type": "boolean"
+          },
           "monthlyPackId": {
             "format": "uuid",
+            "nullable": true,
             "type": "string"
           },
           "name": {
@@ -10177,6 +10562,9 @@
           }
         },
         "required": [
+          "archiveMonth",
+          "archiveScope",
+          "archiveYear",
           "category",
           "clientId",
           "contentSha256",
@@ -10190,6 +10578,7 @@
           "invoiceReviewRequired",
           "invoiceReviewRevision",
           "isFiled",
+          "isHistoricallyFiled",
           "monthlyPackId",
           "name",
           "sizeBytes",
@@ -10266,6 +10655,91 @@
           "description",
           "id",
           "isEnabled",
+          "updatedAtUtc"
+        ],
+        "type": "object"
+      },
+      "Source.SecureClientPortal.Backend.Domain.Modules.MonthlyPacks.DocumentSlot": {
+        "properties": {
+          "canCurrentlyBeSubmitted": {
+            "type": "boolean"
+          },
+          "category": {
+            "type": "string"
+          },
+          "clientId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "createdAtUtc": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "currentDocumentId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "dueDateUtc": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "isRequired": {
+            "type": "boolean"
+          },
+          "label": {
+            "type": "string"
+          },
+          "monthlyPackId": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "rejectionReason": {
+            "nullable": true,
+            "type": "string"
+          },
+          "reviewStatus": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "submittedAtUtc": {
+            "format": "date-time",
+            "nullable": true,
+            "type": "string"
+          },
+          "submittedByUserId": {
+            "format": "uuid",
+            "nullable": true,
+            "type": "string"
+          },
+          "updatedAtUtc": {
+            "format": "date-time",
+            "type": "string"
+          }
+        },
+        "required": [
+          "canCurrentlyBeSubmitted",
+          "category",
+          "clientId",
+          "createdAtUtc",
+          "currentDocumentId",
+          "dueDateUtc",
+          "id",
+          "isRequired",
+          "label",
+          "monthlyPackId",
+          "rejectionReason",
+          "reviewStatus",
+          "status",
+          "submittedAtUtc",
+          "submittedByUserId",
           "updatedAtUtc"
         ],
         "type": "object"
@@ -12249,6 +12723,79 @@
             "text/json": {
               "schema": {
                 "$ref": "#/components/schemas/SecureClientPortal.Backend.Application.Contracts.Modules.Migration.EditMigrationClientRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecureClientPortal.Backend.Application.Contracts.Modules.Migration.MigrationBatchDetail"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecureClientPortal.Backend.Application.Contracts.Modules.Migration.MigrationBatchDetail"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecureClientPortal.Backend.Application.Contracts.Modules.Migration.MigrationBatchDetail"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "description": "Sign-in required."
+          },
+          "403": {
+            "description": "Client access denied, role denied, or CSRF validation failed."
+          }
+        },
+        "security": [
+          {
+            "csrfToken": [],
+            "portalCookie": []
+          }
+        ],
+        "tags": [
+          "DataMigration"
+        ]
+      }
+    },
+    "/api/admin/migrations/{id}/documents": {
+      "put": {
+        "operationId": "DataMigration_BulkEditDocuments_PUT_api_admin_migrations_id_documents",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/*\u002Bjson": {
+              "schema": {
+                "$ref": "#/components/schemas/SecureClientPortal.Backend.Application.Contracts.Modules.Migration.BulkMigrationDocumentRequest"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SecureClientPortal.Backend.Application.Contracts.Modules.Migration.BulkMigrationDocumentRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SecureClientPortal.Backend.Application.Contracts.Modules.Migration.BulkMigrationDocumentRequest"
               }
             }
           },
@@ -18027,7 +18574,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Source.Anonymous_D6A6023B8A596E99"
+                  "$ref": "#/components/schemas/Source.Anonymous_EE85ECF79EC892D7"
                 }
               }
             },
@@ -18107,6 +18654,152 @@
         ],
         "tags": [
           "Documents"
+        ]
+      }
+    },
+    "/api/documents/{id}/archive-placement": {
+      "put": {
+        "operationId": "DocumentArchive_Place_PUT_api_documents_id_archive_placement",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/*\u002Bjson": {
+              "schema": {
+                "$ref": "#/components/schemas/SecureClientPortal.Backend.Application.Contracts.Modules.Documents.ArchivePlacementRequest"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SecureClientPortal.Backend.Application.Contracts.Modules.Documents.ArchivePlacementRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SecureClientPortal.Backend.Application.Contracts.Modules.Documents.ArchivePlacementRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecureClientPortal.Backend.Application.Contracts.Modules.Documents.ArchivePlacementResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecureClientPortal.Backend.Application.Contracts.Modules.Documents.ArchivePlacementResponse"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecureClientPortal.Backend.Application.Contracts.Modules.Documents.ArchivePlacementResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "description": "Sign-in required."
+          },
+          "403": {
+            "description": "Client access denied, role denied, or CSRF validation failed."
+          }
+        },
+        "security": [
+          {
+            "csrfToken": [],
+            "portalCookie": []
+          }
+        ],
+        "tags": [
+          "DocumentArchive"
+        ]
+      }
+    },
+    "/api/documents/{id}/checklist-link": {
+      "post": {
+        "operationId": "DocumentChecklist_Link_POST_api_documents_id_checklist_link",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/*\u002Bjson": {
+              "schema": {
+                "$ref": "#/components/schemas/SecureClientPortal.Backend.Application.Contracts.Modules.Documents.LinkDocumentChecklistRequest"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SecureClientPortal.Backend.Application.Contracts.Modules.Documents.LinkDocumentChecklistRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SecureClientPortal.Backend.Application.Contracts.Modules.Documents.LinkDocumentChecklistRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecureClientPortal.Backend.Domain.Modules.MonthlyPacks.DocumentSlot"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecureClientPortal.Backend.Domain.Modules.MonthlyPacks.DocumentSlot"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/SecureClientPortal.Backend.Domain.Modules.MonthlyPacks.DocumentSlot"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "description": "Sign-in required."
+          },
+          "403": {
+            "description": "Client access denied, role denied, or CSRF validation failed."
+          }
+        },
+        "security": [
+          {
+            "csrfToken": [],
+            "portalCookie": []
+          }
+        ],
+        "tags": [
+          "DocumentChecklist"
         ]
       }
     },

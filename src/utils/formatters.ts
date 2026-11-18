@@ -7,6 +7,7 @@ import type {
 } from "../types/portal";
 
 const workflowStatusLabels: Record<string, string> = {
+  not_applicable: "Not applicable",
   draft: "Draft",
   missing: "Missing",
   uploaded: "Uploaded",

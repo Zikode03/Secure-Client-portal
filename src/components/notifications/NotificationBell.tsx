@@ -34,6 +34,7 @@ export function NotificationBell() {
   const navigate = useNavigate();
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
+  const readRevision = useRef(0);
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<Alert[]>([]);
   const [error, setError] = useState("");
@@ -51,10 +52,11 @@ export function NotificationBell() {
     const load = async () => {
       if (pending || document.visibilityState === "hidden") return;
       pending = true;
+      const version = readRevision.current;
       try {
         const result = await apiGetJson("/api/notifications", {signal: controller.signal});
         if (!Array.isArray(result)) throw new Error("Invalid notification response");
-        if (!controller.signal.aborted) { setItems(result); setError(""); }
+        if (!controller.signal.aborted && version === readRevision.current) { setItems(result); setError(""); }
       } catch { if (!controller.signal.aborted) setError("Notifications could not be loaded. Please try again."); }
       finally { pending = false; if (!controller.signal.aborted) setLoading(false); }
     };
@@ -84,6 +86,7 @@ export function NotificationBell() {
     setBusy(true);
     try {
       await apiPostJson("/api/notifications/mark-all-read", {});
+      readRevision.current++;
       setItems(current => current.map(item => ({...item, isRead: true})));
       notificationsChanged();
     } catch { setError("Could not mark notifications as read. Please try again."); }
@@ -93,6 +96,7 @@ export function NotificationBell() {
     setBusy(true);
     try {
       if (!item.isRead) await apiPostJson(`/api/notifications/${encodeURIComponent(item.id)}/mark-read`, {});
+      readRevision.current++;
       setItems(current => current.map(row => row.id === item.id ? {...row, isRead: true} : row));
       notificationsChanged();
       // Only navigate to internal routes. External URLs are never trusted from alert data.

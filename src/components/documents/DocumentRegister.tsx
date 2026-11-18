@@ -90,7 +90,7 @@ export function DocumentRegister({
                     <td><div className="doc-library-file"><span className="doc-library-file-icon"><FileText size={20} aria-hidden="true" /></span><div className="min-w-0"><button className="doc-library-file-name" title={result.title} onClick={() => onSelect(result.id)} type="button">{result.title}</button><p className="doc-library-file-meta">{formatDocumentType(result.typeLabel)}<span aria-hidden="true"> · </span>{formatDocumentSource(source)}{result.amountLabel ? ` · ${result.amountLabel}` : ""}</p></div></div></td>
                     <td>{result.monthLabel || "—"}</td>
                     <td>{formatDateLabel(result.date)}</td>
-                    <td><span className="doc-library-status"><span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${toneDotClass(statusToTone(result.status))}`} />{formatStatusLabel(result.status)}</span></td>
+                    <td><span className="doc-library-status"><span aria-hidden="true" className={`h-2 w-2 shrink-0 rounded-full ${toneDotClass(statusToTone(result.status))}`} />{rowDocument?.isHistoricallyFiled ? "Historically filed" : formatStatusLabel(result.status)}</span></td>
                     <td className="doc-library-action-cell"><RecordActions iconOnly label={`Actions for ${result.title}`} actions={[{ label: "Open", onSelect: () => onSelect(result.id) }, { label: "Download", onSelect: () => onDownload(result) }]} /></td>
                   </tr>
                 );

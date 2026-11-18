@@ -12,6 +12,8 @@ vi.mock("../services/apiClient", async original => ({ ...await original<typeof i
 beforeEach(() => { vi.spyOn(portalServiceApi, "getAdminClients").mockResolvedValue([{ id: "client-1", clientName: "Test business", industry: "Services", assignedAccountant: user.fullName, assignedAccountantUserId: user.id, requiredPack: "Monthly", completionRate: 0, deadlinePolicy: "Configured", status: "on_track" }]); });
 it("shows only document browsing actions for records returned by the backend", async () => {
   render(<MemoryRouter><PortalProvider><AccountantDocumentsPage /></PortalProvider></MemoryRouter>);
+  fireEvent.click(await screen.findByRole("button",{name:/^Test business/}));
+  fireEvent.click(screen.getByRole("button",{name:/^Period needs checking/}));
   const actions = await screen.findAllByRole("button", { name: /^Actions for / });
   expect(screen.getByRole("heading", { name: "Documents" })).toBeInTheDocument();
   expect(actions[0]).toBeInTheDocument();
@@ -35,6 +37,8 @@ it("files an accepted document through the real protected API transport", async 
   vi.stubGlobal("fetch",fetchMock);
   try {
     render(<MemoryRouter><PortalProvider><AccountantDocumentsPage /></PortalProvider></MemoryRouter>);
+    fireEvent.click(await screen.findByRole("button",{name:/^Test business/}));
+    fireEvent.click(screen.getByRole("button",{name:/^Period needs checking/}));
     fireEvent.click((await screen.findAllByRole("button",{name:/^Actions for /}))[0]);
     fireEvent.click(screen.getByRole("menuitem", { name: "Open" }));
     fireEvent.click(await screen.findByRole("button",{name:"File document"}));

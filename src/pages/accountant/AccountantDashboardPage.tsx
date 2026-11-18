@@ -11,12 +11,12 @@ import "./accountantDashboard.css";
 
 interface Pack { id: string; clientId: string; year: number; month: number; status: string }
 interface Slot { id: string; monthlyPackId: string; clientId: string; label: string; category: string; isRequired: boolean; status: string; dueDateUtc?: string | null }
-interface Review { documentId: string; clientId: string; clientName: string; documentName: string; documentCategory: string; documentStatus: string; slotStatus?: string | null; year: number; month: number; reviewPriority: string; submittedAtUtc?: string | null; uploadedAtUtc: string }
+interface Review { documentId: string; clientId: string; clientName: string; documentName: string; documentCategory: string; documentStatus: string; slotStatus?: string | null; year?: number | null; month?: number | null; reviewPriority: string; submittedAtUtc?: string | null; uploadedAtUtc: string }
 interface Snapshot { clients: FirmClientAccount[]; packs: Pack[]; slots: Record<string, Slot[]>; reviews: Review[]; failed: number; checked: string }
 const accepted = (slot: Slot) => ["accepted", "approved", "filed"].includes(slot.status);
 const required = (slot: Slot) => slot.isRequired && slot.status !== "not_applicable";
 const waiting = (slot: Slot) => required(slot) && ["not_started", "missing", "draft", "partial", "pending", "pending_signature", "rejected", "reupload_required"].includes(slot.status);
-const period = (pack: Pick<Pack, "year" | "month">) => new Intl.DateTimeFormat("en-ZA", { month: "short", year: "numeric" }).format(new Date(pack.year, pack.month - 1, 1));
+const period = (pack: {year?: number|null; month?: number|null}) => !pack.year||!pack.month ? "Non-monthly record" : new Intl.DateTimeFormat("en-ZA", { month: "short", year: "numeric" }).format(new Date(pack.year, pack.month - 1, 1));
 const date = (value: string) => Number.isFinite(Date.parse(value)) ? new Intl.DateTimeFormat("en-ZA", { day: "numeric", month: "short", year: "numeric" }).format(new Date(value)) : "Not specified";
 const pending = (item: Review) => !["accepted", "approved", "filed", "rejected", "reupload_required", "deleted", "archived"].includes(item.documentStatus) && ["submitted", "under_review"].includes(item.slotStatus || item.documentStatus);
 

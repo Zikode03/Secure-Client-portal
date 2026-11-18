@@ -1,0 +1,35 @@
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import { beforeEach, expect, it, vi } from "vitest";
+import { ClientDocumentsPage } from "../pages/client/ClientDocumentsPage";
+import { apiGetJson } from "./fixtures/apiTransportFixture";
+vi.mock("../app/auth", () => ({useAuth: () => ({user: {id: "client-user", role: "client", company: "Test business", clientIds: ["business-1"]}})}));
+vi.mock("../app/portal", () => ({usePortal: () => ({clientWorkflow: {unifiedSearchResults: []}, filterSearchResults: (rows: unknown[]) => rows})}));
+vi.mock("../services/apiClient", async original => ({...await original<typeof import("../services/apiClient")>(),hasApiBaseUrl: () => true, apiGetJson: vi.fn()}));
+vi.mock("../components/documents/DocumentPdfPreview",()=>({DocumentPdfPreview:({documentId}:{documentId:string})=><div data-testid="secure-preview">{documentId}</div>}));
+const imported = {id: "imported-1", clientId: "business-1", monthlyPackId: "historical-pack", name: "Historical invoice.pdf", category: "invoices", status: "uploaded", uploadedAtUtc: "2026-11-18T08:00:00Z", fileType: "application/pdf", sizeBytes: 1200, currentVersionNumber: 1};
+let documents: typeof imported[];
+beforeEach(() => {
+  documents=[];
+  vi.mocked(apiGetJson).mockReset();
+  vi.mocked(apiGetJson).mockImplementation(async path => path === "/api/documents" ? documents : path.startsWith("/api/monthly-packs") ? [{id: "historical-pack", clientId: "business-1", year: 2025, month: 1, status: "draft"}] : []);
+});
+it("refreshes imported historical documents when the client returns to the app", async () => {
+  render(<MemoryRouter><ClientDocumentsPage /></MemoryRouter>);
+  await screen.findByText(/No dated records yet/);
+  documents=[imported,{...imported,id:"foreign",clientId:"business-2",name:"Other company.pdf"}];
+  fireEvent(window,new Event("focus"));
+  fireEvent.click(await screen.findByRole("button",{name:/^Year 2025/}));
+  fireEvent.click(screen.getByRole("button",{name:/^January 2025/}));
+  expect(await screen.findByRole("button", {name: "Historical invoice.pdf"})).toBeInTheDocument();
+  expect(screen.getByRole("cell", {name: "January 2025"})).toBeInTheDocument();
+  expect(screen.getAllByText("Uploaded").length).toBeGreaterThan(0);
+  expect(screen.queryByRole("button", {name: "Other company.pdf"})).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button",{name:"Actions for Historical invoice.pdf"}));
+  fireEvent.click(screen.getByRole("menuitem",{name:"Open"}));
+  expect(screen.getByRole("dialog",{name:"Document preview"})).toBeInTheDocument();
+  expect(screen.getByTestId("secure-preview")).toHaveTextContent("imported-1");
+  fireEvent.click(screen.getByRole("button",{name:"Close document workspace"}));
+  expect(screen.queryByRole("dialog",{name:"Document preview"})).not.toBeInTheDocument();
+  await waitFor(() => expect(vi.mocked(apiGetJson).mock.calls.filter(([path]) => path === "/api/documents")).toHaveLength(2));
+});

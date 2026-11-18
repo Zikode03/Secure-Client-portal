@@ -291,6 +291,7 @@ export default function App() {
           <Route element={<FirmClient360Page />} path="clients/:clientId/profile" />
 
           <Route element={<RequirePermission permission="manage:users"><AdminMigrationPage /></RequirePermission>} path="admin/migration" />
+          <Route element={<RequirePermission permission="comment:documents"><AdminMigrationPage /></RequirePermission>} path="imports" />
           <Route element={<RequirePermission permission="manage:users"><AdminUsersPage /></RequirePermission>} path="admin/users" />
           <Route element={<RequirePermission permission="manage:roles"><AdminRolesPage /></RequirePermission>} path="admin/roles" />
           <Route element={<RequirePermission permission="manage:users"><AdminAccountantsPage /></RequirePermission>} path="admin/accountants" />

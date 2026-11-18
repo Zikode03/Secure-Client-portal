@@ -1,3 +1,4 @@
+import { checklistSummary } from "./checklistSummary";
 // Friendly guide: this module (workflowEngine) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
@@ -69,13 +70,11 @@ export function sortByDateDescending<Value extends { date: string }>(items: Valu
 }
 
 export function recalculatePack(pack: MonthlyPack): MonthlyPack {
-  const completedCount = pack.slots.filter((slot) => isSlotReady(slot.status)).length;
-  const totalCount = pack.slots.length;
-  const progressPercent = totalCount === 0 ? 0 : Math.round((completedCount / totalCount) * 100);
-  const blockingSlots = pack.slots.filter(
-    (slot) => slot.isRequired && isBlockingRequiredStatus(slot.status),
-  );
-  const canComplete = blockingSlots.length === 0;
+  const summary=checklistSummary(pack.slots);
+  const completedCount=summary.approvedCount;
+  const totalCount=summary.totalCount;
+  const progressPercent=summary.progressPercent;
+  const canComplete=summary.submissionReady;
 
   return {
     ...pack,
@@ -84,7 +83,7 @@ export function recalculatePack(pack: MonthlyPack): MonthlyPack {
     progressPercent,
     canComplete,
     completionMessage: canComplete
-      ? "Month is complete and ready to submit to your accountant."
+      ? "Required documents received. Ready to submit for accountant review."
       : "You cannot submit this month because required documents are still missing or rejected.",
   };
 }
@@ -434,7 +433,7 @@ export function createSummaryMetrics(
       id: "metric-1",
       label: "Pack completion",
       value: `${pack.progressPercent}%`,
-      helper: `${pack.completedCount} of ${pack.totalCount} checklist slots are workflow-ready.`,
+      helper: `${pack.completedCount} of ${pack.totalCount} applicable required items approved.`,
       tone: pack.progressPercent >= 85 ? "success" : pack.progressPercent >= 60 ? "info" : "warning",
       progress: pack.progressPercent,
     },
@@ -616,6 +615,8 @@ export function buildUnifiedSearchResults(args: {
     monthLabel: document.monthLabel,
     typeLabel: document.documentType,
     status: document.status,
+    isHistoricallyFiled: document.isHistoricallyFiled,
+    archiveScope: document.archiveScope, archiveYear: document.archiveYear, archiveMonth: document.archiveMonth,
     date: document.uploadedAt,
     amountLabel: document.amountLabel,
     supplierName: document.supplierName,
@@ -756,7 +757,7 @@ export function filterUnifiedSearchResults(
   const normalisedExpiryStatus = normaliseSearchValue(filters.expiryStatus);
 
   return results.filter((result) => {
-    const resultYear = result.date ? String(new Date(result.date).getFullYear()) : "";
+    const resultYear = result.monthLabel?.match(/\b(\d{4})\b/)?.[1] ?? "";
     const matchesQuery =
       queryTokens.length === 0 ||
       queryTokens.every((token) => result.keywordText.includes(token));

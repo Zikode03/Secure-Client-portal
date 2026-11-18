@@ -114,6 +114,7 @@ export const navigationByRole: Record<Role, NavigationItem[]> = {
       section: "Main",
       icon: "requests",
     },
+    { label: "Import documents", to: "/firm/imports", description: "Import historical documents for assigned clients", section: "Documents", icon: "documents" },
     {
       label: "Documents",
       to: "/firm/documents",

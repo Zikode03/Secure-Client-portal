@@ -1,3 +1,4 @@
+import { notificationKind } from "../../services/notificationKinds";
 import { notificationsChanged } from "../../components/notifications/NotificationBell";
 // Friendly guide: this module (ClientNotificationsPage) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
@@ -308,14 +309,7 @@ function matchesFilter(
 function mapBackendNotification(notification: BackendNotificationRecord): NotificationItem {
   const type = notification.type.trim().toLowerCase();
 
-  const kind: NotificationKind =
-    type.includes("compliance")
-      ? "expiring_documents"
-      : type.includes("rejected") || type.includes("reupload")
-        ? "rejected_documents"
-        : type.includes("deadline")
-          ? "deadline_reminder"
-          : "missing_documents";
+  const kind = notificationKind(type);
 
   const tone: Tone =
     kind === "rejected_documents"
@@ -349,21 +343,14 @@ function mapBackendNotification(notification: BackendNotificationRecord): Notifi
     actionLabel:
       kind === "expiring_documents"
         ? "Open compliance centre"
-        : kind === "rejected_documents"
+        : kind === "rejected_documents" || kind === "document_update"
           ? "Open documents"
           : kind === "deadline_reminder"
             ? "Open monthly pack"
-            : "Open request inbox",
+            : kind === "general_update" ? "Open update" : "Open request inbox",
     actionHref,
     linkedRecordLabel: notification.title,
-    linkedWorkspace:
-      kind === "expiring_documents"
-        ? "compliance"
-        : kind === "rejected_documents"
-          ? "documents"
-          : kind === "deadline_reminder"
-            ? "monthly_packs"
-            : "requests",
+    linkedWorkspace: actionHref.includes("/documents") ? "documents" : actionHref.includes("/compliance") ? "compliance" : actionHref.includes("/packs") ? "monthly_packs" : "requests",
     state: notification.isRead ? "reviewed" : "unread",
     activity: notification.readAtUtc
       ? [
@@ -381,6 +368,9 @@ function mapBackendNotification(notification: BackendNotificationRecord): Notifi
 
 function kindDescription(kind: NotificationKind) {
   switch (kind) {
+    case "general_update": return "An update about your account or work with your accountant. Open the linked record for details.";
+    case "document_update":
+      return "Historical documents have been added to your account. Open Documents to view them by period.";
     case "missing_documents":
       return "A required structured slot in the monthly pack is still empty, so the month cannot move through review and submission yet.";
     case "rejected_documents":
@@ -397,6 +387,8 @@ function linkedItemLabel(notification: NotificationItem) {
 }
 
 function impactLabel(notification: NotificationItem) {
+  if(notification.kind === "general_update")return "Account update";
+  if (notification.kind === "document_update") return "Documents available to view";
   if (notification.kind === "missing_documents") {
     return "Month-end filing cannot proceed";
   }
@@ -413,6 +405,7 @@ function impactLabel(notification: NotificationItem) {
 }
 
 function blockingLabel(notification: NotificationItem) {
+  if(notification.kind === "general_update" || notification.kind === "document_update")return "Related record";
   if (notification.kind === "expiring_documents") {
     return "Compliance Centre";
   }
@@ -421,6 +414,7 @@ function blockingLabel(notification: NotificationItem) {
 }
 
 function needLabel(notification: NotificationItem) {
+  if(notification.kind === "general_update" || notification.kind === "document_update")return "Open the linked record to view this update. No missing document is implied.";
   if (notification.kind === "missing_documents") {
     return "Upload the missing required record into the correct structured slot.";
   }
@@ -550,7 +544,7 @@ export function ClientNotificationsPage() {
   const filterCounts = useMemo(
     () => ({
       all: notifications.length,
-      unread: notifications.filter((item) => !reviewedSet.has(item.id)).length,
+      unread: notifications.filter((item) => matchesFilter(item, "unread", reviewedSet)).length,
       action: notifications.filter(
         (item) => item.kind === "missing_documents" || item.kind === "rejected_documents",
       ).length,

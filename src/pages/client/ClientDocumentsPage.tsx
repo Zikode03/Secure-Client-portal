@@ -1,5 +1,9 @@
+import "./clientDocumentViewer.css";
+import {DocumentPdfPreview} from "../../components/documents/DocumentPdfPreview";
+import {archivePeriodLabel} from "../../services/financialArchive";
+import {FinancialArchiveExplorer,type ArchiveSelection} from "../../components/documents/FinancialArchiveExplorer";
 import { Link } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
 import { DocumentRegister, type DocumentRegisterSortDirection } from "../../components/documents/DocumentRegister";
@@ -73,11 +77,12 @@ export function ClientDocumentsPage() {
   const backendMode = hasApiBaseUrl() && Boolean(user?.clientIds[0]);
   const clientId = user?.clientIds[0] ?? "";
 
+  const [archiveSelection,setArchiveSelection]=useState<ArchiveSelection>({ids:[],leaf:false,clientId:""});
+  const selectArchive=useCallback((selection:ArchiveSelection)=>{setArchiveSelection(current=>current.leaf===selection.leaf&&current.ids.join("|")===selection.ids.join("|")?current:selection);setCurrentPage(1);},[]);
   const [filters, setFilters] = useState<UnifiedSearchFilters>(() => createDefaultFilters());
   const [sortDirection, setSortDirection] = useState<DocumentRegisterSortDirection>("newest");
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedResultId, setSelectedResultId] = useState("");
-  const [viewerOpen, setViewerOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<MonthlyDocumentSlot | null>(null);
   const [livePackId, setLivePackId] = useState("");
   const [liveDocuments, setLiveDocuments] = useState<DocumentRecord[] | null>(null);
@@ -92,7 +97,7 @@ export function ClientDocumentsPage() {
   useEffect(() => {
     if (!backendMode || !clientId) return;
     let active = true;
-    setLoadState("loading");
+    setLoadState(current => current === "ready" ? current : "loading");
 
     async function load() {
       try {
@@ -111,16 +116,18 @@ export function ClientDocumentsPage() {
 
         setLiveDocuments(
           documents.filter((document) => document.clientId === clientId).map((document) => {
-            const pack = packById.get(document.monthlyPackId);
+            const pack = packById.get(document.monthlyPackId ?? "");
             return {
               id: document.id,
               clientId: document.clientId,
               clientName: user?.company || "Client",
               documentType: document.category,
               fileName: document.name,
-              monthLabel: pack ? monthLabelFromParts(pack.year, pack.month) : formatDateLabel(document.uploadedAtUtc),
+              monthLabel: archivePeriodLabel(document, pack ? monthLabelFromParts(pack.year, pack.month) : "Period needs checking"),
               description: `${document.category} uploaded in the secure document workflow.`,
               status: mapBackendDocumentStatus(document.status),
+              isHistoricallyFiled: document.isHistoricallyFiled,
+              archiveScope: document.archiveScope as DocumentRecord["archiveScope"], archiveYear: document.archiveYear, archiveMonth: document.archiveMonth,
               uploadedBy: "Portal user",
               uploadedAt: document.uploadedAtUtc,
               sizeLabel: formatSizeLabel(document.sizeBytes),
@@ -170,6 +177,15 @@ export function ClientDocumentsPage() {
     return () => { active = false; };
   }, [backendMode, clientId, refreshKey, user?.company]);
 
+  useEffect(() => {
+    if (!backendMode) return;
+    const refresh = () => { if (document.visibilityState !== "hidden") setRefreshKey(value => value + 1); };
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    const timer = window.setInterval(refresh, 60_000);
+    return () => { window.removeEventListener("focus", refresh); document.removeEventListener("visibilitychange", refresh); window.clearInterval(timer); };
+  }, [backendMode, clientId]);
+
   const documents = backendMode ? liveDocuments ?? [] : portal.clientWorkflow.documents;
   const slots = backendMode ? liveSlots ?? [] : portal.clientWorkflow.monthPack.slots;
 
@@ -184,6 +200,8 @@ export function ClientDocumentsPage() {
         monthLabel: document.monthLabel,
         typeLabel: document.documentType,
         status: document.status,
+        isHistoricallyFiled: document.isHistoricallyFiled,
+              archiveScope: document.archiveScope as DocumentRecord["archiveScope"], archiveYear: document.archiveYear, archiveMonth: document.archiveMonth,
         date: document.uploadedAt,
         uploadedBy: document.uploadedBy,
         reviewedBy: document.reviewedBy,
@@ -199,8 +217,8 @@ export function ClientDocumentsPage() {
   }, [backendMode, documents, portal.clientWorkflow.unifiedSearchResults, slots]);
 
   const filteredResults = useMemo(
-    () => portal.filterSearchResults(searchableResults, filters),
-    [filters, portal, searchableResults],
+    () => portal.filterSearchResults(searchableResults, filters).filter(result=>archiveSelection.ids.includes(result.id)),
+    [filters, portal, searchableResults,archiveSelection.ids],
   );
 
   const sortedResults = useMemo(() => [...filteredResults].sort((left, right) => {
@@ -298,7 +316,7 @@ export function ClientDocumentsPage() {
 
   if (backendMode && loadState !== "ready") {
     return (
-      <div className="portal-page mx-auto max-w-[1280px] space-y-5">
+      <div className="portal-page client-documents-page w-full min-w-0 space-y-5">
         {feedback ? <FeedbackBanner {...feedback} onDismiss={() => setFeedback(null)} /> : null}
         <PageHeader title="Documents" description="Upload, find and manage your business records." />
         <SurfaceCard className="p-8 text-center text-sm text-slate-500">
@@ -311,7 +329,7 @@ export function ClientDocumentsPage() {
   const selectedVersions = selectedDocument ? versionsByDocumentId[selectedDocument.id] ?? [] : [];
 
   return (
-    <div className="portal-page mx-auto max-w-[1280px] space-y-4">
+    <div className="portal-page client-documents-page w-full min-w-0 space-y-4">
       {feedback ? <FeedbackBanner {...feedback} onDismiss={() => setFeedback(null)} /> : null}
 
       <PageHeader
@@ -321,7 +339,8 @@ export function ClientDocumentsPage() {
       />
 
 
-      <section className="client-document-library" aria-label="Document library">
+      <FinancialArchiveExplorer records={searchableResults} clients={[{id:clientId,name:user?.company||"Business records"}]} fixedClientId={clientId} onSelection={selectArchive} />
+      {archiveSelection.leaf ? <section className="client-document-library" aria-label="Document library">
       <DocumentRegisterToolbar
         activeAdvancedFilterCount={activeAdvancedFilterCount}
         documentTypeOptions={documentTypeOptions}
@@ -354,59 +373,33 @@ export function ClientDocumentsPage() {
         sortDirection={sortDirection}
         totalPages={totalPages}
       />
-      </section>
+      </section> : null}
 
       {selectedDocument ? (
-        <SurfaceCard className="p-5" aria-label="Document details drawer">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Document details</p>
-              <h2 className="mt-1 text-lg font-semibold text-slate-950">{selectedDocument.fileName}</h2>
-              <p className="mt-1 text-sm text-slate-500">{selectedDocument.documentType} · {selectedDocument.monthLabel}</p>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4" role="dialog" aria-modal="true" aria-label="Document preview" onClick={()=>setSelectedResultId("")}>
+          <SurfaceCard className="client-document-viewer" aria-label="Document details drawer" onClick={event=>event.stopPropagation()}>
+            <header className="client-document-viewer__header">
+              <div className="min-w-0">
+                <h2 className="truncate text-base font-semibold text-slate-950" title={selectedDocument.fileName}>{selectedDocument.fileName}</h2>
+                <p className="mt-1 text-sm text-slate-500">{selectedDocument.monthLabel} · <span className={toneToAccentClass(statusToTone(selectedDocument.status))}>{selectedDocument.isHistoricallyFiled ? "Historically filed" : formatStatusLabel(selectedDocument.status)}</span></p>
+              </div>
+              <div className="client-document-viewer__actions">
+                <Button variant="secondary" onClick={()=>void downloadSelected()}>Download</Button>
+                <Button variant="secondary" onClick={()=>setSelectedResultId("")} aria-label="Close document workspace">Close</Button>
+              </div>
+            </header>
+            <div className="client-document-viewer__preview">
+              {backendMode && (selectedDocument.fileMimeType === "application/pdf" || /\.pdf$/i.test(selectedDocument.fileName)) ? <DocumentPdfPreview documentId={selectedDocument.id} fileName={selectedDocument.fileName} onReady={()=>{}} /> : selectedDocument.fileDataUrl && selectedDocument.fileMimeType?.startsWith("image/") ? <img src={selectedDocument.fileDataUrl} alt={selectedDocument.fileName} className="h-full w-full object-contain" /> : <p className="m-auto p-5 text-sm text-slate-600">A preview is unavailable for this file type. Use Download to open the original file.</p>}
             </div>
-            <Button variant="secondary" onClick={() => setSelectedResultId("")} aria-label="Close document workspace">Close</Button>
-          </div>
-
-          <div className="mt-5 grid gap-4 border-y border-slate-100 py-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div><p className="text-xs text-slate-400">Status</p><p className={`mt-1 text-sm font-semibold ${toneToAccentClass(statusToTone(selectedDocument.status))}`}>{formatStatusLabel(selectedDocument.status)}</p></div>
-            <div><p className="text-xs text-slate-400">Uploaded</p><p className="mt-1 text-sm font-medium text-slate-700">{formatDateLabel(selectedDocument.uploadedAt)}</p></div>
-            <div><p className="text-xs text-slate-400">Uploaded by</p><p className="mt-1 text-sm font-medium text-slate-700">{selectedDocument.uploadedBy}</p></div>
-            <div><p className="text-xs text-slate-400">File size</p><p className="mt-1 text-sm font-medium text-slate-700">{selectedDocument.sizeLabel}</p></div>
-          </div>
-
-          <div className="mt-5 flex flex-wrap gap-2">
-            <Button onClick={() => setViewerOpen(true)}>View</Button>
-            <Button variant="secondary" onClick={() => void downloadSelected()}>Download</Button>
-            <Button variant="secondary" onClick={() => openUpload(slots.find((slot) => slot.id === selectedDocument.documentSlotId) ?? preferredUploadSlot)}>Replace document</Button>
-          </div>
-
-          <div className="mt-6">
-            <h3 className="text-sm font-semibold text-slate-900">Versions</h3>
-            <div className="mt-2 space-y-2">
-              {selectedVersions.length > 0 ? (
-                selectedVersions.map((version) => (
-                  <div key={version.id} className="flex items-center justify-between border-b border-slate-100 py-2 text-sm">
-                    <span className="font-medium text-slate-700">Version {version.versionNumber}</span>
-                    <span className="text-slate-500">{formatDateLabel(version.createdAtUtc)}</span>
-                  </div>
-                ))
-              ) : <p className="text-sm text-slate-500">No previous versions.</p>}
-            </div>
-          </div>
-        </SurfaceCard>
-      ) : null}
-
-      {viewerOpen && selectedDocument ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" role="dialog" aria-modal="true" aria-label="Document preview">
-          <div className="w-full max-w-3xl rounded-2xl bg-white p-5 shadow-2xl">
-            <div className="flex items-center justify-between gap-4 border-b border-slate-100 pb-4">
-              <div><h2 className="font-semibold text-slate-950">{selectedDocument.fileName}</h2><p className="text-sm text-slate-500">{selectedDocument.documentType}</p></div>
-              <Button variant="secondary" onClick={() => setViewerOpen(false)}>Close</Button>
-            </div>
-            <div className="flex min-h-[360px] items-center justify-center text-center text-sm text-slate-500">
-              <div><p>Secure document preview</p><Button className="mt-4" variant="secondary" onClick={() => void downloadSelected()}>Download file</Button></div>
-            </div>
-          </div>
+            <footer className="client-document-viewer__footer">
+              <details>
+                <summary><h3 className="inline text-sm font-medium">Versions</h3><span className="ml-2 text-sm text-slate-500">and file details</span></summary>
+                <p className="my-3 text-sm text-slate-500">Uploaded {formatDateLabel(selectedDocument.uploadedAt)} · {selectedDocument.uploadedBy} · {selectedDocument.sizeLabel}</p>
+                {selectedVersions.length ? selectedVersions.map(version=><p className="mb-2 text-sm text-slate-600" key={version.id}>Version {version.versionNumber} · {formatDateLabel(version.createdAtUtc)}</p>) : <p className="mb-2 text-sm text-slate-500">No previous versions.</p>}
+                <Button variant="secondary" onClick={()=>openUpload(slots.find(slot=>slot.id===selectedDocument.documentSlotId)??preferredUploadSlot)}>Replace document</Button>
+              </details>
+            </footer>
+          </SurfaceCard>
         </div>
       ) : null}
 

@@ -35,7 +35,7 @@ interface ClientRecord {
 interface BackendDocumentRecord {
   id: string;
   clientId: string;
-  monthlyPackId: string;
+  monthlyPackId: string | null;
   documentSlotId?: string | null;
   name: string;
   category: string;

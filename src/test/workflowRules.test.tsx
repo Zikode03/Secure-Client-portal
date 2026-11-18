@@ -84,7 +84,7 @@ describe("workflow business rules", () => {
 
     expect(pack.canComplete).toBe(true);
     expect(pack.completionMessage).toBe(
-      "Month is complete and ready to submit to your accountant.",
+      "Required documents received. Ready to submit for accountant review.",
     );
   });
 

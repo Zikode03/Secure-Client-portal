@@ -132,16 +132,7 @@ function getAssignedClientIds(
   }
 
   const assignmentIdsFromPortfolio = clients
-    .filter((client) => {
-      if (client.assignedAccountantUserId) {
-        return (
-          client.assignedAccountantUserId === user.id ||
-          client.assignedAccountant === user.fullName
-        );
-      }
-
-      return client.assignedAccountant === user.fullName;
-    })
+    .filter(client => client.assignedAccountantUserId === user.id || client.backupAccountantUserId === user.id)
     .map((client) => client.id);
 
   return uniqueStrings([...expandClientIds(assignmentIdsFromPortfolio)]);
@@ -270,7 +261,7 @@ export function getScopedReviewQueue(
   if (user.role === "accountant") {
     const visibleNames = new Set(getScopedClients(user, clients).map((client) => client.clientName));
     return queue.filter(
-      (item) => item.assignedAccountant === user.fullName || visibleNames.has(item.clientName),
+      (item) => visibleNames.has(item.clientName),
     );
   }
 
@@ -338,6 +329,8 @@ export function canAccessRoute(
   if (route.startsWith("/admin/accountants")) {
     return hasPermission(user, "manage:users");
   }
+
+  if (route.startsWith("/firm/imports")) return (user.role === "admin" || user.role === "accountant") && hasPermission(user, "comment:documents");
 
   if (route.startsWith("/firm/admin/team-progress")) return user.role === "admin" && hasPermission(user, "view:team_progress");
 

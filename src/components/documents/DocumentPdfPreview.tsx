@@ -1,3 +1,4 @@
+import "./documentPdfPreview.css";
 import { useEffect, useRef, useState } from "react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { ApiError, apiGetBlob } from "../../services/apiClient";
@@ -8,7 +9,7 @@ export function DocumentPdfPreview({ documentId, fileName, onReady }: Props) {
   const [attempt, setAttempt] = useState(0);
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null);
   const [page, setPage] = useState(1);
-  const [zoom, setZoom] = useState(0);
+  const [zoom, setZoom] = useState(-1);
   const [area, setArea] = useState({ width: 800, height: 600 });
   const [status, setStatus] = useState("Loading document...");
   const [error, setError] = useState("");
@@ -103,7 +104,7 @@ export function DocumentPdfPreview({ documentId, fileName, onReady }: Props) {
     if (!pdf) return;
     let active = true;
     let cancel = () => {};
-    ready.current(documentId, false); setStatus("Rendering page..."); setError(""); host.current?.replaceChildren();
+    ready.current(documentId, false); setStatus("Rendering page..."); setError("");
     void (async () => {
       const source = await pdf.getPage(page);
       if (!active) return;
@@ -114,6 +115,7 @@ export function DocumentPdfPreview({ documentId, fileName, onReady }: Props) {
       const canvas = document.createElement("canvas");
       canvas.width = Math.ceil(viewport.width); canvas.height = Math.ceil(viewport.height);
       canvas.style.width = `${Math.floor(base.width * fit)}px`;
+      canvas.style.height = `${Math.floor(base.height * fit)}px`;
       canvas.setAttribute("role", "img"); canvas.setAttribute("aria-label", `${fileName}, page ${page} of ${pdf.numPages}`);
       const render = source.render({ canvas, viewport }); cancel = () => render.cancel();
       await render.promise;
@@ -129,7 +131,8 @@ export function DocumentPdfPreview({ documentId, fileName, onReady }: Props) {
       <Button variant="ghost" size="sm" disabled={!pdf || page >= pdf.numPages || Boolean(status)} onClick={() => setPage(value => value + 1)}>Next page</Button>
       <label>Zoom <select aria-label="Document zoom" value={zoom} onChange={event => setZoom(Number(event.target.value))}><option value={0}>Fit page</option><option value={-1}>Fit width</option>{[100, 125, 150, 200].map(value => <option key={value} value={value}>{value}%</option>)}</select></label>
     </div>
-    {status ? <p role="status">{status}</p> : null}
+    <div className="document-pdf-stage" aria-busy={Boolean(status)}>
+    {status ? <p role="status" className="document-pdf-status">{status}</p> : null}
     {passwordPrompt ? <form className="document-pdf-password" onSubmit={event => { event.preventDefault(); const submit = unlock.current; unlock.current = null; setPasswordPrompt(""); setStatus("Unlocking document..."); submit?.(password); setPassword(""); }}>
       <p>{passwordPrompt} The password is used only in this browser.</p>
       <label>PDF password<input type="password" autoComplete="off" value={password} onChange={event => setPassword(event.target.value)} required /></label>
@@ -137,5 +140,6 @@ export function DocumentPdfPreview({ documentId, fileName, onReady }: Props) {
     </form> : null}
     {error ? <div role="alert"><p>{error}</p><Button variant="secondary" size="sm" onClick={() => setAttempt(value => value + 1)}>Retry preview</Button></div> : null}
     <div className="document-pdf-pages" ref={host} />
+    </div>
   </div>;
 }

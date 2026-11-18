@@ -226,7 +226,7 @@ describe("ClientMonthlyPacksPage", () => {
     renderPage();
 
     expect(
-      screen.getByText("2 required documents are missing and 1 document was rejected."),
+      screen.getByText("1 required document is missing. 1 document needs correction. 1 required item still needs completion or a signature."),
     ).toBeInTheDocument();
   });
 

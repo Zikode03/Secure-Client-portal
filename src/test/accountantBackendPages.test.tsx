@@ -1,4 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, afterEach, expect, it, vi } from "vitest";
 import { PortalProvider } from "../app/portal";
@@ -93,4 +93,28 @@ it("dashboard keeps available data visible when one pack checklist fails", async
   expect(await screen.findByText(/Checklist data for 1 monthly pack/)).toBeInTheDocument();
   expect(screen.getByRole("heading", { name: "Welcome, Test" })).toBeInTheDocument();
   expect(screen.queryByText("Dashboard unavailable")).not.toBeInTheDocument();
+});
+
+it("shows imported historical documents inside the client workspace and its type tabs", async () => {
+  const {AccountantClientWorkspacePage}=await import("../pages/accountant/AccountantClientWorkspacePage");
+  vi.mocked(apiGetJson).mockImplementation(async path => {
+    if(path === "/api/clients") return [{id:"live-client",name:"Registered test business",entityType:"Company",industry:"Services",status:"active",complianceHealth:0,assignedAccountantId:user.id}];
+    if(path === "/api/assignments") return [{id:"assignment",clientId:"live-client",accountantUserId:user.id,accountantName:user.fullName,isPrimary:true}];
+    if(path.startsWith("/api/monthly-packs")) return [{id:"historical",clientId:"live-client",year:2018,month:7,status:"draft"}];
+    if(path === "/api/documents") return [
+      {id:"import-invoice",clientId:"live-client",monthlyPackId:"historical",name:"Historical invoice.pdf",category:"invoices",status:"uploaded",uploadedAtUtc:"2026-11-18T08:00:00Z",fileType:"application/pdf",sizeBytes:1500},
+      {id:"import-bank",clientId:"live-client",monthlyPackId:"historical",name:"Historical statement.pdf",category:"bank_statement",status:"uploaded",uploadedAtUtc:"2026-11-18T08:00:00Z",fileType:"application/pdf",sizeBytes:1500}
+    ];
+    return [];
+  });
+  render(<MemoryRouter initialEntries={["/firm/clients/live-client"]}><PortalProvider><Routes><Route path="/firm/clients/:clientId" element={<AccountantClientWorkspacePage />} /></Routes></PortalProvider></MemoryRouter>);
+  fireEvent.click(await screen.findByRole("button",{name:/^Year 2018/}));
+  fireEvent.click(screen.getByRole("button",{name:/^July 2018/}));
+  expect(await screen.findByRole("button",{name:"Historical invoice.pdf"})).toBeInTheDocument();
+  expect(screen.getByRole("button",{name:"Historical statement.pdf"})).toBeInTheDocument();
+  expect(screen.getAllByRole("cell",{name:"July 2018"})).toHaveLength(2);
+  fireEvent.click(screen.getByRole("button",{name:"Invoices"}));
+  expect(screen.getByRole("button",{name:"Historical invoice.pdf"})).toBeInTheDocument();
+  expect(screen.queryByRole("button",{name:"Historical statement.pdf"})).not.toBeInTheDocument();
+  expect(screen.queryByText(/No client files have been submitted/)).not.toBeInTheDocument();
 });

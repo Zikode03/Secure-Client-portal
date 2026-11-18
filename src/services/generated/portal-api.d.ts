@@ -192,6 +192,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/migrations/{id}/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["DataMigration_BulkEditDocuments_PUT_api_admin_migrations_id_documents"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/migrations/{id}/documents/{fileId}": {
         parameters: {
             query?: never;
@@ -1624,6 +1640,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/documents/{id}/archive-placement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["DocumentArchive_Place_PUT_api_documents_id_archive_placement"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/documents/{id}/checklist-link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["DocumentChecklist_Link_POST_api_documents_id_checklist_link"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/documents/{id}/comments": {
         parameters: {
             query?: never;
@@ -2877,6 +2925,22 @@ export interface components {
             invoiceReview?: components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.Documents.InvoiceReviewContext"];
             reason?: string | null;
         };
+        "SecureClientPortal.Backend.Application.Contracts.Modules.Documents.ArchivePlacementRequest": {
+            /** Format: int32 */
+            expectedDocumentVersion: number;
+            /** Format: int32 */
+            month?: number | null;
+            scope: string;
+            /** Format: int32 */
+            year?: number | null;
+        };
+        "SecureClientPortal.Backend.Application.Contracts.Modules.Documents.ArchivePlacementResponse": {
+            /** Format: int32 */
+            month?: number | null;
+            scope: string;
+            /** Format: int32 */
+            year?: number | null;
+        };
         "SecureClientPortal.Backend.Application.Contracts.Modules.Documents.CreateDocumentRequest": {
             category: string;
             /** Format: uuid */
@@ -2990,6 +3054,10 @@ export interface components {
             subtotal: string;
             supplierName: string;
             vatAmount: string;
+        };
+        "SecureClientPortal.Backend.Application.Contracts.Modules.Documents.LinkDocumentChecklistRequest": {
+            /** Format: uuid */
+            documentSlotId: string;
         };
         "SecureClientPortal.Backend.Application.Contracts.Modules.Documents.RequestReuploadRequest": {
             internalNote?: string | null;
@@ -3109,6 +3177,25 @@ export interface components {
             /** Format: int32 */
             version: number;
         };
+        "SecureClientPortal.Backend.Application.Contracts.Modules.Migration.BulkMigrationDocumentRequest": {
+            category?: string | null;
+            /** Format: uuid */
+            clientId: string;
+            confirmOwnershipAndPeriods: boolean;
+            historicalNotes?: string | null;
+            historicalStatusConfirmed: boolean;
+            /** Format: int32 */
+            month?: number | null;
+            previouslyFiled: boolean;
+            /** Format: date-time */
+            previousReviewDateUtc?: string | null;
+            previousReviewer?: string | null;
+            recordScope?: string;
+            /** Format: int32 */
+            version: number;
+            /** Format: int32 */
+            year?: number | null;
+        };
         "SecureClientPortal.Backend.Application.Contracts.Modules.Migration.CreateMigrationRequest": {
             name: string;
             /** Format: uuid */
@@ -3116,6 +3203,7 @@ export interface components {
         };
         "SecureClientPortal.Backend.Application.Contracts.Modules.Migration.EditMigrationClientRequest": {
             skip: boolean;
+            useExistingClient?: boolean;
             values: components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.Migration.MigrationClientInput"];
             /** Format: int32 */
             version: number;
@@ -3126,6 +3214,7 @@ export interface components {
             version: number;
         };
         "SecureClientPortal.Backend.Application.Contracts.Modules.Migration.MigrationBatchDetail": {
+            archiveWarnings?: string[] | null;
             clients: components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.Migration.MigrationClientRow"][];
             documents: components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.Migration.MigrationDocumentRow"][];
             summary: components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.Migration.MigrationSummary"];
@@ -3142,12 +3231,15 @@ export interface components {
         "SecureClientPortal.Backend.Application.Contracts.Modules.Migration.MigrationClientRow": {
             errors: string[];
             /** Format: uuid */
+            existingClientId?: string | null;
+            /** Format: uuid */
             id: string;
             /** Format: uuid */
             importedId?: string | null;
             skip: boolean;
             /** Format: int32 */
             sourceRow: number;
+            useExistingClient?: boolean;
             values: components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.Migration.MigrationClientInput"];
         };
         "SecureClientPortal.Backend.Application.Contracts.Modules.Migration.MigrationDocumentInput": {
@@ -3156,10 +3248,18 @@ export interface components {
             clientId?: string | null;
             displayName: string;
             duplicateAcknowledged: boolean;
+            historicalNotes?: string | null;
+            historicalStatusConfirmed?: boolean;
             /** Format: int32 */
             month?: number | null;
             ownershipConfirmed: boolean;
+            previouslyFiled?: boolean;
+            /** Format: date-time */
+            previousReviewDateUtc?: string | null;
+            previousReviewer?: string | null;
+            recordScope?: string;
             skip: boolean;
+            sourcePath?: string | null;
             /** Format: int32 */
             year?: number | null;
         };
@@ -3188,6 +3288,8 @@ export interface components {
             importedClients: number;
             /** Format: int32 */
             importedDocuments: number;
+            /** Format: int32 */
+            linkedClients?: number;
             name: string;
             status: string;
             /** Format: date-time */
@@ -3401,9 +3503,9 @@ export interface components {
             documentSlotId?: string | null;
             documentStatus: string;
             /** Format: int32 */
-            month: number;
+            month?: number | null;
             /** Format: uuid */
-            monthlyPackId: string;
+            monthlyPackId?: string | null;
             rejectionReason?: string | null;
             /** Format: int32 */
             reviewAgeDays: number;
@@ -3415,7 +3517,7 @@ export interface components {
             /** Format: date-time */
             uploadedAtUtc: string;
             /** Format: int32 */
-            year: number;
+            year?: number | null;
         };
         "SecureClientPortal.Backend.Application.Contracts.Modules.UsersRoles.AccountantProgress": {
             /** Format: uuid */
@@ -3727,6 +3829,33 @@ export interface components {
             status: string;
             /** Format: int32 */
             year: number;
+        };
+        "SecureClientPortal.Backend.Domain.Modules.MonthlyPacks.DocumentSlot": {
+            readonly canCurrentlyBeSubmitted: boolean;
+            readonly category: string;
+            /** Format: uuid */
+            readonly clientId: string;
+            /** Format: date-time */
+            readonly createdAtUtc: string;
+            /** Format: uuid */
+            readonly currentDocumentId: string | null;
+            /** Format: date-time */
+            readonly dueDateUtc: string | null;
+            /** Format: uuid */
+            readonly id: string;
+            readonly isRequired: boolean;
+            readonly label: string;
+            /** Format: uuid */
+            readonly monthlyPackId: string;
+            readonly rejectionReason: string | null;
+            readonly reviewStatus: string;
+            readonly status: string;
+            /** Format: date-time */
+            readonly submittedAtUtc: string | null;
+            /** Format: uuid */
+            readonly submittedByUserId: string | null;
+            /** Format: date-time */
+            readonly updatedAtUtc: string;
         };
         "SecureClientPortal.Backend.Models.AuditLog": {
             readonly action: string;
@@ -4263,29 +4392,6 @@ export interface components {
             /** Format: date-time */
             verifiedAtUtc: string | null;
         };
-        "Source.Anonymous_D6A6023B8A596E99": {
-            /** Format: uuid */
-            clientId: string;
-            currentVersionNumber: number;
-            /** Format: uuid */
-            documentSlotId: string | null;
-            documentType: string;
-            fileType: string;
-            /** Format: uuid */
-            id: string;
-            /** Format: uuid */
-            monthlyPackId: string | null;
-            name: string;
-            sizeBytes: number;
-            status: string;
-            storageKey: string | null;
-            /** Format: date-time */
-            updatedAtUtc: string;
-            /** Format: date-time */
-            uploadedAtUtc: string;
-            /** Format: uuid */
-            uploadedByUserId: string;
-        };
         "Source.Anonymous_D07AB09A953ACD1D": {
             byClient: components["schemas"]["Source.Anonymous_883FB65BF3676807"][];
             high: number;
@@ -4332,6 +4438,33 @@ export interface components {
         };
         "Source.Anonymous_E9271998E14AAB2F": {
             seeded: boolean;
+        };
+        "Source.Anonymous_EE85ECF79EC892D7": {
+            archiveMonth: number | null;
+            archiveScope: string;
+            archiveYear: number | null;
+            /** Format: uuid */
+            clientId: string;
+            currentVersionNumber: number;
+            /** Format: uuid */
+            documentSlotId: string | null;
+            documentType: string;
+            fileType: string;
+            /** Format: uuid */
+            id: string;
+            isHistoricallyFiled: boolean;
+            /** Format: uuid */
+            monthlyPackId: string | null;
+            name: string;
+            sizeBytes: number;
+            status: string;
+            storageKey: string | null;
+            /** Format: date-time */
+            updatedAtUtc: string;
+            /** Format: date-time */
+            uploadedAtUtc: string;
+            /** Format: uuid */
+            uploadedByUserId: string;
         };
         "Source.Anonymous_EF96CBDA05C87888": {
             /** Format: uuid */
@@ -4642,6 +4775,11 @@ export interface components {
             /** Format: date-time */
             reviewAfterUtc: string;
         };
+        "Source.SecureClientPortal.Backend.Application.Contracts.Modules.Documents.ArchivePlacementResponse": {
+            month: number | null;
+            scope: string;
+            year: number | null;
+        };
         "Source.SecureClientPortal.Backend.Application.Contracts.Modules.Documents.InvoiceReviewEvidence": {
             confidence: number | null;
             field: string;
@@ -4776,6 +4914,7 @@ export interface components {
             name: string;
         };
         "Source.SecureClientPortal.Backend.Application.Contracts.Modules.Migration.MigrationBatchDetail": {
+            archiveWarnings: string[] | null;
             clients: components["schemas"]["Source.SecureClientPortal.Backend.Application.Contracts.Modules.Migration.MigrationClientRow"][];
             documents: components["schemas"]["Source.SecureClientPortal.Backend.Application.Contracts.Modules.Migration.MigrationDocumentRow"][];
             summary: components["schemas"]["Source.SecureClientPortal.Backend.Application.Contracts.Modules.Migration.MigrationSummary"];
@@ -4792,11 +4931,14 @@ export interface components {
         "Source.SecureClientPortal.Backend.Application.Contracts.Modules.Migration.MigrationClientRow": {
             errors: string[];
             /** Format: uuid */
+            existingClientId: string | null;
+            /** Format: uuid */
             id: string;
             /** Format: uuid */
             importedId: string | null;
             skip: boolean;
             sourceRow: number;
+            useExistingClient: boolean;
             values: components["schemas"]["Source.SecureClientPortal.Backend.Application.Contracts.Modules.Migration.MigrationClientInput"];
         };
         "Source.SecureClientPortal.Backend.Application.Contracts.Modules.Migration.MigrationDocumentInput": {
@@ -4805,9 +4947,17 @@ export interface components {
             clientId: string | null;
             displayName: string;
             duplicateAcknowledged: boolean;
+            historicalNotes: string | null;
+            historicalStatusConfirmed: boolean;
             month: number | null;
             ownershipConfirmed: boolean;
+            previouslyFiled: boolean;
+            /** Format: date-time */
+            previousReviewDateUtc: string | null;
+            previousReviewer: string | null;
+            recordScope: string;
             skip: boolean;
+            sourcePath: string | null;
             year: number | null;
         };
         "Source.SecureClientPortal.Backend.Application.Contracts.Modules.Migration.MigrationDocumentRow": {
@@ -4830,6 +4980,7 @@ export interface components {
             id: string;
             importedClients: number;
             importedDocuments: number;
+            linkedClients: number;
             name: string;
             status: string;
             /** Format: date-time */
@@ -5099,7 +5250,7 @@ export interface components {
             /** Format: uuid */
             id: string;
             /** Format: uuid */
-            monthlyPackId: string;
+            monthlyPackId: string | null;
             name: string;
             sizeBytes: number;
             status: string;
@@ -5156,9 +5307,9 @@ export interface components {
             /** Format: uuid */
             documentSlotId: string | null;
             documentStatus: string;
-            month: number;
+            month: number | null;
             /** Format: uuid */
-            monthlyPackId: string;
+            monthlyPackId: string | null;
             rejectionReason: string | null;
             reviewAgeDays: number;
             reviewPriority: string;
@@ -5168,7 +5319,7 @@ export interface components {
             submittedAtUtc: string | null;
             /** Format: date-time */
             uploadedAtUtc: string;
-            year: number;
+            year: number | null;
         };
         "Source.SecureClientPortal.Backend.Application.Contracts.Modules.ReviewQueue.ReviewQueueVersionResponse": {
             /** Format: date-time */
@@ -5412,6 +5563,9 @@ export interface components {
             runAtUtc: string;
         };
         "Source.SecureClientPortal.Backend.Domain.Modules.Documents.Document": {
+            archiveMonth: number | null;
+            archiveScope: string;
+            archiveYear: number | null;
             category: string;
             /** Format: uuid */
             clientId: string;
@@ -5430,8 +5584,9 @@ export interface components {
             invoiceReviewRequired: boolean;
             invoiceReviewRevision: number;
             isFiled: boolean;
+            isHistoricallyFiled: boolean;
             /** Format: uuid */
-            monthlyPackId: string;
+            monthlyPackId: string | null;
             name: string;
             sizeBytes: number;
             status: string;
@@ -5463,6 +5618,33 @@ export interface components {
             /** Format: uuid */
             id: string;
             isEnabled: boolean;
+            /** Format: date-time */
+            updatedAtUtc: string;
+        };
+        "Source.SecureClientPortal.Backend.Domain.Modules.MonthlyPacks.DocumentSlot": {
+            canCurrentlyBeSubmitted: boolean;
+            category: string;
+            /** Format: uuid */
+            clientId: string;
+            /** Format: date-time */
+            createdAtUtc: string;
+            /** Format: uuid */
+            currentDocumentId: string | null;
+            /** Format: date-time */
+            dueDateUtc: string | null;
+            /** Format: uuid */
+            id: string;
+            isRequired: boolean;
+            label: string;
+            /** Format: uuid */
+            monthlyPackId: string;
+            rejectionReason: string | null;
+            reviewStatus: string;
+            status: string;
+            /** Format: date-time */
+            submittedAtUtc: string | null;
+            /** Format: uuid */
+            submittedByUserId: string | null;
             /** Format: date-time */
             updatedAtUtc: string;
         };
@@ -6333,6 +6515,50 @@ export interface operations {
                 "application/*+json": components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.Migration.EditMigrationClientRequest"];
                 "application/json": components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.Migration.EditMigrationClientRequest"];
                 "text/json": components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.Migration.EditMigrationClientRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.Migration.MigrationBatchDetail"];
+                    "text/json": components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.Migration.MigrationBatchDetail"];
+                    "text/plain": components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.Migration.MigrationBatchDetail"];
+                };
+            };
+            /** @description Sign-in required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Client access denied, role denied, or CSRF validation failed. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    DataMigration_BulkEditDocuments_PUT_api_admin_migrations_id_documents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/*+json": components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.Migration.BulkMigrationDocumentRequest"];
+                "application/json": components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.Migration.BulkMigrationDocumentRequest"];
+                "text/json": components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.Migration.BulkMigrationDocumentRequest"];
             };
         };
         responses: {
@@ -10561,7 +10787,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Source.Anonymous_D6A6023B8A596E99"];
+                    "application/json": components["schemas"]["Source.Anonymous_EE85ECF79EC892D7"];
                 };
             };
             /** @description Sign-in required. */
@@ -10639,6 +10865,94 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Sign-in required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Client access denied, role denied, or CSRF validation failed. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    DocumentArchive_Place_PUT_api_documents_id_archive_placement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/*+json": components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.Documents.ArchivePlacementRequest"];
+                "application/json": components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.Documents.ArchivePlacementRequest"];
+                "text/json": components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.Documents.ArchivePlacementRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.Documents.ArchivePlacementResponse"];
+                    "text/json": components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.Documents.ArchivePlacementResponse"];
+                    "text/plain": components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.Documents.ArchivePlacementResponse"];
+                };
+            };
+            /** @description Sign-in required. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Client access denied, role denied, or CSRF validation failed. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    DocumentChecklist_Link_POST_api_documents_id_checklist_link: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/*+json": components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.Documents.LinkDocumentChecklistRequest"];
+                "application/json": components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.Documents.LinkDocumentChecklistRequest"];
+                "text/json": components["schemas"]["SecureClientPortal.Backend.Application.Contracts.Modules.Documents.LinkDocumentChecklistRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SecureClientPortal.Backend.Domain.Modules.MonthlyPacks.DocumentSlot"];
+                    "text/json": components["schemas"]["SecureClientPortal.Backend.Domain.Modules.MonthlyPacks.DocumentSlot"];
+                    "text/plain": components["schemas"]["SecureClientPortal.Backend.Domain.Modules.MonthlyPacks.DocumentSlot"];
+                };
             };
             /** @description Sign-in required. */
             401: {

@@ -48,6 +48,8 @@ describe("client page smoke coverage", () => {
     renderClientPage(<ClientDocumentsPage />);
     expect(screen.getByRole("heading", { name: "Documents" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Document register" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button",{name:/^Year 2026/}));
+    fireEvent.click(screen.getByRole("button",{name:/^April 2026/}));
     expect(screen.getByText("Actions")).toBeInTheDocument();
     expect(screen.getByRole("textbox", { name: "Search documents" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Upload document" })).toBeInTheDocument();
@@ -58,6 +60,8 @@ describe("client page smoke coverage", () => {
     ["document", "ApexTrading_SignedDocuments_April_2026.pdf", "ApexTrading_SignedDocuments_April_2026.pdf"],
   ])("opens and closes details for a local %s row", async (_kind, title, fileName) => {
     renderClientPage(<ClientDocumentsPage />);
+    fireEvent.click(screen.getByRole("button",{name:/^Year 2026/}));
+    fireEvent.click(screen.getByRole("button",{name:/^April 2026/}));
     fireEvent.change(screen.getByRole("textbox", { name: "Search documents" }), { target: { value: title } });
     fireEvent.click(await screen.findByRole("button", { name: new RegExp(`^Actions for ${title.replace(/\./g, "\\.")}$`) }));
     fireEvent.click(screen.getByRole("menuitem", { name: "Open" }));

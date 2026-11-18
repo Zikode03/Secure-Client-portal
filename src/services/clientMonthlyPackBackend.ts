@@ -81,7 +81,7 @@ export function slotProgress(status: MonthlyDocumentSlot["status"]) {
 
 export function mapBackendSlotStatus(
   status: string,
-  isRequired: boolean,
+  _isRequired: boolean,
 ): MonthlyDocumentSlot["status"] {
   const normalized = status.trim().toLowerCase();
 
@@ -106,7 +106,7 @@ export function mapBackendSlotStatus(
     case "pending_signature":
       return "pending_signature";
     case "not_applicable":
-      return isRequired ? "accepted" : "filed";
+      return "not_applicable";
     default:
       return "missing";
   }

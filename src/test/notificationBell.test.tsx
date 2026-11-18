@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, expect, it, vi } from "vitest";
 import { NotificationBell } from "../components/notifications/NotificationBell";
@@ -63,4 +63,17 @@ it("uses the document name and readable due date for missing-document reminders"
   expect(screen.getByText("Purchase Invoices missing")).toBeInTheDocument();
   expect(screen.getByText("Due 5 Nov 2026")).toBeInTheDocument();
   expect(screen.queryByText("Overdue document")).not.toBeInTheDocument();
+});
+
+it("does not restore unread counts from a refresh started before marking all read", async () => {
+  show();
+  fireEvent.click(await screen.findByRole("button", {name: "Notifications, 1 unread"}));
+  let finishRefresh!: (value: typeof alert[]) => void;
+  vi.mocked(apiGetJson).mockImplementationOnce(() => new Promise(resolve => { finishRefresh = resolve; }));
+  fireEvent(window, new Event("focus"));
+  fireEvent.click(screen.getByRole("button", {name: "Mark all as read"}));
+  await waitFor(() => expect(screen.getByRole("button", {name: "Notifications"})).toBeInTheDocument());
+  await act(async () => { finishRefresh([alert]); });
+  expect(screen.queryByRole("button", {name: "Notifications, 1 unread"})).not.toBeInTheDocument();
+  expect(screen.getByText(/^Read$/)).toBeInTheDocument();
 });

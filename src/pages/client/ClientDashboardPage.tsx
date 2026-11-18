@@ -1,3 +1,5 @@
+import {archivePeriodLabel} from "../../services/financialArchive";
+import { checklistSummary } from "../../services/checklistSummary";
 // Friendly guide: this module (ClientDashboardPage) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
@@ -459,7 +461,7 @@ function MonthlyPackPreviewCard({
 
       <div className="mt-5 grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)] lg:items-center xl:grid-cols-[300px_minmax(0,1fr)]">
         <div
-          aria-label={`${progress}% complete`}
+          aria-label={`${progress}% approved`}
           className="client-dashboard-progress-track relative mx-auto flex h-48 w-48 items-center justify-center rounded-full lg:h-56 lg:w-56"
           style={{
             background: `conic-gradient(var(--client-dashboard-progress-fill) ${progress * 3.6}deg, var(--client-dashboard-progress-track) 0deg)`,
@@ -467,7 +469,7 @@ function MonthlyPackPreviewCard({
         >
           <div className="flex h-[152px] w-[152px] flex-col items-center justify-center rounded-full bg-white shadow-inner lg:h-[178px] lg:w-[178px]">
             <span className="text-4xl font-medium tracking-tight text-[#091333]">{progress}%</span>
-            <span className="text-sm font-semibold text-[#53617f]">Complete</span>
+            <span className="text-sm font-semibold text-[#53617f]">Approved</span>
           </div>
         </div>
 
@@ -478,7 +480,7 @@ function MonthlyPackPreviewCard({
               {pack.monthLabel}
             </p>
             <p className="mt-2 text-sm font-semibold text-[#091333]">
-              {pack.completedCount} of {pack.totalCount} documents complete
+              {pack.completedCount} of {pack.totalCount} required items approved
             </p>
             <div className="client-dashboard-progress-track mt-3 h-2 rounded-full">
               <div className="client-dashboard-progress-fill h-2 rounded-full" style={{ width: `${progress}%` }} />
@@ -639,7 +641,7 @@ export function ClientDashboardPage() {
 
       const mappedSlots = slots.map<MonthlyDocumentSlot>((slot) => {
         const pack = packById.get(slot.monthlyPackId) ?? currentPack;
-        const mappedStatus = mapBackendSlotStatus(slot.status, slot.isRequired);
+        const mappedStatus = mapBackendSlotStatus(slot.status, slot.isRequired && slot.status !== "not_applicable");
         const monthName = monthLabelFromParts(pack.year, pack.month).split(" ")[0] ?? "Month";
 
         return {
@@ -686,16 +688,14 @@ export function ClientDashboardPage() {
       });
 
       const mappedDocuments = clientDocuments.map<DocumentRecord>((document) => {
-        const pack = packById.get(document.monthlyPackId);
+        const pack = packById.get(document.monthlyPackId ?? "");
         return {
           id: document.id,
           clientId: document.clientId,
           clientName: businessName,
           documentType: document.category,
           fileName: document.name,
-          monthLabel: pack
-            ? monthLabelFromParts(pack.year, pack.month)
-            : formatDateLabel(document.uploadedAtUtc),
+          monthLabel: archivePeriodLabel(document,pack ? monthLabelFromParts(pack.year,pack.month):"Period needs checking"),
           description: `${document.category} uploaded to the monthly pack.`,
           status: mapBackendDocumentStatus(document.status),
           uploadedBy: "Portal user",
@@ -714,7 +714,7 @@ export function ClientDashboardPage() {
       const mappedInvoices = clientDocuments
         .filter((document) => isInvoiceCategory(document.category))
         .map<InvoiceRecord>((document) => {
-          const pack = packById.get(document.monthlyPackId);
+          const pack = packById.get(document.monthlyPackId ?? "");
           return {
             id: document.id,
             clientId: document.clientId,
@@ -805,7 +805,7 @@ export function ClientDashboardPage() {
 
       const clientSummary = summary.clients.find((item) => item.clientId === backendClientId);
       const missingDocumentNotifications = notifications.filter((item) =>
-        item.type.trim().toLowerCase().includes("missing"),
+        !item.isRead && item.type.trim().toLowerCase().includes("missing"),
       );
 
       setLivePackId(currentPack.id);
@@ -875,7 +875,7 @@ export function ClientDashboardPage() {
     !backendMode && effectiveMonthPack.submissionStatus === "under_accountant_review";
 
   const requiredSlots = useMemo(
-    () => effectiveMonthPack.slots.filter((slot) => slot.isRequired),
+    () => effectiveMonthPack.slots.filter((slot) => slot.isRequired && slot.status !== "not_applicable"),
     [effectiveMonthPack.slots],
   );
 
@@ -885,8 +885,8 @@ export function ClientDashboardPage() {
   );
 
   const missingRequiredCount = useMemo(
-    () => blockingSlots.filter((slot) => slot.status !== "rejected").length,
-    [blockingSlots],
+    () => checklistSummary(effectiveMonthPack.slots).missingCount,
+    [effectiveMonthPack.slots],
   );
 
   const highlightedEffectiveSlot = useMemo(
@@ -1282,7 +1282,7 @@ export function ClientDashboardPage() {
         <MetricTile
           accent
           icon={<FolderOpen aria-hidden="true" className="h-6 w-6" strokeWidth={1.8} />}
-          label="Pack Progress"
+          label="Approved Requirements"
           progress={effectiveMonthPack.progressPercent}
           value={`${effectiveMonthPack.completedCount} / ${effectiveMonthPack.totalCount}`}
         />

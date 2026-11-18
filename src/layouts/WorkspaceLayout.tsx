@@ -226,6 +226,7 @@ const routePrefetchers: Array<{ match: (path: string) => boolean; load: () => Pr
   { match: (path) => path.startsWith("/firm/dashboard"), load: () => import("../pages/accountant/AccountantDashboardPage") },
   { match: (path) => /^\/firm\/clients\/[^/]+(?:\/packs)?$/.test(path), load: () => import("../pages/accountant/AccountantClientWorkspacePage") },
   { match: (path) => path.startsWith("/firm/clients"), load: () => import("../pages/accountant/AccountantPortfolioPage") },
+  { match: (path) => path.startsWith("/firm/imports"), load: () => import("../pages/admin/AdminMigrationPage") },
   { match: (path) => path.startsWith("/firm/documents"), load: () => import("../pages/accountant/AccountantDocumentsPage") },
   { match: (path) => path.startsWith("/firm/filing"), load: () => import("../pages/accountant/AccountantFilingPage") },
   { match: (path) => path.startsWith("/firm/admin/team-progress"), load: () => import("../pages/admin/AdminTeamProgressPage") },

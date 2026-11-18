@@ -29,6 +29,7 @@ export type Permission =
 export type Tone = "neutral" | "info" | "success" | "warning" | "danger";
 
 export type SlotStatus =
+  | "not_applicable"
   | "missing"
   | "draft"
   | "uploaded"
@@ -76,6 +77,8 @@ export type WorkflowStatus =
   | "high_risk";
 
 export type NotificationKind =
+  | "general_update"
+  | "document_update"
   | "missing_documents"
   | "rejected_documents"
   | "deadline_reminder"
@@ -160,6 +163,11 @@ export interface AuditTrailEntry {
 }
 
 export interface DocumentRecord {
+  archiveScope?: "monthly"|"annual"|"permanent"|"uncertain";
+  archiveYear?: number|null;
+  archiveMonth?: number|null;
+
+  isHistoricallyFiled?: boolean;
   id: string;
   clientId: string;
   clientName: string;
@@ -182,7 +190,7 @@ export interface DocumentRecord {
   comments: DocumentComment[];
   auditTrail: AuditTrailEntry[];
   versionNumber?: number;
-  monthlyPackId?: string;
+  monthlyPackId?: string | null;
   documentSlotId?: string;
   fileDataUrl?: string;
   fileMimeType?: string;
@@ -339,6 +347,11 @@ export interface UnifiedSearchFilters {
 }
 
 export interface UnifiedSearchResult {
+  archiveScope?: "monthly"|"annual"|"permanent"|"uncertain";
+  archiveYear?: number|null;
+  archiveMonth?: number|null;
+
+  isHistoricallyFiled?: boolean;
   id: string;
   resultType: SearchResultType;
   title: string;

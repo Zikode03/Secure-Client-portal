@@ -71,9 +71,9 @@ interface BackendReviewQueueItem {
   documentId: string;
   clientId: string;
   clientName: string;
-  monthlyPackId: string;
-  year: number;
-  month: number;
+  monthlyPackId?: string | null;
+  year?: number | null;
+  month?: number | null;
   documentSlotId?: string | null;
   slotLabel?: string | null;
   documentName: string;
@@ -133,7 +133,8 @@ interface BackendReviewWorkspace {
   reviewHistory: BackendReviewQueueDecision[];
 }
 
-function monthLabelFromParts(year: number, month: number) {
+function monthLabelFromParts(year: number | null | undefined, month: number | null | undefined) {
+  if(!year||!month)return "Non-monthly record";
   return new Intl.DateTimeFormat("en-ZA", { month: "long", year: "numeric" }).format(
     new Date(Date.UTC(year, Math.max(0, month - 1), 1)),
   );

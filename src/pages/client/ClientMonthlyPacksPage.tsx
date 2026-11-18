@@ -1,3 +1,5 @@
+import {archivePeriodLabel} from "../../services/financialArchive";
+import { checklistSummary } from "../../services/checklistSummary";
 import { monthlyPacksApi, documentSlotsApi } from "../../services/monthlyPacksApi";
 import { documentsApi } from "../../services/documentsApi";
 // Friendly guide: this module (ClientMonthlyPacksPage) supports the Secure Client Portal workflow.
@@ -62,14 +64,6 @@ function downloadSlotFile(slot: MonthlyDocumentSlot, clientName: string) {
   window.URL.revokeObjectURL(url);
 }
 
-const readyStatuses = new Set<MonthlyDocumentSlot["status"]>([
-  "draft",
-  "uploaded",
-  "under_review",
-  "accepted",
-  "filed",
-]);
-
 const blockingStatuses = new Set<MonthlyDocumentSlot["status"]>([
   "missing",
   "partial",
@@ -94,7 +88,7 @@ interface BackendMonthlyPackResponse {
 interface BackendDocumentRecord {
   id: string;
   clientId: string;
-  monthlyPackId: string;
+  monthlyPackId: string | null;
   name: string;
   category: string;
   documentSlotId?: string | null;
@@ -156,20 +150,12 @@ function comparisonOptionId(value: string) {
   return normaliseDocumentType(value).replace(/\s+/g, "-") || "documents";
 }
 
-function blockerSummaryText(missingCount: number, rejectedCount: number) {
-  if (missingCount > 0 && rejectedCount > 0) {
-    return `${missingCount} required document${missingCount === 1 ? " is" : "s are"} missing and ${rejectedCount} document${rejectedCount === 1 ? " was" : "s were"} rejected.`;
-  }
-
-  if (missingCount > 0) {
-    return `${missingCount} required document${missingCount === 1 ? " is" : "s are"} still missing.`;
-  }
-
-  if (rejectedCount > 0) {
-    return `${rejectedCount} document${rejectedCount === 1 ? " was" : "s were"} rejected and must be corrected.`;
-  }
-
-  return "All required documents are ready for accountant review.";
+function blockerSummaryText(missingCount: number, rejectedCount: number, pendingCount = 0) {
+  const reasons=[];
+  if(missingCount)reasons.push(`${missingCount} required document${missingCount===1?" is":"s are"} missing.`);
+  if(rejectedCount)reasons.push(`${rejectedCount} document${rejectedCount===1?" needs":"s need"} correction.`);
+  if(pendingCount)reasons.push(`${pendingCount} required item${pendingCount===1?" still needs":"s still need"} completion or a signature.`);
+  return reasons.length?reasons.join(" "):"All required documents are ready for accountant review.";
 }
 
 export function ClientMonthlyPacksPage() {
@@ -245,7 +231,7 @@ export function ClientMonthlyPacksPage() {
       const businessName = user?.company?.trim() || clientName?.trim() || "";
 
       const mappedSlots = slots.map<MonthlyDocumentSlot>((slot) => {
-        const mappedStatus = mapBackendSlotStatus(slot.status, slot.isRequired);
+        const mappedStatus = mapBackendSlotStatus(slot.status, slot.isRequired && slot.status !== "not_applicable");
         const pack = packById.get(slot.monthlyPackId) ?? currentPack;
         const monthName = monthLabelFromParts(pack.year, pack.month).split(" ")[0] ?? "Month";
         return {
@@ -292,16 +278,14 @@ export function ClientMonthlyPacksPage() {
       });
 
       const mappedDocuments = documentsForClient.map<DocumentRecord>((document) => {
-        const pack = packById.get(document.monthlyPackId);
+        const pack = packById.get(document.monthlyPackId ?? "");
         return {
           id: document.id,
           clientId: document.clientId,
           clientName: businessName,
           documentType: document.category,
           fileName: document.name,
-          monthLabel: pack
-            ? monthLabelFromParts(pack.year, pack.month)
-            : formatDateLabel(document.uploadedAtUtc),
+          monthLabel: archivePeriodLabel(document,pack ? monthLabelFromParts(pack.year,pack.month):"Period needs checking"),
           description: `${document.category} uploaded to the monthly pack.`,
           status: mapBackendDocumentStatus(document.status),
           uploadedBy: "Portal user",
@@ -320,7 +304,7 @@ export function ClientMonthlyPacksPage() {
       const mappedInvoices = documentsForClient
         .filter((document) => isInvoiceCategory(document.category))
         .map<InvoiceRecord>((document) => {
-          const pack = packById.get(document.monthlyPackId);
+          const pack = packById.get(document.monthlyPackId ?? "");
           return {
             id: document.id,
             clientId: document.clientId,
@@ -391,7 +375,7 @@ export function ClientMonthlyPacksPage() {
     effectiveMonthPack.submissionStatus === "complete";
 
   const requiredSlots = useMemo(
-    () => effectiveMonthPack.slots.filter((slot) => slot.isRequired),
+    () => effectiveMonthPack.slots.filter((slot) => slot.isRequired && slot.status !== "not_applicable"),
     [effectiveMonthPack.slots],
   );
 
@@ -401,8 +385,8 @@ export function ClientMonthlyPacksPage() {
   );
 
   const missingRequiredCount = useMemo(
-    () => blockingSlots.filter((slot) => slot.status !== "rejected").length,
-    [blockingSlots],
+    () => checklistSummary(effectiveMonthPack.slots).missingCount,
+    [effectiveMonthPack.slots],
   );
 
   const rejectedRequiredCount = useMemo(
@@ -410,18 +394,9 @@ export function ClientMonthlyPacksPage() {
     [blockingSlots],
   );
 
-  const readyRequiredCount = useMemo(
-    () => requiredSlots.filter((slot) => readyStatuses.has(slot.status)).length,
-    [requiredSlots],
-  );
 
-  const progressPercent = useMemo(() => {
-    if (effectiveMonthPack.totalCount === 0) {
-      return 0;
-    }
-
-    return Math.round((readyRequiredCount / effectiveMonthPack.totalCount) * 100);
-  }, [effectiveMonthPack.totalCount, readyRequiredCount]);
+  const approvedRequiredCount=checklistSummary(effectiveMonthPack.slots).approvedCount;
+  const progressPercent=checklistSummary(effectiveMonthPack.slots).progressPercent;
 
   const dueDaysRemaining = useMemo(() => {
     const difference = new Date(effectiveMonthPack.dueDate).getTime() - Date.now();
@@ -498,7 +473,7 @@ export function ClientMonthlyPacksPage() {
       label: "Not Ready",
       tone: "warning" as const,
       bannerTitle: "This pack is not ready.",
-      bannerMessage: blockerSummaryText(missingRequiredCount, rejectedRequiredCount),
+      bannerMessage: blockerSummaryText(missingRequiredCount, rejectedRequiredCount, blockingSlots.length - missingRequiredCount - rejectedRequiredCount),
       statusHelper: "Fix blockers to enable submission",
     };
   }, [effectiveMonthPack.canComplete, effectiveMonthPack.submissionStatus, missingRequiredCount, rejectedRequiredCount]);
@@ -763,18 +738,18 @@ export function ClientMonthlyPacksPage() {
                 <span className="text-sm font-semibold text-[#091333]">{submissionState.bannerTitle}</span>
               </div>
               <p className="mt-1 max-w-2xl text-sm text-[#53617f]">{submissionState.bannerMessage}</p>
-              <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100" aria-label={`${progressPercent}% complete`}>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100" aria-label={`${progressPercent}% approved`}>
                 <div className="h-full rounded-full bg-brand-700 transition-all" style={{ width: `${progressPercent}%` }} />
               </div>
             </div>
             <div className="grid shrink-0 grid-cols-3 gap-2 text-center">
               <div className="rounded-xl bg-slate-50 px-4 py-3">
                 <p className="text-lg font-semibold text-[#091333]">{progressPercent}%</p>
-                <p className="text-sm text-slate-500">Complete</p>
+                <p className="text-sm text-slate-500">Approved</p>
               </div>
               <div className="rounded-xl bg-slate-50 px-4 py-3">
-                <p className="text-lg font-semibold text-[#091333]">{readyRequiredCount}/{effectiveMonthPack.totalCount}</p>
-                <p className="text-sm text-slate-500">Required ready</p>
+                <p className="text-lg font-semibold text-[#091333]">{approvedRequiredCount}/{effectiveMonthPack.totalCount} approved</p>
+                <p className="text-sm text-slate-500">Required approved</p>
               </div>
               <div className="rounded-xl bg-slate-50 px-4 py-3">
                 <p className="text-sm font-semibold text-[#091333]">{formatDateLabel(effectiveMonthPack.dueDate)}</p>
@@ -794,7 +769,7 @@ export function ClientMonthlyPacksPage() {
                 ? "This monthly pack has been submitted and is now locked while the accountant reviews it."
                 : effectiveMonthPack.canComplete
                   ? "Ready to send: select Submit Month to submit every draft in this pack for accountant review."
-                  : `${blockerSummaryText(missingRequiredCount, rejectedRequiredCount)} Individual drafts can still be submitted now; any drafts left at month-end submit automatically.`
+                  : `${blockerSummaryText(missingRequiredCount, rejectedRequiredCount, blockingSlots.length - missingRequiredCount - rejectedRequiredCount)} Individual drafts can still be submitted now; any drafts left at month-end submit automatically.`
             }
             headerActionLabel={isPackReadOnly ? "Submitted" : "Submit Month"}
             onDownload={(slot) => void handleDownloadSlot(slot)}

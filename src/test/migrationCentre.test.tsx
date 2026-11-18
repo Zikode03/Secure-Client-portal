@@ -4,6 +4,7 @@ import { AdminMigrationPage } from "../pages/admin/AdminMigrationPage";
 import * as api from "../services/migrationApi";
 import { apiGetJson } from "./fixtures/apiTransportFixture";
 import type { MigrationDetail } from "../services/migrationApi";
+vi.mock("../services/archiveBundle",()=>({bundleArchiveFiles:async()=>[new File(["archive bytes"],"folder-import-1.zip",{type:"application/zip"})]}));
 const session = vi.hoisted(() => ({ role: "admin" }));
 vi.mock("../app/auth", () => ({
   useAuth: () => ({ user: session, ready: true }),
@@ -21,6 +22,7 @@ vi.mock("../services/migrationApi", async (original) => ({
   stageDocument: vi.fn(),
   editClient: vi.fn(),
   editDocument: vi.fn(),
+  bulkEditDocuments: vi.fn(),
   approveMigration: vi.fn(),
 }));
 const batch = (patch: Partial<MigrationDetail> = {}): MigrationDetail => ({
@@ -100,10 +102,10 @@ it("starts with two plain-language choices and hides detailed forms until needed
   expect(screen.queryByText("Data Migration Centre")).not.toBeInTheDocument();
   expect(apiGetJson).toHaveBeenCalledWith("/api/clients");
 });
-it("does not fetch private imports for accountants or clients", () => {
-  session.role = "accountant";
+it("does not fetch private imports for clients", () => {
+  session.role = "client";
   render(<AdminMigrationPage />);
-  expect(screen.getByText(/Only administrators/)).toBeInTheDocument();
+  expect(screen.getByText(/Only administrators and accountants/)).toBeInTheDocument();
   expect(api.listMigrations).not.toHaveBeenCalled();
   expect(apiGetJson).not.toHaveBeenCalled();
 });
@@ -241,7 +243,7 @@ it("prevents switching away from unsaved corrections and supports explicit disca
     screen.getByRole("button", { name: "Continue to confirmation" }),
   ).toBeEnabled();
 });
-it("stages multiple files sequentially with returned versions and keeps them on the upload step", async () => {
+it("bundles multiple selected files into one archive request and keeps them on the upload step", async () => {
   await chooseDocuments();
   const staged = batch({
     summary: { ...batch().summary!, version: 1 },
@@ -271,9 +273,9 @@ it("stages multiple files sequentially with returned versions and keeps them on 
     },
   });
   await screen.findByText(/Documents uploaded privately/);
-  expect(api.stageDocument).toHaveBeenCalledTimes(2);
+  expect(api.stageDocument).toHaveBeenCalledTimes(1);
   expect(vi.mocked(api.stageDocument).mock.calls[0][2]).toBe(0);
-  expect(vi.mocked(api.stageDocument).mock.calls[1][2]).toBe(1);
+  expect(vi.mocked(api.stageDocument).mock.calls[0][3].name).toBe("folder-import-1.zip");
   expect(
     screen.getByRole("button", { name: "Check details" }),
   ).toBeInTheDocument();
@@ -382,4 +384,67 @@ it("exports validation errors safely without enabling spreadsheet formulas", () 
   expect(report).toContain("'=");
   expect(report).toContain("Invalid client");
   expect(api.csvCell(" +cmd")).toBe('"\' +cmd"');
+});
+
+it("brings failed spreadsheet imports into focus and keeps the selected filename visible", async () => {
+  vi.mocked(api.stageSpreadsheet).mockRejectedValue(new Error("Headers must be: name,entityType,industry,contactName,contactEmail,registrationNumber,accountantEmail."));
+  render(<AdminMigrationPage />);
+  await screen.findByText(/No imports yet/);
+  fireEvent.click(screen.getByRole("button", {name: /Import a client list/}));
+  fireEvent.change(screen.getByLabelText("Upload client spreadsheet"), {target: {files: [new File(["name,email"], "archive-clients.csv")]}});
+  const error = await screen.findByRole("alert");
+  expect(error).toHaveTextContent("column headings in your client list do not match");
+  expect(error).toHaveTextContent("Download the client template");
+  expect(error).toHaveTextContent("No clients have been added");
+  expect(error).not.toHaveTextContent("contactEmail");
+  expect(error.parentElement).toHaveFocus();
+  expect(screen.getByText("archive-clients.csv")).toBeInTheDocument();
+  expect(screen.getByText(/Not imported. Correct the file/)).toBeInTheDocument();
+  expect(api.approveMigration).not.toHaveBeenCalled();
+});
+
+it("shows a clear existing-client explanation when reviewing a duplicate row", async () => {
+  await open(batch({clients: [{id: "row-1", sourceRow: 2, values, skip: false, errors: ["Possible existing client. Skip this row and use the existing profile; existing profiles are never overwritten."]}]}));
+  fireEvent.click(screen.getByRole("button", {name: "Review Import test company"}));
+  expect(screen.getByText("This client already exists. Choose Use existing client to assign its accountant, or leave this row out of the import.")).toBeInTheDocument();
+  expect(screen.queryByText(/Possible existing client/)).not.toBeInTheDocument();
+});
+
+it("allows the admin to explicitly link a registered client and assign its accountant", async () => {
+  const existing = batch({clients: [{id: "row-1", sourceRow: 2, values, skip: true, existingClientId: "client-1", useExistingClient: false, errors: ["Possible existing client."]}]});
+  await open(existing);
+  fireEvent.click(screen.getByRole("button", {name: "Review Import test company"}));
+  fireEvent.click(screen.getByRole("checkbox", {name: "Use existing client"}));
+  expect(screen.getByLabelText("Client name")).toBeDisabled();
+  expect(screen.getByLabelText("Accountant email")).toBeEnabled();
+  expect(screen.getByLabelText("Leave this client out of the import")).not.toBeChecked();
+  vi.mocked(api.editClient).mockResolvedValue({...existing,clients:[{...existing.clients![0],skip:false,useExistingClient:true,errors:[]}]});
+  fireEvent.click(screen.getByRole("button", {name: "Save client details"}));
+  await waitFor(() => expect(api.editClient).toHaveBeenCalledWith("batch-1", "row-1", 0, values, false, true));
+  expect(api.approveMigration).not.toHaveBeenCalled();
+});
+
+it("offers accountants document imports without client-list creation", async () => {
+  session.role = "accountant";
+  render(<AdminMigrationPage />);
+  await screen.findByText(/No imports yet/);
+  expect(screen.queryByRole("button", {name: /Import a client list/})).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", {name: /Import client documents/}));
+  expect(screen.getByLabelText("Upload client documents")).toBeInTheDocument();
+  expect(screen.queryByLabelText("Upload client spreadsheet")).not.toBeInTheDocument();
+});
+
+it("supports bulk historical attestation while retaining suggested periods",async()=>{
+ const staged=batch({documents:[{id:"file-1",fileName:"old.pdf",sizeBytes:100,values:{...documentValues,year:2005,month:3,sourcePath:"2005/03/old.pdf"},errors:[],warnings:[]}]});
+ await open(staged);
+ expect(screen.getByRole("heading",{name:"Set details for this archive"})).toBeInTheDocument();
+ fireEvent.change(screen.getByLabelText("Historical status"),{target:{value:"filed"}});
+ expect(screen.getByRole("button",{name:"Apply to included files"})).toBeDisabled();
+ fireEvent.change(screen.getByLabelText("Client",{selector:"select"}),{target:{value:"client-1"}});
+ fireEvent.change(screen.getByLabelText("Previous reviewer (if known)"),{target:{value:"Prior accountant"}});
+ fireEvent.click(screen.getByLabelText(/I confirm these included records/));
+ fireEvent.click(screen.getByLabelText(/I checked the client/));
+ vi.mocked(api.bulkEditDocuments).mockResolvedValue(staged);
+ fireEvent.click(screen.getByRole("button",{name:"Apply to included files"}));
+ await waitFor(()=>expect(api.bulkEditDocuments).toHaveBeenCalledWith("batch-1",expect.objectContaining({clientId:"client-1",year:null,month:null,previouslyFiled:true,historicalStatusConfirmed:true,previousReviewer:"Prior accountant"})));
 });

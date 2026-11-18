@@ -1,0 +1,15 @@
+.accountant-client-workspace .client-workspace-heading { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 4px 0 18px; }
+.accountant-client-workspace .client-workspace-title { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.accountant-client-workspace .client-workspace-title h1 { margin: 0; font-size: 24px; font-weight: 600; line-height: 1.35; letter-spacing: -.025em; overflow-wrap: anywhere; }
+.client-workspace-metadata { display: flex; flex-wrap: wrap; gap: 6px 20px; margin-top: 10px; color: #64748b; font-size: 14px; line-height: 1.6; }
+.client-workspace-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.client-workspace-navigation { overflow: hidden; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; }
+.client-workspace-progress { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 20px; font-size: 14px; color: #334155; }
+.client-workspace-progress > div { display: flex; align-items: center; gap: 12px; width: 220px; font-variant-numeric: tabular-nums; }
+.client-workspace-progress > div > div { flex: 1; }
+.client-workspace-tabs { display: flex; overflow-x: auto; gap: 24px; padding: 0 20px; border-top: 1px solid #eef2f6; }
+.client-workspace-tabs button { position: relative; flex-shrink: 0; padding: 14px 0; color: #64748b; font-size: 14px; font-weight: 500; border-bottom: 2px solid transparent; }
+.client-workspace-tabs button[aria-pressed="true"] { color: #172554; border-bottom-color: #172554; }
+.client-workspace-tabs button:hover { color: #172554; }
+.client-workspace-tabs button:focus-visible { outline: 2px solid #52766a; outline-offset: -3px; }
+@media(max-width:640px) { .accountant-client-workspace .client-workspace-title h1 { font-size: 22px; } .client-workspace-progress > div { width: 100%; } .client-workspace-tabs { gap: 20px; padding-inline: 14px; } }

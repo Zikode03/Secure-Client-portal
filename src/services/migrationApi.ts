@@ -55,8 +55,9 @@ export const editClient = (
   version: number,
   values: ClientInput,
   skip: boolean,
+  useExistingClient = false,
 ) =>
-  apiPutJson(`${root}/${id}/clients/${rowId}`, { version, values, skip });
+  apiPutJson(`${root}/${id}/clients/${rowId}`, { version, values, skip, useExistingClient });
 export const editDocument = (
   id: string,
   rowId: string,
@@ -113,6 +114,7 @@ export function failedRowsCsv(batch: MigrationDetail) {
         row.warnings?.join("; "),
         row.values?.skip,
       ]);
+  for (const warning of batch.archiveWarnings ?? []) rows.push(["archive", "", ...clientColumns.map(()=>""), "", warning, true]);
   return [header, ...rows].map((r) => r.map(csvCell).join(",")).join("\r\n");
 }
 export function saveDownload(blob: Blob, name: string) {
@@ -123,3 +125,22 @@ export function saveDownload(blob: Blob, name: string) {
   a.click();
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+/** Translate older backend wording while local installations are being updated. */
+export function migrationErrorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : "The import could not be completed. Please try again.";
+  if (/^Headers must be:/i.test(message)) {
+    return "The column headings in your client list do not match the import template. Download the client template, copy your client details into it without changing the headings, then upload it again. No clients have been added.";
+  }
+  return message;
+}
+
+export function migrationValidationMessage(message: string): string {
+  if (message.startsWith("Possible existing client.")) {
+    return "This client already exists. Choose Use existing client to assign its accountant, or leave this row out of the import.";
+  }
+  return message;
+}
+
+export const bulkEditDocuments = (id: string, request: Schemas["SecureClientPortal.Backend.Application.Contracts.Modules.Migration.BulkMigrationDocumentRequest"]) =>
+  apiPutJson(`${root}/${id}/documents`, request);

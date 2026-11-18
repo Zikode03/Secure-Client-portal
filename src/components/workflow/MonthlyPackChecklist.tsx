@@ -26,7 +26,7 @@ interface MonthlyPackChecklistProps {
 }
 
 // Component flow: gather data first, then render a focused UI state.
-function RequirementBadge({ isRequired }: { isRequired: boolean }) {
+function RequirementBadge({ isRequired, isExempt }: { isRequired: boolean; isExempt: boolean }) {
 // Render output: this is the visual state users interact with.
   return (
     <span
@@ -36,13 +36,15 @@ function RequirementBadge({ isRequired }: { isRequired: boolean }) {
           : "bg-slate-50 text-slate-500 ring-slate-200"
       }`}
     >
-      {isRequired ? "Required" : "Optional"}
+      {isExempt ? "Not required" : isRequired ? "Required" : "Optional"}
     </span>
   );
 }
 
 function statusMeta(slot: MonthlyDocumentSlot) {
   switch (slot.status) {
+    case "not_applicable":
+      return { label: "Not applicable", classes: "text-slate-500 bg-slate-50 ring-slate-200", dot: "bg-slate-400" };
     case "draft":
       return {
         label: "Draft",
@@ -384,6 +386,7 @@ export function MonthlyPackChecklist({
   }
 
   function runPrimaryAction(slot: MonthlyDocumentSlot) {
+    if (slot.status === "not_applicable") return;
     const intent = slotActionIntent(slot);
     if (intent === "view" && onView) {
       onView(slot);
@@ -393,6 +396,7 @@ export function MonthlyPackChecklist({
   }
 
   function renderActionMenu(slot: MonthlyDocumentSlot) {
+    if (slot.status === "not_applicable") return <span className="text-sm text-slate-500">Excluded</span>;
     const nextAction = actionLabel(slot);
     const actionIntent = slotActionIntent(slot);
     const buttonIcon =
@@ -502,7 +506,7 @@ export function MonthlyPackChecklist({
           <h2 className="text-base font-semibold text-[#091333]">Monthly Pack Checklist</h2>
           {showSlotCount ? (
             <span className="rounded-full bg-[#eef4fa] px-2.5 py-1 text-sm font-semibold text-brand-700 ring-1 ring-[#d7e3ee]">
-              {pack.slots.filter((slot) => slot.isRequired).length} required · {pack.slots.filter((slot) => !slot.isRequired).length} optional
+              {pack.slots.filter((slot) => slot.isRequired && slot.status !== "not_applicable").length} required · {pack.slots.filter((slot) => !slot.isRequired).length} optional
             </span>
           ) : null}
         </div>
@@ -548,7 +552,7 @@ export function MonthlyPackChecklist({
       <div className="flex flex-col gap-3 border-b border-[#edf0f6] px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap gap-2" aria-label="Checklist filters" role="group">
           {([
-            ["all", "All required", pack.slots.filter((slot) => slot.isRequired).length],
+            ["all", "All required", pack.slots.filter((slot) => slot.isRequired && slot.status !== "not_applicable").length],
             ["needs_attention", "Needs attention", attentionCount],
             ["ready", "Ready", readyCount],
           ] as const).map(([value, label, count]) => (
@@ -585,7 +589,7 @@ export function MonthlyPackChecklist({
                   </h3>
                   {slot.description ? <p className="mt-0.5 line-clamp-1 text-xs text-[#53617f]">{slot.description}</p> : null}
                 </div>
-                {!isReadOnly ? (
+                {!isReadOnly && slot.status !== "not_applicable" ? (
                   <Button onClick={() => runPrimaryAction(slot)} size="sm" variant={needsAttention(slot) ? "primary" : "secondary"}>
                     {actionLabel(slot)}
                   </Button>
@@ -597,7 +601,7 @@ export function MonthlyPackChecklist({
                   <p className="text-sm font-semibold uppercase tracking-[0.14em] text-slate-400">
                     Requirement
                   </p>
-                  <RequirementBadge isRequired={slot.isRequired} />
+                  <RequirementBadge isRequired={slot.isRequired} isExempt={slot.status === "not_applicable"} />
                 </div>
 
                 <div className="space-y-1">
@@ -688,7 +692,7 @@ export function MonthlyPackChecklist({
                       </div>
                     </td>
                     <td className="border-b border-[#edf0f6] px-2 py-3">
-                      <RequirementBadge isRequired={slot.isRequired} />
+                      <RequirementBadge isRequired={slot.isRequired} isExempt={slot.status === "not_applicable"} />
                     </td>
                     <td className="border-b border-[#edf0f6] px-2 py-3">
                       <div className={`inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-sm font-semibold ring-1 ring-inset ${status.classes}`}>
@@ -708,7 +712,7 @@ export function MonthlyPackChecklist({
                     </td>
                     <td className="border-b border-[#edf0f6] px-2 py-3">
                       <div className="flex items-center gap-2">
-                        {!isReadOnly ? (
+                        {!isReadOnly && slot.status !== "not_applicable" ? (
                           <Button onClick={() => runPrimaryAction(slot)} size="sm" variant={needsAttention(slot) ? "primary" : "secondary"}>
                             {actionLabel(slot)}
                           </Button>

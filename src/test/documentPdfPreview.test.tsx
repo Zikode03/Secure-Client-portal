@@ -1,10 +1,11 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, expect, it, vi } from "vitest";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { DocumentPdfPreview } from "../components/documents/DocumentPdfPreview";
 import { apiGetBlob, ApiError } from "./fixtures/apiTransportFixture";
 const mocks = vi.hoisted(() => ({ getDocument: vi.fn(), getPage: vi.fn(), destroy: vi.fn(), render: vi.fn() }));
 vi.mock("../services/apiClient", async original => ({ ...(await original<typeof import("../services/apiClient")>()), apiGetBlob: vi.fn() }));
 vi.mock("../services/invoicePdfReader", () => ({ localPdfEngine: async () => ({ getDocument: mocks.getDocument }) }));
+afterEach(() => vi.unstubAllGlobals());
 let ready = vi.fn<(id: string, ready: boolean) => void>();
 beforeEach(() => {
   vi.clearAllMocks(); ready = vi.fn<(id: string, ready: boolean) => void>();
@@ -83,4 +84,33 @@ it("identifies PDF worker failures after the original file downloads", async () 
   render(<DocumentPdfPreview documentId="bank" fileName="statement.pdf" onReady={ready} />);
   expect(await screen.findByRole("alert")).toHaveTextContent("file downloaded, but the PDF viewer could not open it");
   expect(ready).not.toHaveBeenCalledWith("bank", true);
+});
+
+it("keeps the last painted page visible while zoom renders and clears the overlay when ready", async () => {
+  render(<DocumentPdfPreview documentId="bank" fileName="statement.pdf" onReady={ready} />);
+  const canvas=await screen.findByRole("img",{name:"statement.pdf, page 1 of 3"});
+  expect(screen.getByLabelText("Document zoom")).toHaveValue("-1");
+  let finish!: () => void;
+  mocks.render.mockReturnValueOnce({promise:new Promise<void>(resolve=>{finish=resolve;}),cancel:vi.fn()});
+  fireEvent.change(screen.getByLabelText("Document zoom"),{target:{value:"125"}});
+  await waitFor(()=>expect(mocks.render).toHaveBeenCalledTimes(2));
+  expect(canvas).toBeInTheDocument();
+  expect(screen.getByRole("status").parentElement).toHaveClass("document-pdf-stage");
+  expect(ready).toHaveBeenLastCalledWith("bank",false);
+  await act(async()=>{finish();});
+  expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  expect(ready).toHaveBeenLastCalledWith("bank",true);
+});
+it("does not keep rendering when the preview receives identical resize measurements", async () => {
+  let resize!: (entries:Array<{contentRect:{width:number;height:number}}>)=>void;
+  vi.stubGlobal("ResizeObserver",class {constructor(callback:typeof resize){resize=callback;} observe(){} disconnect(){}});
+  render(<DocumentPdfPreview documentId="bank" fileName="statement.pdf" onReady={ready} />);
+  await screen.findByRole("img",{name:"statement.pdf, page 1 of 3"});
+  await act(async()=>resize([{contentRect:{width:900,height:650}}]));
+  await waitFor(()=>expect(mocks.render).toHaveBeenCalledTimes(2));
+  await waitFor(()=>expect(screen.queryByRole("status")).not.toBeInTheDocument());
+  await act(async()=>{for(let i=0;i<5;i++)resize([{contentRect:{width:900,height:650}}]);});
+  expect(mocks.render).toHaveBeenCalledTimes(2);
+  expect(apiGetBlob).toHaveBeenCalledTimes(1);
+  expect(ready).toHaveBeenLastCalledWith("bank",true);
 });

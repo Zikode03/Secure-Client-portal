@@ -1,8 +1,11 @@
+import {archivePeriodLabel} from "../../services/financialArchive";
+import { ClientRecordsPanel } from "../../components/documents/ClientRecordsPanel";
+import "./accountantClientWorkspace.css";
 import { getClientDeadlineLabel } from "../../services/clientDeadlines";
 // Friendly guide: this module (AccountantClientWorkspacePage) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
@@ -34,7 +37,6 @@ const workspaceTabs = [
 
 const navyPanelClass =
   "rounded-2xl border border-[#dce6ef] bg-white shadow-[0_16px_38px_rgba(4,24,52,0.08)]";
-const navySoftPanelClass = "rounded-2xl border border-[#dce6ef] bg-[#f7faff]";
 const navyButtonClass =
   "client-dashboard-action-button inline-flex items-center justify-center rounded-lg border-0 font-medium ring-0";
 const navySecondaryButtonClass =
@@ -183,6 +185,14 @@ export function AccountantClientWorkspacePage() {
   const [decisionReason, setDecisionReason] = useState("");
   const [decisionMessage, setDecisionMessage] = useState("");
   const [liveDocuments, setLiveDocuments] = useState<DocumentRecord[]>([]);
+  const [livePacks, setLivePacks] = useState<Array<{id: string; clientId: string; year: number; month: number; status: string}>>([]);
+  const [checklistDocument,setChecklistDocument]=useState<DocumentRecord|null>(null);
+  const [checklistItems,setChecklistItems]=useState<Array<{id:string;label:string;status:string}>>([]);
+  const [checklistSlot,setChecklistSlot]=useState("");
+  const [checklistBusy,setChecklistBusy]=useState(false);
+  const [checklistError,setChecklistError]=useState("");
+  const recordsRequest = useRef(0);
+  const [recordsStatus, setRecordsStatus] = useState<"loading" | "ready" | "error">("loading");
   const [liveCommentsByDocumentId, setLiveCommentsByDocumentId] = useState<Record<string, DocumentComment[]>>({});
   const [liveRequests, setLiveRequests] = useState<WorkflowRequest[]>([]);
   const [liveDeadline, setLiveDeadline] = useState("Loading monthly pack due dates…");
@@ -195,9 +205,7 @@ export function AccountantClientWorkspacePage() {
     return () => { active = false; };
   }, [backendMode, clientId]);
   const workspace = portal.getClientWorkspace(clientId);
-  const workspaceDocumentsSource = backendMode && liveDocuments.length > 0
-    ? liveDocuments
-    : workspace.documents;
+  const workspaceDocumentsSource = backendMode ? liveDocuments : workspace.documents;
   const acceptedDocuments = useMemo(
     () => workspaceDocumentsSource.filter((document) => document.status === "accepted"),
     [workspaceDocumentsSource],
@@ -357,7 +365,12 @@ export function AccountantClientWorkspacePage() {
       return;
     }
 
+    setLiveDocuments([]);
+    setLivePacks([]);
     void loadLiveDocuments();
+    const refresh = () => { if (document.visibilityState !== "hidden") void loadLiveDocuments(); };
+    window.addEventListener("focus", refresh);
+    return () => { recordsRequest.current++; window.removeEventListener("focus", refresh); };
   }, [backendMode, user?.id, workspace.client.id]);
 
   useEffect(() => {
@@ -442,8 +455,15 @@ export function AccountantClientWorkspacePage() {
   }
 
   async function loadLiveDocuments() {
+    const request = ++recordsRequest.current;
+    setRecordsStatus("loading");
     try {
-      const documents = await apiGetJson("/api/documents");
+      const [documents, packs] = await Promise.all([
+        apiGetJson("/api/documents"),
+        apiGetJson(`/api/monthly-packs?clientId=${encodeURIComponent(workspace.client.id)}`),
+      ]);
+      const clientPacks = packs.filter(pack => pack.clientId === workspace.client.id).sort((a,b) => b.year-a.year || b.month-a.month);
+      const packById = new Map(clientPacks.map(pack => [pack.id,pack]));
       const mappedDocuments = documents
         .filter((document) => document.clientId === workspace.client.id)
         .map<DocumentRecord>((document) => ({
@@ -452,9 +472,11 @@ export function AccountantClientWorkspacePage() {
           clientName: workspace.client.clientName,
           documentType: document.category,
           fileName: document.name,
-          monthLabel: formatDateLabel(document.uploadedAtUtc),
+          monthLabel: archivePeriodLabel(document, packById.has(document.monthlyPackId ?? "") ? new Intl.DateTimeFormat("en-ZA",{month:"long",year:"numeric",timeZone:"UTC"}).format(new Date(Date.UTC(packById.get(document.monthlyPackId ?? "")!.year,packById.get(document.monthlyPackId ?? "")!.month-1,1))) : "Period not specified"),
           description: `${document.category} uploaded in the secure document workflow.`,
           status: mapLiveDocumentStatus(document.status),
+              isHistoricallyFiled: document.isHistoricallyFiled,
+              archiveScope: document.archiveScope as DocumentRecord["archiveScope"], archiveYear: document.archiveYear, archiveMonth: document.archiveMonth,
           uploadedBy: workspace.client.clientName,
           uploadedAt: document.uploadedAtUtc,
           reviewedBy: undefined,
@@ -464,14 +486,41 @@ export function AccountantClientWorkspacePage() {
           comments: liveCommentsByDocumentId[document.id] ?? [],
           auditTrail: [],
           fileMimeType: document.fileType,
+          monthlyPackId: document.monthlyPackId,
+          documentSlotId: document.documentSlotId ?? undefined,
         }));
 
+      if (request !== recordsRequest.current) return;
       setLiveDocuments(mappedDocuments);
+      setLivePacks(clientPacks);
+      setRecordsStatus("ready");
     } catch (error) {
+      if (request !== recordsRequest.current) return;
       setFeedbackMessage(
         error instanceof ApiError ? error.message : "The live client documents could not be loaded.",
       );
     }
+  }
+
+  async function openChecklistLink(document:DocumentRecord) {
+    setChecklistDocument(document);setChecklistItems([]);setChecklistSlot("");setChecklistError("");setChecklistBusy(true);
+    try {
+      if(!document.monthlyPackId)throw new Error("This document needs a monthly period before it can be linked.");
+      const slots=await apiGetJson(`/api/document-slots/${encodeURIComponent(document.monthlyPackId)}`);
+      setChecklistItems(slots.filter(slot=>["not_started","draft","rejected","reupload_required"].includes(slot.status)));
+    } catch(error){setChecklistError(error instanceof Error?error.message:"Checklist items could not be loaded.");}
+    finally{setChecklistBusy(false);}
+  }
+  async function saveChecklistLink() {
+    if(!checklistDocument||!checklistSlot)return;
+    setChecklistBusy(true);setChecklistError("");
+    try {
+      await apiPostJson(`/api/documents/${encodeURIComponent(checklistDocument.id)}/checklist-link`,{documentSlotId:checklistSlot});
+      setChecklistDocument(null);
+      setFeedbackMessage("Document linked to the monthly checklist. It is received and still needs review; it has not been approved.");
+      await loadLiveDocuments();
+    } catch(error){setChecklistError(error instanceof Error?error.message:"The document could not be linked.");}
+    finally{setChecklistBusy(false);}
   }
 
   async function loadLiveDocumentComments(documentId: string) {
@@ -804,51 +853,21 @@ export function AccountantClientWorkspacePage() {
 
 // Render output: this is the visual state users interact with.
   return (
-    <div className="space-y-6 text-[#091333]">
-      <section className="portal-page-header relative border-b border-slate-200 pb-6">
-        <div className="relative z-10 flex flex-wrap items-start justify-between gap-5">
-          <div className="max-w-3xl">
-            <p className="text-sm font-medium uppercase tracking-[0.16em] text-[#6f7d96]">
-              Accountant Client Workspace
-            </p>
-            <div className="mt-3 flex flex-wrap items-center gap-3">
-              <h1 className="text-2xl font-medium text-[#091333] md:text-3xl">
-                {workspace.client.clientName}
-              </h1>
-              <StatusBadge status={workspace.client.status} />
-            </div>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-[#53617f]">
-              Keep this client's month pack, document review, compliance, requests, messages, and audit trail in one accountable workspace.
-            </p>
-            <div className="mt-5 flex flex-wrap gap-2 text-sm font-medium text-[#41526f]">
-              <span className="rounded-full border border-[#d8e2ef] bg-white px-3 py-1 shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
-                {workspace.client.industry}
-              </span>
-              <span className="rounded-full border border-[#d8e2ef] bg-white px-3 py-1 shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
-                Assigned to {workspace.client.assignedAccountant}
-              </span>
-              <span className="rounded-full border border-[#d8e2ef] bg-white px-3 py-1 shadow-[0_6px_16px_rgba(15,23,42,0.04)]">
-                {backendMode ? liveDeadline : workspace.client.deadlinePolicy}
-              </span>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2 self-end">
-            <Button
-              className={cn("h-10 rounded-xl border border-[#cdd8ea] bg-white px-4 text-sm font-medium text-[#091333] shadow-[0_8px_18px_rgba(4,24,52,0.05)] hover:bg-[#f8fbff]",)}
-              onClick={() => navigate(`/firm/documents?client=${workspace.client.id}`)}
-              variant="secondary"
-            >
-              Open document centre
-            </Button>
-            <Button
-              className={cn("client-dashboard-action-button h-10 rounded-xl border-0 px-4 text-sm font-medium ring-0",)}
-              onClick={() => navigate(`/firm/inbox?client=${workspace.client.id}`)}
-            >
-              Open inbox
-            </Button>
-          </div>
+    <div className="accountant-client-workspace space-y-5 text-[#091333]">
+      <header className="client-workspace-heading">
+        <div className="min-w-0">
+          <div className="client-workspace-title"><h1>{workspace.client.clientName}</h1><StatusBadge status={workspace.client.status} /></div>
+          <p className="client-workspace-metadata">
+            {workspace.client.industry && workspace.client.industry !== "Not specified" ? <span>{workspace.client.industry}</span> : null}
+            <span>Accountant: {workspace.client.assignedAccountant}</span>
+            <span>{backendMode ? liveDeadline : workspace.client.deadlinePolicy}</span>
+          </p>
         </div>
-      </section>
+        <div className="client-workspace-actions">
+          <Button size="sm" variant="secondary" onClick={() => navigate(`/firm/documents?client=${workspace.client.id}`)}>Open document centre</Button>
+          <Button size="sm" variant="secondary" onClick={() => navigate(`/firm/inbox?client=${workspace.client.id}`)}>Open inbox</Button>
+        </div>
+      </header>
 
       {feedbackMessage ? (
         <div className="rounded-2xl border border-[#cdd8ea] bg-[#f7faff] px-5 py-4 text-sm font-medium text-[#0a2f66]">
@@ -856,62 +875,30 @@ export function AccountantClientWorkspacePage() {
         </div>
       ) : null}
 
-      <SurfaceCard className={cn(navyPanelClass, "space-y-5 p-0")}>
-        <div className="border-b border-[#e6edf4] bg-[#fbfdff] px-5 pb-5 pt-5">
-        <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <h2 className="text-xl font-medium text-[#091333]">{workspace.client.clientName}</h2>
-              <StatusBadge status={workspace.client.status} />
-            </div>
-            <p className="text-sm text-[#53617f]">
-              {workspace.client.industry} / {workspace.client.assignedAccountant} / {backendMode ? liveDeadline : workspace.client.deadlinePolicy}
-            </p>
-          </div>
-          <div className={cn(navySoftPanelClass, "space-y-2 p-4")}>
-            <div className="flex items-center justify-between text-sm font-medium text-[#091333]">
-              <span>Month pack progress</span>
-              <span>{workspace.monthPack.progressPercent}%</span>
-            </div>
-            <ProgressBar value={workspace.monthPack.progressPercent} />
-          </div>
-        </div>
-        </div>
+      <section className="client-workspace-navigation" aria-label="Client workspace navigation">
+        {backendMode ? <div className="client-workspace-progress"><span>Client records across all periods</span><span>{recordsStatus === "ready" ? `${liveDocuments.length} documents · ${livePacks.length} monthly packs` : recordsStatus === "error" ? "Records unavailable" : "Loading records…"}</span></div> : <div className="client-workspace-progress">
+          <span>{workspace.monthPack.monthLabel} <span className="text-slate-500">· Month pack progress</span></span>
+          <div><ProgressBar value={workspace.monthPack.progressPercent} /><span>{workspace.monthPack.progressPercent}%</span></div>
+        </div>}
+        <nav aria-label="Client records" className="client-workspace-tabs">
+          {workspaceTabs.map(tab => <button key={tab.id} type="button" aria-pressed={activeTab === tab.id} onClick={() => switchTab(tab.id)}>{tab.label}</button>)}
+        </nav>
+      </section>
 
-        <div className="flex flex-wrap gap-2 px-5">
-          {workspaceTabs.map((tab) => (
-            <button
-              className={cn(
-                "rounded-lg px-3 py-2 text-sm font-medium transition",
-                activeTab === tab.id
-                  ? "bg-[#062044] text-white shadow-[0_10px_22px_rgba(6,32,68,0.22)]"
-                  : "bg-[#eef4fa] text-[#53617f] hover:bg-[#dfeaf5] hover:text-[#091333]",
-              )}
-              key={tab.id}
-              onClick={() => switchTab(tab.id)}
-              type="button"
-            >
-              {tab.label}
-            </button>
-          ))}
+      <Modal isOpen={Boolean(checklistDocument)} title="Link to monthly checklist" onClose={() => {if(!checklistBusy)setChecklistDocument(null);}}>
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600">{checklistDocument?.fileName} · {checklistDocument?.monthLabel}</p>
+          <p className="text-sm text-slate-600">Choose the requirement this file fulfils. Its record type will be updated to match. This records receipt only; review and approval remain separate.</p>
+          {checklistError ? <p role="alert" className="text-sm text-red-700">{checklistError}</p> : null}
+          <label className="block space-y-2 text-sm font-medium">Monthly checklist item<select className="w-full rounded-lg border border-slate-200 p-3" value={checklistSlot} onChange={event=>setChecklistSlot(event.target.value)} disabled={checklistBusy}><option value="">Choose an item</option>{checklistItems.map(slot=><option key={slot.id} value={slot.id}>{slot.label}</option>)}</select></label>
+          {!checklistBusy&&!checklistError&&!checklistItems.length ? <p className="text-sm text-slate-500">No available checklist items for this month. Add the requirement through Manage monthly packs first.</p> : null}
+          <div className="flex justify-end gap-2"><Button variant="secondary" disabled={checklistBusy} onClick={()=>setChecklistDocument(null)}>Cancel</Button><Button disabled={checklistBusy||!checklistSlot} onClick={()=>void saveChecklistLink()}>{checklistBusy?"Loading…":"Link document"}</Button></div>
         </div>
+      </Modal>
 
-        {activeTab !== "packs" ? (
-          <div className="mx-5 mb-5 flex items-center justify-between gap-3 rounded-xl border border-[#dce6ef] bg-[#f7faff] px-3 py-2.5">
-            <p className="text-sm text-[#53617f]">
-              Viewing:{" "}
-              <span className="font-medium text-[#091333]">
-                {workspaceTabs.find((tab) => tab.id === activeTab)?.label ?? "Section"}
-              </span>
-            </p>
-            <Button className={cn(navySecondaryButtonClass, "h-8 rounded-lg px-3 text-xs")} onClick={() => switchTab("packs")} size="sm" variant="secondary">
-              Back to Monthly Packs
-            </Button>
-          </div>
-        ) : null}
-      </SurfaceCard>
+      {backendMode ? <ClientRecordsPanel onLink={document => void openChecklistLink(document)} documents={liveDocuments} packs={livePacks} category={activeTab} status={recordsStatus} onRetry={() => void loadLiveDocuments()} onOpen={document => navigate(`/firm/documents?client=${encodeURIComponent(workspace.client.id)}&documentId=${encodeURIComponent(document.id)}`)} onManagePacks={() => navigate(`/firm/clients/${workspace.client.id}/packs`)} /> : null}
 
-      {["packs", "bank_statement", "invoices", "signed_documents", "compliance_record"].includes(activeTab) ? (
+      {!backendMode && ["packs", "bank_statement", "invoices", "signed_documents", "compliance_record"].includes(activeTab) ? (
         <SurfaceCard className={cn(navyPanelClass, "space-y-5 rounded-[1.45rem] border border-[#dce6ef] bg-white p-0 shadow-[0_12px_30px_rgba(15,23,42,0.05)]")}>
           <div className="px-6 pb-4 pt-6">
             <h2 className="text-xl font-medium text-[#091333]">Client monthly pack</h2>

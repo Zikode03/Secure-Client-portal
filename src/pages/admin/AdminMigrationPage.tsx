@@ -1,3 +1,5 @@
+import { bundleArchiveFiles } from "../../services/archiveBundle";
+import { suggestArchivePath } from "../../services/archiveImport";
 import "./adminDirectories.css";
 import { useEffect, useRef, useState } from "react";
 import "./importOptions.css";
@@ -75,12 +77,12 @@ function Messages({
     <div aria-live="polite" className="space-y-1 text-sm">
       {errors?.map((e, i) => (
         <p className="text-red-700" key={`e${i}`}>
-          {e}
+          {migration.migrationValidationMessage(e)}
         </p>
       ))}
       {warnings?.map((e, i) => (
         <p className="text-amber-800" key={`w${i}`}>
-          {e}
+          {migration.migrationValidationMessage(e)}
         </p>
       ))}
     </div>
@@ -95,26 +97,33 @@ function ClientEditor({
   row: ClientRow;
   disabled: boolean;
   onDirty: () => void;
-  onSave: (v: ClientInput, skip: boolean) => void;
+  onSave: (v: ClientInput, skip: boolean, useExistingClient: boolean) => void;
 }) {
   const [values, setValues] = useState<ClientInput>(row.values!);
   const [skip, setSkip] = useState(row.skip ?? false);
-  const saved = JSON.stringify([row.values, row.skip]);
+  const [useExistingClient, setUseExistingClient] = useState(row.useExistingClient ?? false);
+  const saved = JSON.stringify([row.values, row.skip, row.useExistingClient]);
   useEffect(() => {
     setValues(row.values!);
     setSkip(row.skip ?? false);
+    setUseExistingClient(row.useExistingClient ?? false);
   }, [saved]);
   return (
     <article className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
       <h3 className="font-semibold">
-        Client details Â· row {row.sourceRow}:{" "}
+        Client details · row {row.sourceRow}:{" "}
         {row.values?.name || "Unnamed client"}
       </h3>
       {row.importedId ? (
         <p className="text-sm text-green-800">
-          Client profile imported. Account access can be invited separately.
+          {row.useExistingClient ? "Existing client linked. Its profile and login access are unchanged." : "Client profile imported. Account access can be invited separately."}
         </p>
       ) : null}
+      {row.existingClientId && !row.importedId ? <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm">
+        <p className="font-semibold text-slate-900">This client already exists</p>
+        <p className="mt-1 text-slate-600">Use its existing profile and assign the accountant below. Company details and login access will stay unchanged.</p>
+        <label className="mt-3 flex items-center gap-2 font-medium"><input type="checkbox" checked={useExistingClient} disabled={disabled} onChange={event => {setUseExistingClient(event.target.checked);if(event.target.checked)setSkip(false);onDirty();}} />Use existing client</label>
+      </div> : null}
       <fieldset
         disabled={disabled}
         className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3"
@@ -125,6 +134,7 @@ function ClientEditor({
             <input
               className={inputClass}
               value={values[k] ?? ""}
+              disabled={useExistingClient && k !== "accountantEmail"}
               onChange={(e) => {
                 setValues({ ...values, [k]: e.target.value });
                 onDirty();
@@ -147,7 +157,7 @@ function ClientEditor({
         Leave this client out of the import
       </label>
       {!disabled ? (
-        <Button variant="secondary" onClick={() => onSave(values, skip)}>
+        <Button variant="secondary" onClick={() => onSave(values, skip, useExistingClient)}>
           Save client details
         </Button>
       ) : null}
@@ -181,6 +191,7 @@ function DocumentEditor({
       ...values,
       ...patch,
       ownershipConfirmed: false,
+      historicalStatusConfirmed: false,
       duplicateAcknowledged: false,
     });
     onDirty();
@@ -188,14 +199,14 @@ function DocumentEditor({
   return (
     <article className="space-y-3 rounded-xl border border-slate-200 bg-white p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h3 className="font-semibold">{row.fileName}</h3>
+        <div><h3 className="font-semibold">{row.fileName}</h3>{values.sourcePath ? <p className="break-all text-xs text-slate-500">{values.sourcePath}</p> : null}<p className="text-xs text-slate-500">{values.previouslyFiled ? "Historically filed — confirmed during import" : "Needs accountant review"}</p></div>
         <Button size="sm" variant="secondary" onClick={onDownload}>
           Download for review
         </Button>
       </div>
       {row.importedId ? (
         <p className="text-sm text-green-800">
-          Imported as uploaded. Review, acceptance and filing remain separate.
+          {values.previouslyFiled ? "Historically filed — confirmed during import." : "Imported for accountant review. Filing remains separate."}
         </p>
       ) : null}
       <fieldset disabled={disabled} className="space-y-3">
@@ -215,7 +226,8 @@ function DocumentEditor({
               ))}
             </select>
           </label>
-          <label className="space-y-1 text-sm">
+          <label className="space-y-1 text-sm">Record section<select className={inputClass} value={values.recordScope??"monthly"} onChange={event=>change({recordScope:event.target.value,year:null,month:null})}><option value="monthly">Monthly financial records</option><option value="annual">Annual financial records</option><option value="permanent">Permanent company records</option><option value="uncertain">Period needs checking</option></select></label>
+          {(values.recordScope??"monthly")==="monthly" ? <label className="space-y-1 text-sm">
             Month covered
             <input
               type="month"
@@ -229,7 +241,7 @@ function DocumentEditor({
                 });
               }}
             />
-          </label>
+          </label> : values.recordScope==="annual" ? <label className="space-y-1 text-sm">Financial year ending in<input className={inputClass} type="number" min={1900} value={values.year??""} onChange={event=>change({year:event.target.value?Number(event.target.value):null,month:null})} /></label> : null}
           <label className="space-y-1 text-sm">
             Document name
             <input
@@ -253,6 +265,12 @@ function DocumentEditor({
             </select>
           </label>
         </div>
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={values.previouslyFiled??false} onChange={e=>change({previouslyFiled:e.target.checked,historicalStatusConfirmed:false})} />Previously reviewed and filed</label>
+        {values.previouslyFiled ? <div className="space-y-2 rounded-lg bg-slate-50 p-3">
+          <label className="block text-sm">Previous reviewer<input className={inputClass} value={values.previousReviewer??""} maxLength={200} onChange={e=>change({previousReviewer:e.target.value})} /></label>
+          <label className="block text-sm">Historical notes / details unavailable<textarea className={inputClass} value={values.historicalNotes??""} maxLength={2000} onChange={e=>change({historicalNotes:e.target.value})} /></label>
+          <label className="flex gap-2 text-sm"><input type="checkbox" checked={values.historicalStatusConfirmed??false} onChange={e=>{setValues({...values,historicalStatusConfirmed:e.target.checked});onDirty();}} />I confirm prior review and filing.</label>
+        </div> : null}
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
@@ -303,12 +321,15 @@ function DocumentEditor({
 }
 export function AdminMigrationPage() {
   const { user } = useAuth();
+  const importParams=new URLSearchParams(window.location.search);
+  const isAdmin = user?.role === "admin";
+  const canImport = isAdmin || user?.role === "accountant";
   const [history, setHistory] = useState<MigrationSummary[]>([]);
   const [batch, setBatch] = useState<MigrationDetail | null>(null);
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [name, setName] = useState("");
   const requestId = useRef(crypto.randomUUID());
-  const [kind, setKind] = useState<"clients" | "documents" | null>(null);
+  const [kind, setKind] = useState<"clients" | "documents" | null>(importParams.get("clientId")?"documents":null);
   const [step, setStep] = useState<"upload" | "review" | "confirm">("upload");
   const [activeEditor, setActiveEditor] = useState<string | null>(null);
   const [page, setPage] = useState(0);
@@ -324,10 +345,25 @@ export function AdminMigrationPage() {
   const busyRef = useRef(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [selectedFileName, setSelectedFileName] = useState("");
+  const feedbackPanel = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!error && !notice) return;
+    feedbackPanel.current?.focus({ preventScroll: true });
+    feedbackPanel.current?.scrollIntoView?.({ block: "start", behavior: "smooth" });
+  }, [error, notice]);
   const [confirmed, setConfirmed] = useState(false);
-  const [uploadClient, setUploadClient] = useState("");
+  const [uploadClient, setUploadClient] = useState(importParams.get("clientId")??"");
   const [uploadMonth, setUploadMonth] = useState("");
   const [uploadCategory, setUploadCategory] = useState("general");
+  const [recordScope,setRecordScope]=useState("monthly");
+  const [previouslyFiled, setPreviouslyFiled] = useState(false);
+  const [historicalConfirmed, setHistoricalConfirmed] = useState(false);
+  const [previousReviewer, setPreviousReviewer] = useState("");
+  const [previousReviewDate, setPreviousReviewDate] = useState("");
+  const [historicalNotes, setHistoricalNotes] = useState("");
+  const [bulkOwnership, setBulkOwnership] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState("");
   const [editorEpoch, setEditorEpoch] = useState(0);
   const [dirty, setDirty] = useState<Set<string>>(new Set());
   const markDirty = (id: string) => {
@@ -343,7 +379,7 @@ export function AdminMigrationPage() {
   const [loaded, setLoaded] = useState(false);
   const [uploadErrors, setUploadErrors] = useState<string[]>([]);
   useEffect(() => {
-    if (user?.role !== "admin") return;
+    if (!canImport) return;
     let active = true;
     Promise.all([
       migration.listMigrations(),
@@ -365,9 +401,9 @@ export function AdminMigrationPage() {
     return () => {
       active = false;
     };
-  }, [user?.role]);
-  if (user?.role !== "admin")
-    return <p>Only administrators can import client lists and documents.</p>;
+  }, [user?.role, user?.id]);
+  if (!canImport)
+    return <p>Only administrators and accountants can import documents.</p>;
   const run = async (action: () => Promise<void>) => {
     if (busyRef.current) return;
     busyRef.current = true;
@@ -377,11 +413,7 @@ export function AdminMigrationPage() {
     try {
       await action();
     } catch (e) {
-      setError(
-        e instanceof Error
-          ? e.message
-          : "The operation failed. Refresh this import before trying again.",
-      );
+      setError(migration.migrationErrorMessage(e));
     } finally {
       busyRef.current = false;
       setBusy(false);
@@ -402,6 +434,8 @@ export function AdminMigrationPage() {
     }
   };
   const start = (type: "clients" | "documents") => {
+    if (type === "clients" && !isAdmin) return;
+    setSelectedFileName("");
     setKind(type);
     setBatch(null);
     setName("");
@@ -433,26 +467,32 @@ export function AdminMigrationPage() {
       if (!/\.(csv|xlsx)$/i.test(file.name) || file.size > 2 * 1024 * 1024)
         throw new Error("Choose an Excel (.xlsx) or CSV file up to 2 MB.");
       const current = await ensureImport();
-      update(
-        await migration.stageSpreadsheet(
+      const staged = await migration.stageSpreadsheet(
           current.summary!.id!,
           current.summary?.version ?? 0,
           file,
-        ),
-      );
+        );
+      update(staged);
+      const count = staged.clients?.length ?? 0;
+      if (!count) throw new Error("No client rows were found. Check the spreadsheet and use the client template.");
+      setNotice(`${file.name}: ${count} client ${count === 1 ? "row" : "rows"} ready to check. No clients have been added yet. Review the details, then confirm the import.`);
       setStep("review");
       setPage(0);
       setActiveEditor(null);
     });
   const uploadDocuments = (files: File[]) =>
     run(async () => {
-      if ((batch?.documents?.length ?? 0) + files.length > 100)
-        throw new Error("Choose up to 100 documents for each import.");
-      if (files.some((file) => file.size > 20 * 1024 * 1024))
-        throw new Error("Each document must be 20 MB or smaller.");
+      if ((batch?.documents?.length ?? 0) + files.length > 2000)
+        throw new Error("Choose up to 2,000 documents for each import.");
+      if (files.some((file) => file.size > (file.name.toLowerCase().endsWith(".zip") ? 250 : 20) * 1024 * 1024))
+        throw new Error("Each document must be up to 20 MB; ZIP archives can be up to 250 MB.");
+      if(files.reduce((sum,file)=>sum+file.size,0)>500*1024*1024)throw new Error("Select up to 500 MB of documents at a time. Split larger archives by year.");
+      const uploads=files.length>1&&!files.some(file=>file.name.toLowerCase().endsWith(".zip"))
+        ? await bundleArchiveFiles(files,setUploadProgress) : files;
       let current = await ensureImport();
       const failures: string[] = [];
-      for (const file of files) {
+      for (const [fileIndex, file] of uploads.entries()) {
+        setUploadProgress(`Staging ${fileIndex + 1} of ${uploads.length}: ${file.name}`);
         try {
           const fileId = crypto.randomUUID();
           const importId = current.summary!.id!;
@@ -463,7 +503,8 @@ export function AdminMigrationPage() {
             file,
           );
           update(current);
-          if (uploadClient || uploadMonth || uploadCategory !== "general") {
+          if (uploadClient || uploadMonth || uploadCategory !== "general" || file.webkitRelativePath) {
+            const suggested=suggestArchivePath(file.webkitRelativePath || file.name);
             const [year, month] = uploadMonth.split("-");
             const row = current.documents?.find((d) => d.id === fileId);
             if (row?.values) {
@@ -474,9 +515,10 @@ export function AdminMigrationPage() {
                 {
                   ...row.values,
                   clientId: uploadClient || null,
-                  year: year ? Number(year) : null,
-                  month: month ? Number(month) : null,
-                  category: uploadCategory,
+                  year: year ? Number(year) : suggested.year,
+                  month: month ? Number(month) : suggested.month,
+                  category: uploadCategory === "general" ? suggested.category : uploadCategory,
+                  sourcePath: suggested.sourcePath,
                   ownershipConfirmed: false,
                   duplicateAcknowledged: false,
                 },
@@ -491,6 +533,7 @@ export function AdminMigrationPage() {
           break;
         }
       }
+      setUploadProgress("");
       setUploadErrors(failures);
       if (failures.length)
         setError(
@@ -528,7 +571,7 @@ export function AdminMigrationPage() {
     ...(batch?.documents ?? []).map((row) => ({
       id: row.id!,
       title: row.fileName || "Document",
-      detail: `${clients.find((c) => c.id === row.values?.clientId)?.name || "Choose a client"} Â· ${row.values?.year && row.values?.month ? `${row.values.year}-${String(row.values.month).padStart(2, "0")}` : "Choose a month"}`,
+      detail: `${clients.find((c) => c.id === row.values?.clientId)?.name || "Choose a client"} · ${row.values?.recordScope==="permanent"?"Permanent records":row.values?.recordScope==="annual"?`FY${row.values.year??" needs checking"}`:row.values?.recordScope==="uncertain"?"Period needs checking":row.values?.year && row.values?.month ? `${row.values.year}-${String(row.values.month).padStart(2, "0")}` : "Choose a month"}`,
       skip: row.values?.skip ?? false,
       issues:
         (row.errors?.length ?? 0) +
@@ -573,8 +616,8 @@ export function AdminMigrationPage() {
   return (
     <div className="admin-directory admin-imports">
       <PageHeader
-        title="Import Clients & Documents"
-        description="Add your existing client list and paperwork to Secure Client."
+        title={isAdmin ? "Import Clients & Documents" : "Import client documents"}
+        description={isAdmin ? "Add your existing client list and paperwork to Secure Client." : "Add historical records to your assigned clients. Confirm the client and period before importing."}
         actions={
           <Button
             disabled={busy || dirty.size > 0}
@@ -585,6 +628,7 @@ export function AdminMigrationPage() {
           </Button>
         }
       />
+      <div ref={feedbackPanel} tabIndex={-1} className="scroll-mt-5 outline-none">
       {error ? (
         <div
           role="alert"
@@ -601,6 +645,7 @@ export function AdminMigrationPage() {
           {notice}
         </p>
       ) : null}
+      </div>
       {!kind ? (
         <>
           <section aria-label="Choose what to import" className="admin-import-start">
@@ -613,14 +658,14 @@ export function AdminMigrationPage() {
               </p>
             </div>
             <div className="import-option-grid">
-              <button disabled={busy || !loaded} onClick={() => start("clients")} className="import-option-card">
+              {isAdmin ? <button disabled={busy || !loaded} onClick={() => start("clients")} className="import-option-card">
                 <span className="import-option-card__icon"><FileSpreadsheet size={21} strokeWidth={1.7} aria-hidden="true" /></span>
                 <span className="import-option-card__content">
                   <span className="import-option-card__title">Import a client list</span>
                   <span className="import-option-card__description">Excel / CSV · Preview and validate client details before adding them.</span>
                 </span>
                 <ArrowRight size={17} className="import-option-card__arrow" aria-hidden="true" />
-              </button>
+              </button> : null}
               <button disabled={busy || !loaded} onClick={() => start("documents")} className="import-option-card">
                 <span className="import-option-card__icon"><Files size={21} strokeWidth={1.7} aria-hidden="true" /></span>
                 <span className="import-option-card__content">
@@ -720,11 +765,12 @@ export function AdminMigrationPage() {
               />
               <h2 className="text-xl font-semibold">Import complete</h2>
               <p className="text-sm leading-6 text-slate-600">
-                {batch?.summary?.importedClients ?? 0} clients and{" "}
-                {batch?.summary?.importedDocuments ?? 0} documents added.
+                {batch?.summary?.importedClients ?? 0} new clients and{" "}
+                {batch?.summary?.importedDocuments ?? 0} documents added. Imported documents are available in the client’s Documents page under their historical periods.
                 Documents still need the accountant's normal review and
                 filing.
               </p>
+              {(batch?.summary?.linkedClients ?? 0) > 0 ? <p className="text-sm text-emerald-800">{batch?.summary?.linkedClients} existing client profiles linked and assigned. No duplicate profiles were created.</p> : null}
               <p className="text-sm text-slate-500">
                 Client login invitations are sent separately from Users &
                 Access.
@@ -750,7 +796,7 @@ export function AdminMigrationPage() {
                 <p className="mt-2 text-sm leading-6 text-slate-500">
                   {kind === "clients"
                     ? "Use our spreadsheet template so we can recognise your client details. You'll check the list before any clients are added."
-                    : "Choose an existing client and the month the documents cover. You'll confirm each document in the next step."}
+                    : "Choose a ZIP archive or folder containing historical records. Check suggested periods and types before adding anything."}
                 </p>
               </div>
               <fieldset
@@ -857,7 +903,7 @@ export function AdminMigrationPage() {
                   />
                   <span className="text-sm font-semibold text-slate-900">
                     {busy
-                      ? "Uploading..."
+                      ? `Reading ${selectedFileName || "your files"}...`
                       : kind === "clients"
                         ? (batch?.clients?.length ?? 0) > 0
                           ? "Client list uploaded"
@@ -866,8 +912,8 @@ export function AdminMigrationPage() {
                   </span>
                   <span className="mt-2 text-xs text-slate-500">
                     {kind === "clients"
-                      ? "Excel (.xlsx) or CSV Â· up to 500 clients Â· 2 MB maximum"
-                      : "Select several files at once Â· up to 100 documents Â· 20 MB each"}
+                      ? "Excel (.xlsx) or CSV · up to 500 clients · 2 MB maximum"
+                      : "Select files or a ZIP · up to 2,000 documents · 20 MB per file · ZIP up to 250 MB"}
                   </span>
                   <input
                     aria-label={
@@ -880,7 +926,7 @@ export function AdminMigrationPage() {
                     accept={
                       kind === "clients"
                         ? ".csv,.xlsx"
-                        : ".pdf,.png,.jpg,.jpeg,.docx,.xlsx,.csv,.txt"
+                        : ".zip,.pdf,.png,.jpg,.jpeg,.docx,.xlsx,.csv,.txt"
                     }
                     multiple={kind === "documents"}
                     disabled={
@@ -890,13 +936,21 @@ export function AdminMigrationPage() {
                     onChange={(e) => {
                       const files = Array.from(e.target.files ?? []);
                       e.target.value = "";
-                      if (files.length)
+                      if (files.length) {
+                        setSelectedFileName(files.map(file => file.name).join(", "));
                         void (kind === "clients"
                           ? uploadSpreadsheet(files[0])
                           : uploadDocuments(files));
+                      }
                     }}
                   />
                 </label>
+                {kind === "documents" ? <label className="inline-flex cursor-pointer rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium">
+                  Choose a folder
+                  <input className="sr-only" type="file" multiple ref={element => {element?.setAttribute("webkitdirectory", "");}} disabled={busy} onChange={event => {const files=Array.from(event.target.files??[]);event.target.value="";if(files.length)void uploadDocuments(files);}} />
+                </label> : null}
+                {uploadProgress ? <p role="status" className="text-sm text-slate-600">{uploadProgress}. Keep this page open.</p> : null}
+                {selectedFileName ? <p className="text-sm text-slate-600">Selected file: <strong className="font-medium">{selectedFileName}</strong>{error ? ". Not imported. Correct the file and choose it again." : ""}</p> : null}
                 <details className="text-sm">
                   <summary className="cursor-pointer font-medium text-slate-600">
                     Give this import a name (optional)
@@ -982,6 +1036,27 @@ export function AdminMigrationPage() {
                   </div>
                 ))}
               </div>
+              {(batch.archiveWarnings?.length ?? 0) > 0 ? <div role="status" className="rounded-lg bg-amber-50 p-4 text-sm text-amber-900"><p className="font-medium">Files left out of staging</p><ul>{batch.archiveWarnings?.map((warning,index)=><li key={index}>{warning}</li>)}</ul></div> : null}
+              {(batch.documents?.length ?? 0) > 0 && editable ? <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
+                <h3 className="text-base font-semibold">Set details for this archive</h3>
+                <p className="text-sm text-slate-500">Applies to all included files. Leave month and type unchanged to keep suggestions. Correct uncertain files below; nothing is imported until final confirmation.</p>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <label className="space-y-1 text-sm">Client<select className={inputClass} value={uploadClient} onChange={e=>setUploadClient(e.target.value)}><option value="">Choose client</option>{clients.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
+                  <label className="space-y-1 text-sm">Record section<select className={inputClass} value={recordScope} onChange={event=>{setRecordScope(event.target.value);setUploadMonth("");}}><option value="monthly">Monthly financial records</option><option value="annual">Annual financial records</option><option value="permanent">Permanent company records</option><option value="uncertain">Period needs checking</option></select></label>
+                  {recordScope==="monthly"||recordScope==="annual"?<label className="space-y-1 text-sm">{recordScope==="annual"?"Financial year ending in":"Override month (optional)"}<input className={inputClass} type={recordScope==="annual"?"number":"month"} value={uploadMonth} onChange={e=>setUploadMonth(e.target.value)} /></label>:null}
+                  <label className="space-y-1 text-sm">Override type<select className={inputClass} value={uploadCategory} onChange={e=>setUploadCategory(e.target.value)}><option value="general">Keep suggested types</option>{categories.filter(c=>c!=="general").map(c=><option key={c} value={c}>{categoryLabels[c]??c}</option>)}</select></label>
+                </div>
+                <label className="block space-y-1 text-sm">Historical status<select className={inputClass} value={previouslyFiled?"filed":"review"} onChange={e=>{setPreviouslyFiled(e.target.value==="filed");setHistoricalConfirmed(false);}}><option value="review">Needs accountant review</option><option value="filed">Previously reviewed and filed</option></select></label>
+                {previouslyFiled ? <div className="space-y-3 rounded-lg bg-slate-50 p-4">
+                  <p className="text-sm">Recorded as historically filed, confirmed during import. This is separate from a review performed inside Secure Client.</p>
+                  <div className="grid gap-3 sm:grid-cols-2"><label className="text-sm">Previous reviewer (if known)<input className={inputClass} value={previousReviewer} maxLength={200} onChange={e=>setPreviousReviewer(e.target.value)} /></label><label className="text-sm">Previous review date (if known)<input className={inputClass} type="date" value={previousReviewDate} onChange={e=>setPreviousReviewDate(e.target.value)} /></label></div>
+                  <label className="block text-sm">Historical notes / details unavailable<textarea className={inputClass} value={historicalNotes} maxLength={2000} onChange={e=>setHistoricalNotes(e.target.value)} /></label>
+                  <label className="flex gap-2 text-sm"><input type="checkbox" checked={historicalConfirmed} onChange={e=>setHistoricalConfirmed(e.target.checked)} />I confirm these included records were reviewed and filed before import.</label>
+                </div> : null}
+                <label className="flex gap-2 text-sm"><input type="checkbox" checked={bulkOwnership} onChange={e=>setBulkOwnership(e.target.checked)} />I checked the client, record sections, types and applicable periods for all included files.</label>
+                <Button disabled={busy||!uploadClient||!bulkOwnership||(previouslyFiled&&!historicalConfirmed)} onClick={()=>void run(async()=>{const [year,month]=uploadMonth.split("-");update(await migration.bulkEditDocuments(id!,{version,clientId:uploadClient,year:year?Number(year):null,month:month?Number(month):null,category:uploadCategory==="general"?null:uploadCategory,confirmOwnershipAndPeriods:bulkOwnership,recordScope,previouslyFiled,historicalStatusConfirmed:historicalConfirmed,previousReviewer:previousReviewer||null,previousReviewDateUtc:previousReviewDate?`${previousReviewDate}T00:00:00Z`:null,historicalNotes:historicalNotes||null}));setNotice("Archive details saved. Check remaining errors and duplicate warnings before confirming.");})}>Apply to included files</Button>
+                <ul className="grid gap-1 text-sm text-slate-600 sm:grid-cols-3">{Object.entries((batch.documents??[]).filter(r=>!r.values?.skip).reduce<Record<string,number>>((groups,row)=>{const v=row.values;const key=v?.recordScope==="permanent"?"Permanent records":v?.recordScope==="uncertain"?"Period needs checking":v?.recordScope==="annual"?`FY${v.year??" needs checking"} · Annual`:v?.year&&v.month?`${v.year}-${String(v.month).padStart(2,"0")}`:"Month needs checking";groups[key]=(groups[key]??0)+1;return groups;},{})).sort().map(([period,count])=><li key={period}>{period}: {count} files</li>)}</ul>
+              </section> : null}
               <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
                 <table className="w-full text-left text-sm">
                   <thead className="border-b border-slate-200 bg-slate-50 text-xs text-slate-500">
@@ -1076,7 +1151,7 @@ export function AdminMigrationPage() {
                     row={selectedClient}
                     disabled={busy || !editable}
                     onDirty={() => markDirty(selectedClient.id!)}
-                    onSave={(values, skip) =>
+                    onSave={(values, skip, useExistingClient) =>
                       void run(async () => {
                         update(
                           await migration.editClient(
@@ -1085,6 +1160,7 @@ export function AdminMigrationPage() {
                             version,
                             values,
                             skip,
+                            useExistingClient,
                           ),
                         );
                         clearDirty(selectedClient.id!);
@@ -1170,13 +1246,13 @@ export function AdminMigrationPage() {
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-slate-500">
                   You're adding{" "}
-                  {(batch.clients ?? []).filter((r) => !r.skip).length} clients
+                  {(batch.clients ?? []).filter((r) => !r.skip && !r.useExistingClient).length} new clients
                   and{" "}
                   {
                     (batch.documents ?? []).filter((r) => !r.values?.skip)
                       .length
                   }{" "}
-                  documents to Secure Client.{" "}
+                  documents to Secure Client. {(batch.clients ?? []).filter(r => !r.skip && r.useExistingClient).length} existing clients will be linked and assigned without changing their profiles.{" "}
                   {rows.filter((r) => r.skip).length} items will be left out.
                 </p>
               </div>
@@ -1186,7 +1262,7 @@ export function AdminMigrationPage() {
                   authorised staff.
                 </p>
                 <p>
-                  Your accountant still needs to review and file them. New
+                  Previously filed records retain an audited historical confirmation; other records still need accountant review. New
                   clients won't receive a login invitation from this import.
                 </p>
               </div>
@@ -1199,7 +1275,7 @@ export function AdminMigrationPage() {
                   onChange={(e) => setConfirmed(e.target.checked)}
                 />
                 I have checked the details and confirm that each document
-                belongs to the selected client and month.
+                belongs to the selected client and archive section or accounting period.
               </label>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <Button
@@ -1273,7 +1349,7 @@ export function AdminMigrationPage() {
                     {h.updatedAtUtc
                       ? new Date(h.updatedAtUtc).toLocaleDateString()
                       : ""}{" "}
-                    Â· {h.clientRows ?? 0} clients Â· {h.documents ?? 0}{" "}
+                    · {h.clientRows ?? 0} clients · {h.documents ?? 0}{" "}
                     documents
                   </span>
                 </span>

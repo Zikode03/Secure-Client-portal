@@ -1,10 +1,13 @@
+import {archivePeriodLabel} from "../../services/financialArchive";
+import {OrganiseDocumentDialog} from "../../components/documents/OrganiseDocumentDialog";
+import {FinancialArchiveExplorer,type ArchiveSelection} from "../../components/documents/FinancialArchiveExplorer";
 import { RecordActions } from "../../components/ui/RecordActions";
 import "./accountantDocuments.css";
 import { DocumentPdfPreview } from "../../components/documents/DocumentPdfPreview";
 // Friendly guide: this module (AccountantDocumentsPage) supports the Secure Client Portal workflow.
 // The goal is clear, maintainable code so future edits feel safe and straightforward.
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../../app/auth";
 import { usePortal } from "../../app/portal";
@@ -489,6 +492,9 @@ export function AccountantDocumentsPage() {
   const portal = usePortal();
   const backendMode = hasApiBaseUrl();
   const [searchParams] = useSearchParams();
+  const [organisingDocument,setOrganisingDocument]=useState<DocumentRecord|null>(null);
+  const [archiveSelection,setArchiveSelection]=useState<ArchiveSelection>({ids:[],leaf:false,clientId:""});
+  const selectArchive=useCallback((selection:ArchiveSelection)=>{setArchiveSelection(current=>current.leaf===selection.leaf&&current.clientId===selection.clientId&&current.ids.join("|")===selection.ids.join("|")?current:selection);setCurrentPage(1);},[]);
   const [filters, setFilters] = useState<UnifiedSearchFilters>(defaultFilters);
   const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(false);
 // Local UI state: keeps track of what the user is seeing or editing right now.
@@ -526,15 +532,17 @@ export function AccountantDocumentsPage() {
 
     async function loadLiveDocuments() {
       try {
-        const [clients, records] = await Promise.all([
+        const [clients, records, packs] = await Promise.all([
           portalServiceApi.getAdminClients({ allowFallback: false }),
           apiGetJson("/api/documents"),
+          apiGetJson("/api/monthly-packs"),
         ]);
 
         if (!isActive) {
           return;
         }
 
+        const packById=new Map(packs.map(pack=>[pack.id,pack]));
         const clientNameById = new Map(clients.map((client) => [client.id, client.clientName]));
         const mappedDocuments = records.map((record) => {
           const clientName = clientNameById.get(record.clientId) ?? "Client";
@@ -545,9 +553,11 @@ export function AccountantDocumentsPage() {
             clientName,
             documentType,
             fileName: record.name,
-            monthLabel: formatDateLabel(record.uploadedAtUtc),
+            monthLabel: archivePeriodLabel(record, packById.has(record.monthlyPackId ?? "") ? new Intl.DateTimeFormat("en-ZA",{month:"long",year:"numeric",timeZone:"UTC"}).format(new Date(Date.UTC(packById.get(record.monthlyPackId ?? "")!.year,packById.get(record.monthlyPackId ?? "")!.month-1,1))) : "Period not specified"),
             description: `${record.category} uploaded in the live document workflow.`,
             status: mapLiveDocumentStatus(record.status),
+              isHistoricallyFiled: record.isHistoricallyFiled,
+              archiveScope: record.archiveScope as DocumentRecord["archiveScope"], archiveYear: record.archiveYear, archiveMonth: record.archiveMonth,
             uploadedBy: clientName,
             uploadedAt: record.uploadedAtUtc,
             reviewedBy: undefined,
@@ -688,7 +698,7 @@ export function AccountantDocumentsPage() {
     [allResults, filters, portal],
   );
 
-  const visibleResults = filteredResults;
+  const visibleResults = filteredResults.filter(result=>archiveSelection.ids.includes(result.id));
 
   const totalPages = Math.max(1, Math.ceil(visibleResults.length / resultsPerPage));
 
@@ -763,11 +773,6 @@ export function AccountantDocumentsPage() {
     return () => { isActive = false; };
   }, [backendMode, commentsByDocumentId, selectedDocument]);
 
-  const clientOptions = useMemo(
-    () => buildSelectOptions(assignedClients.map((client) => client.clientName), "All clients"),
-    [assignedClients],
-  );
-
   const monthOptions = useMemo(
     () =>
       buildSelectOptions(
@@ -834,7 +839,7 @@ export function AccountantDocumentsPage() {
     () =>
       buildSelectOptions(
         Array.from(
-          new Set(allResults.map((result) => String(new Date(result.date).getFullYear()))),
+          new Set(allResults.map((result) => result.monthLabel?.match(/\b(\d{4})\b/)?.[1] ?? "").filter(Boolean)),
         ).sort((left, right) => Number(right) - Number(left)),
         "All",
       ),
@@ -899,17 +904,19 @@ export function AccountantDocumentsPage() {
     }
   }, [filteredResults, selectedResultId]);
 
-  useEffect(() => {
-    const clientFromQuery = searchParams.get("client");
-    if (!clientFromQuery) {
-      return;
-    }
-    if (filters.clientId === clientFromQuery) {
-      return;
-    }
-    setFilters((current) => ({ ...current, clientId: clientFromQuery }));
-  }, [filters.clientId, searchParams]);
 
+
+
+  const requestedDocument = searchParams.get("documentId");
+  const openedDeepLink = useRef("");
+  useEffect(() => {
+    if (!requestedDocument || requestedDocument === openedDeepLink.current) return;
+    const target = filteredResults.find(result => result.id === requestedDocument);
+    if (!target) return;
+    openedDeepLink.current = requestedDocument;
+    setSelectedResultId(target.id);
+    setViewerOpen(true);
+  }, [requestedDocument, filteredResults]);
 
   function resolveDocumentForResult(result: UnifiedSearchResult) {
     if (backendMode) {
@@ -1091,10 +1098,11 @@ export function AccountantDocumentsPage() {
     <div className="documents-page">
       <header className="documents-header"><div><h1 className="workspace-duplicate-title ">Documents</h1><p>Find client files, view their history and download the original.</p></div><Button variant="secondary" onClick={() => navigate("/firm/inbox")}>Request documents</Button></header>
       {feedbackMessage ? <p role="status" className="documents-notice">{feedbackMessage}</p> : null}
-      <section className="documents-register" aria-label="Client document register">
+      {organisingDocument ? <OrganiseDocumentDialog document={organisingDocument} onClose={()=>setOrganisingDocument(null)} onSaved={()=>setLiveRefreshKey(value=>value+1)} /> : null}
+      <FinancialArchiveExplorer records={allResults} clients={assignedClients.map(client=>({id:client.id,name:client.clientName}))} initialClientId={searchParams.get("clientId")??undefined} canConfigure={true} onSelection={selectArchive} onImport={clientId=>navigate(`/firm/imports?clientId=${encodeURIComponent(clientId)}`)} />
+      {archiveSelection.leaf ? <section className="documents-register" aria-label="Client document register">
         <div className="documents-toolbar">
           <label className="documents-search"><SearchIcon /><input aria-label="Search client documents" type="search" placeholder="Find a document or reference" value={filters.query} onChange={event => setFilters(current => ({ ...current, query: event.target.value }))} /></label>
-          <ResultFilterSelect label="Client" options={clientOptions} value={assignedClients.find(client => client.id === filters.clientId)?.clientName ?? ""} onChange={value => setFilters(current => ({ ...current, clientId: assignedClients.find(client => client.clientName === value)?.id ?? "" }))} />
           <ResultFilterSelect label="Status" options={statusOptions} value={filters.status} onChange={value => setFilters(current => ({ ...current, status: value }))} />
           <button type="button" className="documents-filter-button" aria-expanded={advancedFiltersOpen} aria-controls="documents-extra-filters" onClick={() => setAdvancedFiltersOpen(value => !value)}>More filters<ChevronDownIcon /></button>
         </div>
@@ -1107,15 +1115,14 @@ export function AccountantDocumentsPage() {
           <ResultFilterSelect label="Expiry status" options={[{label:"All",value:""},{label:"Expiring soon",value:"expiring"},{label:"Expired",value:"expired"}]} value={filters.expiryStatus} onChange={value => setFilters(current => ({ ...current, expiryStatus: value }))} />
         </div> : null}
         <div className="documents-result-count"><span>{visibleResults.length} {visibleResults.length === 1 ? "document" : "documents"}</span>{Object.entries(filters).some(([key, value]) => value && !(key === "requiredFlag" && value === "all")) ? <button type="button" onClick={handleClearFilters}>Clear filters</button> : null}</div>
-        {visibleResults.length ? <div className="documents-table"><table><thead><tr><th scope="col">Document</th><th scope="col">Client</th><th scope="col">Status</th><th scope="col">Uploaded</th><th scope="col" className="documents-actions-heading">Actions</th></tr></thead><tbody>{pagedResults.map(result => <tr key={result.id}>
+        {visibleResults.length ? <div className="documents-table"><table><thead><tr><th scope="col">Document</th><th scope="col">Status</th><th scope="col">Uploaded</th><th scope="col" className="documents-actions-heading">Actions</th></tr></thead><tbody>{pagedResults.map(result => <tr key={result.id}>
           <th scope="row"><button type="button" className="documents-file-title" onClick={() => handleOpenResult(result)}>{displayResultTitle(result)}</button><small>{result.typeLabel}</small></th>
-          <td>{result.clientName}</td>
-          <td><span className={cn("documents-status",toneToAccentClass(statusToTone(result.status)))}>{formatStatusLabel(result.status)}</span></td>
+          <td><span className={cn("documents-status",toneToAccentClass(statusToTone(result.status)))}>{result.isHistoricallyFiled ? "Historically filed" : formatStatusLabel(result.status)}</span></td>
           <td className="documents-uploaded">{formatDateLabel(result.date)}</td>
-          <td><div className="documents-row-actions"><RecordActions iconOnly label={`Actions for ${displayResultTitle(result)}`} actions={[{ label: "Open", onSelect: () => handleOpenResult(result) }, { label: "Download", onSelect: () => void handleDownloadResult(result) }]} /></div></td>
+          <td><div className="documents-row-actions"><RecordActions iconOnly label={`Actions for ${displayResultTitle(result)}`} actions={[{ label: "Open", onSelect: () => handleOpenResult(result) }, { label: "Download", onSelect: () => void handleDownloadResult(result) }, ...(!liveDocuments.find(document=>document.id===result.id)?.documentSlotId ? [{label:"Organise",onSelect:()=>setOrganisingDocument(liveDocuments.find(document=>document.id===result.id)??null)}] : [])]} /></div></td>
         </tr>)}</tbody></table></div> : <div className="documents-empty"><EmptyState title={allResults.length ? "No matching documents" : "No documents yet"} description={allResults.length ? "Change the search or clear your filters." : "Client documents will appear here after they are uploaded."} /></div>}
         {visibleResults.length ? <footer className="documents-pagination"><span>Showing {(currentPage - 1) * resultsPerPage + 1}-{Math.min(currentPage * resultsPerPage, visibleResults.length)} of {visibleResults.length}</span><Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} /></footer> : null}
-      </section>
+      </section> : null}
       <div>
         {viewerOpen && selectedResult && selectedDocument ? (
           <div
@@ -1220,7 +1227,7 @@ export function AccountantDocumentsPage() {
                             toneToAccentClass(statusToTone(selectedResult.status)),
                           )}
                         >
-                          {formatStatusLabel(selectedResult.status)}
+                          {selectedResult.isHistoricallyFiled ? "Historically filed — confirmed during import" : formatStatusLabel(selectedResult.status)}
                         </span>
                       </div>
                     </div>
@@ -1378,7 +1385,7 @@ export function AccountantDocumentsPage() {
                             {displayResultTitle(result)}
                           </p>
                           <p className="mt-1 text-sm text-slate-500">
-                            {resultFamilyLabel(result)} | {formatStatusLabel(result.status)}
+                            {resultFamilyLabel(result)} | {result.isHistoricallyFiled ? "Historically filed" : formatStatusLabel(result.status)}
                           </p>
                         </div>
                         <ChevronRightIcon />
