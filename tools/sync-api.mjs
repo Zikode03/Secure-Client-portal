@@ -25,13 +25,16 @@ try {
   run("dotnet", [assembly, "--export-openapi", exported]);
   const contract = await readFile(exported, "utf8");
   const destination = join(root, "openapi/portal-api.json");
-  if (args.includes("--check")) {
-    const existing = await readFile(destination, "utf8");
-    if (contract.replace(/\r\n/g, "\n") !== existing.replace(/\r\n/g, "\n"))
-      throw new Error("Backend contract differs from the frontend snapshot. Run npm run api:sync with this backend repository.");
-  } else {
-    await mkdir(dirname(destination), { recursive: true });
-    await writeFile(destination, contract);
+  const destinations = [destination, resolve(backend, "openapi/portal-api.json")];
+  for (const snapshot of destinations) {
+    if (args.includes("--check")) {
+      const existing = await readFile(snapshot, "utf8");
+      if (contract.replace(/\r\n/g, "\n") !== existing.replace(/\r\n/g, "\n"))
+        throw new Error(`OpenAPI snapshot is stale: ${snapshot}. Run npm run api:sync with this backend repository.`);
+    } else {
+      await mkdir(dirname(snapshot), { recursive: true });
+      await writeFile(snapshot, contract);
+    }
   }
   run(process.execPath, [join(root, "tools/generate-api.mjs"), ...(args.includes("--check") ? ["--check"] : [])]);
 } finally {
